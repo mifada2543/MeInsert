@@ -1,0 +1,27 @@
+# Meinsert is a static, no-build app. These MIME types keep ES modules and
+# WebAssembly working when served by Apache/XAMPP.
+AddType text/javascript .mjs
+AddType application/wasm .wasm
+AddType application/pdf .pdf
+AddType image/jpeg .jpg .jpeg
+AddType image/png .png
+AddType image/webp .webp
+AddType image/tiff .tif .tiff
+AddType audio/mpeg .mp3
+AddType audio/flac .flac
+AddType audio/ogg .ogg .oga
+AddType audio/opus .opus
+AddType video/mp4 .mp4 .m4v
+AddType audio/mp4 .m4a
+AddType video/quicktime .mov
+AddType video/x-matroska .mkv
+AddType video/webm .webm
+AddDefaultCharset UTF-8
+
+# Never let a browser cache an old build of the app shell.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|mjs|css)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
