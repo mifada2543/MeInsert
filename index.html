@@ -4,27 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f5f4ed" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14141f" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Meinsert: baca dan tulis metadata file langsung di browser. Tanpa upload, tanpa server.">
   <title>Meinsert — Edit metadata tanpa upload</title>
   <link rel="stylesheet" href="assets/css/app.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230d3b36'/%3E%3Cpath d='M44 20H20v24h24V20Z' fill='none' stroke='%23c8f169' stroke-width='4'/%3E%3Cpath d='M27 32h10M32 27v10' stroke='%23c8f169' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/img/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/img/icon-512.png">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 </head>
 <body>
   <a class="skip-link" href="#main">Lewati ke konten</a>
-  <div class="ambient" aria-hidden="true">
-    <span class="ambient-orb ambient-orb-a"></span>
-    <span class="ambient-orb ambient-orb-b"></span>
-  </div>
 
   <header class="site-header">
     <div class="shell header-inner">
-      <a class="brand" href="./" aria-label="Meinsert, kembali ke awal">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" fill="none">
-            <path d="M7 7h18v18H7z" stroke="currentColor" stroke-width="2.2"/>
-            <path d="M12 16h8M16 12v8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-        </span>
+      <a class="brand" href="./" aria-label="Meinsert Metadata lokal, kembali ke awal">
+        <img class="brand-logo" src="assets/img/icon-512.png" width="42" height="42" alt="">
         <span class="brand-text">Meinsert<small>metadata lokal</small></span>
       </a>
       <div class="header-actions">
@@ -43,7 +38,7 @@
     <section class="landing" id="landing">
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-line"></span>Metadata editor untuk file sehari-hari</p>
-        <h1>Tempel metadata.<br><span class="accent-text">Tanpa upload.</span></h1>
+        <h1>Tempel metadata.<br><span class="accent-text" title="File tidak pernah dikirim ke server">Tanpa upload.</span></h1>
         <p class="lede">Ubah judul, penulis, tag, dan info kamera langsung di browser. File tetap di perangkat Anda — tidak ada server, tidak ada antrean, tidak ada akun.</p>
         <div class="format-chips" aria-label="Format yang didukung">
           <span class="chip"><span class="chip-dot image"></span>JPG</span>
@@ -65,7 +60,7 @@
       </div>
 
       <div class="drop-wrap">
-        <section class="drop-card" id="dropCard" tabindex="0" role="button" aria-label="Pilih satu file untuk diedit">
+        <section class="drop-card" id="dropCard">
           <input type="file" id="fileInput" hidden>
           <div class="drop-visual" aria-hidden="true">
             <div class="tag-stack tag-back"></div>
@@ -84,7 +79,7 @@
             <span>Gambar</span><span>PDF</span><span>Audio</span><span>Video</span>
           </div>
         </section>
-        <p class="drop-footnote"><span class="lock-dot"></span>Diproses oleh browser Anda sendiri. Tidak ada file yang meninggalkan perangkat.</p>
+        <p class="drop-footnote"><span class="lock-dot" aria-hidden="true"></span>Diproses oleh browser Anda sendiri. Tidak ada file yang meninggalkan perangkat.</p>
       </div>
     </section>
 

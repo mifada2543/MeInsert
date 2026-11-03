@@ -1,6 +1,12 @@
 # THIRD-PARTY LICENSES
 
-This project bundles the following third-party libraries in `assets/vendor/`:
+This project bundles the following third-party libraries in `assets/vendor/`
+and fonts in `assets/fonts/`:
+
+## IBM Plex (Sans, Sans Condensed, Mono)
+- **License**: SIL Open Font License 1.1 (see `assets/fonts/OFL.txt`)
+- **Source**: https://github.com/IBM/plex
+- **Modifications**: Split into latin / latin-ext WOFF2 subsets; IBM Plex Sans is the variable-weight file (wght 100–700). No glyphs modified.
 
 ## @colorhythm/exiftool-wasm v1.0.5
 - **License**: MIT (see `licenses/exiftool-wasm-LICENSE`)

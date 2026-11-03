@@ -567,6 +567,7 @@ function syncActionBar() {
   const ready = state.status === 'ready';
   const changes = ready ? collectChanges() : { count: 0 };
   const count = changes.count;
+  state.dirtyCount = count;
   const canSave = state.processing || (ready && count > 0);
   els.dirtyState.textContent = state.processing
     ? 'Sedang memproses…'
@@ -891,16 +892,6 @@ function goHome() {
 function setupDropzone() {
   els.fileInput.accept = '.jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm';
   const pick = () => els.fileInput.click();
-  els.dropCard.addEventListener('click', (event) => {
-    if (event.target.closest('button')) return;
-    pick();
-  });
-  els.dropCard.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      pick();
-    }
-  });
   els.browseBtn.addEventListener('click', (event) => {
     event.stopPropagation();
     pick();
@@ -950,7 +941,7 @@ function setupEvents() {
   });
   els.outputBase.addEventListener('blur', () => ensureOutputName());
   window.addEventListener('beforeunload', (event) => {
-    if (state.processing) {
+    if (state.processing || state.dirtyCount > 0) {
       event.preventDefault();
       event.returnValue = '';
     }

@@ -82,6 +82,7 @@ function buildField(field, state, handlers) {
   const value = asString(state.values[field.id]);
   const common = {
     id: inputId,
+    name: `metadata-${field.id}`,
     className: 'field-input',
     autocomplete: 'off',
     spellcheck: field.type === 'text' || field.type === 'textarea' || field.type === 'tags' ? 'true' : 'false',
@@ -144,6 +145,7 @@ function renderCustomRows(list, state, handlers) {
   for (const row of state.customRows) {
     const keyInput = el('input', {
       className: 'custom-key',
+      name: 'custom-tag-name',
       type: 'text',
       value: row.key || '',
       placeholder: customPlaceholder(state.adapter.meta.id),
@@ -156,6 +158,7 @@ function renderCustomRows(list, state, handlers) {
     });
     const valueInput = el('input', {
       type: 'text',
+      name: 'custom-tag-value',
       value: row.value || '',
       placeholder: 'Nilai',
       autocomplete: 'off',
