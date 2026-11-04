@@ -279,7 +279,7 @@ export function renderCoverBlock(adapter, state, handlers) {
   );
 }
 
-export function renderForm(container, { adapter, sections, state, handlers }) {
+export function renderForm(container, { adapter, sections, state, handlers, coverInCard = false }) {
   clear(container);
   let index = 0;
   for (const section of sections) {
@@ -299,7 +299,7 @@ export function renderForm(container, { adapter, sections, state, handlers }) {
     container.append(block);
   }
 
-  if (adapter.meta?.cover && handlers.onCoverChooseFile) {
+  if (adapter.meta?.cover && handlers.onCoverChooseFile && !coverInCard) {
     container.append(renderCoverBlock(adapter, state, handlers));
   }
 

@@ -13,6 +13,7 @@ import { buildZip } from './batch-zip.js';
 import { el, clear, formatBytes, downloadBlob, qs } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { showToast } from '../ui/toast.js';
+import { previewKind } from '../ui/file-card.js';
 import { asArray, asString, fileBaseName, fileExtension, safeOutputName } from '../core/tag-utils.js';
 
 const MP3_DELETABLE_FRAMES = new Set([
@@ -85,6 +86,11 @@ export class BatchController {
     this.applying = false;
     this.scanning = false;
     this.adding = false;
+    this.previewItemId = null;
+    this.previewUrl = null;
+    this.previewCoverUrl = null;
+    this.previewNode = null;
+    this.previewSignature = '';
 
     this.els = {
       landing: qs('#landing'),
@@ -114,6 +120,7 @@ export class BatchController {
       batchDetailBackBtn: qs('#batchDetailBackBtn'),
       batchDetailStatus: qs('#batchDetailStatus'),
       batchDetailHeader: qs('#batchDetailHeader'),
+      batchPreview: qs('#batchPreview'),
       batchDetailPanel: qs('#batchDetailPanel'),
       batchTabSummary: qs('#batchTabSummary'),
       batchTabRaw: qs('#batchTabRaw'),
@@ -156,7 +163,10 @@ export class BatchController {
     els.batchReportCsvBtn.addEventListener('click', () => this.downloadReport('csv'));
     els.batchTabSummary.addEventListener('click', () => this.setDetailTab('summary'));
     els.batchTabRaw.addEventListener('click', () => this.setDetailTab('raw'));
-    window.addEventListener('pagehide', () => this.client.disposeAllSync());
+    window.addEventListener('pagehide', () => {
+      this.releasePreview();
+      this.client.disposeAllSync();
+    });
   }
 
   busy() {
@@ -708,6 +718,7 @@ export class BatchController {
       if (!window.confirm('Pemrosesan masih berjalan. Batalkan dan kembali?')) return;
       this.processor.cancel();
     }
+    this.releasePreview();
     for (const item of this.items) {
       item.outputFile = null;
     }
@@ -828,6 +839,7 @@ export class BatchController {
   }
 
   closeDetail() {
+    this.releasePreview();
     this.activeItemId = null;
     this.els.batchDetail.hidden = true;
     this.els.batchWorkspace.hidden = false;
@@ -857,8 +869,186 @@ export class BatchController {
     }
     this.els.batchRawCount.textContent = String(tagCountOf(item));
     this.renderDetailHeader(item);
+    this.renderPreview(item);
     if (this.detailTab === 'raw') this.renderRawDetail(item);
     else this.renderSummaryDetail(item);
+  }
+
+  previewKindOf(item) {
+    const kind = previewKind(item?.detection);
+    if (kind !== 'file') return kind;
+    const type = item?.file?.type || '';
+    if (type.startsWith('image/')) return 'image';
+    if (type.startsWith('video/')) return 'video';
+    if (type.startsWith('audio/')) return 'audio';
+    if (type === 'application/pdf') return 'pdf';
+    return 'file';
+  }
+
+  previewSignatureFor(item) {
+    const kind = this.previewKindOf(item);
+    const cover = kind === 'audio' && item?.readResult?.coverBytes ? 'cover' : 'nocover';
+    return `${item.id}:${kind}:${cover}`;
+  }
+
+  releasePreview() {
+    const host = this.els.batchPreview;
+    host?.querySelectorAll('video, audio').forEach((media) => media.pause());
+    const frame = host?.querySelector('iframe');
+    if (frame) frame.src = 'about:blank';
+    if (this.previewCoverUrl) URL.revokeObjectURL(this.previewCoverUrl);
+    if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+    this.previewItemId = null;
+    this.previewUrl = null;
+    this.previewCoverUrl = null;
+    this.previewNode = null;
+    this.previewSignature = '';
+    if (host) clear(host);
+  }
+
+  pausePreview() {
+    this.els.batchPreview?.querySelectorAll('video, audio').forEach((media) => media.pause());
+  }
+
+  ensurePreview(item) {
+    const signature = this.previewSignatureFor(item);
+    if (this.previewNode && this.previewItemId === item.id && this.previewSignature === signature) {
+      return this.previewNode;
+    }
+    this.releasePreview();
+    const kind = this.previewKindOf(item);
+    this.previewItemId = item.id;
+    this.previewSignature = signature;
+    this.previewUrl = this.createPreviewUrl(item, kind);
+    if (kind === 'audio') this.previewCoverUrl = this.createCoverUrl(item);
+    this.previewNode = this.buildPreview(item, kind);
+    return this.previewNode;
+  }
+
+  createPreviewUrl(item, kind) {
+    if (kind === 'pdf' && item.file.type !== 'application/pdf') {
+      return URL.createObjectURL(new Blob([item.file], { type: 'application/pdf' }));
+    }
+    return URL.createObjectURL(item.file);
+  }
+
+  createCoverUrl(item) {
+    const bytes = item.readResult?.coverBytes;
+    if (!bytes || !(bytes.byteLength || bytes.length)) return null;
+    const mime = item.readResult?.cover?.mimeType || 'image/jpeg';
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  }
+
+  renderPreview(item) {
+    const host = this.els.batchPreview;
+    if (!host) return;
+    const visible = this.detailTab !== 'raw';
+    host.hidden = !visible;
+    if (!visible) {
+      this.pausePreview();
+      return;
+    }
+    const node = this.ensurePreview(item);
+    if (!host.contains(node)) host.replaceChildren(node);
+  }
+
+  buildPreview(item, kind) {
+    const info = item.readResult?.info || {};
+    const stage = el('div', { className: `batch-preview-stage batch-preview-stage--${kind}` });
+    const wrap = el('div', { className: 'batch-preview-inner' });
+    if (kind === 'image' || kind === 'video') this.setPreviewRatio(stage, info.width, info.height);
+
+    if (kind === 'image') {
+      const img = el('img', { src: this.previewUrl, alt: `Pratinjau ${item.file.name}`, decoding: 'async' });
+      img.addEventListener('load', () => this.setPreviewRatio(stage, img.naturalWidth, img.naturalHeight));
+      img.addEventListener('error', () => stage.replaceChildren(this.previewFallback(item, 'Gambar tidak bisa ditampilkan di browser ini.')));
+      stage.append(img);
+    } else if (kind === 'video') {
+      const video = el('video', {
+        src: this.previewUrl,
+        controls: true,
+        preload: 'metadata',
+        playsinline: true,
+        'aria-label': `Pratinjau video ${item.file.name}`,
+      });
+      video.addEventListener('loadedmetadata', () => this.setPreviewRatio(stage, video.videoWidth, video.videoHeight));
+      video.addEventListener('error', () => stage.replaceChildren(this.previewFallback(item, 'Video tidak bisa diputar di browser ini.')));
+      stage.append(video);
+    } else if (kind === 'audio') {
+      const cover = el('div', { className: 'batch-preview-cover' });
+      if (this.previewCoverUrl) {
+        const coverImg = el('img', { src: this.previewCoverUrl, alt: `Cover ${item.file.name}`, decoding: 'async' });
+        coverImg.addEventListener('error', () => cover.replaceChildren(icon('audio'), el('span', { textContent: 'Tanpa cover' })));
+        cover.append(coverImg);
+      } else {
+        cover.append(icon('audio'), el('span', { textContent: 'Tanpa cover' }));
+      }
+      const copy = el('div', { className: 'batch-preview-audio-copy' },
+        el('p', { textContent: this.previewDetail(item, kind) }),
+        el('audio', {
+          src: this.previewUrl,
+          controls: true,
+          preload: 'metadata',
+          'aria-label': `Putar audio ${item.file.name}`,
+        }),
+      );
+      stage.append(cover, copy);
+    } else if (kind === 'pdf') {
+      stage.append(el('iframe', { src: this.previewUrl, title: `Pratinjau PDF ${item.file.name}` }));
+    } else {
+      stage.append(this.previewFallback(item, 'Format file ini belum bisa dipratinjau.'));
+    }
+
+    const meta = el('div', { className: 'batch-preview-meta' },
+      el('span', { className: 'batch-preview-kind' },
+        icon(this.previewIcon(kind)),
+        el('span', { textContent: item.detection?.label || this.previewKindLabel(kind) }),
+      ),
+      el('span', { className: 'batch-preview-detail', textContent: this.previewDetail(item, kind) }),
+      el('a', { className: 'batch-preview-open', href: this.previewUrl, target: '_blank', rel: 'noopener', textContent: 'Buka di tab baru' }),
+    );
+    wrap.append(stage, meta);
+    if (kind === 'pdf') {
+      wrap.append(el('p', { className: 'batch-preview-note', textContent: 'Jika pratinjau kosong, buka PDF di tab baru. Tampilan PDF mengikuti browser Anda.' }));
+    }
+    return wrap;
+  }
+
+  setPreviewRatio(stage, width, height) {
+    const w = Number(width);
+    const h = Number(height);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return;
+    stage.style.setProperty('--batch-preview-ratio', `${w} / ${h}`);
+    stage.style.setProperty('--batch-preview-ratio-num', String(w / h));
+  }
+
+  previewDetail(item, kind) {
+    const info = item.readResult?.info || {};
+    const parts = [];
+    if ((kind === 'image' || kind === 'video') && info.width && info.height) parts.push(`${info.width} × ${info.height}`);
+    if ((kind === 'video' || kind === 'audio') && durationOf(item)) parts.push(formatDuration(durationOf(item)));
+    if (kind === 'pdf' && info.pages) parts.push(`${info.pages} halaman`);
+    if (!parts.length) parts.push(formatBytes(item.file.size));
+    return parts.join(' · ');
+  }
+
+  previewKindLabel(kind) {
+    return { image: 'Gambar', video: 'Video', audio: 'Audio', pdf: 'PDF', file: 'File' }[kind] || 'File';
+  }
+
+  previewIcon(kind) {
+    return kind === 'file' ? 'file' : kind;
+  }
+
+  previewFallback(item, message) {
+    return el('div', { className: 'batch-preview-fallback' },
+      el('span', { className: 'batch-preview-fallback-icon' }, icon(this.previewIcon(this.previewKindOf(item)))),
+      el('div', {},
+        el('h3', { textContent: 'Pratinjau tidak tersedia' }),
+        el('p', { textContent: message }),
+        el('a', { href: this.previewUrl, target: '_blank', rel: 'noopener', textContent: 'Buka file di tab baru' }),
+      ),
+    );
   }
 
   renderDetailHeader(item) {

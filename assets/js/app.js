@@ -12,7 +12,7 @@ import {
 } from './core/tag-utils.js';
 import { el, clear, qs, formatBytes } from './ui/dom.js';
 import { icon } from './ui/icons.js';
-import { renderFileCard, setCardMinimized } from './ui/file-card.js';
+import { renderFileCard, setCardMinimized, previewKind } from './ui/file-card.js';
 import { renderForm, syncFormState, renderCoverBlock } from './ui/form-view.js';
 import { renderRaw } from './ui/raw-view.js';
 import { renderResultCard } from './ui/result-view.js';
@@ -212,8 +212,10 @@ function applyReadCover(result) {
 
 function refreshCoverUI() {
   const block = els.panel.querySelector('.cover-block');
-  if (!block) return;
-  block.replaceWith(renderCoverBlock(state.adapter, state, handlers));
+  if (block) block.replaceWith(renderCoverBlock(state.adapter, state, handlers));
+  // Audio cards host the thumbnail next to the player, so refresh that too.
+  renderSide();
+  scheduleDockUpdate();
 }
 
 function syncThemeButton(theme) {
@@ -407,6 +409,10 @@ function computeSideSignature() {
     state.status,
     state.previewMinimized ? 'min' : 'full',
     state.previewUrl || '',
+    state.coverPreviewUrl || '',
+    state.coverAction,
+    state.coverOriginal?.name || '',
+    state.coverChosen?.name || '',
     state.readResult?.raw?.length || 0,
     JSON.stringify(info),
     warnings.join(' '),
@@ -428,6 +434,17 @@ function renderSide() {
     status: state.status,
     minimized: state.previewMinimized,
     onToggleMinimize: togglePreviewMinimized,
+    cover: {
+      previewUrl: state.coverPreviewUrl,
+      action: state.coverAction,
+      original: state.coverOriginal,
+      chosen: state.coverChosen
+        ? { name: state.coverChosen.name, size: state.coverChosen.data?.byteLength || 0 }
+        : null,
+    },
+    onCoverChooseFile: handlers.onCoverChooseFile,
+    onCoverRemove: handlers.onCoverRemove,
+    onCoverUndo: handlers.onCoverUndo,
   });
 }
 
@@ -567,7 +584,13 @@ function renderWorkspace() {
   const form = el('div', { className: 'form-root' });
   els.panel.append(form);
   const sections = fieldsBySection(state.adapter, state.detection.subtype);
-  renderForm(form, { adapter: state.adapter, sections, state, handlers });
+  renderForm(form, {
+    adapter: state.adapter,
+    sections,
+    state,
+    handlers,
+    coverInCard: previewKind(state.detection) === 'audio',
+  });
   setEditorBadge(`${state.detection.label} · ${state.readResult.raw?.length || 0} tag`, true);
 }
 

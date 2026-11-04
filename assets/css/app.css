@@ -803,10 +803,19 @@ h1 {
   border-radius: 0;
 }
 
-/* Video memakai bidang gelap selebar kartu dengan rasio 16:9, seperti halaman tonton */
+/* Video dan gambar mengikuti rasio aslinya: 4:3, 16:10, 21:9, potret, dst.
+   Tinggi dibatasi agar kartu yang menempel tidak melebihi layar. */
+.file-card--top .preview-frame--video,
+.file-card--top .preview-frame--image {
+  --preview-cap: min(72vh, 800px);
+  width: min(100%, calc(var(--preview-cap) * var(--media-ratio-num, 1.7778)));
+  aspect-ratio: var(--media-ratio, 16 / 9);
+  max-height: var(--preview-cap);
+  margin-inline: auto;
+  transition: width 240ms ease, height 240ms ease, max-height 240ms ease;
+}
+
 .file-card--top .preview-frame--video {
-  width: 100%;
-  aspect-ratio: 16 / 9;
   background: #0b0b10;
 }
 
@@ -818,40 +827,141 @@ h1 {
   background: #0b0b10;
 }
 
-.file-card--top .preview-frame--video video {
+.file-card--top .preview-frame--video video,
+.file-card--top .preview-frame--image img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none;
   max-height: none;
+  object-fit: contain;
+  border-radius: 0;
 }
 
 .file-card--top .preview-frame--pdf iframe {
   height: 100%;
 }
 
-.file-card--top .preview-frame--image {
-  min-height: 280px;
-  max-height: 520px;
-}
-
 .file-card--top .preview-frame--file {
   min-height: 200px;
 }
 
-.file-card--top .preview-frame--image img {
-  max-width: 100%;
-  max-height: 520px;
-  border-radius: 0;
-}
-
-/* Audio: bidang polos untuk pemutar, tanpa pola transparansi gambar */
+/* Audio: thumbnail dan pemutar berdampingan, kontrol di bagian atas */
 .file-card--top .preview-frame--audio {
+  display: block;
   min-height: 0;
-  padding: 22px;
+  padding: 18px 22px 20px;
   background: linear-gradient(160deg, var(--surface-2), var(--surface));
 }
 
-.file-card--top .preview-frame--audio audio {
+.audio-stage {
+  display: grid;
+  gap: 14px;
   width: 100%;
+}
+
+.audio-cover-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  /* Ruang untuk tombol Kecilkan di pojok kanan atas kartu. */
+  padding-right: 104px;
+}
+
+.audio-cover-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.audio-cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.audio-body {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+
+.audio-cover {
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px dashed var(--line-strong);
+  border-radius: 16px;
+  background:
+    linear-gradient(45deg, var(--surface-2) 25%, transparent 25%, transparent 75%, var(--surface-2) 75%) 0 0 / 14px 14px,
+    linear-gradient(45deg, var(--surface-2) 25%, var(--surface) 25%, var(--surface) 75%, var(--surface-2) 75%) 7px 7px / 14px 14px;
+  color: var(--faint);
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.audio-cover:hover,
+.audio-cover:focus-visible {
+  border-color: var(--brand);
+}
+
+.audio-cover.is-dragover {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.audio-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.audio-cover-empty {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 10px;
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.audio-cover-empty .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--faint);
+}
+
+.audio-player {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.audio-player audio {
+  width: 100%;
+}
+
+.audio-cover-hint {
+  margin: 0;
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .file-card--top .file-info {
@@ -871,17 +981,33 @@ h1 {
     min-height: 260px;
   }
 
+  .file-card--top .preview-frame--video,
   .file-card--top .preview-frame--image {
-    min-height: 200px;
-    max-height: 320px;
-  }
-
-  .file-card--top .preview-frame--image img {
-    max-height: 320px;
+    --preview-cap: min(58vh, 420px);
+    max-height: var(--preview-cap);
   }
 
   .file-card--top .preview-frame--audio {
-    padding: 16px;
+    padding: 46px 16px 16px;
+  }
+
+  .audio-cover-head {
+    padding-right: 0;
+  }
+
+  .audio-body {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .audio-cover {
+    width: 96px;
+    height: 96px;
+    border-radius: 12px;
+  }
+
+  .audio-cover-title {
+    font-size: 9.5px;
   }
 
   .file-card--top .file-info {
@@ -907,6 +1033,20 @@ h1 {
 
 .preview-dock.is-pinned .file-card {
   box-shadow: 0 28px 64px -36px rgba(12, 16, 28, 0.55), var(--shadow-card);
+}
+
+/* Saat menempel, tinggi bidang media dibatasi supaya form di bawahnya tetap
+   terlihat. Media tetap di tengah dengan letterbox sesuai rasionya. */
+.preview-dock.is-pinned .file-card:not(.is-minimized) .preview-frame--video,
+.preview-dock.is-pinned .file-card:not(.is-minimized) .preview-frame--image {
+  --preview-cap: min(32vh, 340px);
+  width: 100%;
+  max-height: var(--preview-cap);
+}
+
+.preview-dock.is-pinned .file-card:not(.is-minimized) .file-info {
+  padding-top: 14px;
+  padding-bottom: 16px;
 }
 
 /* Tombol kecilkan/tampilkan pratinjau */
@@ -945,16 +1085,25 @@ h1 {
   height: 13px;
 }
 
-/* Mode kecil: hanya satu baris info yang menempel di atas */
+/* Mode kecil: satu baris seimbang, tombol ikut dalam alur (bukan mengambang) */
+.file-card.is-minimized {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
 .file-card.is-minimized .preview-frame {
   display: none;
 }
 
 .file-card.is-minimized .file-info {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px 128px 10px 16px;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
   border-top: 0;
 }
 
@@ -975,6 +1124,12 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.file-card.is-minimized .preview-toggle {
+  position: static;
+  flex: 0 0 auto;
+  margin-left: 0;
 }
 
 .file-card.is-minimized .file-sub,
@@ -3055,6 +3210,274 @@ h1 {
 
 .batch-detail-panel {
   padding: 18px;
+}
+
+/* Pratinjau file di detail batch */
+.batch-preview {
+  padding: 18px 18px 0;
+}
+
+.batch-preview[hidden] {
+  display: none;
+}
+
+.batch-preview-inner {
+  display: grid;
+  gap: 10px;
+}
+
+.batch-preview-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 180px;
+  max-height: min(52vh, 520px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    linear-gradient(45deg, var(--surface-2) 25%, transparent 25%, transparent 75%, var(--surface-2) 75%) 0 0 / 18px 18px,
+    linear-gradient(45deg, var(--surface-2) 25%, var(--surface) 25%, var(--surface) 75%, var(--surface-2) 75%) 9px 9px / 18px 18px;
+}
+
+.batch-preview-stage--image {
+  --batch-preview-default-ratio: 4 / 3;
+  --batch-preview-default-ratio-num: 1.3333;
+}
+
+.batch-preview-stage--video {
+  --batch-preview-default-ratio: 16 / 9;
+  --batch-preview-default-ratio-num: 1.7778;
+  background: #0b0b10;
+}
+
+.batch-preview-stage--image,
+.batch-preview-stage--video {
+  --batch-preview-cap: min(52vh, 520px);
+  width: min(100%, calc(var(--batch-preview-cap) * var(--batch-preview-ratio-num, var(--batch-preview-default-ratio-num))));
+  aspect-ratio: var(--batch-preview-ratio, var(--batch-preview-default-ratio));
+  max-height: var(--batch-preview-cap);
+  margin-inline: auto;
+  min-height: 0;
+}
+
+.batch-preview-stage--pdf {
+  height: min(60vh, 640px);
+  min-height: 320px;
+  max-height: none;
+  background: #0b0b10;
+}
+
+.batch-preview-stage img,
+.batch-preview-stage video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.batch-preview-stage--image img,
+.batch-preview-stage--video video {
+  position: absolute;
+  inset: 0;
+}
+
+.batch-preview-stage video {
+  background: #000;
+}
+
+.batch-preview-stage iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.batch-preview-stage--audio {
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  justify-items: stretch;
+  min-height: 0;
+  max-height: none;
+  padding: 18px;
+  background: linear-gradient(160deg, var(--surface-2), var(--surface));
+}
+
+.batch-preview-cover {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  width: 168px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px dashed var(--line-strong);
+  border-radius: 16px;
+  background:
+    linear-gradient(45deg, var(--surface-2) 25%, transparent 25%, transparent 75%, var(--surface-2) 75%) 0 0 / 14px 14px,
+    linear-gradient(45deg, var(--surface-2) 25%, var(--surface) 25%, var(--surface) 75%, var(--surface-2) 75%) 7px 7px / 14px 14px;
+  color: var(--faint);
+  font-size: 10px;
+  text-align: center;
+}
+
+.batch-preview-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.batch-preview-cover .icon {
+  width: 26px;
+  height: 26px;
+}
+
+.batch-preview-audio-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.batch-preview-audio-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.batch-preview-audio-copy audio {
+  width: 100%;
+}
+
+.batch-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.batch-preview-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.batch-preview-kind .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--brand);
+}
+
+.batch-preview-detail {
+  color: var(--muted);
+}
+
+.batch-preview-open {
+  margin-left: auto;
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.batch-preview-open:hover {
+  text-decoration: underline;
+}
+
+.batch-preview-note {
+  margin: 0;
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+.batch-preview-fallback {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  max-width: 560px;
+  padding: 22px;
+  text-align: left;
+}
+
+.batch-preview-fallback-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-3);
+  color: var(--brand);
+}
+
+.batch-preview-fallback h3 {
+  margin: 0 0 5px;
+  font-size: 14px;
+}
+
+.batch-preview-fallback p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.batch-preview-fallback a {
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .batch-preview {
+    padding: 14px 14px 0;
+  }
+
+  .batch-preview-stage--image,
+  .batch-preview-stage--video {
+    --batch-preview-cap: min(42vh, 360px);
+  }
+
+  .batch-preview-stage--pdf {
+    height: min(58vh, 460px);
+    min-height: 280px;
+  }
+
+  .batch-preview-stage--audio {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .batch-preview-cover {
+    width: 112px;
+  }
+
+  .batch-preview-open {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .batch-preview-stage--audio {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 12px;
+  }
+
+  .batch-preview-audio-copy {
+    width: 100%;
+  }
+
+  .batch-preview-cover {
+    width: 132px;
+  }
 }
 
 .batch-info-grid {
