@@ -22,6 +22,8 @@ const paths = {
   chevron: '<path d="m9 6 6 6-6 6"/>',
   lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
   spark: '<path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7Z"/><path d="M19 16v4m-2-2h4"/>',
+  minimize: '<path d="m6 15 6-6 6 6"/>',
+  expand: '<path d="m6 9 6 6 6-6"/>',
 };
 
 export function icon(name, className = '') {

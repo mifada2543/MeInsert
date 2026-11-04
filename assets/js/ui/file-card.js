@@ -31,10 +31,26 @@ function statRows(file, detection, readResult) {
   return rows;
 }
 
-export function renderFileCard(container, { file, detection, readResult, previewUrl, status }) {
+export function setCardMinimized(container, minimized) {
+  container.classList.toggle('is-minimized', minimized);
+  const button = container.querySelector('.preview-toggle');
+  if (!button) return;
+  const label = minimized ? 'Tampilkan' : 'Kecilkan';
+  const description = minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau';
+  button.setAttribute('aria-expanded', String(!minimized));
+  button.setAttribute('aria-label', description);
+  button.title = description;
+  const text = button.querySelector('.preview-toggle-label');
+  if (text) text.textContent = label;
+  const iconSlot = button.querySelector('.preview-toggle-icon');
+  if (iconSlot) iconSlot.replaceChildren(icon(minimized ? 'expand' : 'minimize'));
+}
+
+export function renderFileCard(container, { file, detection, readResult, previewUrl, status, minimized = false, onToggleMinimize }) {
   clear(container);
+  container.classList.toggle('is-minimized', minimized);
   const kind = previewKind(detection);
-  const frame = el('div', { className: 'preview-frame' });
+  const frame = el('div', { className: `preview-frame preview-frame--${kind}`, id: 'previewFrame' });
 
   if (status === 'loading') {
     frame.append(el('div', { className: 'preview-icon' }, icon(kind === 'pdf' ? 'pdf' : kind === 'image' ? 'image' : kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'file')));
@@ -44,6 +60,8 @@ export function renderFileCard(container, { file, detection, readResult, preview
     frame.append(el('video', { src: previewUrl, controls: true, preload: 'metadata' }));
   } else if (kind === 'audio' && previewUrl) {
     frame.append(el('audio', { src: previewUrl, controls: true, preload: 'metadata' }));
+  } else if (kind === 'pdf' && previewUrl) {
+    frame.append(el('iframe', { src: previewUrl, title: `Pratinjau ${file.name}` }));
   } else {
     frame.append(el('div', { className: 'preview-icon' }, icon(kind === 'pdf' ? 'pdf' : 'file')));
   }
@@ -82,4 +100,19 @@ export function renderFileCard(container, { file, detection, readResult, preview
   }
 
   container.append(frame, info);
+
+  if (onToggleMinimize) {
+    container.append(el('button', {
+      className: 'preview-toggle',
+      type: 'button',
+      'aria-expanded': String(!minimized),
+      'aria-controls': 'previewFrame',
+      'aria-label': minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau',
+      title: minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau',
+      on: { click: onToggleMinimize },
+    },
+      el('span', { className: 'preview-toggle-icon' }, icon(minimized ? 'expand' : 'minimize')),
+      el('span', { className: 'preview-toggle-label', textContent: minimized ? 'Tampilkan' : 'Kecilkan' }),
+    ));
+  }
 }

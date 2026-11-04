@@ -128,25 +128,11 @@
       </div>
 
       <div class="workspace-grid">
-        <aside class="side-column">
-          <section class="file-card" id="fileCard" aria-label="Informasi file"></section>
-          <section class="side-note">
-            <span class="side-note-icon" aria-hidden="true"></span>
-            <div>
-              <h3>Data tetap lokal</h3>
-              <p>Meinsert membaca dan menulis file di memori browser. Tidak ada request upload, penyimpanan server, atau
-                pelacakan file.</p>
-            </div>
-          </section>
-          <section class="side-note muted">
-            <div>
-              <h3>Tips aman</h3>
-              <p>Simpan file asli sampai hasilnya sudah diperiksa. Beberapa format ditulis ulang untuk memperbarui
-                metadata.</p>
-            </div>
-          </section>
-        </aside>
+        <div class="preview-dock" id="previewDock">
+          <section class="file-card file-card--top" id="fileCard" aria-label="Pratinjau dan informasi file"></section>
+        </div>
 
+        <!-- Form metadata di bawah pratinjau -->
         <section class="editor-card" aria-label="Editor metadata">
           <div class="editor-head">
             <div class="tabs" role="tablist" aria-label="Bagian editor">
@@ -186,6 +172,24 @@
             </div>
           </div>
         </section>
+
+        <div class="side-notes">
+          <section class="side-note">
+            <span class="side-note-icon" aria-hidden="true"></span>
+            <div>
+              <h3>Data tetap lokal</h3>
+              <p>Meinsert membaca dan menulis file di memori browser. Tidak ada request upload, penyimpanan server, atau
+                pelacakan file.</p>
+            </div>
+          </section>
+          <section class="side-note muted">
+            <div>
+              <h3>Tips aman</h3>
+              <p>Simpan file asli sampai hasilnya sudah diperiksa. Beberapa format ditulis ulang untuk memperbarui
+                metadata.</p>
+            </div>
+          </section>
+        </div>
       </div>
     </section>
 

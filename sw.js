@@ -1,5 +1,5 @@
 /* Meinsert service worker: precaches the full static app so it works offline. */
-const CACHE_VERSION = 'meinsert-v7';
+const CACHE_VERSION = 'meinsert-v11';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -97,7 +97,7 @@ async function networkFirstNavigation(request) {
   try {
     const response = await fetch(request);
     if (response && response.ok) {
-      await cache.put('./index.html', response.clone());
+      await cache.put(request, response.clone());
     }
     return response;
   } catch {

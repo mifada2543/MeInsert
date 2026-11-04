@@ -12,7 +12,7 @@ import {
 } from './core/tag-utils.js';
 import { el, clear, qs, formatBytes } from './ui/dom.js';
 import { icon } from './ui/icons.js';
-import { renderFileCard } from './ui/file-card.js';
+import { renderFileCard, setCardMinimized } from './ui/file-card.js';
 import { renderForm, syncFormState, renderCoverBlock } from './ui/form-view.js';
 import { renderRaw } from './ui/raw-view.js';
 import { renderResultCard } from './ui/result-view.js';
@@ -40,9 +40,11 @@ const els = {
   browseBtn: qs('#browseBtn'),
   newFileBtn: qs('#newFileBtn'),
   readStatus: qs('#readStatus'),
+
   fileCard: qs('#fileCard'),
+  previewDock: qs('#previewDock'),
   panel: qs('#panel'),
-  tabs: [...document.querySelectorAll('.tab')],
+  tabs: [...document.querySelectorAll('#workspace .tab')],
   rawCount: qs('#rawCount'),
   editorBadge: qs('#editorBadge'),
   actionBar: qs('#actionBar'),
@@ -56,6 +58,7 @@ const els = {
   progress: qs('#progress'),
   progressBar: qs('#progressBar'),
   progressLabel: qs('#progressLabel'),
+
   themeToggle: qs('#themeToggle'),
   themeIconSun: qs('#themeIconSun'),
   themeIconMoon: qs('#themeIconMoon'),
@@ -91,6 +94,7 @@ const state = {
   processing: false,
   readToken: 0,
   previewUrl: null,
+  previewMinimized: false,
   detectionWarning: '',
   sideSignature: '',
   coverOriginal: null,
@@ -374,11 +378,9 @@ function ensureOutputName() {
 
 function previewUrlFor(file, detection) {
   if (!file || !detection) return null;
-  if (detection.id === 'image') return URL.createObjectURL(file);
-  if (detection.id === 'mp3' || detection.id === 'flac' || detection.id === 'ogg') return URL.createObjectURL(file);
-  if (detection.id === 'mp4' && detection.subtype === 'm4a') return URL.createObjectURL(file);
-  if (detection.id === 'mp4' || detection.id === 'mkv') return URL.createObjectURL(file);
-  return null;
+  // Every supported format has an inline preview: image, PDF, audio, video.
+  const previewable = ['image', 'pdf', 'mp3', 'flac', 'ogg', 'mp4', 'mkv'];
+  return previewable.includes(detection.id) ? URL.createObjectURL(file) : null;
 }
 
 function revokePreview() {
@@ -403,6 +405,7 @@ function computeSideSignature() {
     state.detection.subtype,
     state.detection.label,
     state.status,
+    state.previewMinimized ? 'min' : 'full',
     state.previewUrl || '',
     state.readResult?.raw?.length || 0,
     JSON.stringify(info),
@@ -414,8 +417,6 @@ function renderSide() {
   if (!state.file || !state.detection) return;
   const signature = computeSideSignature();
   if (signature && signature === state.sideSignature) {
-    // Kartu file tidak berubah (mis. saat ganti tab Metadata ↔ Tag mentah);
-    // jangan buat ulang <audio>/<video> yang sedang diputar.
     return;
   }
   state.sideSignature = signature;
@@ -425,16 +426,54 @@ function renderSide() {
     readResult: state.readResult,
     previewUrl: state.previewUrl,
     status: state.status,
+    minimized: state.previewMinimized,
+    onToggleMinimize: togglePreviewMinimized,
   });
 }
 
+function togglePreviewMinimized() {
+  state.previewMinimized = !state.previewMinimized;
+  setCardMinimized(els.fileCard, state.previewMinimized);
+  scheduleDockUpdate();
+}
+
+// Keep the preview pinned under the top edge, and shrink it while pinned so the
+// form underneath stays reachable. Class-based so it follows scroll and resize.
+let dockFrame = 0;
+function updateDockState() {
+  dockFrame = 0;
+  if (!els.previewDock) return;
+  if (els.workspace?.hidden) {
+    els.previewDock.classList.remove('is-pinned');
+    return;
+  }
+  const top = els.previewDock.getBoundingClientRect().top;
+  els.previewDock.classList.toggle('is-pinned', top <= 13);
+}
+
+function scheduleDockUpdate() {
+  if (dockFrame) return;
+  dockFrame = requestAnimationFrame(updateDockState);
+}
+
+function setupPreviewDock() {
+  if (!els.previewDock) return;
+  window.addEventListener('scroll', scheduleDockUpdate, { passive: true });
+  window.addEventListener('resize', scheduleDockUpdate);
+  updateDockState();
+}
+
 function renderTabs() {
+  let activeTab = els.tabs[0];
   for (const tab of els.tabs) {
     const active = tab.dataset.tab === state.activeTab;
     tab.classList.toggle('is-active', active);
     tab.setAttribute('aria-selected', String(active));
     tab.tabIndex = active ? 0 : -1;
+    if (active) activeTab = tab;
   }
+  // The panel is labelled by whichever tab is currently selected.
+  if (activeTab) els.panel.setAttribute('aria-labelledby', activeTab.id);
   els.rawCount.textContent = String(state.readResult?.raw?.length || 0);
 }
 
@@ -625,6 +664,7 @@ function syncActionBar() {
   const count = changes.count;
   state.dirtyCount = count;
   const canSave = state.processing || (ready && count > 0);
+
   els.dirtyState.textContent = state.processing
     ? 'Sedang memproses…'
     : count > 0
@@ -638,7 +678,7 @@ function syncActionBar() {
   els.outputBase.disabled = state.processing;
   if (state.detection) {
     els.outputBase.value = state.outputBase;
-    if (els.outputExt) els.outputExt.textContent = `.${state.detection.ext}`;
+    els.outputExt.textContent = `.${state.detection.ext}`;
   }
 }
 
@@ -699,13 +739,15 @@ async function openFile(file) {
   state.outputBase = `${safeOutputName(fileBaseName(file.name), 'file')}-meinsert`;
   state.outputName = `${state.outputBase}.${detection.ext}`;
   els.outputBase.value = state.outputBase;
-  if (els.outputExt) els.outputExt.textContent = `.${detection.ext}`;
+  els.outputExt.textContent = `.${detection.ext}`;
   state.previewUrl = previewUrlFor(file, detection);
+  state.previewMinimized = false;
   els.landing.hidden = true;
   els.workspace.hidden = false;
   setStatus(`Membaca ${detection.label}…`);
   renderWorkspace();
   syncActionBar();
+  scheduleDockUpdate();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   try {
@@ -805,7 +847,7 @@ function applyOutput(result) {
     warnings,
   };
   state.outputName = result.filename || state.outputName;
-  if (state.detection && els.outputExt) els.outputExt.textContent = `.${state.detection.ext}`;
+  if (state.detection) els.outputExt.textContent = `.${state.detection.ext}`;
 }
 
 async function saveMetadata() {
@@ -939,6 +981,7 @@ function goHome() {
   state.saveError = null;
   state.processing = false;
   state.activeTab = 'metadata';
+  state.previewMinimized = false;
   els.landing.hidden = false;
   els.workspace.hidden = true;
   resetWorkspaceDom();
@@ -950,6 +993,11 @@ function setupDropzone() {
   const pick = () => els.fileInput.click();
   els.browseBtn.addEventListener('click', (event) => {
     event.stopPropagation();
+    pick();
+  });
+  // The whole drop card is the upload target, like the batch add tile.
+  els.dropCard.addEventListener('click', (event) => {
+    if (event.target.closest('button, a, input')) return;
     pick();
   });
   els.fileInput.addEventListener('change', () => {
@@ -989,13 +1037,17 @@ function setupEvents() {
       renderWorkspace();
     });
   });
+
   els.resetBtn.addEventListener('click', resetChanges);
   els.saveBtn.addEventListener('click', saveMetadata);
+
   els.newFileBtn.addEventListener('click', goHome);
+
   els.outputBase.addEventListener('input', () => {
     state.outputBase = els.outputBase.value;
   });
   els.outputBase.addEventListener('blur', () => ensureOutputName());
+
   window.addEventListener('beforeunload', (event) => {
     if (state.processing || state.dirtyCount > 0) {
       event.preventDefault();
@@ -1011,6 +1063,7 @@ function boot() {
   if (page === 'single') {
     setupDropzone();
     setupEvents();
+    setupPreviewDock();
     renderTabs();
     syncActionBar();
   }
