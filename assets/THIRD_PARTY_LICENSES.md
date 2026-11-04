@@ -23,6 +23,11 @@ and fonts in `assets/fonts/`:
 - **Source**: https://github.com/Hopding/pdf-lib
 - **Modifications**: None. Used as distributed (minified ESM bundle).
 
+## fflate v0.8.3
+- **License**: MIT (see `licenses/fflate-LICENSE`)
+- **Source**: https://github.com/101arrowz/fflate
+- **Modifications**: None. Used as distributed (browser ESM bundle).
+
 ## browser-id3-writer v6.4.0
 - **License**: MIT (see `licenses/browser-id3-writer-LICENSE.md`)
 - **Source**: https://github.com/james-guthrie/browser-id3-writer

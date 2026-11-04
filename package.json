@@ -13,6 +13,7 @@
   "devDependencies": {
     "@colorhythm/exiftool-wasm": "1.0.5",
     "browser-id3-writer": "6.4.0",
+    "fflate": "^0.8.3",
     "mediabunny": "1.65.0",
     "pdf-lib": "1.17.1",
     "playwright-core": "1.62.1"

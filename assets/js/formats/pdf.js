@@ -355,6 +355,23 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
   const warnings = [];
+  const customRemove = [...(payload?.customRemove || [])];
+  for (const item of payload?.rawRemove || []) {
+    const key = asString(item).trim();
+    if (!key) continue;
+    const normalized = key.replace(/^\//, '');
+    const standardId = Object.entries(INFO_KEYS)
+      .find(([, value]) => value.toLowerCase() === normalized.toLowerCase())?.[0];
+    if (standardId) {
+      remove.add(standardId);
+      continue;
+    }
+    if (STANDARD_INFO.has(normalized)) {
+      info.delete(PDFName.of(normalized));
+      continue;
+    }
+    customRemove.push(normalized);
+  }
 
   for (const [id, key] of Object.entries(INFO_KEYS)) {
     if (remove.has(id)) {
@@ -383,7 +400,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     }
     info.set(PDFName.of(key), PDFString.of(asString(item?.value)));
   }
-  for (const key of payload?.customRemove || []) {
+  for (const key of customRemove) {
     if (key && !STANDARD_INFO.has(key)) info.delete(PDFName.of(key));
   }
 

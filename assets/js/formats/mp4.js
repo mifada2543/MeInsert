@@ -164,13 +164,22 @@ export function collectRaw(tags) {
     if (!text) continue;
     rows.push({ group: key.split(':')[0] || '', tag: key, value: text });
   }
-  return rows.sort((a, b) => a.tag.localeCompare(b.tag)).slice(0, 250);
+  return rows.sort((a, b) => a.tag.localeCompare(b.tag));
 }
 
 export async function read(file, options = {}) {
   const { readTags } = await import('../engines/exiftool.js');
   const tags = await readTags(safeName(file, options.extension));
   const raw = collectRaw(tags);
+  let duration = tags['QuickTime:Duration'] || tags['Composite:Duration'] || '';
+  try {
+    const { Input, ALL_FORMATS, BlobSource } = await import('../../vendor/mediabunny.mjs');
+    const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+    const seconds = await input.computeDuration();
+    if (Number.isFinite(seconds) && seconds > 0) duration = seconds;
+  } catch {
+    // Keep the ExifTool duration string if Mediabunny cannot probe the file.
+  }
   const hasCoverArt = raw.some((row) => /CoverArt/i.test(row.tag)) || Boolean(tags['ItemList:CoverArt']);
   let cover = null;
   let coverBytes = null;
@@ -186,10 +195,12 @@ export async function read(file, options = {}) {
       coverBytes = null;
     }
   }
+  const info = describeFile(tags);
+  if (duration !== '') info.duration = duration;
   return {
     fields: mapTags(tags),
     raw,
-    info: describeFile(tags),
+    info,
     cover,
     coverBytes,
     warnings: [],
@@ -214,6 +225,9 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
   for (const key of payload?.customRemove || []) {
     if (key) tags[key] = '';
+  }
+  for (const key of payload?.rawRemove || []) {
+    if (key) tags[asString(key).trim()] = '';
   }
   const cover = payload?.cover;
   if (cover?.action === 'set' && cover.data) {
@@ -253,4 +267,9 @@ export async function write(file, payload, options = {}, report = () => {}) {
   };
 }
 
-export default { meta, sections, fields, read, write };
+async function dispose() {
+  const { disposeExifToolRuntime } = await import('../engines/exiftool.js');
+  await disposeExifToolRuntime();
+}
+
+export default { meta, sections, fields, read, write, dispose };

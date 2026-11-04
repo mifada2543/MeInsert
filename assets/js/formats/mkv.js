@@ -62,8 +62,7 @@ function rawRows(tags) {
   return Object.entries(tags.raw || {})
     .filter(([, value]) => value != null && !(value instanceof Uint8Array))
     .map(([tag, value]) => ({ group: 'Matroska', tag, value: rawValue(value) }))
-    .filter((row) => row.value)
-    .slice(0, 200);
+    .filter((row) => row.value);
 }
 
 async function mediaLib() {
@@ -171,6 +170,12 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
   for (const key of payload?.customRemove || []) {
     if (key) assignRaw(key.toUpperCase(), '');
+  }
+  for (const key of payload?.rawRemove || []) {
+    const normalized = asString(key).trim();
+    if (!normalized) continue;
+    assignRaw(normalized, '');
+    assignRaw(normalized.toUpperCase(), '');
   }
   const coverAction = payload?.cover?.action;
   if (coverAction === 'set' || coverAction === 'remove') {

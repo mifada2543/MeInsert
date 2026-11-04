@@ -18,6 +18,13 @@ import { renderRaw } from './ui/raw-view.js';
 import { renderResultCard } from './ui/result-view.js';
 import { showToast } from './ui/toast.js';
 import { isSupportedCover, mimeOf } from './core/image-utils.js';
+import { BatchController } from './batch/batch-view.js';
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch((error) => {
+    console.warn('Meinsert gagal mendaftarkan service worker:', error);
+  });
+}
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024;
 const PDF_STANDARD_KEYS = new Set([
@@ -50,11 +57,17 @@ const els = {
   progressBar: qs('#progressBar'),
   progressLabel: qs('#progressLabel'),
   themeToggle: qs('#themeToggle'),
-  themeIcon: qs('#themeIcon'),
+  themeIconSun: qs('#themeIconSun'),
+  themeIconMoon: qs('#themeIconMoon'),
   toastRegion: qs('#toastRegion'),
 };
 
 const client = new MetadataClient();
+const page = document.body?.dataset.page || 'single';
+if (page === 'batch') {
+  const batchController = new BatchController(client);
+  void batchController;
+}
 
 const state = {
   file: null,
@@ -199,6 +212,23 @@ function refreshCoverUI() {
   block.replaceWith(renderCoverBlock(state.adapter, state, handlers));
 }
 
+function syncThemeButton(theme) {
+  const label = theme === 'dark' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap';
+  els.themeToggle.title = label;
+  els.themeToggle.setAttribute('aria-label', label);
+}
+
+function preferredTheme() {
+  let stored = null;
+  try {
+    stored = localStorage.getItem('meinsert-theme');
+  } catch {
+    stored = null;
+  }
+  if (stored === 'dark' || stored === 'light') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   try {
@@ -206,21 +236,44 @@ function applyTheme(theme) {
   } catch {
     // Storage can be disabled; the theme still applies for this page.
   }
-  els.themeIcon.replaceChildren(icon(theme === 'dark' ? 'sun' : 'moon'));
-  els.themeToggle.title = theme === 'dark' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap';
-  els.themeToggle.setAttribute('aria-label', els.themeToggle.title);
+  syncThemeButton(theme);
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function themeTransitionOrigin() {
+  const rect = els.themeToggle.getBoundingClientRect();
+  return {
+    x: Math.round(rect.left + rect.width / 2),
+    y: Math.round(rect.top + rect.height / 2),
+  };
+}
+
+function applyThemeWithTransition(theme) {
+  const root = document.documentElement;
+  const origin = themeTransitionOrigin();
+  root.style.setProperty('--vt-x', `${origin.x}px`);
+  root.style.setProperty('--vt-y', `${origin.y}px`);
+  if (prefersReducedMotion() || typeof document.startViewTransition !== 'function') {
+    root.classList.add('theme-anim');
+    applyTheme(theme);
+    window.setTimeout(() => root.classList.remove('theme-anim'), 480);
+    return;
+  }
+  document.startViewTransition(() => applyTheme(theme));
 }
 
 function initTheme() {
-  let stored = null;
-  try {
-    stored = localStorage.getItem('meinsert-theme');
-  } catch {
-    stored = null;
-  }
   const media = window.matchMedia('(prefers-color-scheme: dark)');
-  const theme = stored || (media.matches ? 'dark' : 'light');
-  applyTheme(theme);
+  const theme = preferredTheme();
+  if (document.documentElement.dataset.theme !== theme) {
+    // Rare mismatch (e.g. theme-init.js unreachable); align without animating.
+    applyTheme(theme);
+  } else {
+    syncThemeButton(theme);
+  }
   media.addEventListener?.('change', (event) => {
     let hasStored = false;
     try {
@@ -228,10 +281,11 @@ function initTheme() {
     } catch {
       hasStored = false;
     }
-    if (!hasStored) applyTheme(event.matches ? 'dark' : 'light');
+    if (!hasStored) applyThemeWithTransition(event.matches ? 'dark' : 'light');
   });
   els.themeToggle.addEventListener('click', () => {
-    applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    const current = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+    applyThemeWithTransition(current === 'dark' ? 'light' : 'dark');
   });
 }
 
@@ -239,6 +293,8 @@ function setIcons() {
   qs('#newFileBtn .icon')?.replaceChildren(icon('arrowLeft'));
   qs('#saveBtn .icon')?.replaceChildren(icon('download'));
   qs('#year').textContent = String(new Date().getFullYear());
+  if (els.themeIconSun) els.themeIconSun.replaceChildren(icon('sun'));
+  if (els.themeIconMoon) els.themeIconMoon.replaceChildren(icon('moon'));
 }
 
 function setStatus(text, isError = false) {
@@ -946,15 +1002,18 @@ function setupEvents() {
       event.returnValue = '';
     }
   });
+  window.addEventListener('pagehide', () => client.disposeAllSync());
 }
 
 function boot() {
   initTheme();
   setIcons();
-  setupDropzone();
-  setupEvents();
-  renderTabs();
-  syncActionBar();
+  if (page === 'single') {
+    setupDropzone();
+    setupEvents();
+    renderTabs();
+    syncActionBar();
+  }
 }
 
 boot();

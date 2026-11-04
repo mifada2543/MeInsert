@@ -1,0 +1,1038 @@
+import { BatchProcessor } from './batch-processor.js';
+import {
+  BATCH_LIMITS,
+  categoryLabel,
+  formatDuration,
+  formatLimitBytes,
+  selectionTotals,
+  usageRows,
+  validateSelection,
+} from './batch-limits.js';
+import { makeCsvReport, makeJsonReport } from './batch-report.js';
+import { buildZip } from './batch-zip.js';
+import { el, clear, formatBytes, downloadBlob, qs } from '../ui/dom.js';
+import { icon } from '../ui/icons.js';
+import { showToast } from '../ui/toast.js';
+import { asArray, asString, fileBaseName, fileExtension, safeOutputName } from '../core/tag-utils.js';
+
+const MP3_DELETABLE_FRAMES = new Set([
+  'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
+  'TCOM', 'COMM', 'USLT', 'TCOP', 'TSSE',
+]);
+
+const RAW_LOCKED = [
+  { pattern: /^QuickTime:(Duration|ImageWidth|ImageHeight|CreateDate|ModifyDate)$/i, reason: 'Tag turunan QuickTime; tidak bisa dihapus selektif.' },
+  { pattern: /^(File|SourceFile|FileType|Directory|FileName|FileSize)/i, reason: 'Tag berasal dari filesystem; bukan metadata file.' },
+  { pattern: /^vendor$/i, reason: 'Vendor encoder tidak bisa dihapus selektif.' },
+];
+
+function isSelectedItem(item) {
+  return Boolean(item?.included) && !item?.excluded;
+}
+
+function groupKey(item) {
+  return `${item.detection?.id || 'unknown'}:${item.detection?.subtype || 'unknown'}`;
+}
+
+function statusLabel(item) {
+  switch (item?.status) {
+    case 'queued': return 'Menunggu';
+    case 'scanning': return 'Memeriksa';
+    case 'ready': return 'Siap';
+    case 'processing': return 'Memproses';
+    case 'done': return 'Selesai';
+    case 'error': return 'Gagal';
+    case 'skipped': return 'Dilewati';
+    case 'cancelled': return 'Dibatalkan';
+    default: return 'Menunggu';
+  }
+}
+
+function statusClass(item) {
+  const status = item?.status || 'queued';
+  if (status === 'skipped' || status === 'cancelled') return 'is-skipped';
+  if (status === 'error') return 'is-error';
+  if (status === 'done' || status === 'ready') return 'is-ready';
+  return 'is-busy';
+}
+
+function fileIconName(item) {
+  const id = item?.detection?.id;
+  if (id === 'image') return 'image';
+  if (id === 'pdf') return 'pdf';
+  if (id === 'mp3' || id === 'flac' || id === 'ogg' || (id === 'mp4' && item?.detection?.subtype === 'm4a')) return 'audio';
+  if (id === 'mkv' || id === 'mp4') return 'video';
+  return 'file';
+}
+
+function durationOf(item) {
+  const value = Number(item?.readResult?.info?.duration);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function tagCountOf(item) {
+  return item?.readResult?.raw?.length || 0;
+}
+
+export class BatchController {
+  constructor(client) {
+    this.client = client;
+    this.processor = new BatchProcessor(client);
+    this.items = [];
+    this.groups = [];
+    this.activeItemId = null;
+    this.detailTab = 'summary';
+    this.applying = false;
+    this.scanning = false;
+    this.adding = false;
+
+    this.els = {
+      landing: qs('#landing'),
+      modeSingle: qs('#modeSingleBtn'),
+      modeBatch: qs('#modeBatchBtn'),
+      dropCard: qs('#dropCard'),
+      batchDropCard: qs('#batchDropCard'),
+      batchFileInput: qs('#batchFileInput'),
+      batchBrowseBtn: qs('#batchBrowseBtn'),
+      batchWorkspace: qs('#batchWorkspace'),
+      batchAddFileInput: qs('#batchAddFileInput'),
+      batchBackBtn: qs('#batchBackBtn'),
+      batchStatus: qs('#batchStatus'),
+      batchSummary: qs('#batchSummary'),
+      batchLimits: qs('#batchLimits'),
+      batchGroups: qs('#batchGroups'),
+      batchProgress: qs('#batchProgress'),
+      batchProgressBar: qs('#batchProgressBar'),
+      batchProgressLabel: qs('#batchProgressLabel'),
+      batchApplyBtn: qs('#batchApplyBtn'),
+      batchSelectedCount: qs('#batchSelectedCount'),
+      batchOperationCount: qs('#batchOperationCount'),
+      batchZipBtn: qs('#batchZipBtn'),
+      batchReportJsonBtn: qs('#batchReportJsonBtn'),
+      batchReportCsvBtn: qs('#batchReportCsvBtn'),
+      batchDetail: qs('#batchDetail'),
+      batchDetailBackBtn: qs('#batchDetailBackBtn'),
+      batchDetailStatus: qs('#batchDetailStatus'),
+      batchDetailHeader: qs('#batchDetailHeader'),
+      batchDetailPanel: qs('#batchDetailPanel'),
+      batchTabSummary: qs('#batchTabSummary'),
+      batchTabRaw: qs('#batchTabRaw'),
+      batchRawCount: qs('#batchRawCount'),
+    };
+    this.bind();
+    this.setMode('single');
+  }
+
+  bind() {
+    const { els } = this;
+    els.modeSingle?.addEventListener('click', () => this.setMode('single'));
+    els.modeBatch?.addEventListener('click', () => this.setMode('batch'));
+    for (const selector of ['#batchBackBtn', '#batchDetailBackBtn']) {
+      const span = qs(`${selector} .icon`);
+      if (span) span.replaceChildren(icon('arrowLeft'));
+    }
+    els.batchZipBtn.querySelector('.icon')?.replaceChildren(icon('download'));
+    els.batchBrowseBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      els.batchFileInput.click();
+    });
+    els.batchAddFileInput.addEventListener('change', () => {
+      const files = [...(els.batchAddFileInput.files || [])];
+      els.batchAddFileInput.value = '';
+      if (files.length) this.addFiles(files);
+    });
+    els.batchFileInput.addEventListener('change', () => {
+      const files = [...(els.batchFileInput.files || [])];
+      els.batchFileInput.value = '';
+      if (files.length) this.addFiles(files);
+    });
+    this.bindDrop(els.batchDropCard);
+    this.bindDrop(els.batchWorkspace);
+    els.batchBackBtn.addEventListener('click', () => this.resetBatch({ confirmIfBusy: true }));
+    els.batchDetailBackBtn.addEventListener('click', () => this.closeDetail());
+    els.batchApplyBtn.addEventListener('click', () => this.handleApplyClick());
+    els.batchZipBtn.addEventListener('click', () => this.downloadZip());
+    els.batchReportJsonBtn.addEventListener('click', () => this.downloadReport('json'));
+    els.batchReportCsvBtn.addEventListener('click', () => this.downloadReport('csv'));
+    els.batchTabSummary.addEventListener('click', () => this.setDetailTab('summary'));
+    els.batchTabRaw.addEventListener('click', () => this.setDetailTab('raw'));
+    window.addEventListener('pagehide', () => this.client.disposeAllSync());
+  }
+
+  busy() {
+    return this.applying || this.scanning || this.adding;
+  }
+
+  setAddEnabled(enabled) {
+    for (const tile of this.els.batchGroups.querySelectorAll('.batch-add-tile')) {
+      tile.disabled = !enabled;
+    }
+  }
+
+  bindDrop(card) {
+    let depth = 0;
+    const enter = (event) => { event.preventDefault(); depth += 1; card.classList.add('is-dragging'); };
+    const leave = (event) => {
+      event.preventDefault();
+      depth = Math.max(0, depth - 1);
+      if (!depth) card.classList.remove('is-dragging');
+    };
+    card.addEventListener('dragenter', enter);
+    card.addEventListener('dragover', (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; });
+    card.addEventListener('dragleave', leave);
+    card.addEventListener('drop', (event) => {
+      event.preventDefault();
+      depth = 0;
+      card.classList.remove('is-dragging');
+      const files = [...(event.dataTransfer?.files || [])];
+      if (files.length) this.handleDropFiles(files);
+    });
+  }
+
+  handleDropFiles(files) {
+    if (this.applying || this.scanning || this.adding) {
+      showToast('Tunggu proses selesai atau batalkan dulu.', 'info', 3200);
+      return;
+    }
+    this.addFiles(files);
+  }
+
+  setMode(mode) {
+    this.mode = mode;
+    const batchEls = [this.els.modeSingle, this.els.modeBatch, this.els.dropCard, this.els.batchDropCard];
+    if (batchEls.some((node) => !node)) {
+      this.mode = 'batch';
+      if (this.els.landing) this.els.landing.hidden = false;
+      if (this.els.batchDropCard) this.els.batchDropCard.hidden = false;
+      if (this.els.dropCard) this.els.dropCard.hidden = true;
+      return;
+    }
+    const batch = mode === 'batch';
+    this.els.modeSingle.classList.toggle('is-active', !batch);
+    this.els.modeBatch.classList.toggle('is-active', batch);
+    this.els.modeSingle.setAttribute('aria-selected', String(!batch));
+    this.els.modeBatch.setAttribute('aria-selected', String(batch));
+    this.els.dropCard.hidden = batch;
+    this.els.batchDropCard.hidden = !batch;
+  }
+
+  async addFiles(files) {
+    if (this.adding) return;
+    if (this.applying || this.scanning) {
+      showToast('Tunggu proses selesai atau batalkan dulu.', 'info', 3200);
+      return;
+    }
+    this.adding = true;
+    let rejected = 0;
+    for (const file of files) {
+      const item = await this.processor.prepare(file, this.items.length);
+      if (!item) { rejected += 1; continue; }
+      const limitReason = this.initialLimitReason(item);
+      if (limitReason) {
+        item.excluded = true;
+        item.included = false;
+        item.status = 'skipped';
+        item.skipReason = limitReason;
+      }
+      this.items.push(item);
+    }
+    this.rebuildGroups();
+    this.renderFull();
+    this.showBatchWorkspace();
+    this.setStatus(rejected ? `${rejected} file tidak dikenali atau formatnya belum didukung.` : '');
+    this.adding = false;
+    this.scanQueued();
+  }
+
+  initialLimitReason(candidate) {
+    const totals = selectionTotals(this.items);
+    const category = candidate.category;
+    const limit = BATCH_LIMITS[category];
+    const usage = totals.byCategory[category];
+    if (usage.count + 1 > limit.maxFiles) return `${limit.label}: maksimal ${limit.maxFiles} file.`;
+    if (usage.bytes + candidate.file.size > limit.maxBytes) return `${limit.label}: ukuran batch melebihi ${formatLimitBytes(limit.maxBytes)}.`;
+    const hasVideo = totals.hasVideo || category === 'video';
+    const totalLimit = hasVideo ? BATCH_LIMITS.totalWithVideo : BATCH_LIMITS.totalWithoutVideo;
+    if (totals.bytes + candidate.file.size > totalLimit) return `Total ukuran batch melebihi ${formatLimitBytes(totalLimit)}.`;
+    return '';
+  }
+
+  rebuildGroups() {
+    const previous = new Map(this.groups.map((group) => [group.key, group]));
+    const map = new Map();
+    for (const item of this.items) {
+      const key = groupKey(item);
+      let group = map.get(key);
+      if (!group) {
+        const fields = typeof item.adapter?.fieldsFor === 'function'
+          ? item.adapter.fieldsFor(item.detection.subtype)
+          : (item.adapter?.fields || []);
+        const existing = previous.get(key);
+        group = existing || {
+          key,
+          detection: item.detection,
+          adapter: item.adapter,
+          category: item.category,
+          label: item.detection?.label || 'Format lain',
+          items: [],
+          fields,
+          values: Object.fromEntries(fields.map((field) => [field.id, ''])),
+          remove: new Set(),
+          open: true,
+        };
+        group.detection = item.detection;
+        group.adapter = item.adapter;
+        group.category = item.category;
+        group.label = item.detection?.label || 'Format lain';
+        group.fields = fields;
+        group.items = [];
+        map.set(key, group);
+      }
+      item.groupKey = key;
+      group.items.push(item);
+    }
+    const order = { image: 0, pdf: 1, mp3: 2, flac: 2, ogg: 2, mp4: 3, mkv: 3 };
+    this.groups = [...map.values()].sort((a, b) => (order[a.detection?.id] ?? 9) - (order[b.detection?.id] ?? 9) || a.label.localeCompare(b.label));
+  }
+
+  selectedItems() {
+    return this.items.filter(isSelectedItem);
+  }
+
+  async scanQueued() {
+    const queued = this.items.some((item) => item.status === 'queued');
+    if (!queued) return;
+    this.processor.cancelRequested = false;
+    this.scanning = true;
+    this.setAddEnabled(false);
+    this.setStatus('Memeriksa metadata…');
+    this.showProgress(true);
+    try {
+      await this.processor.scan(this.items, (item) => this.updateItem(item));
+    } finally {
+      this.scanning = false;
+      this.setAddEnabled(true);
+      this.showProgress(false);
+    }
+    this.renderSummary();
+    this.renderLimits();
+    this.updateAllRows();
+    this.syncApply();
+    const ready = this.items.filter((item) => item.status === 'ready').length;
+    const failed = this.items.filter((item) => item.status === 'error').length;
+    this.setStatus(`${ready} siap · ${failed} gagal`, failed > 0);
+  }
+
+  handleProgressOverall(items) {
+    if (!items.length) return 0;
+    const total = items.reduce((sum, item) => sum + (item.status === 'done' || item.status === 'ready' ? 1 : (Number(item.progress) || 0) / 100), 0);
+    return Math.round((total / items.length) * 100);
+  }
+
+  updateItem(item) {
+    if (item) this.updateRow(item);
+    this.renderSummary();
+    this.renderLimits();
+    this.updateGroupHeaders();
+    this.syncApply();
+    const done = this.items.filter((entry) => entry.status === 'done' || entry.status === 'ready' || entry.status === 'error' || entry.status === 'skipped' || entry.status === 'cancelled').length;
+    this.setProgress(Math.round((done / Math.max(1, this.items.length)) * 100), item?.stage || 'Memeriksa…');
+    if (this.activeItemId === item?.id) this.renderDetail();
+  }
+
+  renderFull() {
+    this.renderSummary();
+    this.renderLimits();
+    this.renderGroups();
+    this.syncApply();
+  }
+
+  renderSummary() {
+    clear(this.els.batchSummary);
+    const totalBytes = this.items.reduce((sum, item) => sum + (Number(item.file?.size) || 0), 0);
+    const ready = this.items.filter((item) => item.status === 'ready' || item.status === 'done').length;
+    const failed = this.items.filter((item) => item.status === 'error').length;
+    const skipped = this.items.filter((item) => item.status === 'skipped' || item.excluded).length;
+    const stats = [
+      [this.items.length, 'file'],
+      [ready, 'siap'],
+      [failed, 'gagal'],
+      [skipped, 'dilewati'],
+      [formatBytes(totalBytes), 'ukuran'],
+    ];
+    for (const [value, label] of stats) {
+      this.els.batchSummary.append(el('div', { className: 'batch-stat' },
+        el('strong', { textContent: String(value) }),
+        el('span', { textContent: label }),
+      ));
+    }
+  }
+
+  renderLimits() {
+    clear(this.els.batchLimits);
+    const rows = usageRows(this.items);
+    const validation = validateSelection(this.items);
+    for (const row of rows) {
+      this.els.batchLimits.append(el('div', { className: `batch-limit${row.ok ? '' : ' is-over'}` },
+        el('span', { textContent: row.label }),
+        el('span', { textContent: `${row.count}/${row.maxFiles} file` }),
+        el('span', { textContent: `${formatLimitBytes(row.bytes)} / ${formatLimitBytes(row.maxBytes)}` }),
+      ));
+    }
+    const total = validation.totals;
+    const totalLimit = total.hasVideo ? BATCH_LIMITS.totalWithVideo : BATCH_LIMITS.totalWithoutVideo;
+    this.els.batchLimits.append(el('div', { className: `batch-limit batch-limit-total${total.bytes <= totalLimit ? '' : ' is-over'}` },
+      el('span', { textContent: 'Total' }),
+      el('span', { textContent: `${total.count} file` }),
+      el('span', { textContent: `${formatLimitBytes(total.bytes)} / ${formatLimitBytes(totalLimit)}` }),
+    ));
+    const messages = el('div', { className: 'batch-limit-messages' });
+    if (validation.messages.length) {
+      for (const message of validation.messages) messages.append(el('p', { textContent: message }));
+    } else if (this.items.length) {
+      messages.append(el('p', { className: 'is-ok', textContent: 'Batas terpenuhi. File terpilih aman diproses.' }));
+    }
+    this.els.batchLimits.append(messages);
+  }
+
+  renderGroups() {
+    clear(this.els.batchGroups);
+    for (const group of this.groups) {
+      const section = el('section', { className: 'batch-group', dataset: { groupKey: group.key } });
+      const toggle = el('button', { className: 'batch-group-toggle', type: 'button', 'aria-expanded': String(group.open) },
+        icon('chevron', 'batch-group-chevron'),
+        el('span', { className: 'batch-group-title', textContent: group.label }),
+        el('span', { className: 'batch-group-meta', textContent: `${group.items.length} file` }),
+      );
+      toggle.addEventListener('click', () => {
+        group.open = !group.open;
+        toggle.setAttribute('aria-expanded', String(group.open));
+        body.hidden = !group.open;
+      });
+      const select = el('input', { type: 'checkbox', className: 'batch-group-select-input', 'aria-label': `Pilih semua file ${group.label}` });
+      const selectWrap = el('label', { className: 'batch-group-select' }, select, el('span', { textContent: 'Pilih semua' }));
+      select.addEventListener('change', () => {
+        for (const item of group.items) {
+          if (this.isLocked(item) || item.status === 'error') continue;
+          item.included = select.checked;
+          item.excluded = !select.checked;
+          if (select.checked) item.skipReason = '';
+        }
+        this.updateAllRows();
+        this.renderLimits();
+        this.syncApply();
+      });
+      const head = el('div', { className: 'batch-group-head' }, toggle, selectWrap);
+
+      const body = el('div', { className: 'batch-group-body', hidden: !group.open });
+      const list = el('div', { className: 'batch-file-list' });
+      for (const item of group.items) list.append(this.renderRow(item));
+      list.append(this.renderAddTile());
+      body.append(list);
+      if (group.adapter) body.append(this.renderGroupForm(group));
+      else body.append(el('p', { className: 'batch-group-note', textContent: 'Format ini belum didukung. File akan dilewati.' }));
+      section.append(head, body);
+      this.els.batchGroups.append(section);
+      this.updateGroupHeader(group);
+    }
+  }
+
+  renderRow(item) {
+    const row = el('div', { className: `batch-file ${statusClass(item)}`, dataset: { itemId: item.id } });
+    const checkbox = el('input', { type: 'checkbox', className: 'batch-file-checkbox', 'aria-label': `Sertakan ${item.file.name}` });
+    checkbox.checked = isSelectedItem(item);
+    checkbox.disabled = this.isLocked(item) || item.status === 'error';
+    checkbox.addEventListener('change', () => {
+      if (checkbox.disabled) return;
+      item.included = checkbox.checked;
+      item.excluded = !checkbox.checked;
+      if (checkbox.checked) item.skipReason = '';
+      this.renderLimits();
+      this.updateGroupHeaders();
+      this.syncApply();
+    });
+    const main = el('button', { className: 'batch-file-main', type: 'button' });
+    main.addEventListener('click', () => this.openDetail(item.id));
+    main.append(
+      el('span', { className: 'batch-file-icon' }, icon(fileIconName(item))),
+      el('span', { className: 'batch-file-copy' },
+        el('span', { className: 'batch-file-name', textContent: item.file.name }),
+        el('span', { className: 'batch-file-meta', textContent: this.metaLine(item) }),
+      ),
+      el('span', { className: `batch-file-status ${statusClass(item)}`, textContent: statusLabel(item) }),
+    );
+    const progress = el('span', { className: 'batch-file-progress' }, el('span', { style: { width: `${item.progress || 0}%` } }));
+    row.append(el('label', { className: 'batch-file-check' }, checkbox), main, progress);
+    return row;
+  }
+
+  metaLine(item) {
+    const parts = [formatBytes(item.file.size), item.detection?.label || 'Tidak dikenal'];
+    const duration = durationOf(item);
+    if (duration) parts.push(formatDuration(duration));
+    if (item.readResult) parts.push(`${tagCountOf(item)} tag`);
+    if (item.skipReason && item.status !== 'done') parts.push(item.skipReason);
+    return parts.join(' · ');
+  }
+
+  isLocked(item) {
+    return Boolean(item?.limitLocked) || item?.status === 'error';
+  }
+
+  renderAddTile() {
+    const tile = el('button', {
+      className: 'batch-add-tile',
+      type: 'button',
+      title: 'Tambah file ke batch',
+      disabled: this.busy(),
+    },
+      icon('plus'),
+      el('span', { textContent: 'Tambah file' }),
+      el('small', { textContent: 'File baru otomatis masuk grup format yang sesuai' }),
+    );
+    tile.addEventListener('click', () => {
+      if (this.busy()) {
+        showToast('Tunggu proses selesai atau batalkan dulu.', 'info', 3200);
+        return;
+      }
+      this.els.batchAddFileInput.click();
+    });
+    return tile;
+  }
+
+  renderGroupForm(group) {
+    const form = el('div', { className: 'batch-group-form' });
+    form.append(el('div', { className: 'batch-form-head' },
+      el('div', {},
+        el('h2', { textContent: `Edit ${group.label}` }),
+        el('p', { textContent: 'Field kosong dibiarkan tidak berubah. Gunakan tombol hapus untuk mengosongkan tag pada semua file terpilih.' }),
+      ),
+      el('button', {
+        className: 'button ghost small',
+        type: 'button',
+        on: {
+          click: () => {
+            for (const field of group.fields) group.values[field.id] = '';
+            group.remove.clear();
+            const replacement = this.renderGroupForm(group);
+            form.replaceWith(replacement);
+            this.syncApply();
+          },
+        },
+      }, 'Bersihkan input'),
+    ));
+    const grid = el('div', { className: 'field-grid batch-field-grid' });
+    for (const field of group.fields) grid.append(this.renderBatchField(group, field));
+    form.append(grid);
+    return form;
+  }
+
+  renderBatchField(group, field) {
+    const wrapper = el('div', { className: `field batch-field ${field.type === 'textarea' || field.type === 'tags' ? 'is-full' : ''}`.trim(), dataset: { fieldId: field.id } });
+    const inputId = `batch-${group.key.replace(/[^a-z0-9]/gi, '-')}-${field.id}`;
+    const removeToggle = el('button', {
+      className: 'batch-remove-toggle',
+      type: 'button',
+      'aria-pressed': String(group.remove.has(field.id)),
+      title: `Hapus tag ${field.label}`,
+      'aria-label': `Hapus tag ${field.label}`,
+    }, icon('trash'));
+    const head = el('div', { className: 'field-head' },
+      el('label', { for: inputId, textContent: field.label }),
+      el('span', { className: 'field-native', textContent: field.native || '' }),
+      removeToggle,
+    );
+    const inputValue = group.values[field.id] || '';
+    const common = {
+      id: inputId,
+      className: 'field-input',
+      autocomplete: 'off',
+      spellcheck: 'false',
+      value: inputValue,
+      placeholder: field.placeholder || '',
+      on: { input: (event) => { group.values[field.id] = event.target.value; this.syncApply(); } },
+    };
+    if (field.maxLength) common.maxLength = field.maxLength;
+    if (field.min !== undefined) common.min = field.min;
+    if (field.max !== undefined) common.max = field.max;
+    let input;
+    if (field.type === 'textarea') {
+      input = el('textarea', common);
+      input.value = inputValue;
+    } else if (field.type === 'date') input = el('input', { ...common, type: 'date' });
+    else if (field.type === 'number') input = el('input', { ...common, type: 'number', inputmode: 'numeric' });
+    else input = el('input', { ...common, type: 'text' });
+
+    const syncDisabled = () => {
+      const active = group.remove.has(field.id);
+      removeToggle.classList.toggle('is-active', active);
+      removeToggle.setAttribute('aria-pressed', String(active));
+      input.disabled = active;
+      wrapper.classList.toggle('is-removing', active);
+    };
+    removeToggle.addEventListener('click', () => {
+      if (group.remove.has(field.id)) group.remove.delete(field.id);
+      else group.remove.add(field.id);
+      syncDisabled();
+      this.syncApply();
+    });
+    if (field.helper) wrapper.append(head, input, el('p', { className: 'field-helper', textContent: field.helper }));
+    else wrapper.append(head, input);
+    syncDisabled();
+    return wrapper;
+  }
+
+  updateAllRows() {
+    for (const item of this.items) this.updateRow(item);
+    this.updateGroupHeaders();
+  }
+
+  updateRow(item) {
+    const row = qs(`[data-item-id="${CSS.escape(item.id)}"]`, this.els.batchGroups);
+    if (!row) return;
+    row.className = `batch-file ${statusClass(item)}`;
+    const checkbox = row.querySelector('.batch-file-checkbox');
+    checkbox.checked = isSelectedItem(item);
+    checkbox.disabled = this.isLocked(item) || item.status === 'error';
+    checkbox.title = item.skipReason || '';
+    const status = row.querySelector('.batch-file-status');
+    status.textContent = statusLabel(item);
+    status.className = `batch-file-status ${statusClass(item)}`;
+    row.querySelector('.batch-file-meta').textContent = this.metaLine(item);
+    row.querySelector('.batch-file-progress span').style.width = `${item.progress || 0}%`;
+  }
+
+  updateGroupHeaders() {
+    for (const group of this.groups) this.updateGroupHeader(group);
+  }
+
+  updateGroupHeader(group) {
+    const section = qs(`[data-group-key="${CSS.escape(group.key)}"]`, this.els.batchGroups);
+    if (!section) return;
+    const selected = group.items.filter(isSelectedItem).length;
+    const meta = section.querySelector('.batch-group-meta');
+    if (meta) meta.textContent = `${selected}/${group.items.length} dipilih · ${formatBytes(group.items.reduce((sum, item) => sum + item.file.size, 0))}`;
+    const checkbox = section.querySelector('.batch-group-select-input');
+    if (checkbox) {
+      const selectable = group.items.filter((item) => !this.isLocked(item) && item.status !== 'error');
+      const checked = selectable.filter(isSelectedItem).length;
+      checkbox.checked = selectable.length > 0 && checked === selectable.length;
+      checkbox.indeterminate = checked > 0 && checked < selectable.length;
+    }
+  }
+
+  collectGroupPayload(item) {
+    const group = this.groups.find((entry) => entry.key === item.groupKey);
+    const set = {};
+    const remove = [...(group?.remove || [])];
+    if (group) {
+      for (const field of group.fields) {
+        if (group.remove.has(field.id)) continue;
+        const raw = asString(group.values[field.id]).trim();
+        if (!raw) continue;
+        set[field.id] = field.type === 'tags' ? asArray(raw) : raw;
+      }
+    }
+    const rawRemove = [...item.removeRaw];
+    const operations = {
+      set: Object.keys(set).length,
+      remove: new Set(remove).size,
+      rawRemove: rawRemove.length,
+    };
+    return {
+      payload: {
+        set,
+        remove: [...new Set(remove)],
+        custom: [],
+        customRemove: [],
+        rawRemove,
+      },
+      operations,
+      hasOperations: operations.set + operations.remove + operations.rawRemove > 0,
+    };
+  }
+
+  syncApply() {
+    const selected = this.selectedItems();
+    const validation = validateSelection(this.items);
+    let operationCount = 0;
+    for (const item of selected) operationCount += Object.values(this.collectGroupPayload(item).operations).reduce((sum, n) => sum + n, 0);
+    this.els.batchSelectedCount.textContent = `${selected.length} file dipilih`;
+    this.els.batchOperationCount.textContent = `${operationCount} operasi`;
+    this.els.batchApplyBtn.disabled = this.applying ? false : selected.length === 0 || !validation.ok;
+    const label = this.applying ? 'Batalkan' : `Terapkan ke ${selected.length} file`;
+    this.els.batchApplyBtn.querySelector('.icon')?.replaceChildren(icon(this.applying ? 'x' : 'check'));
+    this.els.batchApplyBtn.lastChild.textContent = label;
+    this.els.batchApplyBtn.title = validation.messages[0] || '';
+    this.els.batchZipBtn.disabled = !this.items.some((item) => item.outputFile);
+    const noItems = this.items.length === 0;
+    this.els.batchReportJsonBtn.disabled = noItems;
+    this.els.batchReportCsvBtn.disabled = noItems;
+  }
+
+  setStatus(text, isError = false) {
+    this.els.batchStatus.textContent = text || '';
+    this.els.batchStatus.classList.toggle('is-error', isError);
+  }
+
+  showProgress(show) {
+    this.els.batchProgress.hidden = !show;
+  }
+
+  setProgress(percent, label) {
+    const pct = Math.max(0, Math.min(100, Number(percent) || 0));
+    this.els.batchProgressBar.style.width = `${pct}%`;
+    if (label) this.els.batchProgressLabel.textContent = label;
+  }
+
+  showBatchWorkspace() {
+    this.els.landing.hidden = true;
+    this.els.batchDetail.hidden = true;
+    this.els.batchWorkspace.hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  showLanding() {
+    this.els.landing.hidden = false;
+    this.els.batchWorkspace.hidden = true;
+    this.els.batchDetail.hidden = true;
+  }
+
+  resetBatch({ confirmIfBusy = false } = {}) {
+    if (this.applying) {
+      this.processor.cancel();
+      this.setStatus('Membatalkan…');
+      return;
+    }
+    if (confirmIfBusy && this.items.some((item) => item.status === 'processing' || item.status === 'scanning')) {
+      if (!window.confirm('Pemrosesan masih berjalan. Batalkan dan kembali?')) return;
+      this.processor.cancel();
+    }
+    for (const item of this.items) {
+      item.outputFile = null;
+    }
+    this.items = [];
+    this.groups = [];
+    this.activeItemId = null;
+    this.els.batchFileInput.value = '';
+    clear(this.els.batchGroups);
+    clear(this.els.batchSummary);
+    clear(this.els.batchLimits);
+    this.setApplyingUI(false);
+    this.setStatus('');
+    this.showProgress(false);
+    this.showLanding();
+    this.setMode('single');
+  }
+
+  setApplyingUI(applying) {
+    this.els.batchGroups.inert = applying;
+    this.els.batchGroups.classList.toggle('is-disabled', applying);
+    this.setAddEnabled(!applying);
+  }
+
+  handleApplyClick() {
+    if (this.applying) {
+      this.processor.cancel();
+      this.setStatus('Membatalkan…');
+      return;
+    }
+    this.apply();
+  }
+
+  async apply() {
+    const selected = this.selectedItems();
+    const validation = validateSelection(this.items);
+    if (!selected.length) return;
+    if (!validation.ok) {
+      this.renderLimits();
+      showToast(validation.messages[0], 'error', 7500);
+      return;
+    }
+    this.applying = true;
+    this.els.batchApplyBtn.classList.add('is-processing');
+    this.setApplyingUI(true);
+    this.setStatus(`Menerapkan ke ${selected.length} file…`);
+    this.showProgress(true);
+    this.setProgress(2, 'Menyiapkan…');
+    this.syncApply();
+    let result;
+    try {
+      result = await this.processor.apply(this.items, (item) => this.collectGroupPayload(item), (item) => this.updateItem(item));
+    } catch (error) {
+      this.setStatus(error?.message || 'Batch gagal diproses.', true);
+      showToast(error?.message || 'Batch gagal diproses.', 'error', 8000);
+      result = { ok: false, messages: [error?.message || 'Batch gagal diproses.'] };
+    } finally {
+      this.applying = false;
+      this.els.batchApplyBtn.classList.remove('is-processing');
+      this.setApplyingUI(false);
+      this.showProgress(false);
+    }
+    if (!result.ok) {
+      this.renderLimits();
+      this.setStatus(result.messages[0] || 'Batch melebihi batas.', true);
+      showToast(result.messages[0] || 'Batch melebihi batas.', 'error', 7500);
+      this.syncApply();
+      return;
+    }
+    const done = this.items.filter((item) => item.status === 'done').length;
+    const failed = this.items.filter((item) => item.status === 'error').length;
+    this.setStatus(`${done} selesai · ${failed} gagal`, failed > 0);
+    showToast(failed ? `${failed} file gagal; ${done} file berhasil diproses.` : `${done} file berhasil diproses. Unduh ZIP di atas.`, failed ? 'error' : 'success', 7000);
+    this.renderSummary();
+    this.renderLimits();
+    this.updateAllRows();
+    this.syncApply();
+  }
+
+  downloadReport(kind) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    if (kind === 'csv') {
+      downloadBlob(new Blob([makeCsvReport(this.items)], { type: 'text/csv;charset=utf-8' }), `meinsert-laporan-${stamp}.csv`);
+      return;
+    }
+    downloadBlob(new Blob([makeJsonReport(this.items)], { type: 'application/json' }), `meinsert-laporan-${stamp}.json`);
+  }
+
+  async downloadZip() {
+    const doneItems = this.items.filter((item) => item.outputFile);
+    if (!doneItems.length) return;
+    this.els.batchZipBtn.disabled = true;
+    this.showProgress(true);
+    this.setProgress(0, 'Menyiapkan ZIP…');
+    try {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const zip = await buildZip(doneItems, {
+        reportJson: makeJsonReport(this.items),
+        onProgress: ({ stage, pct }) => this.setProgress(pct, stage),
+      });
+      downloadBlob(zip, `meinsert-batch-${stamp}.zip`);
+      this.setStatus(`${doneItems.length} file masuk ZIP.`);
+    } catch (error) {
+      showToast(`ZIP gagal dibuat: ${error?.message || error}`, 'error', 8000);
+      this.setStatus('ZIP gagal dibuat.', true);
+    } finally {
+      this.showProgress(false);
+      this.syncApply();
+    }
+  }
+
+  openDetail(itemId, tab = 'summary') {
+    this.activeItemId = itemId;
+    this.detailTab = tab;
+    this.els.batchWorkspace.hidden = true;
+    this.els.batchDetail.hidden = false;
+    this.renderDetail();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  closeDetail() {
+    this.activeItemId = null;
+    this.els.batchDetail.hidden = true;
+    this.els.batchWorkspace.hidden = false;
+    this.updateAllRows();
+    this.syncApply();
+  }
+
+  setDetailTab(tab) {
+    this.detailTab = tab;
+    for (const button of [this.els.batchTabSummary, this.els.batchTabRaw]) {
+      const active = button.dataset.tab === tab;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-selected', String(active));
+    }
+    this.renderDetail();
+  }
+
+  activeItem() {
+    return this.items.find((item) => item.id === this.activeItemId) || null;
+  }
+
+  renderDetail() {
+    const item = this.activeItem();
+    if (!item) {
+      this.closeDetail();
+      return;
+    }
+    this.els.batchRawCount.textContent = String(tagCountOf(item));
+    this.renderDetailHeader(item);
+    if (this.detailTab === 'raw') this.renderRawDetail(item);
+    else this.renderSummaryDetail(item);
+  }
+
+  renderDetailHeader(item) {
+    clear(this.els.batchDetailHeader);
+    const checkbox = el('input', { type: 'checkbox', id: 'batchDetailInclude' });
+    checkbox.checked = isSelectedItem(item);
+    checkbox.disabled = this.isLocked(item) || item.status === 'error';
+    checkbox.addEventListener('change', () => {
+      if (checkbox.disabled) return;
+      item.included = checkbox.checked;
+      item.excluded = !checkbox.checked;
+      if (checkbox.checked) item.skipReason = '';
+      this.renderLimits();
+      this.updateGroupHeaders();
+      this.syncApply();
+      this.setStatus(isSelectedItem(item) ? 'File ini ikut diterapkan.' : 'File ini tidak diterapkan.');
+    });
+    this.els.batchDetailHeader.append(
+      el('div', { className: 'batch-detail-icon' }, icon(fileIconName(item))),
+      el('div', { className: 'batch-detail-copy' },
+        el('h2', { textContent: item.file.name }),
+        el('p', { textContent: this.metaLine(item) }),
+        el('p', { className: `batch-detail-status ${statusClass(item)}`, textContent: item.skipReason && item.status !== 'done' ? item.skipReason : statusLabel(item) }),
+      ),
+      el('label', { className: 'batch-detail-include', for: 'batchDetailInclude' },
+        checkbox,
+        el('span', { textContent: 'Ikut diterapkan' }),
+      ),
+    );
+  }
+
+  renderSummaryDetail(item) {
+    const panel = clear(this.els.batchDetailPanel);
+    const info = item.readResult?.info || {};
+    const rows = [
+      ['Format', item.detection?.label || 'Tidak dikenali'],
+      ['Subtype', item.detection?.subtype || '-'],
+      ['Ukuran', formatBytes(item.file.size)],
+      ['Durasi', durationOf(item) ? formatDuration(durationOf(item)) : '-'],
+      ['Dimensi', info.width && info.height ? `${info.width} × ${info.height}` : '-'],
+      ['Codec', info.videoCodec || info.audioCodec || info.codec || '-'],
+      ['Halaman', info.pages ? String(info.pages) : '-'],
+      ['Jumlah tag', String(tagCountOf(item))],
+    ];
+    const dl = el('dl', { className: 'batch-info-grid' });
+    for (const [term, value] of rows) {
+      dl.append(el('dt', { textContent: term }), el('dd', { textContent: String(value) }));
+    }
+    panel.append(dl);
+    if (item.warnings?.length) {
+      const warnings = el('div', { className: 'batch-warning-list' });
+      warnings.append(el('h3', { textContent: 'Warning' }));
+      for (const warning of item.warnings) warnings.append(el('p', { textContent: warning }));
+      panel.append(warnings);
+    }
+    if (item.error) {
+      panel.append(el('div', { className: 'error-card', role: 'alert' },
+        el('div', {},
+          el('h3', { textContent: 'File tidak bisa diproses' }),
+          el('p', { textContent: item.error?.message || String(item.error) }),
+        ),
+      ));
+    }
+    if (item.outputFile) {
+      panel.append(el('div', { className: 'batch-output-note' },
+        icon('check'),
+        el('div', {},
+          el('h3', { textContent: 'Hasil siap diunduh' }),
+          el('p', { textContent: `${item.outputFile.name} · ${formatBytes(item.outputFile.size)}. File masuk ke ZIP saat tombol Unduh ZIP ditekan.` }),
+        ),
+      ));
+    }
+  }
+
+  rawDeletability(item, row) {
+    const tag = row.tag || '';
+    const locked = RAW_LOCKED.find((entry) => entry.pattern.test(tag));
+    if (locked) return { ok: false, reason: locked.reason };
+    if (item.adapter?.meta?.id === 'mp3') {
+      if (tag === 'APIC') return { ok: true, reason: '' };
+      if (tag.startsWith('TXXX:')) return { ok: true, reason: '' };
+      if (MP3_DELETABLE_FRAMES.has(tag)) return { ok: true, reason: '' };
+      return { ok: false, reason: 'Frame ID3 tidak dikenal; rewrite MP3 menghapus frame ini juga.' };
+    }
+    if (item.adapter?.meta?.id === 'pdf' && /^\/Metadata$/i.test(tag)) {
+      return { ok: false, reason: 'XMP stream PDF tidak bisa dihapus selektif dari Info dictionary.' };
+    }
+    return { ok: true, reason: '' };
+  }
+
+  renderRawDetail(item) {
+    const panel = clear(this.els.batchDetailPanel);
+    if (!item.readResult) {
+      panel.append(el('div', { className: 'empty-state' },
+        el('div', { className: 'empty-icon' }, icon('tag')),
+        el('h2', { textContent: 'Tag belum tersedia' }),
+        el('p', { textContent: 'File ini gagal dibaca, sehingga daftar raw tag tidak bisa ditampilkan.' }),
+      ));
+      return;
+    }
+    const raw = item.readResult.raw || [];
+    const note = item.adapter?.meta?.id === 'mp3'
+      ? 'MP3 ditulis ulang oleh Meinsert; frame ID3 yang tidak dikenal juga akan hilang.'
+      : 'Tag yang tidak bisa dihapus selektif ditandai dengan gembok.';
+    const search = el('input', { type: 'search', placeholder: 'Cari tag atau nilai…', className: 'batch-raw-search', 'aria-label': 'Cari raw tag' });
+    const selectedCount = el('span', { className: 'raw-count' });
+    const selectAll = el('button', { className: 'button ghost small', type: 'button' }, 'Pilih semua yang bisa dihapus');
+    const clearSelection = el('button', { className: 'button ghost small', type: 'button' }, 'Bersihkan pilihan');
+    const tbody = el('tbody');
+    const rows = [];
+    const updateSelectedCount = () => {
+      selectedCount.textContent = `${item.removeRaw.size} dipilih dari ${raw.length} tag`;
+      for (const { tr, row, checkbox } of rows) checkbox.checked = item.removeRaw.has(row.tag);
+    };
+    for (const row of raw) {
+      const { ok, reason } = this.rawDeletability(item, row);
+      const checkbox = el('input', { type: 'checkbox', 'aria-label': `Hapus tag ${row.tag}` });
+      checkbox.checked = item.removeRaw.has(row.tag);
+      checkbox.disabled = !ok;
+      checkbox.addEventListener('change', () => {
+        if (ok) {
+          if (checkbox.checked) item.removeRaw.add(row.tag);
+          else item.removeRaw.delete(row.tag);
+          updateSelectedCount();
+          this.syncApply();
+        }
+      });
+      const tr = el('tr', { className: ok ? '' : 'is-locked', title: reason || '' },
+        el('td', {}, ok ? checkbox : icon('lock', 'batch-lock')),
+        el('td', {},
+          el('div', { className: 'raw-tag', textContent: row.tag }),
+          el('div', { className: 'raw-group', textContent: row.group || '' }),
+        ),
+        el('td', { className: 'raw-value', textContent: row.value }),
+      );
+      tr.dataset.search = `${row.tag} ${row.group} ${row.value}`.toLowerCase();
+      tbody.append(tr);
+      rows.push({ tr, row, checkbox });
+    }
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLowerCase();
+      for (const { tr } of rows) tr.hidden = Boolean(query) && !tr.dataset.search.includes(query);
+    });
+    selectAll.addEventListener('click', () => {
+      for (const { row } of rows) {
+        if (this.rawDeletability(item, row).ok) item.removeRaw.add(row.tag);
+      }
+      updateSelectedCount();
+      this.syncApply();
+    });
+    clearSelection.addEventListener('click', () => {
+      item.removeRaw.clear();
+      updateSelectedCount();
+      this.syncApply();
+    });
+    updateSelectedCount();
+    panel.append(
+      el('p', { className: 'batch-raw-note', textContent: note }),
+      el('div', { className: 'raw-toolbar batch-raw-toolbar' },
+        el('div', { className: 'search-wrap' }, icon('search'), search),
+        selectedCount,
+        selectAll,
+        clearSelection,
+      ),
+      el('div', { className: 'raw-table-wrap' },
+        el('table', { className: 'raw-table' },
+          el('thead', {}, el('tr', {},
+            el('th', { textContent: '' }),
+            el('th', { textContent: 'Tag' }),
+            el('th', { textContent: 'Nilai' }),
+          )),
+          tbody,
+        ),
+      ),
+    );
+  }
+}

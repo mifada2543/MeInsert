@@ -17,7 +17,11 @@
 - **Dirty tracking** — hanya field yang berubah yang ditulis; mengosongkan field = hapus tag
 - **Verifikasi** — hasil dibaca ulang sebelum unduh
 - **Rename aman** — nama file hasil bebas diganti, tapi ekstensi dikunci mengikuti format terdeteksi (tidak bisa `.mp3`→`.flac` hanya lewat rename)
-- **Tema gelap/terang** — otomatis mengikuti sistem, bisa diubah manual
+- **Tema gelap/terang** — otomatis mengikuti sistem, bisa diubah manual; transisi circular reveal dari tombol + morph ikon sun/moon, dan tema diterapkan sebelum paint pertama (tanpa kedipan)
+- **Progressive Web App** — bisa diinstal ke layar utama; setelah kunjungan pertama, aplikasi dan vendor besar (termasuk WASM) tersedia offline
+- **Proses massal (batch)** — periksa metadata banyak file, kelola per grup format, pilih file yang benar-benar diproses, hapus raw tag per file, tambah file susulan lewat tombol di dalam grup, lalu unduh hasil sebagai ZIP
+- **Laporan batch** — ringkasan JSON/CSV tanpa menyimpan isi file
+- **Manajemen memori WASM** — worker dan WebAssembly ExifTool dilepas/dihentikan setelah batch, saat idle, dan saat halaman ditutup
 - **Tidak ada dependensi runtime** — file HTML/CSS/JS statis, jalan dari XAMPP/Apache
 
 ## Instalasi Cepat (XAMPP)
@@ -34,6 +38,8 @@ npm run vendor
 
 # 3. Buka di browser
 # http://localhost/Meinsert/
+# Pada browser yang mendukung, gunakan menu Install / Tambahkan ke layar utama.
+# Kunjungan pertama tetap online agar service worker bisa mengunduh cache offline (~29 MB).
 ```
 
 File vendor sudah termasuk di repo (assets/vendor/), jadi `npm run vendor` hanya diperlukan saat update versi library.
@@ -42,22 +48,35 @@ File vendor sudah termasuk di repo (assets/vendor/), jadi `npm run vendor` hanya
 
 ```
 Meinsert/
-├── index.html                 # Entry point
+├── index.html                 # Beranda: pilih Satu file / Banyak file
+├── single.html                # Editor satu file
+├── batch.html                 # Batch: periksa & proses banyak file
+├── manifest.json              # PWA manifest
+├── sw.js                      # Service worker (precache app + vendor)
 ├── .htaccess                  # MIME types & cache headers
 ├── THIRD_PARTY_LICENSES.md    # Lisensi library bundled
 ├── package.json               # Dev deps & vendor script
 ├── scripts/
 │   └── vendor.mjs             # Copy library dari node_modules → assets/vendor/
+├── tests/
+│   ├── e2e/smoke.mjs       # Smoke test browser/PWA/batch
+│   └── unit/               # Unit test batch limits & report
 └── assets/
     ├── css/app.css            # Styling lengkap (responsive, dark mode)
     ├── js/
-    │   ├── app.js             # App shell, state, UI orchestration
+    │   ├── app.js             # App shell, state, UI orchestration + registrasi SW
     │   ├── core/
     │   │   ├── detector.js    # Magic-bytes detection
     │   │   ├── registry.js    # Adapter registry
     │   │   ├── tag-utils.js   # Normalisasi nilai
     │   │   ├── errors.js      # Error class & serialisasi
-    │   │   └── worker-client.js # RPC ke Web Workers
+    │   │   └── worker-client.js # RPC ke Web Workers + dispose/idle timeout
+    │   ├── batch/
+    │   │   ├── batch-limits.js    # Batas dinamis batch (video/audio/ringan)
+    │   │   ├── batch-processor.js # Scan/apply/cancel batch secara berurutan
+    │   │   ├── batch-view.js      # UI batch (grup format, pilih file, raw tags)
+    │   │   ├── batch-report.js    # Laporan JSON/CSV
+    │   │   └── batch-zip.js       # ZIP streaming via fflate
     │   ├── engines/
     │   │   └── exiftool.js    # Wrapper ExifTool WASM
     │   ├── formats/
@@ -87,19 +106,24 @@ Meinsert/
         ├── mediabunny.mjs
         ├── pdf-lib.esm.js
         ├── browser-id3-writer.mjs
+        ├── fflate.mjs
         └── licenses/
 ```
 
 ## Arsitektur Singkat
 
-1. **Deteksi** → `detector.js` baca 128 byte pertama → tentukan format & subtype
-2. **Adapter** → `registry.js` pilih adapter berdasarkan format
-3. **Worker** → `worker-client.js` spawn worker per engine (exiftool/media/pdf)
-4. **Read** → Adapter `read(file)` → normalisasi ke field standar + raw tags
-5. **UI** → `form-view.js` render field per section, custom tags, raw tab
-6. **Write** → User klik Simpan → `collectChanges()` → `adapter.write(file, payload)`
-7. **Verify** → Adapter baca ulang output → bandingkan field yang diubah
-8. **Download** → Blob hasil → `<a download>` click
+1. **PWA** → `sw.js` precache seluruh app + vendor (WASM ikut ter-cache) → offline setelah kunjungan pertama
+2. **Deteksi** → `detector.js` baca 128 byte pertama → tentukan format & subtype
+3. **Batch** → `batch-view.js` kelompokkan file per format; `batch-processor.js` scan/apply berurutan; `batch-zip.js` buat ZIP; `batch-report.js` buat JSON/CSV
+4. **Adapter** → `registry.js` pilih adapter berdasarkan format
+5. **Worker** → `worker-client.js` spawn worker per engine (exiftool/media/pdf), dengan dispose/idle timeout/terminate
+6. **Read** → Adapter `read(file)` → normalisasi ke field standar + raw tags
+7. **UI** → `form-view.js` render field per section, custom tags, raw tab; batch memakai form grup + raw per file
+8. **Write** → User klik Simpan → `collectChanges()` → `adapter.write(file, payload)`
+9. **Verify** → Adapter baca ulang output → bandingkan field yang diubah
+10. **Download** → Blob hasil → `<a download>` click / ZIP untuk batch
+
+**Routing**: tiga halaman statis — `/` (beranda pemilih mode), `/single.html` (editor satu file), `/batch.html` (batch). Header tiap halaman punya tab Satu file / Banyak file; service worker mem-precache ketiganya, jadi semua route bekerja offline.
 
 ## Catatan Teknis
 
@@ -111,6 +135,8 @@ Meinsert/
 - **Cover / thumbnail**: gambar JPEG/PNG/WebP ≤ 10 MB di-embed native per format (APIC / METADATA_BLOCK_PICTURE / covr / Matroska attachment). Untuk mengganti/menghapus, frame/lampiran lama dihapus dari `raw` agar tidak bocor ke output. Cover hanya ditampilkan untuk file audio & video
 - **MP4**: ExifTool menulis ItemList + XMP unqualified tags; cover MP4 dibaca via pass tambahan Mediabunny (ExifTool WASM tidak bisa mengembalikan byte binary murni)
 - **Custom tags**: Gambar/MP4 pakai native ExifTool tag names; PDF pakai Info dict keys; MP3 pakai TXXX; FLAC/OGG/MKV pakai Vorbis/Matroska keys (uppercase)
+- **WASM memory**: `worker-client.js` memakai satu worker per engine, `dispose`/terminate setelah batch, `pagehide`, dan idle timeout (~8 menit). ExifTool WASM juga memanggil `dispose` milik library bila tersedia.
+- **Batch raw tags**: Raw tags ditampilkan per file. Tag yang tidak bisa dihapus selektif ditandai dengan gembok; hasil tetap dibaca ulang untuk memberi warning bila tag masih terbaca.
 
 ## Keterbatasan v1
 
@@ -118,7 +144,9 @@ Meinsert/
 - MKV: chapter & attachment tidak dipertahankan saat remux
 - PDF: XMP stream diganti penuh (unknown namespace hilang); PDF terenkripsi tidak didukung; PDF bertanda tangan digital → tanda tangan invalid
 - TIFF: field kamera (make/model/lens) hanya JPEG & TIFF; PNG/WebP hanya XMP/EXIF umum
-- Batch processing & ZIP tidak didukung (satu file per proses)
+- Batch: ZIP dibuat di memori browser. Batas dinamis: video maks. 10 file (@ ≤ 1 jam, total ≤ 2 GB), audio maks. 20 file (@ ≤ 30 menit, total ≤ 1 GB), gambar/PDF/ringan maks. 50 file (total ≤ 1 GB). Batch campuran tetap dibatasi per kategori; file dengan durasi tak terbaca dikunci dari batch.
+- Batch: edit massal berlaku per grup format/subtype, bukan lintas format; custom tags tidak diedit massal di v1
+- Batch: penghapusan raw tag selektif tidak universal. MP3 menghapus frame tak dikenal saat rewrite; tag read-only/turunan tidak bisa dipilih. Tag yang tersisa setelah verifikasi ditandai warning.
 - OGG hanya mendukung Vorbis & Opus (FLAC-in-Ogg / Speex ditolak); cover Ogg/Opus tertanam tetapi tidak semua pemutar menampilkannya
 - Cover hanya JPEG/PNG/WebP ≤ 10 MB; gambar lain ditolak
 
@@ -127,6 +155,13 @@ Meinsert/
 ```bash
 # Serve lokal (Python 3)
 npm run serve  # http://localhost:8000
+# atau gunakan Apache/XAMPP: http://localhost/Meinsert/
+
+# Unit test batch limits & laporan
+npm test
+
+# Smoke test browser (butuh Chrome/Chromium; override dengan CHROME_BIN bila perlu)
+npm run test:e2e
 
 # Update vendor libraries
 npm install

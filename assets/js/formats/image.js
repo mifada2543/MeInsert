@@ -131,8 +131,7 @@ export function collectRaw(tags) {
     if (!text) continue;
     rows.push({ group: key.split(':')[0] || '', tag: key, value: text });
   }
-  rows.sort((a, b) => a.tag.localeCompare(b.tag));
-  return rows.slice(0, 250);
+  return rows.sort((a, b) => a.tag.localeCompare(b.tag));
 }
 
 function buildTagMap(payload, subtype) {
@@ -204,6 +203,9 @@ function buildTagMap(payload, subtype) {
   for (const key of payload?.customRemove || []) {
     if (key) add(key, '');
   }
+  for (const key of payload?.rawRemove || []) {
+    if (key) add(asString(key).trim(), '');
+  }
   return tags;
 }
 
@@ -270,4 +272,9 @@ function verify(payload, after, subtype) {
   return warnings;
 }
 
-export default { meta, sections, fields, sectionsFor, fieldsFor, read, write };
+async function dispose() {
+  const { disposeExifToolRuntime } = await import('../engines/exiftool.js');
+  await disposeExifToolRuntime();
+}
+
+export default { meta, sections, fields, sectionsFor, fieldsFor, read, write, dispose };

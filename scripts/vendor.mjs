@@ -20,6 +20,8 @@ const copies = [
   ['pdf-lib/LICENSE.md', 'licenses/pdf-lib-LICENSE.md'],
   ['browser-id3-writer/dist/browser-id3-writer.mjs', 'browser-id3-writer.mjs'],
   ['browser-id3-writer/LICENSE.md', 'licenses/browser-id3-writer-LICENSE.md'],
+  ['fflate/esm/browser.js', 'fflate.mjs'],
+  ['fflate/LICENSE', 'licenses/fflate-LICENSE'],
 ];
 
 await mkdir(vendor, { recursive: true });

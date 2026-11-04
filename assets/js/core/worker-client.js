@@ -10,6 +10,7 @@ class EngineWorker {
     this.worker = null;
     this.pending = new Map();
     this.sequence = 0;
+    this.onActivity = () => {};
   }
 
   ensure() {
@@ -17,6 +18,7 @@ class EngineWorker {
     const worker = new Worker(this.url, { type: 'module', name: `meinsert-${this.url.pathname.split('/').pop()}` });
     worker.onmessage = (event) => {
       const message = event.data || {};
+      this.onActivity();
       const pending = this.pending.get(message.id);
       if (!pending) return;
       if (message.type === 'progress') {
@@ -42,6 +44,7 @@ class EngineWorker {
       for (const pending of this.pending.values()) pending.reject(error);
       this.pending.clear();
       this.worker = null;
+      this.onActivity();
     };
     worker.onmessageerror = () => {
       const error = new Error('Data dari worker tidak bisa dibaca.');
@@ -77,15 +80,35 @@ class EngineWorker {
 }
 
 export class MetadataClient {
-  constructor() {
+  constructor({ idleTimeout = 8 * 60 * 1000 } = {}) {
     this.workers = new Map();
+    this.idleTimeout = idleTimeout;
+    this.idleTimer = null;
   }
 
   workerFor(engine) {
     const url = WORKER_URLS[engine];
     if (!url) throw new Error(`Mesin ${engine} tidak tersedia.`);
-    if (!this.workers.has(engine)) this.workers.set(engine, new EngineWorker(url));
+    if (!this.workers.has(engine)) {
+      const worker = new EngineWorker(url);
+      worker.onActivity = () => this.noteActivity();
+      this.workers.set(engine, worker);
+    }
     return this.workers.get(engine);
+  }
+
+  noteActivity() {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    if (!this.idleTimeout || this.idleTimeout <= 0) return;
+    this.idleTimer = setTimeout(() => {
+      for (const worker of this.workers.values()) {
+        if (worker.pending.size > 0) {
+          this.idleTimer = setTimeout(() => this.noteActivity(), this.idleTimeout);
+          return;
+        }
+      }
+      this.disposeAllSync();
+    }, this.idleTimeout);
   }
 
   read(engine, format, file, options, onProgress) {
@@ -101,8 +124,34 @@ export class MetadataClient {
     this.workers.delete(engine);
   }
 
-  dispose() {
+  async disposeEngine(engine) {
+    const entry = this.workers.get(engine);
+    if (!entry) return;
+    try {
+      await entry.request({ action: 'dispose' });
+    } catch {
+      // A busy or crashed worker is still safe to terminate.
+    } finally {
+      entry.terminate();
+      this.workers.delete(engine);
+    }
+  }
+
+  async disposeAll() {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = null;
+    const engines = [...this.workers.keys()];
+    await Promise.all(engines.map((engine) => this.disposeEngine(engine)));
+  }
+
+  disposeAllSync() {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = null;
     for (const worker of this.workers.values()) worker.terminate();
     this.workers.clear();
+  }
+
+  dispose() {
+    this.disposeAllSync();
   }
 }

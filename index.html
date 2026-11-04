@@ -8,11 +8,17 @@
   <meta name="theme-color" content="#f5f4ed" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14141f" media="(prefers-color-scheme: dark)">
   <meta name="description"
-    content="Meinsert: baca dan tulis metadata file langsung di browser. Tanpa upload, tanpa server.">
+    content="Meinsert: baca dan tulis metadata file langsung di browser. Satu file atau proses massal. Tanpa upload, tanpa server.">
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Meinsert">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <script src="assets/js/theme-init.js"></script>
   <!-- Open Graph -->
   <meta property="og:title" content="Meinsert — Edit metadata file tanpa upload">
   <meta property="og:description"
-    content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
+    content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. Satu file atau batch. 100% lokal, file tidak pernah keluar perangkat.">
   <meta property="og:image" content="https://mifada2543.github.io/Meinsert/assets/img/og-image.png">
   <meta property="og:url" content="https://mifada2543.github.io/Meinsert/">
   <meta property="og:type" content="website">
@@ -25,42 +31,47 @@
   <meta name="twitter:description"
     content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
   <meta name="twitter:image" content="https://mifada2543.github.io/Meinsert/assets/img/og-image.png">
-  <title>Meinsert — Edit metadata tanpa upload</title>
+  <title>MeInsert | Edit metadata tanpa upload</title>
   <link rel="stylesheet" href="assets/css/app.css">
   <link rel="icon" type="image/png" sizes="64x64" href="assets/img/favicon-64.png">
   <link rel="icon" type="image/png" sizes="512x512" href="assets/img/icon-512.png">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 </head>
 
-<body>
+<body data-page="home">
   <a class="skip-link" href="#main">Lewati ke konten</a>
 
   <header class="site-header">
     <div class="shell header-inner">
       <a class="brand" href="./" aria-label="Meinsert Metadata lokal, kembali ke awal">
         <img class="brand-logo" src="assets/img/icon-512.png" width="42" height="42" alt="">
-        <span class="brand-text">Meinsert<small>metadata lokal</small></span>
+        <span class="brand-text">MeInsert<small>metadata lokal</small></span>
       </a>
+      <nav class="header-nav" aria-label="Mode Meinsert">
+        <a class="header-link" data-nav="single" href="./single.html">Satu file</a>
+        <a class="header-link" data-nav="batch" href="./batch.html">Banyak file</a>
+      </nav>
       <div class="header-actions">
         <span class="privacy-pill" title="File tidak pernah dikirim ke server">
           <span class="privacy-dot"></span>
           100% di perangkat
         </span>
         <button class="icon-button" id="themeToggle" type="button" aria-label="Ganti tema" title="Ganti tema">
-          <span class="icon" id="themeIcon" aria-hidden="true"></span>
+          <span class="theme-icon theme-icon-sun" id="themeIconSun" aria-hidden="true"></span>
+          <span class="theme-icon theme-icon-moon" id="themeIconMoon" aria-hidden="true"></span>
         </button>
       </div>
     </div>
   </header>
 
   <main class="shell" id="main">
-    <section class="landing" id="landing">
+    <section class="landing landing-home" id="landing">
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-line"></span>Metadata editor untuk file sehari-hari</p>
         <h1>Tempel metadata.<br><span class="accent-text" title="File tidak pernah dikirim ke server">Tanpa
             upload.</span></h1>
-        <p class="lede">Ubah judul, penulis, tag, dan info kamera langsung di browser. File tetap di perangkat Anda —
-          tidak ada server, tidak ada antrean, tidak ada akun.</p>
+        <p class="lede">Dua cara kerja, satu prinsip: file tetap di perangkat Anda. Pilih editor satu file untuk pekerjaan
+          satuan, atau mode batch untuk banyak file sekaligus.</p>
         <div class="format-chips" aria-label="Format yang didukung">
           <span class="chip"><span class="chip-dot image"></span>JPG</span>
           <span class="chip"><span class="chip-dot image"></span>PNG</span>
@@ -73,107 +84,36 @@
           <span class="chip"><span class="chip-dot video"></span>MP4</span>
           <span class="chip"><span class="chip-dot video"></span>MKV</span>
         </div>
-        <div class="trust-row">
-          <span><strong>01</strong> Deteksi otomatis</span>
-          <span><strong>02</strong> Preview perubahan</span>
-          <span><strong>03</strong> Unduh hasil</span>
-        </div>
       </div>
 
-      <div class="drop-wrap">
-        <section class="drop-card" id="dropCard">
-          <input type="file" id="fileInput" hidden>
-          <div class="drop-visual" aria-hidden="true">
-            <div class="tag-stack tag-back"></div>
-            <div class="tag-stack tag-mid"></div>
-            <div class="tag-stack tag-front">
-              <span class="tag-hole"></span>
-              <span class="tag-line"></span>
-              <span class="tag-line short"></span>
-            </div>
-            <span class="drop-plus">+</span>
-          </div>
-          <h2>Pilih satu file</h2>
-          <p class="drop-copy">Seret file ke sini atau <button class="text-button" id="browseBtn" type="button">telusuri
-              file</button></p>
-          <p class="drop-meta">Satu file per proses · Maks. 4 GB · Tidak diunggah</p>
-          <div class="drop-formats" aria-hidden="true">
-            <span>Gambar</span><span>PDF</span><span>Audio</span><span>Video</span>
-          </div>
-        </section>
-        <p class="drop-footnote"><span class="lock-dot" aria-hidden="true"></span>Diproses oleh browser Anda sendiri.
-          Tidak ada file yang meninggalkan perangkat.</p>
-      </div>
-    </section>
+      <div class="mode-cards" aria-label="Pilih cara kerja">
+        <a class="mode-card" href="./single.html">
+          <span class="mode-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>
+          </span>
+          <span class="mode-card-kicker">Satu file</span>
+          <h2>Edit satu file</h2>
+          <p>Field dinamis mengikuti format. Preview perubahan, verifikasi hasil sebelum unduh, dan rename aman dengan
+            ekstensi terkunci.</p>
+          <span class="mode-card-meta">Satu file per proses · Maks. 4 GB · Semua format</span>
+          <span class="mode-card-cta">Buka editor satu file
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m0 0-6-6m6 6-6 6"/></svg>
+          </span>
+        </a>
 
-    <section class="workspace" id="workspace" hidden>
-      <div class="workspace-top">
-        <button class="back-button" id="newFileBtn" type="button">
-          <span class="icon" aria-hidden="true"></span>
-          Ganti file
-        </button>
-        <div class="workspace-status" id="readStatus" role="status" aria-live="polite"></div>
-      </div>
-
-      <div class="workspace-grid">
-        <aside class="side-column">
-          <section class="file-card" id="fileCard" aria-label="Informasi file"></section>
-          <section class="side-note">
-            <span class="side-note-icon" aria-hidden="true"></span>
-            <div>
-              <h3>Data tetap lokal</h3>
-              <p>Meinsert membaca dan menulis file di memori browser. Tidak ada request upload, penyimpanan server, atau
-                pelacakan file.</p>
-            </div>
-          </section>
-          <section class="side-note muted">
-            <div>
-              <h3>Tips aman</h3>
-              <p>Simpan file asli sampai hasilnya sudah diperiksa. Beberapa format ditulis ulang untuk memperbarui
-                metadata.</p>
-            </div>
-          </section>
-        </aside>
-
-        <section class="editor-card" aria-label="Editor metadata">
-          <div class="editor-head">
-            <div class="tabs" role="tablist" aria-label="Bagian editor">
-              <button class="tab is-active" id="tabMetadata" type="button" role="tab" aria-selected="true"
-                aria-controls="panel" data-tab="metadata">Metadata</button>
-              <button class="tab" id="tabRaw" type="button" role="tab" aria-selected="false" aria-controls="panel"
-                data-tab="raw">Tag mentah <span class="tab-count" id="rawCount">0</span></button>
-            </div>
-            <span class="editor-badge" id="editorBadge">Belum dibaca</span>
-          </div>
-
-          <div id="panel" class="panel" role="tabpanel" aria-labelledby="tabMetadata"></div>
-
-          <div class="action-bar" id="actionBar">
-            <div class="action-summary">
-              <span class="dirty-dot" id="dirtyDot"></span>
-              <span id="dirtyState">Belum ada perubahan</span>
-            </div>
-            <div class="output-name-wrap">
-              <label for="outputBase">Nama file hasil</label>
-              <div class="output-name-field">
-                <input id="outputBase" type="text" autocomplete="off" spellcheck="false" placeholder="nama-file"
-                  aria-describedby="outputExt">
-                <span class="output-ext" id="outputExt" title="Ekstensi dikunci sesuai format file">.bin</span>
-              </div>
-            </div>
-            <div class="action-buttons">
-              <button class="button ghost" id="resetBtn" type="button" disabled>Batalkan perubahan</button>
-              <button class="button primary" id="saveBtn" type="button" disabled>
-                <span class="icon" aria-hidden="true"></span>
-                <span id="saveLabel">Simpan metadata</span>
-              </button>
-            </div>
-            <div class="progress" id="progress" hidden>
-              <div class="progress-track"><span class="progress-bar" id="progressBar"></span></div>
-              <span class="progress-label" id="progressLabel">Menyiapkan…</span>
-            </div>
-          </div>
-        </section>
+        <a class="mode-card mode-card-accent" href="./batch.html">
+          <span class="mode-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M8 13h8M8 17h5"/></svg>
+          </span>
+          <span class="mode-card-kicker">Banyak file</span>
+          <h2>Proses massal (batch)</h2>
+          <p>Unggah banyak file sekaligus. Dikelompokkan per format, pilih file yang benar-benar diproses, hapus raw tag
+            per file, unduh hasil sebagai ZIP + laporan JSON/CSV.</p>
+          <span class="mode-card-meta">Video 10 · Audio 20 · Gambar/PDF 50 · Total maks. 2 GB</span>
+          <span class="mode-card-cta">Buka Mode batch
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m0 0-6-6m6 6-6 6"/></svg>
+          </span>
+        </a>
       </div>
     </section>
 
@@ -219,7 +159,7 @@
   "@type": "WebApplication",
   "name": "Meinsert",
   "url": "https://mifada2543.github.io/Meinsert/",
-  "description": "Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.",
+  "description": "Baca & tulis metadata gambar, audio, video, PDF langsung di browser. Satu file atau batch. 100% lokal, file tidak pernah keluar perangkat.",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "All",
   "browserRequirements": "Requires JavaScript. Works offline.",

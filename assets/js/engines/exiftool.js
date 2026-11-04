@@ -1,4 +1,4 @@
-import { parseMetadata, writeMetadata } from '../../vendor/exiftool-wasm/index.js';
+import { parseMetadata, writeMetadata, dispose as disposeExifTool } from '../../vendor/exiftool-wasm/index.js';
 import { AppError } from '../core/errors.js';
 
 function jsonTransform(text) {
@@ -38,4 +38,12 @@ export async function writeTags(file, tags) {
     throw new AppError(code, 'Metadata tidak dapat ditulis ke file ini.', detail);
   }
   return new Uint8Array(result.data);
+}
+
+export async function disposeExifToolRuntime() {
+  try {
+    await disposeExifTool();
+  } catch {
+    // Dispose is best-effort; worker termination is the final guarantee.
+  }
 }

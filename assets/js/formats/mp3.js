@@ -109,10 +109,18 @@ export async function read(file) {
       unknownFrames: Object.keys(tags.raw || {}).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_FRAMES.has(id)),
     };
     const raw = Object.entries(tags.raw || {})
-      .filter(([, value]) => value != null && !(value instanceof Uint8Array))
-      .map(([tag, value]) => ({ group: 'ID3', tag, value: rawValue(value) }))
-      .filter((row) => row.value)
-      .slice(0, 200);
+      .flatMap(([tag, value]) => {
+        if (value == null || value instanceof Uint8Array) return [];
+        if (tag === 'TXXX' && value && typeof value === 'object') {
+          return Object.entries(value).map(([description, itemValue]) => ({
+            group: 'ID3',
+            tag: `TXXX:${description}`,
+            value: rawValue(itemValue),
+          }));
+        }
+        return [{ group: 'ID3', tag, value: rawValue(value) }];
+      })
+      .filter((row) => row.value);
     return {
       fields: tagsToFields(tags),
       custom: customTags(tags),
@@ -131,6 +139,34 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const { ID3Writer } = await import('../../vendor/browser-id3-writer.mjs');
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
+  const FRAME_FIELDS = {
+    TIT2: 'title',
+    TPE1: 'artist',
+    TALB: 'album',
+    TPE2: 'albumArtist',
+    TYER: 'year',
+    TDRC: 'year',
+    TCON: 'genre',
+    TRCK: 'track',
+    TPOS: 'disc',
+    TCOM: 'composer',
+    COMM: 'comment',
+    USLT: 'lyrics',
+    TCOP: 'copyright',
+    TSSE: 'software',
+  };
+  const rawRemove = (payload?.rawRemove || []).map((item) => asString(item).trim()).filter(Boolean);
+  const removeCover = rawRemove.includes('APIC');
+  const rawCustomRemove = new Set(payload?.customRemove || []);
+  for (const item of rawRemove) {
+    if (item.startsWith('TXXX:')) {
+      const key = item.slice(5).trim();
+      if (key) rawCustomRemove.add(key);
+      continue;
+    }
+    const field = FRAME_FIELDS[item];
+    if (field) remove.add(field);
+  }
 
   report({ stage: 'Membaca tag ID3 lama…', pct: 15 });
   let tags;
@@ -183,7 +219,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
   str('software', 'TSSE');
 
   // Thumbnail / cover art: keep, replace, or remove the embedded image.
-  const coverAction = payload?.cover?.action || 'keep';
+  const coverAction = removeCover ? 'remove' : (payload?.cover?.action || 'keep');
   const writeCover = (imgData, name, kind) => {
     writer.setFrame('APIC', {
       description: name || 'cover',
@@ -204,7 +240,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
 
   const custom = [...(payload?.custom || [])];
-  const removedCustom = new Set(payload?.customRemove || []);
+  const removedCustom = rawCustomRemove;
   // Keep TXXX keys that were not explicitly removed and not replaced by the form.
   const existingCustom = customTags(tags);
   const customMap = new Map(existingCustom.map((item) => [item.key, item.value]));

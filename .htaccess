@@ -1,7 +1,9 @@
 # Meinsert is a static, no-build app. These MIME types keep ES modules and
 # WebAssembly working when served by Apache/XAMPP.
-AddType text/javascript .mjs
+AddType text/javascript .js .mjs
 AddType application/wasm .wasm
+AddType application/manifest+json .webmanifest
+AddType application/json .json
 AddType font/woff2 .woff2
 AddType application/pdf .pdf
 AddType image/jpeg .jpg .jpeg
@@ -21,7 +23,7 @@ AddDefaultCharset UTF-8
 
 # Never let a browser cache an old build of the app shell.
 <IfModule mod_headers.c>
-  <FilesMatch "\.(html|js|mjs|css)$">
+  <FilesMatch "\.(html|js|mjs|css|json)$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
   # Fonts and brand icons are content-stable assets; cache them aggressively.

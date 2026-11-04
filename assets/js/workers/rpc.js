@@ -4,8 +4,19 @@ export function runWorker(adapters) {
   self.onmessage = async (event) => {
     const message = event.data || {};
     const { id, action, format, file, payload, options } = message;
-    const adapter = adapters[format];
     const post = (data) => self.postMessage({ id, ...data });
+    if (action === 'dispose') {
+      try {
+        await Promise.all(Object.values(adapters).map((item) => (
+          item && typeof item.dispose === 'function' ? item.dispose() : undefined
+        )));
+        post({ type: 'result', result: { ok: true } });
+      } catch (error) {
+        post({ type: 'error', error: serializeError(error) });
+      }
+      return;
+    }
+    const adapter = adapters[format];
     if (!adapter) {
       post({ type: 'error', error: { code: 'UNSUPPORTED', message: `Format ${format} tidak dikenali.` } });
       return;

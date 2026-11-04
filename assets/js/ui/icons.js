@@ -19,6 +19,7 @@ const paths = {
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14-4L4 9m0 0V4m0 5h5"/><path d="M4 13a8 8 0 0 0 14 4l2-2m0 0v5m0-5h-5"/>',
+  chevron: '<path d="m9 6 6 6-6 6"/>',
   lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
   spark: '<path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7Z"/><path d="M19 16v4m-2-2h4"/>',
 };
