@@ -1,5 +1,5 @@
 /* Meinsert service worker: precaches the full static app so it works offline. */
-const CACHE_VERSION = 'meinsert-v12';
+const CACHE_VERSION = 'meinsert-v13';
 const PRECACHE_URLS = [
   './',
   './index.html',
