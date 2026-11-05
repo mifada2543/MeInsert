@@ -265,13 +265,31 @@ export function renderFileCard(container, {
     frame.append(el('div', { className: 'preview-icon' }, icon(kind === 'pdf' ? 'pdf' : 'file')));
   }
 
+  const toggleButton = onToggleMinimize
+    ? el('button', {
+        className: 'preview-toggle',
+        type: 'button',
+        'aria-expanded': String(!minimized),
+        'aria-controls': 'previewFrame',
+        'aria-label': minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau',
+        title: minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau',
+        on: { click: onToggleMinimize },
+      },
+        el('span', { className: 'preview-toggle-icon' }, icon(minimized ? 'expand' : 'minimize')),
+        el('span', { className: 'preview-toggle-label', textContent: minimized ? 'Tampilkan' : 'Kecilkan' }),
+      )
+    : null;
+
   const infoBlock = el('div', { className: 'file-info' },
     el('div', { className: 'file-kind' },
       el('span', { className: 'file-badge' },
         el('span', { className: 'chip-dot ' + (detection?.id === 'pdf' ? 'pdf' : detection?.id === 'image' ? 'image' : detection?.id === 'mp4' || detection?.id === 'mkv' ? 'video' : 'audio') }),
         detection?.label || 'File',
       ),
-      el('span', { className: 'file-local' }, 'lokal'),
+      el('span', { className: 'file-kind-aside' },
+        el('span', { className: 'file-local' }, 'lokal'),
+        toggleButton,
+      ),
     ),
     el('h2', { className: 'file-name', title: file.name, textContent: file.name }),
     el('p', { className: 'file-sub', textContent: `${detection?.mime || file.type || 'application/octet-stream'} · ${formatBytes(file.size)}` }),
@@ -299,19 +317,4 @@ export function renderFileCard(container, {
   }
 
   container.append(frame, infoBlock);
-
-  if (onToggleMinimize) {
-    container.append(el('button', {
-      className: 'preview-toggle',
-      type: 'button',
-      'aria-expanded': String(!minimized),
-      'aria-controls': 'previewFrame',
-      'aria-label': minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau',
-      title: minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau',
-      on: { click: onToggleMinimize },
-    },
-      el('span', { className: 'preview-toggle-icon' }, icon(minimized ? 'expand' : 'minimize')),
-      el('span', { className: 'preview-toggle-label', textContent: minimized ? 'Tampilkan' : 'Kecilkan' }),
-    ));
-  }
 }

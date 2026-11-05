@@ -108,6 +108,61 @@ try {
   console.log('offlineSingleLink', await page.locator('.header-link[data-nav="single"]').count());
   await context.setOffline(false);
 
+  // Mobile pass: bottom glass nav, sticky preview, no horizontal overflow.
+  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const mobilePage = await mobileContext.newPage();
+  try {
+    await mobilePage.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    const navStyles = await mobilePage.evaluate(() => {
+      const nav = document.querySelector('.header-nav');
+      const cs = getComputedStyle(nav);
+      const rect = nav.getBoundingClientRect();
+      return {
+        position: cs.position,
+        bottom: cs.bottom,
+        rectTop: Math.round(rect.top),
+        height: Math.round(rect.height),
+        ariaCurrent: nav.querySelector('[aria-current]')?.getAttribute('aria-current') || null,
+        scrollWidth: document.documentElement.scrollWidth,
+        innerWidth: window.innerWidth,
+      };
+    });
+    console.log('mobileNav', JSON.stringify(navStyles));
+    if (navStyles.position !== 'fixed') throw new Error('Bottom nav should be position:fixed on mobile');
+    if (navStyles.scrollWidth !== navStyles.innerWidth) throw new Error('Horizontal overflow on single.html (mobile)');
+
+    const mobileSampleDir = mkdtempSync(join(tmpdir(), 'meinsert-e2e-mobile-'));
+    const mobileSample = join(mobileSampleDir, 'icon-512.png');
+    copyFileSync(join(root, 'assets/img/icon-512.png'), mobileSample);
+    await mobilePage.locator('#fileInput').setInputFiles(mobileSample);
+    await mobilePage.waitForFunction(() => /tag terbaca|gagal|Gagal/.test(document.querySelector('#readStatus')?.textContent || ''), null, { timeout: 60000 });
+    await mobilePage.waitForFunction(() => {
+      const img = document.querySelector('#previewFrame img');
+      return !img || (img.complete && img.naturalWidth > 0);
+    }, null, { timeout: 30000 });
+    await mobilePage.waitForTimeout(250);
+    const frameProbe = await mobilePage.evaluate(() => {
+      const frame = document.querySelector('#previewFrame');
+      const rect = frame?.getBoundingClientRect();
+      return rect ? { width: Math.round(rect.width), height: Math.round(rect.height) } : null;
+    });
+    console.log('mobileFrameSquare', JSON.stringify(frameProbe));
+    if (!frameProbe || Math.abs(frameProbe.width / frameProbe.height - 1) > 0.05) {
+      throw new Error(`Expected near-square preview frame, got ${JSON.stringify(frameProbe)}`);
+    }
+    await mobilePage.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await mobilePage.waitForTimeout(400);
+    const pinned = await mobilePage.evaluate(() => document.querySelector('#previewDock')?.classList.contains('is-pinned'));
+    console.log('mobileDockPinned', pinned);
+    await mobilePage.locator('.header-link[data-nav="batch"]').click();
+    await mobilePage.waitForLoadState('domcontentloaded');
+    console.log('mobileBatchNav', mobilePage.url().endsWith('batch.html'));
+    const batchScroll = await mobilePage.evaluate(() => document.documentElement.scrollWidth);
+    console.log('mobileBatchOverflow', batchScroll !== 390);
+  } finally {
+    await mobileContext.close();
+  }
+
   if (errors.length) {
     throw new Error(`Page errors:\n${errors.join('\n')}`);
   }
