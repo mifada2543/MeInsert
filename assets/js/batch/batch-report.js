@@ -2,12 +2,10 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { categoryLabel } from './batch-limits.js';
-
 function csvEscape(value) {
   const text = String(value ?? '');
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
-
 function operationsOf(item) {
   const ops = item?.operations || {};
   return {
@@ -17,7 +15,6 @@ function operationsOf(item) {
     custom: ops.custom || 0,
   };
 }
-
 export function makeReport(items) {
   const safeItems = items || [];
   const summary = {
@@ -56,11 +53,9 @@ export function makeReport(items) {
   });
   return { ...summary, files };
 }
-
 export function makeJsonReport(items) {
   return JSON.stringify(makeReport(items), null, 2);
 }
-
 export function makeCsvReport(items) {
   const rows = [
     ['Nama file', 'Kategori', 'Format', 'Subtype', 'Ukuran (byte)', 'Durasi (detik)', 'Status', 'Alasan dilewati', 'Jumlah tag', 'Ubah', 'Hapus', 'Hapus tag mentah', 'Warning', 'Error', 'Nama hasil'],

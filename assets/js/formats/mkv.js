@@ -4,7 +4,6 @@
 import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags, applyCoverImages, mimeOf, scrubPrimaryCoverRaw } from '../core/image-utils.js';
-
 export const meta = {
   id: 'mkv',
   engine: 'media',
@@ -14,7 +13,6 @@ export const meta = {
   mime: 'video/x-matroska',
   cover: true,
 };
-
 export const sections = [
   {
     id: 'umum',
@@ -22,7 +20,6 @@ export const sections = [
     description: 'Container ditulis ulang tanpa transcode. Chapter/attachment mungkin tidak dipertahankan.',
   },
 ];
-
 export const fields = [
   { id: 'title', section: 'umum', label: 'Judul', type: 'text', native: 'TITLE', placeholder: 'Judul video', maxLength: 256 },
   { id: 'artist', section: 'umum', label: 'Artis / pembuat', type: 'text', native: 'ARTIST', placeholder: 'Nama pembuat', maxLength: 200 },
@@ -34,12 +31,10 @@ export const fields = [
   { id: 'copyright', section: 'umum', label: 'Hak cipta', type: 'text', native: 'COPYRIGHT', placeholder: '© 2026 Nama Anda', maxLength: 300 },
   { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'ENCODER', placeholder: 'MeInsert', maxLength: 200 },
 ];
-
 const KNOWN_RAW = new Set([
   'TITLE', 'ARTIST', 'ALBUM', 'DATE_RELEASED', 'DATE', 'GENRE', 'DESCRIPTION',
   'COMMENT', 'COPYRIGHT', 'ENCODER', 'ENCODER_SETTINGS', 'BPS', 'DURATION',
 ]);
-
 function toFields(tags) {
   const raw = tags.raw || {};
   return {
@@ -54,24 +49,20 @@ function toFields(tags) {
     software: asString(raw.ENCODER),
   };
 }
-
 function customFrom(tags) {
   return Object.entries(tags.raw || {})
     .filter(([key]) => !KNOWN_RAW.has(key))
     .map(([key, value]) => ({ key, value: asString(value), originalKey: key }));
 }
-
 function rawRows(tags) {
   return Object.entries(tags.raw || {})
     .filter(([, value]) => value != null && !(value instanceof Uint8Array))
     .map(([tag, value]) => ({ group: 'Matroska', tag, value: rawValue(value) }))
     .filter((row) => row.value);
 }
-
 async function mediaLib() {
   return import('../../vendor/mediabunny.mjs');
 }
-
 export async function read(file) {
   const { Input, ALL_FORMATS, BlobSource } = await mediaLib();
   try {
@@ -100,7 +91,6 @@ export async function read(file) {
     throw new AppError('READ_FAILED', 'File MKV/WebM tidak bisa dibaca.', error.message || String(error));
   }
 }
-
 export async function write(file, payload, options = {}, report = () => {}) {
   const {
     Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion,
@@ -108,7 +98,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } = await mediaLib();
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
-
   report({ stage: 'Membaca tag Matroska lama…', pct: 12 });
   let input;
   let tags;
@@ -118,7 +107,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } catch (error) {
     throw new AppError('READ_FAILED', 'Tag Matroska lama tidak bisa dibaca.', error.message || String(error));
   }
-
   const merged = { ...tags, raw: { ...(tags.raw || {}) } };
   const raw = merged.raw;
   const assign = (id, value) => {
@@ -129,7 +117,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     if (value === '' || value === undefined || value === null) delete raw[key];
     else raw[key] = value;
   };
-
   for (const [id, value] of Object.entries(set)) {
     switch (id) {
       case 'title': merged.title = asString(value); assignRaw('TITLE', asString(value)); break;
@@ -185,7 +172,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     scrubPrimaryCoverRaw(merged.raw, merged.images);
     merged.images = applyCoverImages(merged.images, payload.cover);
   }
-
   const format = options.subtype === 'webm' ? new WebMOutputFormat() : new MkvOutputFormat();
   const output = new Output({ format, target: new BufferTarget() });
   let conversion;
@@ -212,7 +198,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Gagal menulis MKV/WebM.', error.message || String(error));
   }
-
   const bytes = new Uint8Array(output.target.buffer);
   const mime = options.mime || (options.subtype === 'webm' ? 'video/webm' : 'video/x-matroska');
   const extension = options.subtype === 'webm' ? 'webm' : 'mkv';
@@ -238,5 +223,4 @@ export async function write(file, payload, options = {}, report = () => {}) {
     return { blob, fields: {}, custom: [], raw: [], info: {}, warnings: [`File sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`] };
   }
 }
-
 export default { meta, sections, fields, read, write };

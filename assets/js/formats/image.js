@@ -13,7 +13,6 @@ import {
   toIsoDate,
 } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
-
 export const meta = {
   id: 'image',
   engine: 'exiftool',
@@ -22,11 +21,9 @@ export const meta = {
   extensions: ['jpg', 'jpeg', 'png', 'webp', 'tif', 'tiff'],
   mime: 'image/*',
 };
-
 function xmpCamera(subtype) {
   return subtype === 'png' || subtype === 'webp';
 }
-
 export function sectionsFor(subtype) {
   const base = [
     {
@@ -44,7 +41,6 @@ export function sectionsFor(subtype) {
   });
   return base;
 }
-
 export function fieldsFor(subtype) {
   const common = [
     { id: 'title', section: 'umum', label: 'Judul', type: 'text', native: 'XMP-dc:Title', placeholder: 'Contoh: Sunset di Pantai Kuta', maxLength: 256 },
@@ -75,11 +71,8 @@ export function fieldsFor(subtype) {
   ];
   return [...withComment, ...camera];
 }
-
-// Legacy exports for registry
 export const sections = sectionsFor('jpeg');
 export const fields = fieldsFor('jpeg');
-
 const READ_MAP = {
   title: ['XMP-dc:Title'],
   creator: ['XMP-dc:Creator', 'EXIF:Artist', 'IPTC:By-line', 'IFD0:Artist'],
@@ -94,26 +87,22 @@ const READ_MAP = {
   lens: ['EXIF:LensModel', 'ExifIFD:LensModel', 'XMP-aux:Lens'],
   dateTaken: ['EXIF:DateTimeOriginal', 'ExifIFD:DateTimeOriginal', 'XMP-exif:DateTimeOriginal'],
 };
-
 const CAMERA_XMP_READ = {
   make: ['XMP-tiff:Make', 'EXIF:Make', 'IFD0:Make'],
   model: ['XMP-tiff:Model', 'EXIF:Model', 'IFD0:Model'],
   lens: ['XMP-aux:Lens', 'EXIF:LensModel', 'ExifIFD:LensModel'],
   dateTaken: ['XMP-exif:DateTimeOriginal', 'EXIF:DateTimeOriginal', 'ExifIFD:DateTimeOriginal'],
 };
-
 function supportedFields(subtype) {
   const fields = ['title', 'creator', 'description', 'keywords', 'rights', 'date', 'software'];
   if (subtype !== 'png' && subtype !== 'webp') fields.push('comment');
   fields.push('make', 'model', 'lens', 'dateTaken');
   return new Set(fields);
 }
-
 function withSafeName(file, extension) {
   const ext = extension || 'jpg';
   return new File([file], `input.${ext}`, { type: file.type || meta.mime });
 }
-
 export function mapTags(tags, subtype) {
   const supported = supportedFields(subtype);
   const out = {};
@@ -127,7 +116,6 @@ export function mapTags(tags, subtype) {
   }
   return out;
 }
-
 export function describeFile(tags) {
   return {
     format: asString(tags['File:FileType']),
@@ -136,9 +124,7 @@ export function describeFile(tags) {
     kind: 'image',
   };
 }
-
 const RAW_GROUPS = /^(XMP|EXIF|IFD0|ExifIFD|IPTC|ICC_Profile|PNG|RIFF|Photoshop)/i;
-
 export function collectRaw(tags) {
   const rows = [];
   for (const [key, value] of Object.entries(tags)) {
@@ -150,7 +136,6 @@ export function collectRaw(tags) {
   }
   return rows.sort((a, b) => a.tag.localeCompare(b.tag));
 }
-
 export function buildTagMap(payload, subtype) {
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
@@ -159,7 +144,6 @@ export function buildTagMap(payload, subtype) {
     if (value !== undefined) tags[key] = value;
   };
   const clear = (keys) => keys.forEach((key) => add(key, ''));
-
   const xmp = xmpCamera(subtype);
   const map = {
     title: ['XMP-dc:Title'],
@@ -175,7 +159,6 @@ export function buildTagMap(payload, subtype) {
     lens: [xmp ? 'XMP-aux:Lens' : 'EXIF:LensModel'],
     dateTaken: [xmp ? 'XMP-exif:DateTimeOriginal' : 'EXIF:DateTimeOriginal'],
   };
-
   const supported = supportedFields(subtype);
   for (const [id, keys] of Object.entries(map)) {
     if (!supported.has(id)) continue;
@@ -200,8 +183,6 @@ export function buildTagMap(payload, subtype) {
       if (keys[1]) add(keys[1], asString(value));
     }
   }
-
-  // IPTC improves compatibility for JPEG/TIFF, but is non-standard in PNG.
   if (subtype === 'jpeg' || subtype === 'tiff') {
     if (remove.has('keywords')) add('IPTC:Keywords', '');
     else if ('keywords' in set) add('IPTC:Keywords', asArray(set.keywords));
@@ -212,7 +193,6 @@ export function buildTagMap(payload, subtype) {
     if (remove.has('rights')) add('IPTC:CopyrightNotice', '');
     else if ('rights' in set) add('IPTC:CopyrightNotice', asString(set.rights));
   }
-
   for (const item of payload?.custom || []) {
     const key = asString(item?.key).trim();
     if (!key) continue;
@@ -226,7 +206,6 @@ export function buildTagMap(payload, subtype) {
   }
   return tags;
 }
-
 export async function read(file, options = {}) {
   const { readTags } = await import('../engines/exiftool.js');
   const safeFile = withSafeName(file, options.extension);
@@ -238,7 +217,6 @@ export async function read(file, options = {}) {
     warnings: [],
   };
 }
-
 export async function write(file, payload, options = {}, report = () => {}) {
   const { writeTags, readTags } = await import('../engines/exiftool.js');
   const safeFile = withSafeName(file, options.extension);
@@ -246,7 +224,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   if (!Object.keys(tags).length) {
     throw new AppError('NO_CHANGES', 'Tidak ada metadata yang perlu ditulis.');
   }
-
   report({ stage: 'Menulis metadata ke gambar…', pct: 35 });
   let bytes;
   try {
@@ -254,14 +231,12 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Gagal menulis metadata gambar.', error.message || String(error));
   }
-
   report({ stage: 'Memverifikasi hasil…', pct: 78 });
   const blob = new Blob([bytes], { type: options.mime || file.type || 'application/octet-stream' });
   const outputFile = new File([bytes], `output.${options.extension || 'jpg'}`, { type: blob.type });
   const tagsAfter = await readTags(outputFile);
   const after = mapTags(tagsAfter, options.subtype);
   const warnings = verify(payload, after, options.subtype);
-
   return {
     blob,
     fields: after,
@@ -270,7 +245,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     warnings,
   };
 }
-
 function verify(payload, after, subtype) {
   const warnings = [];
   const supported = supportedFields(subtype);
@@ -289,10 +263,8 @@ function verify(payload, after, subtype) {
   }
   return warnings;
 }
-
 async function dispose() {
   const { disposeExifToolRuntime } = await import('../engines/exiftool.js');
   await disposeExifToolRuntime();
 }
-
 export default { meta, sections, fields, sectionsFor, fieldsFor, read, write, dispose };

@@ -6,7 +6,6 @@ const WORKER_URLS = {
   media: new URL('../workers/media.worker.js', import.meta.url),
   pdf: new URL('../workers/pdf.worker.js', import.meta.url),
 };
-
 class EngineWorker {
   constructor(url) {
     this.url = url;
@@ -15,7 +14,6 @@ class EngineWorker {
     this.sequence = 0;
     this.onActivity = () => {};
   }
-
   ensure() {
     if (this.worker) return this.worker;
     const worker = new Worker(this.url, { type: 'module', name: `meinsert-${this.url.pathname.split('/').pop()}` });
@@ -58,7 +56,6 @@ class EngineWorker {
     this.worker = worker;
     return worker;
   }
-
   request(message, onProgress) {
     const worker = this.ensure();
     const id = ++this.sequence;
@@ -67,7 +64,6 @@ class EngineWorker {
       worker.postMessage({ id, ...message });
     });
   }
-
   terminate() {
     if (this.worker) {
       this.worker.terminate();
@@ -81,14 +77,12 @@ class EngineWorker {
     this.pending.clear();
   }
 }
-
 export class MetadataClient {
   constructor({ idleTimeout = 8 * 60 * 1000 } = {}) {
     this.workers = new Map();
     this.idleTimeout = idleTimeout;
     this.idleTimer = null;
   }
-
   workerFor(engine) {
     const url = WORKER_URLS[engine];
     if (!url) throw new Error(`Mesin ${engine} tidak tersedia.`);
@@ -99,7 +93,6 @@ export class MetadataClient {
     }
     return this.workers.get(engine);
   }
-
   noteActivity() {
     if (this.idleTimer) clearTimeout(this.idleTimer);
     if (!this.idleTimeout || this.idleTimeout <= 0) return;
@@ -113,47 +106,39 @@ export class MetadataClient {
       this.disposeAllSync();
     }, this.idleTimeout);
   }
-
   read(engine, format, file, options, onProgress) {
     return this.workerFor(engine).request({ action: 'read', format, file, options }, onProgress);
   }
-
   write(engine, format, file, payload, options, onProgress) {
     return this.workerFor(engine).request({ action: 'write', format, file, payload, options }, onProgress);
   }
-
   cancel(engine) {
     this.workers.get(engine)?.terminate();
     this.workers.delete(engine);
   }
-
   async disposeEngine(engine) {
     const entry = this.workers.get(engine);
     if (!entry) return;
     try {
       await entry.request({ action: 'dispose' });
     } catch {
-      // A busy or crashed worker is still safe to terminate.
     } finally {
       entry.terminate();
       this.workers.delete(engine);
     }
   }
-
   async disposeAll() {
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.idleTimer = null;
     const engines = [...this.workers.keys()];
     await Promise.all(engines.map((engine) => this.disposeEngine(engine)));
   }
-
   disposeAllSync() {
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.idleTimer = null;
     for (const worker of this.workers.values()) worker.terminate();
     this.workers.clear();
   }
-
   dispose() {
     this.disposeAllSync();
   }

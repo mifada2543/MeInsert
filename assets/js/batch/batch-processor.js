@@ -5,19 +5,16 @@ import { detectFile } from '../core/detector.js';
 import { adapterForDetection } from '../core/registry.js';
 import { applyDurationLimits, categoryForDetection, validateSelection } from './batch-limits.js';
 import { uniqueOutputName } from './batch-zip.js';
-
 export class BatchProcessor {
   constructor(client) {
     this.client = client;
     this.cancelRequested = false;
     this.activeEngine = null;
   }
-
   cancel() {
     this.cancelRequested = true;
     if (this.activeEngine) this.client.cancel(this.activeEngine);
   }
-
   async prepare(file, index) {
     const detection = await detectFile(file);
     if (!detection) return null;
@@ -43,7 +40,6 @@ export class BatchProcessor {
       outputName: '',
     };
   }
-
   async scan(items, onUpdate) {
     for (const item of items) {
       if (this.cancelRequested) {
@@ -94,7 +90,6 @@ export class BatchProcessor {
     }
     await this.client.disposeAll();
   }
-
   async apply(items, buildPayload, onUpdate) {
     this.cancelRequested = false;
     const selection = validateSelection(items);
@@ -163,7 +158,6 @@ export class BatchProcessor {
     await this.client.disposeAll();
     return { ok: true, processed };
   }
-
   async readItem(item, onProgress) {
     const { adapter, detection, file } = item;
     if (!adapter) throw new Error(`Format ${detection?.label || 'ini'} belum didukung.`);
@@ -180,7 +174,6 @@ export class BatchProcessor {
       this.activeEngine = null;
     }
   }
-
   async writeItem(item, payload, outputName, onProgress) {
     const { adapter, detection, file } = item;
     if (!adapter) throw new Error(`Format ${detection?.label || 'ini'} belum didukung.`);
@@ -205,7 +198,6 @@ export class BatchProcessor {
       this.activeEngine = null;
     }
   }
-
   verifyRawRemoval(item, result, warnings) {
     const after = Array.isArray(result?.raw) ? result.raw : [];
     if (!after.length || !item.removeRaw?.size) return;

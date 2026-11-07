@@ -3,9 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { el } from './dom.js';
 import { icon } from './icons.js';
-
 const region = document.getElementById('toastRegion');
-
 export function showToast(message, type = 'info', timeout = 4200) {
   if (!region) return;
   const toast = el('div', { className: `toast is-${type}`, role: 'status' },

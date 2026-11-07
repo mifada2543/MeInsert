@@ -11,7 +11,6 @@ import {
 } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags, mimeOf } from '../core/image-utils.js';
-
 export const meta = {
   id: 'mp4',
   engine: 'exiftool',
@@ -21,7 +20,6 @@ export const meta = {
   mime: 'video/mp4',
   cover: true,
 };
-
 export const sections = [
   {
     id: 'umum',
@@ -29,7 +27,6 @@ export const sections = [
     description: 'Ditulis ke iTunes ItemList dan XMP agar terbaca di pemutar umum.',
   },
 ];
-
 export const fields = [
   {
     id: 'title',
@@ -111,7 +108,6 @@ export const fields = [
     maxLength: 200,
   },
 ];
-
 const READ_MAP = {
   title: ['ItemList:Title', 'XMP-dc:Title'],
   artist: ['ItemList:Artist', 'XMP-tiff:Artist'],
@@ -123,7 +119,6 @@ const READ_MAP = {
   copyright: ['ItemList:Copyright', 'XMP-tiff:Copyright'],
   software: ['XMP-tiff:Software', 'QuickTime:Software'],
 };
-
 const WRITE_MAP = {
   title: 'Title',
   artist: 'Artist',
@@ -135,11 +130,9 @@ const WRITE_MAP = {
   copyright: 'Copyright',
   software: 'Software',
 };
-
 function safeName(file, extension) {
   return new File([file], `input.${extension || 'mp4'}`, { type: file.type || meta.mime });
 }
-
 export function mapTags(tags) {
   const out = {};
   for (const [id, keys] of Object.entries(READ_MAP)) {
@@ -148,7 +141,6 @@ export function mapTags(tags) {
   }
   return out;
 }
-
 export function describeFile(tags) {
   return {
     format: asString(tags['File:FileType']),
@@ -158,7 +150,6 @@ export function describeFile(tags) {
     kind: 'video',
   };
 }
-
 export function collectRaw(tags) {
   const rows = [];
   for (const [key, value] of Object.entries(tags)) {
@@ -169,7 +160,6 @@ export function collectRaw(tags) {
   }
   return rows.sort((a, b) => a.tag.localeCompare(b.tag));
 }
-
 export async function read(file, options = {}) {
   const { readTags } = await import('../engines/exiftool.js');
   const tags = await readTags(safeName(file, options.extension));
@@ -181,7 +171,6 @@ export async function read(file, options = {}) {
     const seconds = await input.computeDuration();
     if (Number.isFinite(seconds) && seconds > 0) duration = seconds;
   } catch {
-    // Keep the ExifTool duration string if Mediabunny cannot probe the file.
   }
   const hasCoverArt = raw.some((row) => /CoverArt/i.test(row.tag)) || Boolean(tags['ItemList:CoverArt']);
   let cover = null;
@@ -193,7 +182,6 @@ export async function read(file, options = {}) {
       const coverTags = await probe.getMetadataTags();
       ({ cover, coverBytes } = coverFromTags(coverTags));
     } catch {
-      // MP4 cover can be present without a readable MIME; show it as a placeholder.
       cover = { mimeType: 'image/jpeg', kind: 'coverFront', name: 'cover', size: 0 };
       coverBytes = null;
     }
@@ -209,7 +197,6 @@ export async function read(file, options = {}) {
     warnings: [],
   };
 }
-
 export async function write(file, payload, options = {}, report = () => {}) {
   const { writeTags, readTags } = await import('../engines/exiftool.js');
   const tags = {};
@@ -241,7 +228,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   if (!Object.keys(tags).length) {
     throw new AppError('NO_CHANGES', 'Tidak ada metadata yang perlu ditulis.');
   }
-
   report({ stage: 'Menulis metadata ke media…', pct: 35 });
   let bytes;
   try {
@@ -249,7 +235,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Gagal menulis metadata MP4.', error.message || String(error));
   }
-
   report({ stage: 'Memverifikasi hasil…', pct: 78 });
   const blob = new Blob([bytes], { type: options.mime || file.type || 'video/mp4' });
   const output = new File([bytes], `output.${options.extension || 'mp4'}`, { type: blob.type });
@@ -269,10 +254,8 @@ export async function write(file, payload, options = {}, report = () => {}) {
     warnings,
   };
 }
-
 async function dispose() {
   const { disposeExifToolRuntime } = await import('../engines/exiftool.js');
   await disposeExifToolRuntime();
 }
-
 export default { meta, sections, fields, read, write, dispose };

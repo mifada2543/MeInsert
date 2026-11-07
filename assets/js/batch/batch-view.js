@@ -20,26 +20,21 @@ import { showToast } from '../ui/toast.js';
 import { previewKind } from '../ui/file-card.js';
 import { asArray, asString, fileBaseName, fileExtension, safeOutputName } from '../core/tag-utils.js';
 import { STANDARD_FIELDS, crossFormatPatch } from '../core/format-map.js';
-
 const MP3_DELETABLE_FRAMES = new Set([
   'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
   'TCOM', 'COMM', 'USLT', 'TCOP', 'TSSE',
 ]);
-
 const RAW_LOCKED = [
   { pattern: /^QuickTime:(Duration|ImageWidth|ImageHeight|CreateDate|ModifyDate)$/i, reason: 'Tag turunan QuickTime; tidak bisa dihapus selektif.' },
   { pattern: /^(File|SourceFile|FileType|Directory|FileName|FileSize)/i, reason: 'Tag berasal dari filesystem; bukan metadata file.' },
   { pattern: /^vendor$/i, reason: 'Vendor encoder tidak bisa dihapus selektif.' },
 ];
-
 function isSelectedItem(item) {
   return Boolean(item?.included) && !item?.excluded;
 }
-
 function groupKey(item) {
   return `${item.detection?.id || 'unknown'}:${item.detection?.subtype || 'unknown'}`;
 }
-
 function statusLabel(item) {
   switch (item?.status) {
     case 'queued': return 'Menunggu';
@@ -53,7 +48,6 @@ function statusLabel(item) {
     default: return 'Menunggu';
   }
 }
-
 function statusClass(item) {
   const status = item?.status || 'queued';
   if (status === 'skipped' || status === 'cancelled') return 'is-skipped';
@@ -61,7 +55,6 @@ function statusClass(item) {
   if (status === 'done' || status === 'ready') return 'is-ready';
   return 'is-busy';
 }
-
 function fileIconName(item) {
   const id = item?.detection?.id;
   if (id === 'image') return 'image';
@@ -70,16 +63,13 @@ function fileIconName(item) {
   if (id === 'mkv' || id === 'mp4') return 'video';
   return 'file';
 }
-
 function durationOf(item) {
   const value = Number(item?.readResult?.info?.duration);
   return Number.isFinite(value) && value > 0 ? value : null;
 }
-
 function tagCountOf(item) {
   return item?.readResult?.raw?.length || 0;
 }
-
 export class BatchController {
   constructor(client) {
     this.client = client;
@@ -108,7 +98,6 @@ export class BatchController {
       values: Object.fromEntries(STANDARD_FIELDS.map((field) => [field.id, ''])),
       remove: new Set(),
     };
-
     this.els = {
       landing: qs('#landing'),
       modeSingle: qs('#modeSingleBtn'),
@@ -150,7 +139,6 @@ export class BatchController {
     this.bind();
     this.setMode('single');
   }
-
   bind() {
     const { els } = this;
     els.modeSingle?.addEventListener('click', () => this.setMode('single'));
@@ -194,17 +182,14 @@ export class BatchController {
       this.client.disposeAllSync();
     });
   }
-
   busy() {
     return this.applying || this.scanning || this.adding;
   }
-
   setAddEnabled(enabled) {
     for (const tile of this.els.batchGroups.querySelectorAll('.batch-add-tile')) {
       tile.disabled = !enabled;
     }
   }
-
   bindDrop(card) {
     let depth = 0;
     const enter = (event) => { event.preventDefault(); depth += 1; card.classList.add('is-dragging'); };
@@ -224,7 +209,6 @@ export class BatchController {
       if (files.length) this.handleDropFiles(files);
     });
   }
-
   handleDropFiles(files) {
     if (this.applying || this.scanning || this.adding) {
       showToast('Tunggu proses selesai atau batalkan dulu.', 'info', 3200);
@@ -232,7 +216,6 @@ export class BatchController {
     }
     this.addFiles(files);
   }
-
   setMode(mode) {
     this.mode = mode;
     const batchEls = [this.els.modeSingle, this.els.modeBatch, this.els.dropCard, this.els.batchDropCard];
@@ -251,7 +234,6 @@ export class BatchController {
     this.els.dropCard.hidden = batch;
     this.els.batchDropCard.hidden = !batch;
   }
-
   async addFiles(files) {
     if (this.adding) return;
     if (this.applying || this.scanning) {
@@ -279,7 +261,6 @@ export class BatchController {
     this.adding = false;
     this.scanQueued();
   }
-
   initialLimitReason(candidate) {
     const totals = selectionTotals(this.items);
     const category = candidate.category;
@@ -292,7 +273,6 @@ export class BatchController {
     if (totals.bytes + candidate.file.size > totalLimit) return `Total ukuran batch melebihi ${formatLimitBytes(totalLimit)}.`;
     return '';
   }
-
   rebuildGroups() {
     const previous = new Map(this.groups.map((group) => [group.key, group]));
     const map = new Map();
@@ -331,11 +311,9 @@ export class BatchController {
     this.groups = [...map.values()].sort((a, b) => (order[a.detection?.id] ?? 9) - (order[b.detection?.id] ?? 9) || a.label.localeCompare(b.label));
     this.groupMap = map;
   }
-
   selectedItems() {
     return this.items.filter(isSelectedItem);
   }
-
   async scanQueued() {
     const queued = this.items.some((item) => item.status === 'queued');
     if (!queued) return;
@@ -359,24 +337,18 @@ export class BatchController {
     const failed = this.items.filter((item) => item.status === 'error').length;
     this.setStatus(`${ready} siap · ${failed} gagal`, failed > 0);
   }
-
   handleProgressOverall(items) {
     if (!items.length) return 0;
     const total = items.reduce((sum, item) => sum + (item.status === 'done' || item.status === 'ready' ? 1 : (Number(item.progress) || 0) / 100), 0);
     return Math.round((total / items.length) * 100);
   }
-
   updateItem(item) {
     if (!item) return;
-    // Worker progress can fire many times per second during container remux.
-    // Coalesce updates into one animation frame instead of rebuilding the
-    // summary, limits, group headers and apply-bar for every event.
     this.pendingUpdates.set(item.id, item);
     if (item.stage) this.latestStage = item.stage;
     if (this.updateFrame) return;
     this.updateFrame = requestAnimationFrame(() => this.flushItemUpdates());
   }
-
   flushItemUpdates() {
     this.updateFrame = 0;
     const pending = [...this.pendingUpdates.values()];
@@ -390,7 +362,6 @@ export class BatchController {
     this.setProgress(Math.round((done / Math.max(1, this.items.length)) * 100), this.latestStage || 'Memeriksa…');
     if (this.activeItemId && pending.some((item) => item.id === this.activeItemId)) this.renderDetail();
   }
-
   renderFull() {
     this.renderSummary();
     this.renderLimits();
@@ -398,7 +369,6 @@ export class BatchController {
     this.renderGroups();
     this.syncApply();
   }
-
   renderSummary() {
     clear(this.els.batchSummary);
     const totalBytes = this.items.reduce((sum, item) => sum + (Number(item.file?.size) || 0), 0);
@@ -419,7 +389,6 @@ export class BatchController {
       ));
     }
   }
-
   renderLimits() {
     clear(this.els.batchLimits);
     const rows = usageRows(this.items);
@@ -446,7 +415,6 @@ export class BatchController {
     }
     this.els.batchLimits.append(messages);
   }
-
   renderCrossForm() {
     const hasItems = this.items.length > 0;
     this.els.batchCross.hidden = !hasItems;
@@ -458,7 +426,6 @@ export class BatchController {
       this.els.batchCrossFields.append(this.renderBatchField(this.cross, field));
     }
   }
-
   crossPatchFor(item) {
     if (!this.crossEnabled) return { set: {}, remove: [] };
     const group = this.groupMap.get(item.groupKey);
@@ -470,7 +437,6 @@ export class BatchController {
       removed: [...this.cross.remove],
     });
   }
-
   renderGroups() {
     clear(this.els.batchGroups);
     for (const group of this.groups) {
@@ -512,7 +478,6 @@ export class BatchController {
       this.updateGroupHeader(group);
     }
   }
-
   renderRow(item) {
     const row = el('div', { className: `batch-file ${statusClass(item)}`, dataset: { itemId: item.id } });
     const checkbox = el('input', { type: 'checkbox', className: 'batch-file-checkbox', 'aria-label': `Sertakan ${item.file.name}` });
@@ -541,7 +506,6 @@ export class BatchController {
     row.append(el('label', { className: 'batch-file-check' }, checkbox), main, progress);
     return row;
   }
-
   metaLine(item) {
     const parts = [formatBytes(item.file.size), item.detection?.label || 'Tidak dikenal'];
     const duration = durationOf(item);
@@ -550,11 +514,9 @@ export class BatchController {
     if (item.skipReason && item.status !== 'done') parts.push(item.skipReason);
     return parts.join(' · ');
   }
-
   isLocked(item) {
     return Boolean(item?.limitLocked) || item?.status === 'error';
   }
-
   renderAddTile() {
     const tile = el('button', {
       className: 'batch-add-tile',
@@ -575,7 +537,6 @@ export class BatchController {
     });
     return tile;
   }
-
   renderGroupForm(group) {
     const form = el('div', { className: 'batch-group-form' });
     form.append(el('div', { className: 'batch-form-head' },
@@ -602,7 +563,6 @@ export class BatchController {
     form.append(grid);
     return form;
   }
-
   renderBatchField(group, field) {
     const wrapper = el('div', { className: `field batch-field ${field.type === 'textarea' || field.type === 'tags' ? 'is-full' : ''}`.trim(), dataset: { fieldId: field.id } });
     const inputId = `batch-${group.key.replace(/[^a-z0-9]/gi, '-')}-${field.id}`;
@@ -638,7 +598,6 @@ export class BatchController {
     } else if (field.type === 'date') input = el('input', { ...common, type: 'date' });
     else if (field.type === 'number') input = el('input', { ...common, type: 'number', inputmode: 'numeric' });
     else input = el('input', { ...common, type: 'text' });
-
     const syncDisabled = () => {
       const active = group.remove.has(field.id);
       removeToggle.classList.toggle('is-active', active);
@@ -657,12 +616,10 @@ export class BatchController {
     syncDisabled();
     return wrapper;
   }
-
   updateAllRows() {
     for (const item of this.items) this.updateRow(item);
     this.updateGroupHeaders();
   }
-
   updateRow(item) {
     const row = qs(`[data-item-id="${CSS.escape(item.id)}"]`, this.els.batchGroups);
     if (!row) return;
@@ -677,11 +634,9 @@ export class BatchController {
     row.querySelector('.batch-file-meta').textContent = this.metaLine(item);
     row.querySelector('.batch-file-progress span').style.width = `${item.progress || 0}%`;
   }
-
   updateGroupHeaders() {
     for (const group of this.groups) this.updateGroupHeader(group);
   }
-
   updateGroupHeader(group) {
     const section = qs(`[data-group-key="${CSS.escape(group.key)}"]`, this.els.batchGroups);
     if (!section) return;
@@ -696,7 +651,6 @@ export class BatchController {
       checkbox.indeterminate = checked > 0 && checked < selectable.length;
     }
   }
-
   operationCountFor(item) {
     const group = this.groupMap.get(item.groupKey);
     const setIds = new Set();
@@ -713,7 +667,6 @@ export class BatchController {
     for (const id of removeIds) setIds.delete(id);
     return setIds.size + removeIds.size + (item.removeRaw?.size || 0);
   }
-
   collectGroupPayload(item) {
     const group = this.groups.find((entry) => entry.key === item.groupKey);
     const set = {};
@@ -747,7 +700,6 @@ export class BatchController {
       hasOperations: operations.set + operations.remove + operations.rawRemove > 0,
     };
   }
-
   syncApply() {
     const selected = this.selectedItems();
     const validation = validateSelection(this.items);
@@ -765,35 +717,29 @@ export class BatchController {
     this.els.batchReportJsonBtn.disabled = noItems;
     this.els.batchReportCsvBtn.disabled = noItems;
   }
-
   setStatus(text, isError = false) {
     this.els.batchStatus.textContent = text || '';
     this.els.batchStatus.classList.toggle('is-error', isError);
   }
-
   showProgress(show) {
     this.els.batchProgress.hidden = !show;
   }
-
   setProgress(percent, label) {
     const pct = Math.max(0, Math.min(100, Number(percent) || 0));
     this.els.batchProgressBar.style.width = `${pct}%`;
     if (label) this.els.batchProgressLabel.textContent = label;
   }
-
   showBatchWorkspace() {
     this.els.landing.hidden = true;
     this.els.batchDetail.hidden = true;
     this.els.batchWorkspace.hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-
   showLanding() {
     this.els.landing.hidden = false;
     this.els.batchWorkspace.hidden = true;
     this.els.batchDetail.hidden = true;
   }
-
   resetBatch({ confirmIfBusy = false } = {}) {
     if (this.updateFrame) cancelAnimationFrame(this.updateFrame);
     this.updateFrame = 0;
@@ -831,7 +777,6 @@ export class BatchController {
     this.showLanding();
     this.setMode('single');
   }
-
   setApplyingUI(applying) {
     this.els.batchGroups.inert = applying;
     this.els.batchGroups.classList.toggle('is-disabled', applying);
@@ -839,7 +784,6 @@ export class BatchController {
     this.els.batchCross.classList.toggle('is-disabled', applying);
     this.setAddEnabled(!applying);
   }
-
   handleApplyClick() {
     if (this.applying) {
       this.processor.cancel();
@@ -848,7 +792,6 @@ export class BatchController {
     }
     this.apply();
   }
-
   async apply() {
     const selected = this.selectedItems();
     const validation = validateSelection(this.items);
@@ -894,7 +837,6 @@ export class BatchController {
     this.updateAllRows();
     this.syncApply();
   }
-
   downloadReport(kind) {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     if (kind === 'csv') {
@@ -903,7 +845,6 @@ export class BatchController {
     }
     downloadBlob(new Blob([makeJsonReport(this.items)], { type: 'application/json' }), `meinsert-laporan-${stamp}.json`);
   }
-
   async downloadZip() {
     const doneItems = this.items.filter((item) => item.outputFile);
     if (!doneItems.length) return;
@@ -935,7 +876,6 @@ export class BatchController {
       this.syncApply();
     }
   }
-
   openDetail(itemId, tab = 'summary') {
     this.activeItemId = itemId;
     this.detailTab = tab;
@@ -944,7 +884,6 @@ export class BatchController {
     this.renderDetail();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-
   closeDetail() {
     this.releasePreview();
     this.activeItemId = null;
@@ -953,7 +892,6 @@ export class BatchController {
     this.updateAllRows();
     this.syncApply();
   }
-
   setDetailTab(tab) {
     this.detailTab = tab;
     for (const button of [this.els.batchTabSummary, this.els.batchTabRaw]) {
@@ -963,11 +901,9 @@ export class BatchController {
     }
     this.renderDetail();
   }
-
   activeItem() {
     return this.items.find((item) => item.id === this.activeItemId) || null;
   }
-
   renderDetail() {
     const item = this.activeItem();
     if (!item) {
@@ -980,7 +916,6 @@ export class BatchController {
     if (this.detailTab === 'raw') this.renderRawDetail(item);
     else this.renderSummaryDetail(item);
   }
-
   previewKindOf(item) {
     const kind = previewKind(item?.detection);
     if (kind !== 'file') return kind;
@@ -991,13 +926,11 @@ export class BatchController {
     if (type === 'application/pdf') return 'pdf';
     return 'file';
   }
-
   previewSignatureFor(item) {
     const kind = this.previewKindOf(item);
     const cover = kind === 'audio' && item?.readResult?.coverBytes ? 'cover' : 'nocover';
     return `${item.id}:${kind}:${cover}`;
   }
-
   releasePreview() {
     const host = this.els.batchPreview;
     host?.querySelectorAll('video, audio').forEach((media) => media.pause());
@@ -1012,11 +945,9 @@ export class BatchController {
     this.previewSignature = '';
     if (host) clear(host);
   }
-
   pausePreview() {
     this.els.batchPreview?.querySelectorAll('video, audio').forEach((media) => media.pause());
   }
-
   ensurePreview(item) {
     const signature = this.previewSignatureFor(item);
     if (this.previewNode && this.previewItemId === item.id && this.previewSignature === signature) {
@@ -1031,21 +962,18 @@ export class BatchController {
     this.previewNode = this.buildPreview(item, kind);
     return this.previewNode;
   }
-
   createPreviewUrl(item, kind) {
     if (kind === 'pdf' && item.file.type !== 'application/pdf') {
       return URL.createObjectURL(new Blob([item.file], { type: 'application/pdf' }));
     }
     return URL.createObjectURL(item.file);
   }
-
   createCoverUrl(item) {
     const bytes = item.readResult?.coverBytes;
     if (!bytes || !(bytes.byteLength || bytes.length)) return null;
     const mime = item.readResult?.cover?.mimeType || 'image/jpeg';
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
   }
-
   renderPreview(item) {
     const host = this.els.batchPreview;
     if (!host) return;
@@ -1058,13 +986,11 @@ export class BatchController {
     const node = this.ensurePreview(item);
     if (!host.contains(node)) host.replaceChildren(node);
   }
-
   buildPreview(item, kind) {
     const info = item.readResult?.info || {};
     const stage = el('div', { className: `batch-preview-stage batch-preview-stage--${kind}` });
     const wrap = el('div', { className: 'batch-preview-inner' });
     if (kind === 'image' || kind === 'video') this.setPreviewRatio(stage, info.width, info.height);
-
     if (kind === 'image') {
       const img = el('img', { src: this.previewUrl, alt: `Pratinjau ${item.file.name}`, decoding: 'async' });
       img.addEventListener('load', () => this.setPreviewRatio(stage, img.naturalWidth, img.naturalHeight));
@@ -1134,7 +1060,6 @@ export class BatchController {
     } else {
       stage.append(this.previewFallback(item, 'Format file ini belum bisa dipratinjau.'));
     }
-
     const meta = el('div', { className: 'batch-preview-meta' },
       el('span', { className: 'batch-preview-kind' },
         icon(this.previewIcon(kind)),
@@ -1149,7 +1074,6 @@ export class BatchController {
     }
     return wrap;
   }
-
   setPreviewRatio(stage, width, height) {
     const w = Number(width);
     const h = Number(height);
@@ -1157,7 +1081,6 @@ export class BatchController {
     stage.style.setProperty('--batch-preview-ratio', `${w} / ${h}`);
     stage.style.setProperty('--batch-preview-ratio-num', String(w / h));
   }
-
   previewDetail(item, kind) {
     const info = item.readResult?.info || {};
     const parts = [];
@@ -1167,15 +1090,12 @@ export class BatchController {
     if (!parts.length) parts.push(formatBytes(item.file.size));
     return parts.join(' · ');
   }
-
   previewKindLabel(kind) {
     return { image: 'Gambar', video: 'Video', audio: 'Audio', pdf: 'PDF', file: 'File' }[kind] || 'File';
   }
-
   previewIcon(kind) {
     return kind === 'file' ? 'file' : kind;
   }
-
   previewFallback(item, message) {
     return el('div', { className: 'batch-preview-fallback' },
       el('span', { className: 'batch-preview-fallback-icon' }, icon(this.previewIcon(this.previewKindOf(item)))),
@@ -1186,7 +1106,6 @@ export class BatchController {
       ),
     );
   }
-
   renderDetailHeader(item) {
     clear(this.els.batchDetailHeader);
     const checkbox = el('input', { type: 'checkbox', id: 'batchDetailInclude' });
@@ -1215,7 +1134,6 @@ export class BatchController {
       ),
     );
   }
-
   renderSummaryDetail(item) {
     const panel = clear(this.els.batchDetailPanel);
     const info = item.readResult?.info || {};
@@ -1258,7 +1176,6 @@ export class BatchController {
       ));
     }
   }
-
   rawDeletability(item, row) {
     const tag = row.tag || '';
     const locked = RAW_LOCKED.find((entry) => entry.pattern.test(tag));
@@ -1274,7 +1191,6 @@ export class BatchController {
     }
     return { ok: true, reason: '' };
   }
-
   renderRawDetail(item) {
     const panel = clear(this.els.batchDetailPanel);
     if (!item.readResult) {

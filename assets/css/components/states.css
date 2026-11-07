@@ -1,0 +1,87 @@
+/* MeInsert · components/states.css — empty state + error card. */
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  padding: 28px;
+  color: var(--muted);
+  text-align: center;
+}
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 13px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  color: var(--faint);
+}
+.empty-icon .icon {
+  width: 25px;
+  height: 25px;
+}
+.empty-state h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 23px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.empty-state p {
+  max-width: 390px;
+  margin: 7px 0 0;
+  font-size: 12px;
+}
+.error-card {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--line));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger-soft) 72%, var(--surface));
+}
+.error-card .error-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.error-card h2 {
+  margin: 1px 0 4px;
+  font-size: 13px;
+}
+.error-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.error-card + .form-root,.error-card + .result-card {
+  margin-top: 16px;
+}
+.error-body {
+  min-width: 0;
+}
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 11px;
+}
+.error-card pre {
+  max-height: 130px;
+  margin: 9px 0 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 9px;
+  white-space: pre-wrap;
+  overflow: auto;
+}

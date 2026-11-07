@@ -4,7 +4,6 @@
 import { asArray, asString, pick, rawValue, sameValue, toYear } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags } from '../core/image-utils.js';
-
 export const meta = {
   id: 'mp3',
   engine: 'media',
@@ -14,7 +13,6 @@ export const meta = {
   mime: 'audio/mpeg',
   cover: true,
 };
-
 export const sections = [
   {
     id: 'umum',
@@ -22,7 +20,6 @@ export const sections = [
     description: 'Ditulis sebagai ID3v2.3. Audio MP3 tidak diubah.',
   },
 ];
-
 export const fields = [
   { id: 'title', section: 'umum', label: 'Judul', type: 'text', native: 'TIT2', placeholder: 'Judul lagu', maxLength: 256 },
   { id: 'artist', section: 'umum', label: 'Artis', type: 'text', native: 'TPE1', placeholder: 'Nama artis', maxLength: 200 },
@@ -38,7 +35,6 @@ export const fields = [
   { id: 'copyright', section: 'umum', label: 'Hak cipta', type: 'text', native: 'TCOP', placeholder: '© 2026 Nama Anda', maxLength: 300 },
   { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'TSSE', placeholder: 'MeInsert', maxLength: 200 },
 ];
-
 const KNOWN_FRAMES = new Set([
   'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TCON', 'TRCK', 'TPOS', 'TCOM',
   'COMM', 'USLT', 'TCOP', 'TSSE', 'TENC', 'TXXX', 'APIC', 'TDRC', 'TDAT',
@@ -46,12 +42,10 @@ const KNOWN_FRAMES = new Set([
   'TCMP', 'TSRC', 'TLEN', 'WXXX', 'WCOM', 'WCOP', 'WOAF', 'WOAR', 'WOAS',
   'WORS', 'WPAY', 'WPUB', 'PRIV', 'CHAP', 'CTOC', 'SYLT', 'IPLS',
 ]);
-
 function frame(tags, id) {
   const raw = tags?.raw || {};
   return raw[id];
 }
-
 function tagsToFields(tags) {
   const raw = tags?.raw || {};
   return {
@@ -70,13 +64,11 @@ function tagsToFields(tags) {
     software: asString(frame(tags, 'TSSE') ?? frame(tags, 'TENC')),
   };
 }
-
 function customTags(tags) {
   const txxx = tags?.raw?.TXXX;
   if (!txxx || typeof txxx !== 'object') return [];
   return Object.entries(txxx).map(([key, value]) => ({ key, value: asString(value), originalKey: key }));
 }
-
 function warningsFor(tags) {
   const raw = tags?.raw || {};
   const unknown = Object.keys(raw).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_FRAMES.has(id));
@@ -84,11 +76,9 @@ function warningsFor(tags) {
     ? [`${unknown.length} frame ID3 tidak didukung dan akan hilang saat metadata ditulis: ${unknown.slice(0, 8).join(', ')}${unknown.length > 8 ? '…' : ''}.`]
     : [];
 }
-
 async function mediaLib() {
   return import('../../vendor/mediabunny.mjs');
 }
-
 export async function read(file) {
   const { Input, ALL_FORMATS, BlobSource } = await mediaLib();
   let input;
@@ -136,7 +126,6 @@ export async function read(file) {
     throw new AppError('READ_FAILED', 'File MP3 tidak bisa dibaca.', error.message || String(error));
   }
 }
-
 export async function write(file, payload, options = {}, report = () => {}) {
   const { Input, ALL_FORMATS, BlobSource } = await mediaLib();
   const { ID3Writer } = await import('../../vendor/browser-id3-writer.mjs');
@@ -170,7 +159,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     const field = FRAME_FIELDS[item];
     if (field) remove.add(field);
   }
-
   report({ stage: 'Membaca tag ID3 lama…', pct: 15 });
   let tags;
   try {
@@ -179,7 +167,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } catch (error) {
     throw new AppError('READ_FAILED', 'Tag MP3 lama tidak bisa dibaca.', error.message || String(error));
   }
-
   const values = tagsToFields(tags);
   for (const [id, value] of Object.entries(set)) {
     if (id in values) values[id] = asString(value);
@@ -187,12 +174,10 @@ export async function write(file, payload, options = {}, report = () => {}) {
   for (const id of remove) {
     if (id in values) values[id] = '';
   }
-
   report({ stage: 'Menulis ulang tag ID3…', pct: 45 });
   const buffer = await file.arrayBuffer();
   const writer = new ID3Writer(buffer);
   writer.padding = 0;
-
   const str = (id, frameId) => {
     const value = asString(values[id]).trim();
     if (value) writer.setFrame(frameId, value);
@@ -201,7 +186,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     const value = asString(values[id]).trim();
     if (value) writer.setFrame(frameId, [value]);
   };
-
   str('title', 'TIT2');
   list('artist', 'TPE1');
   str('album', 'TALB');
@@ -220,8 +204,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
   str('copyright', 'TCOP');
   str('software', 'TSSE');
-
-  // Thumbnail / cover art: keep, replace, or remove the embedded image.
   const coverAction = removeCover ? 'remove' : (payload?.cover?.action || 'keep');
   const writeCover = (imgData, name, kind) => {
     writer.setFrame('APIC', {
@@ -241,10 +223,8 @@ export async function write(file, payload, options = {}, report = () => {}) {
       writeCover(copy, image.description || image.name, image.kind);
     }
   }
-
   const custom = [...(payload?.custom || [])];
   const removedCustom = rawCustomRemove;
-  // Keep TXXX keys that were not explicitly removed and not replaced by the form.
   const existingCustom = customTags(tags);
   const customMap = new Map(existingCustom.map((item) => [item.key, item.value]));
   for (const key of removedCustom) customMap.delete(key);
@@ -255,7 +235,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   for (const [description, value] of customMap) {
     if (description && value) writer.setFrame('TXXX', { description, value });
   }
-
   let out;
   try {
     out = writer.addTag();
@@ -263,7 +242,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     throw new AppError('WRITE_FAILED', 'Tag ID3 gagal ditulis.', error.message || String(error));
   }
   const blob = new Blob([out], { type: 'audio/mpeg' });
-
   report({ stage: 'Memverifikasi tag baru…', pct: 82 });
   let after;
   try {
@@ -296,5 +274,4 @@ export async function write(file, payload, options = {}, report = () => {}) {
     };
   }
 }
-
 export default { meta, sections, fields, read, write };

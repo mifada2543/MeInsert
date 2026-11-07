@@ -2,7 +2,6 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { fileExtension } from './tag-utils.js';
-
 const EXTENSIONS = {
   jpg: { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' },
   jpeg: { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' },
@@ -23,11 +22,9 @@ const EXTENSIONS = {
   m4a: { id: 'mp4', subtype: 'm4a', label: 'M4A', mime: 'audio/mp4' },
   mov: { id: 'mp4', subtype: 'mov', label: 'MOV', mime: 'video/quicktime' },
 };
-
 function ascii(bytes, start, length) {
   return String.fromCharCode(...bytes.slice(start, start + length));
 }
-
 function sniffMp4Brand(bytes) {
   if (bytes.length < 12) return null;
   if (ascii(bytes, 4, 4) !== 'ftyp') return null;
@@ -36,14 +33,12 @@ function sniffMp4Brand(bytes) {
   if (brand === 'qt  ') return { id: 'mp4', subtype: 'mov', label: 'MOV', mime: 'video/quicktime' };
   return { id: 'mp4', subtype: 'mp4', label: 'MP4', mime: 'video/mp4' };
 }
-
 function sniffEbml(bytes) {
   if (!(bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3)) return null;
   const text = ascii(bytes, 0, Math.min(bytes.length, 96));
   if (text.includes('webm')) return { id: 'mkv', subtype: 'webm', label: 'WebM', mime: 'video/webm' };
   return { id: 'mkv', subtype: 'mkv', label: 'MKV', mime: 'video/x-matroska' };
 }
-
 function sniffOgg(bytes) {
   if (ascii(bytes, 0, 4) !== 'OggS') return null;
   const text = ascii(bytes, 0, Math.min(bytes.length, 128));
@@ -52,7 +47,6 @@ function sniffOgg(bytes) {
   if (text.includes('\u007fFLAC')) return { id: 'ogg', subtype: 'flac', label: 'FLAC in Ogg', mime: 'audio/ogg' };
   return { id: 'ogg', subtype: 'unknown', label: 'Ogg', mime: 'audio/ogg' };
 }
-
 function sniff(bytes) {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' };
@@ -75,7 +69,6 @@ function sniff(bytes) {
   if (bytes.length >= 3 && ascii(bytes, 0, 3) === 'ID3') {
     return { id: 'mp3', subtype: 'mp3', label: 'MP3', mime: 'audio/mpeg' };
   }
-  // MPEG audio frame sync (no ID3 header).
   if (bytes.length >= 2 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) {
     return { id: 'mp3', subtype: 'mp3', label: 'MP3', mime: 'audio/mpeg' };
   }
@@ -87,7 +80,6 @@ function sniff(bytes) {
   if (ogg) return ogg;
   return null;
 }
-
 const EXT_BY_SUBTYPE = {
   jpeg: 'jpg',
   png: 'png',
@@ -104,7 +96,6 @@ const EXT_BY_SUBTYPE = {
   m4a: 'm4a',
   mov: 'mov',
 };
-
 export async function detectFile(file) {
   const head = new Uint8Array(await file.slice(0, 128).arrayBuffer());
   const byMagic = sniff(head);
@@ -121,9 +112,7 @@ export async function detectFile(file) {
   }
   return null;
 }
-
 export function supportedExtensionList() {
   return [...new Set(Object.values(EXTENSIONS).map((v) => v.label))];
 }
-
 export { EXTENSIONS };

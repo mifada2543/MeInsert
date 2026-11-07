@@ -3,7 +3,6 @@
 <!-- Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
 <!-- reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 -->
 <html lang="id">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,7 +18,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <script src="assets/js/theme-init.js"></script>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <!-- Open Graph -->
   <meta property="og:title" content="MeInsert — Edit metadata file tanpa upload">
   <meta property="og:description"
     content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
@@ -28,8 +26,6 @@
   <meta property="og:type" content="website">
   <meta property="og:locale" content="id_ID">
   <meta property="og:site_name" content="MeInsert">
-
-  <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="MeInsert — Edit metadata file tanpa upload">
   <meta name="twitter:description"
@@ -41,10 +37,8 @@
   <link rel="icon" type="image/png" sizes="512x512" href="assets/img/icon-512.png">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 </head>
-
 <body data-page="batch">
   <a class="skip-link" href="#main">Lewati ke konten</a>
-
   <header class="site-header">
     <div class="shell header-inner">
       <a class="brand" href="./" aria-label="MeInsert Metadata lokal, kembali ke awal">
@@ -67,7 +61,6 @@
       </div>
     </div>
   </header>
-
   <main class="shell" id="main">
     <section class="landing" id="landing">
       <div class="hero-copy">
@@ -92,7 +85,6 @@
           <span><strong>03</strong> Unduh ZIP</span>
         </div>
       </div>
-
       <div class="drop-wrap">
         <section class="drop-card batch-drop-card" id="batchDropCard">
           <input type="file" id="batchFileInput" hidden multiple accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm">
@@ -118,7 +110,6 @@
           Tidak ada file yang meninggalkan perangkat.</p>
       </div>
     </section>
-
     <section class="batch-workspace" id="batchWorkspace" hidden>
       <input type="file" id="batchAddFileInput" hidden multiple accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm">
       <div class="workspace-top">
@@ -128,7 +119,6 @@
         </button>
         <div class="workspace-status batch-status-full" id="batchStatus" role="status" aria-live="polite"></div>
       </div>
-
       <div class="batch-head">
         <div>
           <p class="eyebrow"><span class="eyebrow-line"></span>Proses massal</p>
@@ -144,10 +134,8 @@
           </button>
         </div>
       </div>
-
       <div class="batch-summary" id="batchSummary" aria-label="Ringkasan batch"></div>
       <div class="batch-limits" id="batchLimits" aria-label="Batas penggunaan batch"></div>
-
       <section class="batch-cross" id="batchCross" aria-labelledby="batchCrossTitle" hidden>
         <div class="batch-cross-head">
           <div>
@@ -164,9 +152,7 @@
           <p class="field-helper">Hanya field standar: judul, artis, album, tanggal, genre, komentar, hak cipta, komposer, dan perangkat lunak.</p>
         </div>
       </section>
-
       <div class="batch-groups" id="batchGroups" aria-label="Daftar file dalam batch"></div>
-
       <div class="batch-footer">
         <div class="batch-footer-copy">
           <strong id="batchSelectedCount">0 file dipilih</strong>
@@ -182,7 +168,6 @@
         <span class="progress-label" id="batchProgressLabel">Menyiapkan…</span>
       </div>
     </section>
-
     <section class="batch-detail" id="batchDetail" hidden>
       <div class="workspace-top">
         <button class="back-button" id="batchDetailBackBtn" type="button">
@@ -191,7 +176,6 @@
         </button>
         <div class="workspace-status" id="batchDetailStatus" role="status" aria-live="polite"></div>
       </div>
-
       <section class="batch-detail-card" aria-label="Detail file dalam batch">
         <div class="batch-detail-head" id="batchDetailHeader"></div>
         <div class="batch-tabs" role="tablist" aria-label="Bagian detail file">
@@ -204,7 +188,6 @@
         <div id="batchDetailPanel" class="batch-detail-panel" role="tabpanel" aria-labelledby="batchTabSummary"></div>
       </section>
     </section>
-
     <section class="support-strip" aria-label="Cara kerja">
       <div class="support-item">
         <span class="support-number">01</span>
@@ -229,16 +212,13 @@
       </div>
     </section>
   </main>
-
   <footer class="site-footer">
     <div class="shell footer-inner">
       <p><strong>MeInsert</strong> — editor metadata statis. Dibuat untuk file yang ingin tetap privat.</p>
       <p class="footer-meta">Tidak ada backend · Tidak ada upload · <a href="https://github.com/mifada2543/meinsert" rel="noopener noreferrer">Source</a> · <a href="./LICENSE">AGPLv3</a> · <a href="./assets/THIRD_PARTY_LICENSES.md">Atribusi</a> · <span id="year"></span></p>
     </div>
   </footer>
-
   <div class="toast-region" id="toastRegion" role="status" aria-live="polite" aria-atomic="false"></div>
-
   <script type="module" src="assets/js/app.js"></script>
 <script type="application/ld+json">
 {

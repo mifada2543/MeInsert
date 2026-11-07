@@ -2,7 +2,6 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 const GIB = 1024 ** 3;
-
 export const BATCH_LIMITS = {
   video: { label: 'Video', maxFiles: 10, maxDuration: 60 * 60, maxBytes: 2 * GIB },
   audio: { label: 'Audio', maxFiles: 20, maxDuration: 30 * 60, maxBytes: 1 * GIB },
@@ -10,7 +9,6 @@ export const BATCH_LIMITS = {
   totalWithVideo: 2 * GIB,
   totalWithoutVideo: 1 * GIB,
 };
-
 export function categoryForDetection(detection) {
   if (!detection) return 'light';
   if (detection.id === 'mp4' && detection.subtype === 'm4a') return 'audio';
@@ -18,15 +16,12 @@ export function categoryForDetection(detection) {
   if (detection.id === 'mkv' || detection.id === 'mp4') return 'video';
   return 'light';
 }
-
 export function categoryLabel(category) {
   return BATCH_LIMITS[category]?.label || 'Lainnya';
 }
-
 export function isSelected(item) {
   return Boolean(item?.included) && !item?.excluded;
 }
-
 export function selectionTotals(items) {
   const totals = {
     count: 0,
@@ -46,7 +41,6 @@ export function selectionTotals(items) {
   }
   return totals;
 }
-
 export function validateSelection(items) {
   const totals = selectionTotals(items);
   const messages = [];
@@ -66,7 +60,6 @@ export function validateSelection(items) {
   }
   return { ok: messages.length === 0, messages, totals };
 }
-
 export function applyDurationLimits(item) {
   const category = item?.category || categoryForDetection(item?.detection);
   const limit = BATCH_LIMITS[category];
@@ -89,7 +82,6 @@ export function applyDurationLimits(item) {
   }
   return null;
 }
-
 export function formatDuration(seconds) {
   const total = Math.max(0, Math.round(Number(seconds) || 0));
   const h = Math.floor(total / 3600);
@@ -99,7 +91,6 @@ export function formatDuration(seconds) {
     ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     : `${m}:${String(s).padStart(2, '0')}`;
 }
-
 export function formatLimitBytes(bytes) {
   const n = Number(bytes) || 0;
   if (n >= GIB) return `${(n / GIB).toFixed(n % GIB === 0 ? 0 : 1)} GB`;
@@ -107,7 +98,6 @@ export function formatLimitBytes(bytes) {
   if (n >= 1024) return `${(n / 1024).toFixed(0)} KB`;
   return `${n} B`;
 }
-
 export function usageRows(items) {
   const totals = selectionTotals(items);
   return Object.entries(totals.byCategory).map(([category, usage]) => ({

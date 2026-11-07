@@ -1,18 +1,14 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/** Shared implementation for Vorbis-comment based adapters (FLAC, OGG/Opus). */
-
 import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { applyCoverImages, coverFromTags, mimeOf, scrubPrimaryCoverRaw } from '../core/image-utils.js';
-
 export const KNOWN_RAW = new Set([
   'vendor', 'ENCODER', 'TITLE', 'ARTIST', 'ALBUM', 'ALBUMARTIST', 'DATE',
   'GENRE', 'TRACKNUMBER', 'TRACKTOTAL', 'DISCNUMBER', 'DISCTOTAL',
   'COMPOSER', 'COMMENT', 'COPYRIGHT', 'LYRICS', 'DESCRIPTION',
 ]);
-
 export function toFields(tags) {
   const raw = tags.raw || {};
   return {
@@ -33,20 +29,17 @@ export function toFields(tags) {
     lyrics: asString(tags.lyrics ?? raw.LYRICS),
   };
 }
-
 export function customFrom(tags) {
   return Object.entries(tags.raw || {})
     .filter(([key]) => !KNOWN_RAW.has(key))
     .map(([key, value]) => ({ key, value: asString(value), originalKey: key }));
 }
-
 export function rawRows(tags) {
   return Object.entries(tags.raw || {})
     .filter(([, value]) => value != null && !(value instanceof Uint8Array))
     .map(([tag, value]) => ({ group: 'Vorbis', tag, value: rawValue(value) }))
     .filter((row) => row.value);
 }
-
 export const fields = [
   { id: 'title', section: 'umum', label: 'Judul', type: 'text', native: 'TITLE', placeholder: 'Judul lagu', maxLength: 256 },
   { id: 'artist', section: 'umum', label: 'Artis', type: 'text', native: 'ARTIST', placeholder: 'Nama artis', maxLength: 200 },
@@ -64,7 +57,6 @@ export const fields = [
   { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'ENCODER', placeholder: 'MeInsert', maxLength: 200 },
   { id: 'lyrics', section: 'umum', label: 'Lirik', type: 'textarea', native: 'LYRICS', placeholder: 'Lirik lagu…', maxLength: 10000 },
 ];
-
 export const sections = [
   {
     id: 'umum',
@@ -72,7 +64,6 @@ export const sections = [
     description: 'Audio disalin lossless; hanya container metadata yang ditulis ulang.',
   },
 ];
-
 export async function readVorbis(file) {
   const { Input, ALL_FORMATS, BlobSource } = await import('../../vendor/mediabunny.mjs');
   try {
@@ -108,7 +99,6 @@ export async function readVorbis(file) {
     throw new AppError('READ_FAILED', 'File audio tidak bisa dibaca.', error.message || String(error));
   }
 }
-
 export async function writeVorbis(file, payload, options, report, config) {
   const lib = await import('../../vendor/mediabunny.mjs');
   const FormatClass = lib[config.formatClass];
@@ -119,7 +109,6 @@ export async function writeVorbis(file, payload, options, report, config) {
   const { Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion } = lib;
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
-
   report({ stage: 'Membaca tag lama…', pct: 12 });
   let input;
   let tags;
@@ -129,7 +118,6 @@ export async function writeVorbis(file, payload, options, report, config) {
   } catch (error) {
     throw new AppError('READ_FAILED', 'Tag lama tidak bisa dibaca.', error.message || String(error));
   }
-
   const merged = { ...tags, raw: { ...(tags.raw || {}) } };
   const raw = merged.raw;
   const assign = (id, value) => {
@@ -140,7 +128,6 @@ export async function writeVorbis(file, payload, options, report, config) {
     if (value === '' || value === undefined || value === null) delete raw[key];
     else raw[key] = value;
   };
-
   for (const [id, value] of Object.entries(set)) {
     switch (id) {
       case 'title': merged.title = asString(value); assignRaw('TITLE', asString(value)); break;
@@ -201,14 +188,11 @@ export async function writeVorbis(file, payload, options, report, config) {
     assignRaw(normalized, '');
     assignRaw(normalized.toUpperCase(), '');
   }
-
-  // Cover / thumbnail handling.
   const coverAction = payload?.cover?.action;
   if (coverAction === 'set' || coverAction === 'remove') {
     scrubPrimaryCoverRaw(raw, merged.images);
     merged.images = applyCoverImages(merged.images, payload.cover);
   }
-
   const output = new Output({ format, target: new BufferTarget() });
   let conversion;
   try {
@@ -234,7 +218,6 @@ export async function writeVorbis(file, payload, options, report, config) {
   } catch (error) {
     throw new AppError('WRITE_FAILED', `Gagal menulis ${config.label}.`, error.message || String(error));
   }
-
   const outExt = options.extension || config.defaultExt;
   const mime = options.mime || config.mime;
   const bytes = new Uint8Array(output.target.buffer);

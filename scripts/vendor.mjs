@@ -16,12 +16,10 @@
 import { cp, mkdir, readdir, copyFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const nm = join(root, 'node_modules');
 const vendor = join(root, 'assets', 'vendor');
 const licenses = join(vendor, 'licenses');
-
 const copies = [
   ['@colorhythm/exiftool-wasm/dist/esm/index.js', 'exiftool-wasm/index.js'],
   ['@colorhythm/exiftool-wasm/LICENSE', 'licenses/exiftool-wasm-LICENSE'],
@@ -34,10 +32,8 @@ const copies = [
   ['fflate/esm/browser.js', 'fflate.mjs'],
   ['fflate/LICENSE', 'licenses/fflate-LICENSE'],
 ];
-
 await mkdir(vendor, { recursive: true });
 await mkdir(licenses, { recursive: true });
-
 for (const [from, to] of copies) {
   const src = join(nm, from);
   const dest = join(vendor, to);
@@ -45,14 +41,12 @@ for (const [from, to] of copies) {
   await copyFile(src, dest);
   console.log(`copied ${from}`);
 }
-
 const wasmDir = join(nm, '@colorhythm', 'exiftool-wasm', 'dist', 'esm');
 for (const file of await readdir(wasmDir)) {
   if (!file.endsWith('.wasm')) continue;
   await cp(join(wasmDir, file), join(vendor, 'exiftool-wasm', file));
   console.log(`copied ${file}`);
 }
-
 const mainWasm = (await readdir(join(vendor, 'exiftool-wasm'))).find((f) => f.endsWith('.wasm'));
 if (!mainWasm) throw new Error('ExifTool WASM asset was not copied.');
 console.log(`done. ExifTool asset: ${mainWasm}`);

@@ -14,7 +14,6 @@ const PRECACHE_URLS = [
   './manifest.json',
   './assets/css/app.css',
   './assets/js/theme-init.js',
-
   './assets/js/home.js',
   './assets/js/app.js',
   './assets/js/core/detector.js',
@@ -52,12 +51,10 @@ const PRECACHE_URLS = [
   './assets/js/batch/batch-report.js',
   './assets/js/batch/batch-view.js',
   './assets/js/batch/batch-zip.js',
-
   './assets/vendor/browser-id3-writer.mjs',
   './assets/vendor/mediabunny.mjs',
   './assets/vendor/pdf-lib.esm.js',
   './assets/vendor/fflate.mjs',
-
   './assets/fonts/ibm-plex-mono-400-latin-ext.woff2',
   './assets/fonts/ibm-plex-mono-400-latin.woff2',
   './assets/fonts/ibm-plex-mono-500-latin-ext.woff2',
@@ -70,14 +67,12 @@ const PRECACHE_URLS = [
   './assets/fonts/ibm-plex-sans-condensed-700-latin.woff2',
   './assets/fonts/ibm-plex-sans-latin-ext.woff2',
   './assets/fonts/ibm-plex-sans-latin.woff2',
-
   './assets/img/apple-touch-icon.png',
   './assets/img/favicon-64.png',
   './assets/img/icon-192.png',
   './assets/img/icon-512.png',
   './assets/img/icon-maskable-512.png',
 ];
-
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_VERSION);
@@ -91,7 +86,6 @@ self.addEventListener('install', (event) => {
     await self.skipWaiting();
   })());
 });
-
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
@@ -101,11 +95,9 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim();
   })());
 });
-
 function isCacheableAsset(pathname) {
   return /\.(css|js|mjs|wasm|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
 }
-
 async function networkFirstNavigation(request) {
   const cache = await caches.open(CACHE_VERSION);
   try {
@@ -125,7 +117,6 @@ async function networkFirstNavigation(request) {
     });
   }
 }
-
 async function cacheFirst(request) {
   const cached = await caches.match(request, { ignoreSearch: true });
   if (cached) return cached;
@@ -136,24 +127,19 @@ async function cacheFirst(request) {
   }
   return response;
 }
-
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-
   if (request.mode === 'navigate') {
     event.respondWith(networkFirstNavigation(request));
     return;
   }
-
   if (isCacheableAsset(url.pathname)) {
     event.respondWith(cacheFirst(request));
   }
 });
-
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });

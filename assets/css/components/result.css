@@ -1,0 +1,67 @@
+/* MeInsert · components/result.css — kartu hasil + tombol unduh. */
+.result-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--success) 24%, var(--line));
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--accent) 20%, transparent), transparent 42%),
+    color-mix(in srgb, var(--success-soft) 72%, var(--surface));
+  animation: rise-in 320ms ease both;
+}
+.result-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: var(--success);
+  color: var(--success-soft);
+}
+.result-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+.result-copy h2 {
+  margin: 0;
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+}
+.result-copy p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.result-copy .result-warnings {
+  margin-top: 6px;
+  color: var(--warning);
+  font-family: var(--sans);
+  font-size: 10.5px;
+}
+.result-download {
+  min-height: 36px;
+}
+.result-download.is-done {
+  background: var(--surface);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 26%, var(--line));
+}
+@media (max-width: 700px) {
+  .result-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .result-download {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .result-download {
+    min-height: 42px;
+  }
+}

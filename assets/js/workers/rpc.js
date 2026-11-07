@@ -2,7 +2,6 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { serializeError } from '../core/errors.js';
-
 export function runWorker(adapters) {
   self.onmessage = async (event) => {
     const message = event.data || {};

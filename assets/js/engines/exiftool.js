@@ -3,13 +3,11 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { parseMetadata, writeMetadata, dispose as disposeExifTool } from '../../vendor/exiftool-wasm/index.js';
 import { AppError } from '../core/errors.js';
-
 function jsonTransform(text) {
   const parsed = JSON.parse(text);
   if (Array.isArray(parsed)) return parsed[0] || {};
   return parsed || {};
 }
-
 export async function readTags(file) {
   let result;
   try {
@@ -25,7 +23,6 @@ export async function readTags(file) {
   }
   return result.data || {};
 }
-
 export async function writeTags(file, tags) {
   let result;
   try {
@@ -42,11 +39,8 @@ export async function writeTags(file, tags) {
   }
   return new Uint8Array(result.data);
 }
-
 export async function disposeExifToolRuntime() {
   try {
     await disposeExifTool();
-  } catch {
-    // Dispose is best-effort; worker termination is the final guarantee.
-  }
+  } catch {}
 }

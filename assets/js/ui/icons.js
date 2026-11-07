@@ -28,7 +28,6 @@ const paths = {
   minimize: '<path d="m6 15 6-6 6 6"/>',
   expand: '<path d="m6 9 6 6 6-6"/>',
 };
-
 export function icon(name, className = '') {
   const path = paths[name] || paths.file;
   const span = document.createElement('span');

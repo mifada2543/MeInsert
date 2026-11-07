@@ -1,0 +1,25 @@
+/* MeInsert · layout/shell.css — kontainer halaman + skip link. */
+.shell {
+  width: min(1180px, calc(100% - 48px));
+  margin-inline: auto;
+}
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+  transform: translateY(-160%);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 600;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+@media (max-width: 700px) {
+  .shell {
+    width: min(100% - 28px, 1180px);
+  }
+}

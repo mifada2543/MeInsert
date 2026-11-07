@@ -1,0 +1,40 @@
+/* MeInsert · base/animations.css — keyframes + transisi tema (View Transitions & fallback crossfade). */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -20% 0; }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toast-out {
+  to { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.is-spinning .icon {
+  animation: spin 900ms linear infinite;
+}
+::view-transition-old(root) {
+  animation: none;
+  z-index: 0;
+}
+::view-transition-new(root) {
+  animation: theme-reveal 560ms cubic-bezier(.4, 0, .2, 1);
+  clip-path: circle(150% at var(--vt-x, 88%) var(--vt-y, 48px));
+  mix-blend-mode: normal;
+  z-index: 1;
+}
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--vt-x, 88%) var(--vt-y, 48px));
+  }
+}
+html.theme-anim body,html.theme-anim body * {
+  transition: background-color 450ms ease, border-color 450ms ease, box-shadow 450ms ease, color 450ms ease !important;
+}

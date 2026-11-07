@@ -5,7 +5,6 @@ import { el, clear, formatBytes, formatDuration } from './dom.js';
 import { icon } from './icons.js';
 import { coverAcceptFor } from '../core/image-utils.js';
 import { openLightbox } from './lightbox.js';
-
 export function previewKind(detection) {
   if (!detection) return 'file';
   if (detection.id === 'image') return 'image';
@@ -15,7 +14,6 @@ export function previewKind(detection) {
   if (detection.id === 'mp3' || detection.id === 'flac' || detection.id === 'ogg' || detection.subtype === 'm4a') return 'audio';
   return 'file';
 }
-
 function statRows(file, detection, readResult) {
   const rows = [
     ['Format', detection?.label || 'Tidak dikenali'],
@@ -35,8 +33,6 @@ function statRows(file, detection, readResult) {
   if (info.audioCodec) rows.push(['Audio', String(info.audioCodec).toUpperCase()]);
   return rows;
 }
-
-// Media decides the frame shape: 4:3, 16:10, 21:9, portrait, and so on.
 function setMediaRatio(frame, width, height) {
   const w = Number(width);
   const h = Number(height);
@@ -44,14 +40,12 @@ function setMediaRatio(frame, width, height) {
   frame.style.setProperty('--media-ratio', `${w} / ${h}`);
   frame.style.setProperty('--media-ratio-num', String(w / h));
 }
-
 function coverBadge(cover) {
   if (cover?.action === 'set') return { text: 'Akan diganti', className: 'is-set' };
   if (cover?.action === 'remove') return { text: 'Akan dihapus', className: 'is-remove' };
   if (cover?.original) return { text: 'Ada', className: 'is-ok' };
   return { text: 'Kosong', className: '' };
 }
-
 function coverLabel(cover) {
   const source = cover?.action === 'set' ? cover.chosen : cover?.original;
   if (!source) return '';
@@ -60,7 +54,6 @@ function coverLabel(cover) {
   if (source.size) parts.push(formatBytes(source.size));
   return parts.join(' · ');
 }
-
 function coverHint(cover) {
   if (cover?.action === 'remove') return 'Thumbnail akan dihapus saat metadata disimpan.';
   if (cover?.action === 'set') {
@@ -71,11 +64,9 @@ function coverHint(cover) {
   if (label) return `Terpasang: ${label}`;
   return 'Belum ada thumbnail. Seret gambar ke kotak ini atau klik untuk memilih.';
 }
-
 function hasDraggedFiles(event) {
   return [...(event.dataTransfer?.types || [])].includes('Files');
 }
-
 function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, onCoverRemove, onCoverUndo, resumeAt }) {
   const input = el('input', {
     type: 'file',
@@ -91,10 +82,8 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
       },
     },
   });
-
   const pick = () => input.click();
   const badge = coverBadge(cover);
-
   const coverButton = el('button', {
     className: 'audio-cover',
     type: 'button',
@@ -109,7 +98,6 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
           el('span', { textContent: 'Belum ada thumbnail' }),
         ),
   );
-
   let dragDepth = 0;
   coverButton.addEventListener('dragenter', (event) => {
     if (!hasDraggedFiles(event)) return;
@@ -134,7 +122,6 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
     const file = event.dataTransfer?.files?.[0];
     if (file) onCoverChooseFile(file);
   });
-
   const coverZoom = el('button', {
     className: 'audio-cover-zoom',
     type: 'button',
@@ -153,7 +140,6 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
     },
   }, icon('expand'));
   const coverBox = el('div', { className: 'audio-cover-wrap' }, coverButton, coverZoom);
-
   const showRemove = cover?.action !== 'remove' && Boolean(cover?.original || cover?.chosen || cover?.action === 'set');
   const actions = el('div', { className: 'audio-cover-actions' },
     el('button', {
@@ -176,18 +162,15 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
         }, 'Batalkan')
       : null,
   );
-
   const audio = el('audio', { src: previewUrl, controls: true, preload: 'metadata' });
   if (resumeAt > 0) {
     audio.addEventListener('loadedmetadata', () => {
       try {
         audio.currentTime = Math.min(resumeAt, audio.duration || resumeAt);
       } catch {
-        // Ignore seeking errors on streams without a known duration.
       }
     }, { once: true });
   }
-
   const stage = el('div', { className: 'audio-stage' },
     el('div', { className: 'audio-cover-head' },
       el('div', { className: 'audio-cover-title' },
@@ -207,7 +190,6 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
   stage.append(input);
   return stage;
 }
-
 export function setCardMinimized(container, minimized) {
   container.classList.toggle('is-minimized', minimized);
   const button = container.querySelector('.preview-toggle');
@@ -222,7 +204,6 @@ export function setCardMinimized(container, minimized) {
   const iconSlot = button.querySelector('.preview-toggle-icon');
   if (iconSlot) iconSlot.replaceChildren(icon(minimized ? 'expand' : 'minimize'));
 }
-
 export function renderFileCard(container, {
   file,
   detection,
@@ -236,10 +217,8 @@ export function renderFileCard(container, {
   onCoverRemove,
   onCoverUndo,
 }) {
-  // Keep the player position when the card is re-rendered for a new cover.
   const previousAudio = container.querySelector('audio');
   const resumeAt = previousAudio ? previousAudio.currentTime : 0;
-
   clear(container);
   container.classList.toggle('is-minimized', minimized);
   const kind = previewKind(detection);
@@ -248,7 +227,6 @@ export function renderFileCard(container, {
   if (kind === 'image' || kind === 'video') {
     setMediaRatio(frame, info.width, info.height);
   }
-
   if (status === 'loading') {
     frame.append(el('div', { className: 'preview-icon' }, icon(kind === 'pdf' ? 'pdf' : kind === 'image' ? 'image' : kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : 'file')));
   } else if (kind === 'image' && previewUrl) {
@@ -305,7 +283,6 @@ export function renderFileCard(container, {
   } else {
     frame.append(el('div', { className: 'preview-icon' }, icon(kind === 'pdf' ? 'pdf' : 'file')));
   }
-
   const toggleButton = onToggleMinimize
     ? el('button', {
         className: 'preview-toggle',
@@ -320,7 +297,6 @@ export function renderFileCard(container, {
         el('span', { className: 'preview-toggle-label', textContent: minimized ? 'Tampilkan' : 'Kecilkan' }),
       )
     : null;
-
   const infoBlock = el('div', { className: 'file-info' },
     el('div', { className: 'file-kind' },
       el('span', { className: 'file-badge' },
@@ -335,7 +311,6 @@ export function renderFileCard(container, {
     el('h2', { className: 'file-name', title: file.name, textContent: file.name }),
     el('p', { className: 'file-sub', textContent: `${detection?.mime || file.type || 'application/octet-stream'} · ${formatBytes(file.size)}` }),
   );
-
   if (readResult) {
     const list = el('dl', { className: 'meta-list' });
     for (const [label, value] of statRows(file, detection, readResult)) {
@@ -346,7 +321,6 @@ export function renderFileCard(container, {
     }
     infoBlock.append(list);
   }
-
   const warnings = [];
   if (detection?.warning) warnings.push(detection.warning);
   if (readResult?.warnings?.length) warnings.push(...readResult.warnings);
@@ -356,6 +330,5 @@ export function renderFileCard(container, {
       el('span', { textContent: warnings.join(' ') }),
     ));
   }
-
   container.append(frame, infoBlock);
 }

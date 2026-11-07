@@ -1,0 +1,30 @@
+/* MeInsert · layout/footer.css — footer situs. */
+.site-footer {
+  border-top: 1px solid var(--line);
+  padding: 24px 0 34px;
+}
+.footer-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.footer-inner p {
+  margin: 0;
+}
+.footer-inner strong {
+  color: var(--ink);
+}
+.footer-meta {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+}
+@media (max-width: 700px) {
+  .footer-inner {
+    flex-direction: column;
+    gap: 7px;
+  }
+}

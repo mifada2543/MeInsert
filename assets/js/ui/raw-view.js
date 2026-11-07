@@ -3,7 +3,6 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { el, clear } from './dom.js';
 import { icon } from './icons.js';
-
 export function renderRaw(container, { raw = [], query = '' }) {
   clear(container);
   if (!raw.length) {
@@ -14,7 +13,6 @@ export function renderRaw(container, { raw = [], query = '' }) {
     ));
     return;
   }
-
   const count = el('span', { className: 'raw-count', textContent: `${raw.length} tag` });
   const search = el('input', {
     type: 'search',
@@ -46,7 +44,6 @@ export function renderRaw(container, { raw = [], query = '' }) {
     }
     count.textContent = q ? `${visible} dari ${raw.length} tag` : `${raw.length} tag`;
   });
-
   container.append(
     el('div', { className: 'raw-toolbar' },
       el('div', { className: 'search-wrap' }, icon('search'), search),

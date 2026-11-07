@@ -1,0 +1,53 @@
+/* MeInsert · components/side-notes.css — catatan pendukung di bawah editor. */
+.side-notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+.side-note {
+  display: flex;
+  gap: 12px;
+  padding: 17px 16px;
+  border: 1px solid color-mix(in srgb, var(--success) 22%, var(--line));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--success-soft) 72%, var(--surface));
+  color: var(--ink-soft);
+}
+.side-note.muted {
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--surface-2) 62%, transparent);
+}
+.side-note-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+.side-note-icon:empty::before {
+  content: "✓";
+  font-size: 13px;
+  font-weight: 700;
+}
+.side-note h3 {
+  margin: 1px 0 3px;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+.side-note p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+@media (max-width: 1024px) {
+  .side-notes {
+    grid-template-columns: 1fr;
+  }
+  .side-note.muted {
+    display: none;
+  }
+}

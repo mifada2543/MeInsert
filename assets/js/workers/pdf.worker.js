@@ -3,5 +3,4 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { runWorker } from './rpc.js';
 import pdf from '../formats/pdf.js';
-
 runWorker({ pdf });

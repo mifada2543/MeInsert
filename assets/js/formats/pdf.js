@@ -3,7 +3,6 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { asArray, asString, sameValue, toDateInput, toIsoDate } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
-
 export const meta = {
   id: 'pdf',
   engine: 'pdf',
@@ -12,7 +11,6 @@ export const meta = {
   extensions: ['pdf'],
   mime: 'application/pdf',
 };
-
 export const sections = [
   {
     id: 'umum',
@@ -20,7 +18,6 @@ export const sections = [
     description: 'Ditulis ke Info dictionary dan XMP agar konsisten di pembaca modern.',
   },
 ];
-
 export const fields = [
   {
     id: 'title',
@@ -92,7 +89,6 @@ export const fields = [
     native: 'Info /ModDate + XMP xmp:ModifyDate',
   },
 ];
-
 const INFO_KEYS = {
   title: 'Title',
   author: 'Author',
@@ -103,30 +99,25 @@ const INFO_KEYS = {
   creationDate: 'CreationDate',
   modDate: 'ModDate',
 };
-
 const STANDARD_INFO = new Set([
   'Title', 'Author', 'Subject', 'Keywords', 'Creator', 'Producer',
   'CreationDate', 'ModDate', 'Trapped', 'Metadata',
 ]);
-
 const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 const DC = 'http://purl.org/dc/elements/1.1/';
 const PDF_NS = 'http://ns.adobe.com/pdf/1.3/';
 const XMP_NS = 'http://ns.adobe.com/xap/1.0/';
 const XML_NS = 'http://www.w3.org/XML/1998/namespace';
-
 function pdfString(value) {
   const s = String(value ?? '');
   return s;
 }
-
 function pdfObjectToString(obj) {
   if (!obj) return '';
   if (typeof obj.decodeDate === 'function') {
     try {
       return toDateInput(obj.decodeDate());
     } catch {
-      // Fall through to text decoding.
     }
   }
   if (typeof obj.decodeText === 'function') return obj.decodeText();
@@ -143,16 +134,13 @@ function pdfObjectToString(obj) {
   if (typeof obj.asBytes === 'function') return '[data biner]';
   return String(obj).replace(/^\(|\)$/g, '');
 }
-
 async function getLib() {
   return import('../../vendor/pdf-lib.esm.js');
 }
-
 function signedWarning(bytes) {
   const text = new TextDecoder('latin1').decode(bytes.slice(0, Math.min(bytes.length, 8 * 1024 * 1024)));
   return /\/ByteRange\s*\[/i.test(text) && /\/Type\s*\/Sig\b/i.test(text);
 }
-
 export async function read(file) {
   const { PDFDocument, PDFName } = await getLib();
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -166,11 +154,9 @@ export async function read(file) {
     }
     throw new AppError('CORRUPT_FILE', 'PDF tidak bisa dibaca. File mungkin rusak atau formatnya tidak didukung.', message);
   }
-
   const infoRef = doc.context.trailerInfo.Info;
   const info = infoRef ? doc.context.lookup(infoRef) : null;
   const get = (key) => (info && typeof info.get === 'function' ? info.get(PDFName.of(key)) : undefined);
-
   const fields = {
     title: pdfObjectToString(get('Title')),
     author: pdfObjectToString(get('Author')),
@@ -181,7 +167,6 @@ export async function read(file) {
     creationDate: pdfObjectToString(get('CreationDate')),
     modDate: pdfObjectToString(get('ModDate')),
   };
-
   const custom = [];
   if (info && typeof info.entries === 'function') {
     for (const [keyObj, value] of info.entries()) {
@@ -192,7 +177,6 @@ export async function read(file) {
       custom.push({ key, value: pdfObjectToString(value), originalKey: key });
     }
   }
-
   const raw = [
     ...Object.entries(fields).map(([key, value]) => ({
       group: 'Info',
@@ -201,12 +185,10 @@ export async function read(file) {
     })),
     ...custom.map((row) => ({ group: 'Custom', tag: row.key, value: row.value })),
   ].filter((row) => row.value !== '');
-
   const warnings = [];
   if (signedWarning(bytes)) {
     warnings.push('PDF ini memiliki tanda tangan digital. Menulis metadata akan membuat tanda tangan tidak valid.');
   }
-
   return {
     fields,
     custom,
@@ -215,7 +197,6 @@ export async function read(file) {
     warnings,
   };
 }
-
 function ensureInfo(doc, PDFName) {
   let ref = doc.context.trailerInfo.Info;
   let info = ref ? doc.context.lookup(ref) : undefined;
@@ -226,16 +207,13 @@ function ensureInfo(doc, PDFName) {
   }
   return info;
 }
-
 function dateString(value) {
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 }
-
 function xmpDate(value) {
   return toIsoDate(value);
 }
-
 function escapeXml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -243,34 +221,28 @@ function escapeXml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
-
 function removeField(xml, prefix, local) {
   const element = new RegExp(`<${prefix}:${local}\\b[^>]*\\/>|<${prefix}:${local}\\b[^>]*>[\\s\\S]*?<\\/${prefix}:${local}>`, 'gi');
   const attribute = new RegExp(`\\s+${prefix}:${local}\\s*=\\s*(?:"[^"]*"|'[^']*')`, 'gi');
   return xml.replace(element, '').replace(attribute, '');
 }
-
 function addNamespace(openTag, prefix, ns) {
   if (new RegExp(`xmlns:${prefix}\\s*=`, 'i').test(openTag)) return openTag;
   return openTag.replace(/>$/, ` xmlns:${prefix}="${ns}">`);
 }
-
 function altField(prefix, local, value) {
   if (!value) return '';
   return `<${prefix}:${local}><rdf:Alt><rdf:li xml:lang="x-default">${escapeXml(value)}</rdf:li></rdf:Alt></${prefix}:${local}>`;
 }
-
 function listField(prefix, local, tag, values) {
   const list = (values || []).map(escapeXml).filter(Boolean);
   if (!list.length) return '';
   return `<${prefix}:${local}><rdf:${tag}>${list.map((value) => `<rdf:li>${value}</rdf:li>`).join('')}</rdf:${tag}></${prefix}:${local}>`;
 }
-
 function textField(prefix, local, value) {
   if (!value) return '';
   return `<${prefix}:${local}>${escapeXml(value)}</${prefix}:${local}>`;
 }
-
 function freshXmp() {
   return `<?xpacket begin="\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
@@ -280,9 +252,6 @@ function freshXmp() {
 </x:xmpmeta>
 <?xpacket end="w"?>`;
 }
-
-// Field id -> XMP property names this app owns. Anything not listed here is
-// preserved byte-for-byte when the packet is updated.
 const XMP_FIELDS = {
   title: [['dc', 'title']],
   author: [['dc', 'creator']],
@@ -293,9 +262,7 @@ const XMP_FIELDS = {
   creationDate: [['xmp', 'CreateDate']],
   modDate: [['xmp', 'ModifyDate']],
 };
-
 const XMP_FIELD_IDS = Object.keys(XMP_FIELDS);
-
 function tagEnd(xml, start) {
   let quote = '';
   for (let i = start + 1; i < xml.length; i += 1) {
@@ -310,7 +277,6 @@ function tagEnd(xml, start) {
   }
   return -1;
 }
-
 function attributesOf(tag) {
   const out = [];
   const body = tag.replace(/^<\s*\/?\s*[^\s/>]+/, '').replace(/\/?\s*>$/, '');
@@ -321,7 +287,6 @@ function attributesOf(tag) {
   }
   return out;
 }
-
 function decodeXml(value) {
   return String(value || '')
     .replace(/&lt;/g, '<')
@@ -330,13 +295,6 @@ function decodeXml(value) {
     .replace(/&apos;/g, "'")
     .replace(/&amp;/g, '&');
 }
-
-/**
- * Lightweight XMP scanner. It does not build a DOM (PDF metadata is parsed in
- * a worker, where DOMParser is unavailable); it validates tag balance and
- * collects descriptions, namespaces, and property names so the writer can
- * touch only the properties it owns.
- */
 export function parseXmp(xml) {
   const source = typeof xml === 'string' ? xml : '';
   const namespaces = {};
@@ -347,11 +305,8 @@ export function parseXmp(xml) {
   let ok = true;
   let error = '';
   let i = 0;
-
   const fail = (message) => { ok = false; error = message; };
-
   if (!source.trim()) return { ok: false, error: 'XMP kosong.', namespaces, descriptions, properties };
-
   while (i < source.length) {
     const lt = source.indexOf('<', i);
     if (lt < 0) break;
@@ -380,7 +335,6 @@ export function parseXmp(xml) {
       i = end + 1;
       continue;
     }
-
     const end = tagEnd(source, lt);
     if (end < 0) { fail('Tag XML tidak tertutup.'); break; }
     const raw = source.slice(lt, end + 1);
@@ -389,7 +343,6 @@ export function parseXmp(xml) {
     const nameMatch = raw.match(/^<\s*\/?\s*([A-Za-z_][\w.-]*(?::[\w.-]+)?)/);
     if (!nameMatch) { fail('Nama tag XML tidak valid.'); break; }
     const name = nameMatch[1];
-
     if (closing) {
       const top = stack.pop();
       if (!top || top.name !== name) { fail(`Tag penutup ${name} tidak cocok.`); break; }
@@ -401,12 +354,10 @@ export function parseXmp(xml) {
       i = end + 1;
       continue;
     }
-
     const attrs = attributesOf(raw);
     for (const attr of attrs) {
       if (attr.name.startsWith('xmlns:')) namespaces[attr.name.slice(6)] = attr.value;
     }
-
     if (name === 'rdf:Description') {
       current = {
         start: lt,
@@ -445,13 +396,11 @@ export function parseXmp(xml) {
     }
     i = end + 1;
   }
-
   if (ok && stack.length) fail(`Tag ${stack[stack.length - 1].name} tidak tertutup.`);
   if (ok && !descriptions.length) fail('Tidak ada rdf:Description.');
   if (ok && !/<(?:x:xmpmeta|rdf:RDF)[\s>]/i.test(source)) fail('Paket XMP tidak dikenali.');
   return { ok, error, namespaces, descriptions, properties };
 }
-
 function targetDescriptionIndex(parsed, ids) {
   for (const id of ids) {
     for (const [prefix, local] of XMP_FIELDS[id] || []) {
@@ -461,14 +410,12 @@ function targetDescriptionIndex(parsed, ids) {
   }
   return 0;
 }
-
 export function buildXmp(existing, values, ids = XMP_FIELD_IDS) {
   const changed = new Set(ids.filter((id) => XMP_FIELDS[id]));
   let xml = typeof existing === 'string' ? existing : '';
   let fallback = false;
   let targetIndex = 0;
   let before = null;
-
   if (!xml.trim() || !/<(?:x:xmpmeta|rdf:RDF)[\s>]/i.test(xml)) {
     if (changed.size) xml = freshXmp();
   } else {
@@ -481,13 +428,11 @@ export function buildXmp(existing, values, ids = XMP_FIELD_IDS) {
       targetIndex = targetDescriptionIndex(before, changed);
     }
   }
-
   if (!changed.size) return { xml, fallback };
 
   for (const id of changed) {
     for (const [prefix, local] of XMP_FIELDS[id]) xml = removeField(xml, prefix, local);
   }
-
   const fragment = [
     changed.has('title') ? altField('dc', 'title', values.title) : '',
     changed.has('author') ? listField('dc', 'creator', 'Seq', values.author ? [values.author] : []) : '',
@@ -499,14 +444,11 @@ export function buildXmp(existing, values, ids = XMP_FIELD_IDS) {
     changed.has('creationDate') ? textField('xmp', 'CreateDate', values.creationDate ? xmpDate(values.creationDate) : '') : '',
     changed.has('modDate') ? textField('xmp', 'ModifyDate', values.modDate ? xmpDate(values.modDate) : '') : '',
   ].filter(Boolean).join('');
-
   if (!fragment) return { xml, fallback };
-
   const parsed = parseXmp(xml);
   if (!parsed.ok || !parsed.descriptions.length) {
     return { xml: buildXmp('', values, XMP_FIELD_IDS).xml, fallback: true };
   }
-
   const target = parsed.descriptions[Math.min(targetIndex, parsed.descriptions.length - 1)];
   let openTag = target.openTag;
   if (target.selfClosing) openTag = openTag.replace(/\/\s*>$/, '>');
@@ -524,7 +466,6 @@ export function buildXmp(existing, values, ids = XMP_FIELD_IDS) {
   }
   return { xml, fallback };
 }
-
 export async function write(file, payload, options = {}, report = () => {}) {
   const { PDFDocument, PDFName, PDFString } = await getLib();
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -538,7 +479,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     }
     throw new AppError('CORRUPT_FILE', 'PDF tidak bisa dibuka untuk ditulis.', message);
   }
-
   const info = ensureInfo(doc, PDFName);
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
@@ -560,7 +500,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     }
     customRemove.push(normalized);
   }
-
   for (const [id, key] of Object.entries(INFO_KEYS)) {
     if (remove.has(id)) {
       info.delete(PDFName.of(key));
@@ -579,7 +518,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
       info.set(PDFName.of(key), PDFString.of(asString(value)));
     }
   }
-
   for (const item of payload?.custom || []) {
     const key = asString(item?.key).trim();
     if (!key) continue;
@@ -591,7 +529,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   for (const key of customRemove) {
     if (key && !STANDARD_INFO.has(key)) info.delete(PDFName.of(key));
   }
-
   const finalValues = {
     title: pdfObjectToString(info.get(PDFName.of('Title'))),
     author: pdfObjectToString(info.get(PDFName.of('Author'))),
@@ -602,7 +539,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     creationDate: pdfObjectToString(info.get(PDFName.of('CreationDate'))),
     modDate: pdfObjectToString(info.get(PDFName.of('ModDate'))),
   };
-
   let existingXmp = '';
   try {
     const metaRef = doc.catalog.get(PDFName.of('Metadata'));
@@ -615,7 +551,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } catch {
     existingXmp = '';
   }
-
   report({ stage: 'Menulis metadata dan XMP…', pct: 45 });
   const changedXmp = new Set([...Object.keys(set), ...remove].filter((id) => XMP_FIELDS[id]));
   if (changedXmp.size) {
@@ -629,7 +564,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     });
     doc.catalog.set(PDFName.of('Metadata'), doc.context.register(xmpStream));
   }
-
   let out;
   try {
     out = await doc.save({
@@ -640,7 +574,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Gagal menyimpan PDF.', error.message || String(error));
   }
-
   report({ stage: 'Memverifikasi hasil…', pct: 80 });
   const blob = new Blob([out], { type: 'application/pdf' });
   let verifyDoc;
@@ -669,7 +602,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
       warnings.push(`Field "${id}" tidak terbaca kembali persis seperti yang diminta.`);
     }
   }
-
   return {
     blob,
     fields: verifyFields,
@@ -678,5 +610,4 @@ export async function write(file, payload, options = {}, report = () => {}) {
     warnings,
   };
 }
-
 export default { meta, sections, fields, read, write };

@@ -1,0 +1,66 @@
+/* MeInsert · components/toast.css — toast notifikasi. */
+.toast-region {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 80;
+  display: grid;
+  gap: 8px;
+  width: min(360px, calc(100vw - 40px));
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  pointer-events: auto;
+  animation: toast-in 220ms ease both;
+}
+.toast.is-error {
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--line));
+}
+.toast.is-success {
+  border-color: color-mix(in srgb, var(--success) 30%, var(--line));
+}
+.toast .toast-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.toast.is-error .toast-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.toast.is-success .toast-icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.toast .icon {
+  width: 12px;
+  height: 12px;
+}
+.toast p {
+  margin: 1px 0 0;
+}
+.toast.is-leaving {
+  animation: toast-out 180ms ease both;
+}
+@media (max-width: 700px) {
+  .toast-region {
+    right: 12px;
+    bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
+    width: calc(100vw - 24px);
+  }
+}

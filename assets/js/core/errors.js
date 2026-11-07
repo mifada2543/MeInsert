@@ -9,15 +9,12 @@ export class AppError extends Error {
     this.detail = detail;
   }
 }
-
 export function unsupported(message, detail = '') {
   return new AppError('UNSUPPORTED', message, detail);
 }
-
 export function processingError(message, detail = '') {
   return new AppError('PROCESSING_FAILED', message, detail);
 }
-
 export function serializeError(error) {
   if (error instanceof AppError) {
     return { code: error.code, message: error.message, detail: error.detail };

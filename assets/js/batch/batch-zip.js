@@ -3,7 +3,6 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { Zip, ZipPassThrough } from '../../vendor/fflate.mjs';
 import { safeOutputName, fileBaseName, fileExtension } from '../core/tag-utils.js';
-
 export function uniqueOutputName(file, usedNames, suffix = '-meinsert') {
   const name = file?.name || 'file';
   const base = safeOutputName(fileBaseName(name), 'file');
@@ -19,12 +18,10 @@ export function uniqueOutputName(file, usedNames, suffix = '-meinsert') {
   used.add(candidate.toLowerCase());
   return candidate;
 }
-
 export async function buildZip(items, { reportJson = '', onProgress } = {}) {
   const zippedItems = (items || []).filter((item) => item.outputFile);
   const used = new Set();
   const entries = [];
-
   for (const item of zippedItems) {
     const requestedName = item.outputName || uniqueOutputName(item.file, used);
     const finalName = used.has(requestedName.toLowerCase())
@@ -34,7 +31,6 @@ export async function buildZip(items, { reportJson = '', onProgress } = {}) {
     entries.push({ path: `outputs/${finalName}`, source: item.outputFile });
   }
   if (reportJson) entries.push({ path: 'laporan-meinsert.json', source: new Blob([reportJson], { type: 'application/json' }) });
-
   const chunks = [];
   let filesDone = 0;
   const total = entries.length;
@@ -75,7 +71,6 @@ export async function buildZip(items, { reportJson = '', onProgress } = {}) {
   onProgress?.({ stage: 'ZIP selesai.', pct: 100 });
   return new Blob(chunks, { type: 'application/zip' });
 }
-
 function zipEntries(items, reportJson) {
   const zippedItems = (items || []).filter((item) => item.outputFile);
   const used = new Set();
@@ -91,7 +86,6 @@ function zipEntries(items, reportJson) {
   if (reportJson) entries.push({ path: 'laporan-meinsert.json', source: new Blob([reportJson], { type: 'application/json' }) });
   return entries;
 }
-
 async function pumpZip(entries, onChunk, onProgress) {
   let filesDone = 0;
   const total = entries.length;
@@ -130,13 +124,6 @@ async function pumpZip(entries, onChunk, onProgress) {
   });
   onProgress?.({ stage: 'ZIP selesai.', pct: 100 });
 }
-
-/**
- * Saves ZIP without materialising the whole archive in RAM when the
- * browser supports the File System Access API (`showSavePicker`).
- * Returns `{ streaming: true }` on success, or `{ streaming: false, blob }`
- * when falling back to the in-memory `buildZip` path.
- */
 export async function saveZipStreaming(items, { reportJson = '', onProgress, suggestedName = 'meinsert-batch.zip' } = {}) {
   const entries = zipEntries(items, reportJson);
   const canStream = typeof window !== 'undefined' && typeof window.showSavePicker === 'function';
@@ -151,7 +138,6 @@ export async function saveZipStreaming(items, { reportJson = '', onProgress, sug
       types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
     });
   } catch (error) {
-    // User cancelled the picker — caller shows a neutral toast.
     const cancelled = error instanceof Error && error.name === 'AbortError';
     throw Object.assign(error instanceof Error ? error : new Error(String(error)), { cancelled, code: cancelled ? 'SAVE_CANCELLED' : 'SAVE_FAILED' });
   }
@@ -168,7 +154,6 @@ export async function saveZipStreaming(items, { reportJson = '', onProgress, sug
     throw error;
   }
 }
-
 export function reportTextBlob(reportJson) {
   return new Blob([reportJson || ''], { type: 'application/json' });
 }

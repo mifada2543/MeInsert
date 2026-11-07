@@ -3,7 +3,6 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { el, formatBytes } from './dom.js';
 import { icon } from './icons.js';
-
 export function renderResultCard(result, { onDownload }) {
   const warnings = result.warnings || [];
   const button = el('button', {

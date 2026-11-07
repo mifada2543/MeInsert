@@ -1,0 +1,106 @@
+/* MeInsert · components/buttons.css — tombol: .button, .text-button, .icon-button. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.button:disabled {
+  opacity: 0.42;
+}
+.button.primary {
+  background: var(--brand);
+  color: var(--brand-ink);
+  box-shadow: 0 10px 22px -14px color-mix(in srgb, var(--brand) 70%, transparent);
+}
+.button.primary:hover:not(:disabled) {
+  background: var(--brand-hover);
+}
+.button.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 28%, var(--line));
+}
+.button.danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+}
+.button.ghost {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+}
+.button.ghost:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+.button.small {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+.button .icon {
+  width: 15px;
+  height: 15px;
+}
+.text-button{
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.text-button:hover {
+  text-decoration-color: var(--accent);
+}
+.icon-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+.icon-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+@media (max-width: 700px) {
+  .button,
+  .button.small {
+    min-height: 42px;
+  }
+  .icon-button,
+  .back-button,
+  .text-button {
+    min-height: 44px;
+  }
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .text-button {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 10px;
+  }
+}

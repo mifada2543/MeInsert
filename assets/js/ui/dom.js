@@ -22,7 +22,6 @@ export function el(tag, attrs = {}, ...children) {
   append(node, children);
   return node;
 }
-
 export function append(node, children) {
   for (const child of children.flat(Infinity)) {
     if (child === undefined || child === null || child === false) continue;
@@ -30,20 +29,16 @@ export function append(node, children) {
   }
   return node;
 }
-
 export function clear(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
   return node;
 }
-
 export function qs(selector, root = document) {
   return root.querySelector(selector);
 }
-
 export function qsa(selector, root = document) {
   return [...root.querySelectorAll(selector)];
 }
-
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -54,7 +49,6 @@ export function downloadBlob(blob, filename) {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
-
 export function formatBytes(bytes) {
   const n = Number(bytes) || 0;
   if (n < 1024) return `${n} B`;
@@ -67,7 +61,6 @@ export function formatBytes(bytes) {
   }
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[index]}`;
 }
-
 export function formatDuration(seconds) {
   const n = Number(seconds);
   if (!Number.isFinite(n) || n <= 0) return '';

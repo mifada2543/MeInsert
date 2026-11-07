@@ -1,13 +1,9 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/** Shared helpers for embedded cover art / thumbnails. */
-
 function ascii(bytes, start, length) {
   return String.fromCharCode(...bytes.slice(start, start + length));
 }
-
-/** Best-effort MIME sniff for image bytes. */
 export function mimeOf(bytes) {
   const u = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
   if (u.length >= 3 && u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff) return 'image/jpeg';
@@ -17,12 +13,6 @@ export function mimeOf(bytes) {
   if (u.length >= 14 && ascii(u, 0, 2) === 'BM') return 'image/bmp';
   return 'image/jpeg';
 }
-
-/**
- * Removes cover samples from a Mediabunny `raw` bag: the OGG/Vorbis
- * METADATA_BLOCK_PICTURE string and any Matroska attachment that matches a
- * primary (coverFront/unknown) image. Returns the raw object for chaining.
- */
 export function scrubPrimaryCoverRaw(raw, images = []) {
   if (!raw) return raw;
   delete raw.METADATA_BLOCK_PICTURE;
@@ -40,7 +30,6 @@ export function scrubPrimaryCoverRaw(raw, images = []) {
   }
   return raw;
 }
-
 function bytesEqual(a, b) {
   if (a === b) return true;
   if (!a || !b || a.length !== b.length) return false;
@@ -49,28 +38,21 @@ function bytesEqual(a, b) {
   }
   return true;
 }
-
 const BASE_COVER_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
 const LEGACY_COVER_CONTAINERS = new Set(['mp3', 'flac', 'ogg', 'mkv']);
-
-/** Containers whose picture block accepts GIF/BMP as well as the base types. */
 export function coverFormatsFor(detectionId) {
   const mimes = [...BASE_COVER_MIMES];
   if (LEGACY_COVER_CONTAINERS.has(detectionId)) mimes.push('image/gif', 'image/bmp');
   return mimes;
 }
-
 export function coverAcceptFor(detectionId) {
   return coverFormatsFor(detectionId).join(',');
 }
-
 export function coverFormatsLabelFor(detectionId) {
   return coverFormatsFor(detectionId)
     .map((mime) => ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WebP', 'image/gif': 'GIF', 'image/bmp': 'BMP' }[mime]))
     .join(', ');
 }
-
-/** Minimal magic-byte sanity check for images the user can embed. */
 export function isSupportedCover(bytes, detectionId) {
   const u = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
   if (!u.length) return false;
@@ -78,8 +60,6 @@ export function isSupportedCover(bytes, detectionId) {
   if (mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/webp') return true;
   return (mime === 'image/gif' || mime === 'image/bmp') && LEGACY_COVER_CONTAINERS.has(detectionId);
 }
-
-/** Normalizes Mediabunny tags.images[0] into a { cover, coverBytes } pair. */
 export function coverFromTags(tags) {
   const image = tags?.images?.[0];
   if (!image?.data) return { cover: null, coverBytes: null };
@@ -97,11 +77,6 @@ export function coverFromTags(tags) {
     coverBytes: bytes,
   };
 }
-
-/**
- * Applies a cover action to a Mediabunny `images` array.
- * Only primary covers (coverFront/unknown) are touched; coverBack art is kept.
- */
 export function applyCoverImages(images, cover) {
   const list = Array.isArray(images) ? [...images] : [];
   if (!cover || cover.action === 'keep') return list;
@@ -120,7 +95,6 @@ export function applyCoverImages(images, cover) {
   }
   return withoutPrimary;
 }
-
 export function coverMetaFromAction(cover) {
   if (!cover || cover.action !== 'set') return null;
   const data = cover.data instanceof Uint8Array ? cover.data : new Uint8Array(cover.data);

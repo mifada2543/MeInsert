@@ -23,15 +23,12 @@ import { showToast } from './ui/toast.js';
 import { coverFormatsLabelFor, isSupportedCover, mimeOf } from './core/image-utils.js';
 import { initTheme } from './ui/theme.js';
 import { registerServiceWorker } from './core/pwa.js';
-
 registerServiceWorker();
-
 const MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024;
 const PDF_STANDARD_KEYS = new Set([
   'Title', 'Author', 'Subject', 'Keywords', 'Creator', 'Producer',
   'CreationDate', 'ModDate', 'Trapped', 'Metadata',
 ]);
-
 const els = {
   landing: qs('#landing'),
   workspace: qs('#workspace'),
@@ -40,7 +37,6 @@ const els = {
   browseBtn: qs('#browseBtn'),
   newFileBtn: qs('#newFileBtn'),
   readStatus: qs('#readStatus'),
-
   fileCard: qs('#fileCard'),
   previewDock: qs('#previewDock'),
   panel: qs('#panel'),
@@ -58,22 +54,17 @@ const els = {
   progress: qs('#progress'),
   progressBar: qs('#progressBar'),
   progressLabel: qs('#progressLabel'),
-
   toastRegion: qs('#toastRegion'),
 };
-
 const client = new MetadataClient();
 const page = document.body?.dataset.page || 'single';
 if (page === 'batch') {
-  // Batch UI + ZIP tooling are only needed on the batch page. Keep them out of
-  // the single-file entry so that page stays small.
   import('./batch/batch-view.js')
     .then(({ BatchController }) => new BatchController(client))
     .catch((error) => {
       console.error('MeInsert gagal memuat mode batch:', error);
     });
 }
-
 const state = {
   file: null,
   detection: null,
@@ -105,7 +96,6 @@ const state = {
   coverAction: 'keep',
   coverChosen: null,
 };
-
 const handlers = {
   onFieldChange(id, value) {
     state.values[id] = value;
@@ -175,20 +165,17 @@ const handlers = {
     syncActionBar();
   },
 };
-
 function revokeCoverPreview() {
   if (state.coverPreviewUrl) {
     URL.revokeObjectURL(state.coverPreviewUrl);
     state.coverPreviewUrl = null;
   }
 }
-
 function coverBytesForPreview() {
   if (state.coverAction === 'set' && state.coverChosen?.data) return state.coverChosen.data;
   if (state.coverAction === 'keep' && state.coverOriginalBytes) return state.coverOriginalBytes;
   return null;
 }
-
 function refreshCoverPreview() {
   revokeCoverPreview();
   const bytes = coverBytesForPreview();
@@ -196,7 +183,6 @@ function refreshCoverPreview() {
   const mime = state.coverAction === 'set' ? state.coverChosen?.mimeType : state.coverOriginal?.mimeType;
   state.coverPreviewUrl = URL.createObjectURL(new Blob([bytes], { type: mime || 'image/jpeg' }));
 }
-
 function resetCoverState() {
   state.coverOriginal = null;
   state.coverOriginalBytes = null;
@@ -204,7 +190,6 @@ function resetCoverState() {
   state.coverChosen = null;
   revokeCoverPreview();
 }
-
 function applyReadCover(result) {
   state.coverOriginal = result.cover || null;
   state.coverOriginalBytes = result.coverBytes || null;
@@ -212,45 +197,36 @@ function applyReadCover(result) {
   state.coverChosen = null;
   refreshCoverPreview();
 }
-
 function refreshCoverUI() {
   const block = els.panel.querySelector('.cover-block');
   if (block) block.replaceWith(renderCoverBlock(state.adapter, state, handlers));
-  // Audio cards host the thumbnail next to the player, so refresh that too.
   renderSide();
   scheduleDockUpdate();
 }
-
 function setIcons() {
   qs('#newFileBtn .icon')?.replaceChildren(icon('arrowLeft'));
   qs('#saveBtn .icon')?.replaceChildren(icon('download'));
   qs('#year').textContent = String(new Date().getFullYear());
 }
-
 function setStatus(text, isError = false) {
   els.readStatus.textContent = text;
   els.readStatus.classList.toggle('is-error', isError);
 }
-
 function setProgress(percent, label) {
   const pct = Math.max(0, Math.min(100, Number(percent) || 0));
   els.progressBar.style.width = `${pct}%`;
   if (label) els.progressLabel.textContent = label;
 }
-
 function showProgress(show) {
   els.progress.hidden = !show;
 }
-
 function setEditorBadge(text, ready = false) {
   els.editorBadge.textContent = text;
   els.editorBadge.classList.toggle('is-ready', ready);
 }
-
 function cloneRows(rows) {
   return rows.map((row) => ({ ...row }));
 }
-
 function valuesFromFields(fields = {}) {
   const values = {};
   for (const field of state.adapter?.fields || []) {
@@ -267,7 +243,6 @@ function valuesFromFields(fields = {}) {
   }
   return values;
 }
-
 function makeRows(custom = []) {
   return (custom || []).filter(Boolean).map((row) => ({
     uid: ++state.customUid,
@@ -277,11 +252,10 @@ function makeRows(custom = []) {
     originalValue: row.originalValue === undefined ? asString(row.value) : asString(row.originalValue),
   }));
 }
-
 function sanitizeBasename(value) {
   const base = safeOutputName(value, '')
-    .replace(/^[. ]+/, '')      // no leading dots/spaces (hidden files)
-    .replace(/[. ]+$/, '')      // no trailing dots/spaces before the extension
+    .replace(/^[. ]+/, '')
+    .replace(/[. ]+$/, '')
     .trim();
   return base || 'file';
 }
@@ -290,32 +264,27 @@ function defaultOutputName() {
   const base = fileBaseName(state.file?.name || 'file');
   return `${safeOutputName(base, 'file')}-meinsert`;
 }
-
 function ensureOutputName() {
   const ext = state.detection?.ext || 'bin';
   const base = sanitizeBasename(state.outputBase || defaultOutputName());
-  const name = `${base}.${ext}`; // extension is always the detected format, never user input
+  const name = `${base}.${ext}`;
   state.outputBase = base;
   state.outputName = name;
   els.outputBase.value = base;
   if (els.outputExt) els.outputExt.textContent = `.${ext}`;
   return name;
 }
-
 function previewUrlFor(file, detection) {
   if (!file || !detection) return null;
-  // Every supported format has an inline preview: image, PDF, audio, video.
   const previewable = ['image', 'pdf', 'mp3', 'flac', 'ogg', 'mp4', 'mkv'];
   return previewable.includes(detection.id) ? URL.createObjectURL(file) : null;
 }
-
 function revokePreview() {
   if (state.previewUrl) {
     URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = null;
   }
 }
-
 function computeSideSignature() {
   if (!state.file || !state.detection) return '';
   const info = state.readResult?.info || {};
@@ -342,7 +311,6 @@ function computeSideSignature() {
     warnings.join(' '),
   ].join('|');
 }
-
 function renderSide() {
   if (!state.file || !state.detection) return;
   const signature = computeSideSignature();
@@ -371,15 +339,11 @@ function renderSide() {
     onCoverUndo: handlers.onCoverUndo,
   });
 }
-
 function togglePreviewMinimized() {
   state.previewMinimized = !state.previewMinimized;
   setCardMinimized(els.fileCard, state.previewMinimized);
   scheduleDockUpdate();
 }
-
-// Keep the preview pinned under the top edge, and shrink it while pinned so the
-// form underneath stays reachable. Class-based so it follows scroll and resize.
 let dockFrame = 0;
 function updateDockState() {
   dockFrame = 0;
@@ -391,19 +355,16 @@ function updateDockState() {
   const top = els.previewDock.getBoundingClientRect().top;
   els.previewDock.classList.toggle('is-pinned', top <= 13);
 }
-
 function scheduleDockUpdate() {
   if (dockFrame) return;
   dockFrame = requestAnimationFrame(updateDockState);
 }
-
 function setupPreviewDock() {
   if (!els.previewDock) return;
   window.addEventListener('scroll', scheduleDockUpdate, { passive: true });
   window.addEventListener('resize', scheduleDockUpdate);
   updateDockState();
 }
-
 function renderTabs() {
   let activeTab = els.tabs[0];
   for (const tab of els.tabs) {
@@ -413,11 +374,9 @@ function renderTabs() {
     tab.tabIndex = active ? 0 : -1;
     if (active) activeTab = tab;
   }
-  // The panel is labelled by whichever tab is currently selected.
   if (activeTab) els.panel.setAttribute('aria-labelledby', activeTab.id);
   els.rawCount.textContent = String(state.readResult?.raw?.length || 0);
 }
-
 function skeletonPanel() {
   return el('div', { className: 'panel-loading' },
     el('div', { className: 'skeleton-head' },
@@ -433,7 +392,6 @@ function skeletonPanel() {
     el('div', { className: 'skeleton line short' }),
   );
 }
-
 function errorCard(error, { title = 'Terjadi kesalahan', onRetry, onClose } = {}) {
   const actions = el('div', { className: 'error-actions' });
   if (onRetry) {
@@ -460,7 +418,6 @@ function errorCard(error, { title = 'Terjadi kesalahan', onRetry, onClose } = {}
     ),
   );
 }
-
 function renderReadError() {
   clear(els.panel);
   els.panel.append(errorCard(state.readError, {
@@ -468,7 +425,6 @@ function renderReadError() {
     onRetry: () => openFile(state.file),
   }));
 }
-
 function renderWorkspace() {
   renderSide();
   renderTabs();
@@ -484,14 +440,12 @@ function renderWorkspace() {
     return;
   }
   if (!state.adapter || !state.readResult) return;
-
   if (state.activeTab === 'raw') {
     clear(els.panel);
     renderRaw(els.panel, { raw: state.readResult.raw || [] });
     setEditorBadge(`${state.detection.label} · ${state.readResult.raw?.length || 0} tag`, true);
     return;
   }
-
   clear(els.panel);
   if (state.result) {
     els.panel.append(renderResultCard(state.result, { onDownload: downloadResult }));
@@ -517,12 +471,10 @@ function renderWorkspace() {
   });
   setEditorBadge(`${state.detection.label} · ${state.readResult.raw?.length || 0} tag`, true);
 }
-
 function inputSame(a, b, field) {
   if (field.type === 'tags') return JSON.stringify(asArray(a)) === JSON.stringify(asArray(b));
   return asString(a).trim() === asString(b).trim();
 }
-
 function collectChanges({ validate = false } = {}) {
   const errors = [];
   const set = {};
@@ -544,7 +496,6 @@ function collectChanges({ validate = false } = {}) {
       set[field.id] = field.type === 'tags' ? asArray(current) : current;
     }
   }
-
   const custom = [];
   const customRemove = new Set(state.removedCustom);
   const seen = new Map();
@@ -568,7 +519,6 @@ function collectChanges({ validate = false } = {}) {
       }
       seen.set(lower, true);
     }
-
     const originalKey = row.originalKey ? asString(row.originalKey) : '';
     const keyChanged = Boolean(originalKey && originalKey !== key);
     const valueChanged = asString(row.originalValue) !== value;
@@ -583,7 +533,6 @@ function collectChanges({ validate = false } = {}) {
   for (const key of [...customRemove]) {
     if (customKeys.has(String(key).toLowerCase())) customRemove.delete(key);
   }
-
   const cover = state.coverAction === 'keep'
     ? null
     : state.coverAction === 'remove'
@@ -596,7 +545,6 @@ function collectChanges({ validate = false } = {}) {
         kind: 'coverFront',
       };
   const coverCount = cover ? 1 : 0;
-
   const count = Object.keys(set).length + new Set(remove).size + custom.length + customRemove.size + coverCount;
   return {
     payload: { set, remove: [...new Set(remove)], custom, customRemove: [...customRemove], ...(cover ? { cover } : {}) },
@@ -604,7 +552,6 @@ function collectChanges({ validate = false } = {}) {
     count,
   };
 }
-
 function syncActionBar() {
   const ready = state.status === 'ready';
   const changes = ready ? collectChanges() : { count: 0 };
@@ -628,12 +575,10 @@ function syncActionBar() {
     els.outputExt.textContent = `.${state.detection.ext}`;
   }
 }
-
 function cleanupUrls() {
   revokePreview();
   resetCoverState();
 }
-
 function resetWorkspaceDom() {
   clear(els.panel);
   clear(els.fileCard);
@@ -648,7 +593,6 @@ function resetWorkspaceDom() {
   renderTabs();
   syncActionBar();
 }
-
 async function openFile(file) {
   if (!file || state.processing) return;
   if (file.size > MAX_FILE_SIZE) {
@@ -665,7 +609,6 @@ async function openFile(file) {
     showToast(`Format ${detection.label} belum didukung.`, 'error', 5000);
     return;
   }
-
   cleanupUrls();
   state.readToken += 1;
   const token = state.readToken;
@@ -696,7 +639,6 @@ async function openFile(file) {
   syncActionBar();
   scheduleDockUpdate();
   window.scrollTo({ top: 0, behavior: 'smooth' });
-
   try {
     const result = await client.read(
       adapter.meta.engine,
@@ -735,7 +677,6 @@ async function openFile(file) {
     showToast(error?.message || 'File gagal dibaca.', 'error', 7000);
   }
 }
-
 function applyOutput(result) {
   const file = new File([result.blob], result.filename, {
     type: result.blob.type || state.file.type || state.detection.mime,
@@ -746,8 +687,6 @@ function applyOutput(result) {
   state.values = valuesFromFields(result.fields || state.values);
   state.originalValues = { ...state.values };
   state.removedFields.clear();
-
-  // Normalize thumbnail state after save: preview now reflects the output file.
   if (state.coverAction === 'set' && state.coverChosen) {
     state.coverOriginal = {
       mimeType: state.coverChosen.mimeType,
@@ -766,7 +705,6 @@ function applyOutput(result) {
   state.coverAction = 'keep';
   state.coverChosen = null;
   refreshCoverPreview();
-
   const rows = Array.isArray(result.custom)
     ? result.custom
     : state.customRows.filter((row) => asString(row.key).trim() && asString(row.value).trim());
@@ -778,7 +716,6 @@ function applyOutput(result) {
   })));
   state.customBaseline = cloneRows(state.customRows);
   state.removedCustom.clear();
-
   const warnings = result.warnings || [];
   state.readResult = {
     ...(state.readResult || {}),
@@ -796,7 +733,6 @@ function applyOutput(result) {
   state.outputName = result.filename || state.outputName;
   if (state.detection) els.outputExt.textContent = `.${state.detection.ext}`;
 }
-
 async function saveMetadata() {
   if (state.processing) {
     if (state.adapter) client.cancel(state.adapter.meta.engine);
@@ -823,7 +759,6 @@ async function saveMetadata() {
   showProgress(true);
   setProgress(4, 'Menyiapkan…');
   setStatus(`Memproses ${state.detection.label}…`);
-
   try {
     const result = await client.write(
       state.adapter.meta.engine,
@@ -874,7 +809,6 @@ async function saveMetadata() {
     syncActionBar();
   }
 }
-
 function downloadResult() {
   if (!state.result?.blob) return;
   const url = URL.createObjectURL(state.result.blob);
@@ -887,7 +821,6 @@ function downloadResult() {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
-
 function resetChanges() {
   if (state.processing) return;
   state.values = { ...state.originalValues };
@@ -903,7 +836,6 @@ function resetChanges() {
   syncActionBar();
   showToast('Perubahan dibatalkan.', 'info', 2800);
 }
-
 function goHome() {
   if (state.processing) {
     const shouldCancel = window.confirm('Pemrosesan masih berjalan. Batalkan dan ganti file?');
@@ -934,7 +866,6 @@ function goHome() {
   resetWorkspaceDom();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-
 function setupDropzone() {
   els.fileInput.accept = '.jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm';
   const pick = () => els.fileInput.click();
@@ -942,7 +873,6 @@ function setupDropzone() {
     event.stopPropagation();
     pick();
   });
-  // The whole drop card is the upload target, like the batch add tile.
   els.dropCard.addEventListener('click', (event) => {
     if (event.target.closest('button, a, input')) return;
     pick();
@@ -951,7 +881,6 @@ function setupDropzone() {
     const file = els.fileInput.files?.[0];
     if (file) openFile(file);
   });
-
   let dragDepth = 0;
   const enter = (event) => {
     event.preventDefault();
@@ -976,7 +905,6 @@ function setupDropzone() {
   window.addEventListener('dragover', (event) => event.preventDefault());
   window.addEventListener('drop', (event) => event.preventDefault());
 }
-
 function setupEvents() {
   els.tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
@@ -984,17 +912,13 @@ function setupEvents() {
       renderWorkspace();
     });
   });
-
   els.resetBtn.addEventListener('click', resetChanges);
   els.saveBtn.addEventListener('click', saveMetadata);
-
   els.newFileBtn.addEventListener('click', goHome);
-
   els.outputBase.addEventListener('input', () => {
     state.outputBase = els.outputBase.value;
   });
   els.outputBase.addEventListener('blur', () => ensureOutputName());
-
   window.addEventListener('beforeunload', (event) => {
     if (state.processing || state.dirtyCount > 0) {
       event.preventDefault();
@@ -1003,7 +927,6 @@ function setupEvents() {
   });
   window.addEventListener('pagehide', () => client.disposeAllSync());
 }
-
 function boot() {
   initTheme();
   setIcons();
@@ -1015,5 +938,4 @@ function boot() {
     syncActionBar();
   }
 }
-
 boot();

@@ -2,9 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /** Field standar yang punya padanan di beberapa format untuk mode batch. */
-
 import { asString } from './tag-utils.js';
-
 export const STANDARD_FIELDS = [
   { id: 'title', label: 'Judul', type: 'text', placeholder: 'Judul untuk semua format', maxLength: 256 },
   { id: 'artist', label: 'Artis / pembuat', type: 'text', placeholder: 'Nama artis, penulis, atau pembuat', maxLength: 200 },
@@ -16,9 +14,6 @@ export const STANDARD_FIELDS = [
   { id: 'composer', label: 'Komposer', type: 'text', placeholder: 'Nama komposer', maxLength: 200 },
   { id: 'software', label: 'Perangkat lunak', type: 'text', placeholder: 'MeInsert', maxLength: 200 },
 ];
-
-// Padanan field per detection.id. Field yang tidak ada di sini sengaja
-// dilewati: misalnya album/genre tidak dipaksakan ke PDF.
 const FORMAT_FIELDS = {
   image: {
     title: 'title',
@@ -88,7 +83,6 @@ const FORMAT_FIELDS = {
     software: 'software',
   },
 };
-
 export function crossTarget(detectionId, fieldId) {
   return FORMAT_FIELDS[detectionId]?.[fieldId] || '';
 }
@@ -101,12 +95,6 @@ function crossValue(target, value) {
   }
   return text;
 }
-
-/**
- * Translates the shared form values into the field ids of one file's format.
- * `availableFields` prevents writing a field the adapter does not expose
- * (for example `comment` on PNG/WebP).
- */
 export function crossFormatPatch({ detectionId, availableFields, values = {}, removed = [] }) {
   const set = {};
   const remove = [];

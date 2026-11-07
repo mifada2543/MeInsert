@@ -3,13 +3,10 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { el, clear } from './dom.js';
 import { icon } from './icons.js';
-
 let current = null;
-
 export function isLightboxOpen() {
   return Boolean(current);
 }
-
 export function openLightbox({ src, alt = '', caption = '', trigger = null } = {}) {
   if (typeof document === 'undefined' || !src) return null;
   closeLightbox();
@@ -18,14 +15,12 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     : (document.activeElement instanceof HTMLElement ? document.activeElement : null);
   const prevOverflow = document.body.style.overflow;
   document.body.style.overflow = 'hidden';
-
   let scale = 1;
   let tx = 0;
   let ty = 0;
   let dragging = null;
   const activePointers = new Map();
   let pinch = null;
-
   const captionText = (caption || '').trim();
   const captionNode = el('span', {
     className: 'lightbox-caption-text',
@@ -38,7 +33,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
       ? 'Ketuk 2x gambar untuk memperbesar/memperkecil · Seret untuk menggeser · Ketuk × untuk tutup'
       : 'Klik 2x gambar untuk memperbesar/memperkecil · Seret/panah untuk menggeser · Esc untuk tutup',
   });
-
   const img = el('img', { className: 'lightbox-img', src, alt: alt || 'Pratinjau ukuran penuh', decoding: 'async', draggable: 'false' });
   const panTop = el('div', { className: 'lightbox-pan-fade lightbox-pan-top', 'aria-hidden': 'true' });
   const panBottom = el('div', { className: 'lightbox-pan-fade lightbox-pan-bottom', 'aria-hidden': 'true' });
@@ -53,23 +47,18 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     applyTransform();
   };
   img.addEventListener('load', syncStageRatio);
-
   const applyTransform = () => {
     clampPan();
     img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
     img.classList.toggle('is-zoomed', scale > 1);
     updatePanFades();
   };
-
   function clampPan() {
     if (scale <= 1) {
       tx = 0;
       ty = 0;
       return;
     }
-    // Clip against the *viewport* (inside the 16px mat frame) so zoomed /
-    // panned image is clipped to the frame and the checker border stays
-    // uniformly visible on all four sides — never covered on one side only.
     const stageRect = viewport.getBoundingClientRect();
     const rect = img.getBoundingClientRect();
     const displayedW = rect.width / scale || 0;
@@ -81,12 +70,10 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     const maxTy = Math.max(0, (displayedH * scale - innerH) / 2) + SLACK;
     tx = Math.max(-maxTx, Math.min(maxTx, tx));
     ty = Math.max(-maxTy, Math.min(maxTy, ty));
-    // Edge magnet: snap flush when within 12px of either limit.
     const MAGNET = 12;
     if (maxTx > 0 && maxTx - Math.abs(tx) < MAGNET) tx = Math.sign(tx) * maxTx;
     if (maxTy > 0 && maxTy - Math.abs(ty) < MAGNET) ty = Math.sign(ty) * maxTy;
   }
-
   function updatePanFades() {
     if (typeof stageEl === 'undefined') return;
     let maxTy = 0;
@@ -104,11 +91,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     panTop.dataset.remaining = String(Math.round(maxTy - ty));
     panBottom.dataset.remaining = String(Math.round(ty + maxTy));
   }
-
-  // Zoom about the clicked/scrolled point while keeping origin centred.
-  // transform-origin trickery breaks the symmetric pan clamp (hence
-  // "mentok di tengah"), so we translate instead: the content pixel under
-  // the cursor stays exactly under the cursor after scaling.
   const zoomAt = (clientX, clientY, nextScale) => {
     const oldScale = scale;
     const target = Math.min(5, Math.max(1, nextScale));
@@ -132,7 +114,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     }
     applyTransform();
   };
-
   const toggleZoom = (event) => {
     if (scale > 1) {
       scale = 1;
@@ -149,7 +130,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     }
     zoomAt(event.clientX, event.clientY, 2.4);
   };
-
   const setScale = (next) => {
     scale = Math.min(5, Math.max(1, next));
     if (scale === 1) {
@@ -158,7 +138,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     }
     applyTransform();
   };
-
   const zoomInButton = el('button', {
     className: 'lightbox-zoom-btn',
     type: 'button',
@@ -179,9 +158,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     textContent: '1:1',
   });
   const resetToFit = () => {
-    // Pure preview reset: exactly like the file-card thumbnail (contain,
-    // centered, no zoom / pan / origin offset) — even if the user had
-    // panned to an edge, 1:1 must land here deterministically.
     scale = 1;
     tx = 0;
     ty = 0;
@@ -193,7 +169,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     img.style.transition = '';
     applyTransform();
   };
-
   for (const [button, action] of [
     [zoomInButton, () => setScale(scale * 1.4)],
     [zoomOutButton, () => setScale(scale * 0.7)],
@@ -204,24 +179,20 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
       action();
     });
   }
-
   const closeButton = el('button', {
     className: 'lightbox-close',
     type: 'button',
     'aria-label': 'Tutup pratinjau',
     title: 'Tutup',
   }, icon('x'));
-
   const controls = el('div', { className: 'lightbox-controls', role: 'group', 'aria-label': 'Kontrol zoom' },
     zoomOutButton, resetButton, zoomInButton);
-
   const figure = el('figure', { className: 'lightbox-figure' },
     stageEl,
     el('figcaption', { className: 'lightbox-caption' }, captionNode, captionText ? el('span', { className: 'lightbox-caption-sep', textContent: '·' }) : null, hintNode),
     controls,
     closeButton,
   );
-
   const backdrop = el('div', {
     className: 'lightbox',
     role: 'dialog',
@@ -229,7 +200,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     'aria-label': captionText ? `Pratinjau ${captionText}` : 'Pratinjau ukuran penuh',
   }, figure);
   document.body.append(backdrop);
-
   const cleanup = () => {
     document.removeEventListener('keydown', onKeydown, true);
     document.body.style.overflow = prevOverflow || '';
@@ -239,7 +209,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
       try { focusBefore.focus(); } catch { /* noop */ }
     }
   };
-
   const onKeydown = (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -259,7 +228,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
       return;
     }
     if (event.key === 'Tab') {
-      // Focus trap: keep tabbing inside the dialog.
       const focusables = [closeButton, zoomOutButton, resetButton, zoomInButton];
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -273,7 +241,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     }
   };
   document.addEventListener('keydown', onKeydown, true);
-
   closeButton.addEventListener('click', (event) => {
     event.stopPropagation();
     closeLightbox();
@@ -283,8 +250,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
       closeLightbox();
     }
   });
-  // Single click on the image does nothing (so the user can look around
-  // without an accidental zoom); only a double-click toggles zoom.
   img.addEventListener('click', (event) => {
     event.stopPropagation();
   });
@@ -301,8 +266,6 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     try { img.setPointerCapture(event.pointerId); } catch { /* noop */ }
     if (activePointers.size >= 2) {
-      // Second finger down: switch from pan to pinch zoom (works even at 1x,
-      // the portrait case that previously felt stuck).
       dragging = null;
       img.classList.remove('is-dragging');
       const [a, b] = [...activePointers.values()];
@@ -362,15 +325,12 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
   };
   img.addEventListener('pointerup', endDrag);
   img.addEventListener('pointercancel', endDrag);
-
   current = backdrop;
   backdrop._lightboxCleanup = cleanup;
   applyTransform();
-  // Move keyboard focus into the dialog for screen-reader and Esc users.
   closeButton.focus();
   return backdrop;
 }
-
 export function closeLightbox() {
   if (!current) return;
   const node = current;

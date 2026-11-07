@@ -1,0 +1,118 @@
+/* MeInsert · components/editor.css — kartu editor: tab, panel, skeleton loading. */
+.editor-card {
+  position: relative;
+  min-width: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--line);
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: -1px;
+}
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 17px 12px 15px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.tab:hover {
+  color: var(--ink);
+}
+.tab.is-active {
+  color: var(--ink);
+  border-bottom-color: var(--brand);
+}
+.tab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 19px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+.editor-badge {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+.editor-badge.is-ready {
+  border-color: color-mix(in srgb, var(--success) 26%, var(--line));
+  background: var(--success-soft);
+  color: var(--success);
+}
+.panel {
+  min-height: 360px;
+  padding: 22px;
+}
+.panel-loading {
+  display: grid;
+  gap: 18px;
+  padding: 12px 2px;
+}
+.skeleton-head {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--surface-2) 20%, var(--surface-3) 40%, var(--surface-2) 60%);
+  background-size: 220% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+.skeleton.title { width: 38%; height: 18px; }
+.skeleton.sub { width: 62%; height: 11px; margin-top: 8px; }
+.skeleton.line { height: 42px; width: 100%; }
+.skeleton.short { width: 68%; }
+
+@media (max-width: 700px) {
+  .panel {
+    padding: 17px 14px;
+  }
+  .editor-head {
+    padding: 0 14px;
+  }
+  .editor-badge {
+    display: none;
+  }
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tab {
+    flex: 0 0 auto;
+    min-height: 46px;
+    padding: 15px 9px 13px;
+  }
+}

@@ -6,21 +6,18 @@ import { icon } from './icons.js';
 import { openLightbox } from './lightbox.js';
 import { asArray, asString, fileBaseName } from '../core/tag-utils.js';
 import { coverAcceptFor, coverFormatsLabelFor } from '../core/image-utils.js';
-
 function inputsEqual(a, b, field) {
   if (field.type === 'tags') {
     return JSON.stringify(asArray(a)) === JSON.stringify(asArray(b));
   }
   return asString(a).trim() === asString(b).trim();
 }
-
 function fieldIsDirty(field, state) {
   if (state.removedFields.has(field.id)) {
     return asString(state.originalValues[field.id]).trim() !== '';
   }
   return !inputsEqual(state.values[field.id], state.originalValues[field.id], field);
 }
-
 function customPlaceholder(adapterId) {
   switch (adapterId) {
     case 'image':
@@ -38,7 +35,6 @@ function customPlaceholder(adapterId) {
       return 'NamaTag';
   }
 }
-
 function customHint(adapterId) {
   switch (adapterId) {
     case 'image':
@@ -56,7 +52,6 @@ function customHint(adapterId) {
       return 'Tambahkan metadata kustom sesuai format file.';
   }
 }
-
 function buildField(field, state, handlers) {
   const wrapper = el('div', {
     className: `field ${field.type === 'textarea' || field.type === 'tags' ? 'is-full' : ''}`.trim(),
@@ -82,7 +77,6 @@ function buildField(field, state, handlers) {
       },
     }, icon('x')),
   );
-
   let input;
   const value = asString(state.values[field.id]);
   const common = {
@@ -103,7 +97,6 @@ function buildField(field, state, handlers) {
   if (field.maxLength) common.maxLength = field.maxLength;
   if (field.min !== undefined) common.min = field.min;
   if (field.max !== undefined) common.max = field.max;
-
   if (field.type === 'textarea') {
     input = el('textarea', common);
     input.value = value;
@@ -117,20 +110,17 @@ function buildField(field, state, handlers) {
     input = el('input', { ...common, type: 'text' });
     input.value = value;
   }
-
   wrapper.append(head, input);
   if (field.helper) wrapper.append(el('p', { className: 'field-helper', textContent: field.helper }));
   syncField(wrapper, field, state);
   return wrapper;
 }
-
 function syncField(wrapper, field, state) {
   const dirty = fieldIsDirty(field, state);
   wrapper.classList.toggle('is-dirty', dirty);
   const dot = wrapper.querySelector('.field-dirty');
   if (dot) dot.hidden = !dirty;
 }
-
 export function syncFormState(container, state) {
   for (const field of state.adapter.fields) {
     const wrapper = container.querySelector(`[data-field-id="${CSS.escape(field.id)}"]`);
@@ -140,7 +130,6 @@ export function syncFormState(container, state) {
     syncField(wrapper, field, state);
   }
 }
-
 function renderCustomRows(list, state, handlers) {
   clear(list);
   if (!state.customRows.length) {
@@ -190,7 +179,6 @@ function renderCustomRows(list, state, handlers) {
     }, keyInput, valueInput, remove));
   }
 }
-
 function coverFileLabel(cover) {
   if (!cover) return '';
   const parts = [];
@@ -198,7 +186,6 @@ function coverFileLabel(cover) {
   if (cover.size) parts.push(formatBytes(cover.size));
   return parts.join(' · ');
 }
-
 export function renderCoverBlock(adapter, state, handlers) {
   const original = state.coverOriginal;
   const action = state.coverAction;
@@ -212,7 +199,6 @@ export function renderCoverBlock(adapter, state, handlers) {
       : original
         ? { text: 'Ada', className: 'is-ok' }
         : { text: 'Kosong', className: '' };
-
   const detectionId = adapter?.meta?.id;
   let hint = `${coverFormatsLabelFor(detectionId)}, maks. 10 MB.`;
   if (action === 'set' && chosen) {
@@ -220,7 +206,6 @@ export function renderCoverBlock(adapter, state, handlers) {
   } else if (original) {
     hint = `Terpasang: ${coverFileLabel(original)}`;
   }
-
   const preview = el('div', { className: 'cover-preview', dataset: { coverPreview: '' } },
     hasImage
       ? el('button', {
@@ -243,7 +228,6 @@ export function renderCoverBlock(adapter, state, handlers) {
           el('span', { textContent: original && !previewUrl ? 'Cover ada (pratinjau tidak tersedia)' : 'Belum ada thumbnail' }),
         ),
   );
-
   const input = el('input', {
     type: 'file',
     accept: coverAcceptFor(detectionId),
@@ -257,27 +241,23 @@ export function renderCoverBlock(adapter, state, handlers) {
       },
     },
   });
-
   const choose = el('button', {
     className: 'button ghost',
     type: 'button',
     on: { click: () => input.click() },
   }, icon('plus'), 'Pilih gambar…');
-
   const remove = el('button', {
     className: 'button ghost danger',
     type: 'button',
     hidden: !(action !== 'remove' && (original || chosen || action === 'set')),
     on: { click: () => handlers.onCoverRemove() },
   }, icon('trash'), 'Hapus thumbnail');
-
   const undo = el('button', {
     className: 'button ghost',
     type: 'button',
     hidden: action === 'keep',
     on: { click: () => handlers.onCoverUndo() },
   }, 'Batalkan');
-
   return el('section', { className: 'cover-block' },
     el('div', { className: 'cover-head' },
       el('div', {},
@@ -298,7 +278,6 @@ export function renderCoverBlock(adapter, state, handlers) {
     ),
   );
 }
-
 export function renderForm(container, { adapter, sections, state, handlers, coverInCard = false }) {
   clear(container);
   let index = 0;
@@ -318,11 +297,9 @@ export function renderForm(container, { adapter, sections, state, handlers, cove
     );
     container.append(block);
   }
-
   if (adapter.meta?.cover && handlers.onCoverChooseFile && !coverInCard) {
     container.append(renderCoverBlock(adapter, state, handlers));
   }
-
   const list = el('div', { className: 'custom-list' });
   const addButton = el('button', {
     className: 'button ghost small',

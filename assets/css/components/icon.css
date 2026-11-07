@@ -1,0 +1,13 @@
+/* MeInsert · components/icon.css — wadah ikon SVG. */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.icon svg {
+  width: 100%;
+  height: 100%;
+}

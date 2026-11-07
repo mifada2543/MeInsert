@@ -1,20 +1,12 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/*
- * Theme handling shared by every page entry. Loaded after theme-init.js, which
- * applies the saved theme before first paint; this module keeps it in sync and
- * animates manual/system switches.
- */
 import { qs } from './dom.js';
 import { icon } from './icons.js';
-
 const STORAGE_KEY = 'meinsert-theme';
-
 function themeToggle() {
   return qs('#themeToggle');
 }
-
 function syncThemeButton(theme) {
   const toggle = themeToggle();
   if (!toggle) return;
@@ -22,7 +14,6 @@ function syncThemeButton(theme) {
   toggle.title = label;
   toggle.setAttribute('aria-label', label);
 }
-
 function preferredTheme() {
   let stored = null;
   try {
@@ -33,21 +24,16 @@ function preferredTheme() {
   if (stored === 'dark' || stored === 'light') return stored;
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
-
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   try {
     localStorage.setItem(STORAGE_KEY, theme);
-  } catch {
-    // Storage can be disabled; the theme still applies for this page.
-  }
+  } catch {}
   syncThemeButton(theme);
 }
-
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
-
 function themeTransitionOrigin(toggle) {
   const rect = toggle.getBoundingClientRect();
   return {
@@ -55,7 +41,6 @@ function themeTransitionOrigin(toggle) {
     y: Math.round(rect.top + rect.height / 2),
   };
 }
-
 function applyThemeWithTransition(theme) {
   const root = document.documentElement;
   const toggle = themeToggle();
@@ -72,19 +57,16 @@ function applyThemeWithTransition(theme) {
   }
   document.startViewTransition(() => applyTheme(theme));
 }
-
 function setThemeIcons() {
   qs('#themeIconSun')?.replaceChildren(icon('sun'));
   qs('#themeIconMoon')?.replaceChildren(icon('moon'));
 }
-
 export function initTheme() {
   setThemeIcons();
   const toggle = themeToggle();
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   const theme = preferredTheme();
   if (document.documentElement.dataset.theme !== theme) {
-    // Rare mismatch (e.g. theme-init.js unreachable); align without animating.
     applyTheme(theme);
   } else {
     syncThemeButton(theme);
