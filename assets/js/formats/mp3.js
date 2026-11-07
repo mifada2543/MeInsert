@@ -1,3 +1,6 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { asArray, asString, pick, rawValue, sameValue, toYear } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags } from '../core/image-utils.js';
@@ -33,7 +36,7 @@ export const fields = [
   { id: 'comment', section: 'umum', label: 'Komentar', type: 'textarea', native: 'COMM', placeholder: 'Catatan tentang lagu…', maxLength: 2000 },
   { id: 'lyrics', section: 'umum', label: 'Lirik', type: 'textarea', native: 'USLT', placeholder: 'Lirik lagu…', maxLength: 10000 },
   { id: 'copyright', section: 'umum', label: 'Hak cipta', type: 'text', native: 'TCOP', placeholder: '© 2026 Nama Anda', maxLength: 300 },
-  { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'TSSE', placeholder: 'Meinsert', maxLength: 200 },
+  { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'TSSE', placeholder: 'MeInsert', maxLength: 200 },
 ];
 
 const KNOWN_FRAMES = new Set([

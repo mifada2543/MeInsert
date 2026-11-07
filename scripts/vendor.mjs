@@ -1,6 +1,17 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /**
  * Copies the pinned runtime libraries from node_modules into assets/vendor.
  * The app itself has no build step; run this only when updating a dependency.
+ *
+ * NOTE (license): the ExifTool, zeroperl, and pdf-lib-dependency notices in
+ * assets/vendor/licenses/ (exiftool-LICENSE.txt, zeroperl-LICENSE,
+ * pdf-lib-dependencies-LICENSES.md) are NOT copied by the copies[] list
+ * below because they ship inside @colorhythm/exiftool-wasm / pdf-lib's
+ * bundle, not as standalone LICENSE files in node_modules. This script
+ * intentionally leaves them untouched; do not delete assets/vendor/licenses/
+ * wholesale on a re-vendor run. See assets/THIRD_PARTY_LICENSES.md.
  */
 import { cp, mkdir, readdir, copyFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';

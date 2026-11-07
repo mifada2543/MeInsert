@@ -1,3 +1,6 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 const WORKER_URLS = {
   exiftool: new URL('../workers/exiftool.worker.js', import.meta.url),
   media: new URL('../workers/media.worker.js', import.meta.url),

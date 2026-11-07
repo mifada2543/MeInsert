@@ -1,3 +1,6 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { BatchProcessor } from './batch-processor.js';
 import {
   BATCH_LIMITS,
@@ -1186,7 +1189,7 @@ export class BatchController {
     }
     const raw = item.readResult.raw || [];
     const note = item.adapter?.meta?.id === 'mp3'
-      ? 'MP3 ditulis ulang oleh Meinsert; frame ID3 yang tidak dikenal juga akan hilang.'
+      ? 'MP3 ditulis ulang oleh MeInsert; frame ID3 yang tidak dikenal juga akan hilang.'
       : 'Tag yang tidak bisa dihapus selektif ditandai dengan gembok.';
     const search = el('input', { type: 'search', placeholder: 'Cari tag atau nilai…', className: 'batch-raw-search', 'aria-label': 'Cari raw tag' });
     const selectedCount = el('span', { className: 'raw-count' });
@@ -1212,7 +1215,7 @@ export class BatchController {
         }
       });
       const tr = el('tr', { className: ok ? '' : 'is-locked', title: reason || '' },
-        el('td', {}, ok ? checkbox : icon('lock', 'batch-lock')),
+        el('td', { className: 'raw-check' }, ok ? checkbox : icon('lock', 'batch-lock')),
         el('td', {},
           el('div', { className: 'raw-tag', textContent: row.tag }),
           el('div', { className: 'raw-group', textContent: row.group || '' }),

@@ -1,5 +1,8 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* ============================================================
-   Meinsert — design system
+   MeInsert — design system
    "Kertas hangat + aksen logo" (Logo.png: indigo slate ground,
    logo green / orange / red). IBM Plex Sans Condensed (display)
    · IBM Plex Sans (text) · IBM Plex Mono (literal data only).
@@ -1006,6 +1009,37 @@ h1 {
   .file-card--top .meta-list {
     grid-template-columns: minmax(0, 1fr);
     column-gap: 0;
+  }
+}
+
+/* Desktop lebar: pratinjau di kiri, editor di kanan. Tablet dan HP tetap
+   satu kolom dengan pratinjau di atas form. */
+@media (min-width: 1025px) {
+  .workspace {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .workspace-top {
+    grid-column: 1 / -1;
+  }
+
+  .preview-dock {
+    grid-column: 1;
+  }
+
+  .workspace-grid {
+    grid-column: 2;
+  }
+}
+
+/* Ultra-wide: hero tidak perlu meregang setinggi layar 4K. */
+@media (min-width: 1600px) {
+  .landing {
+    min-height: auto;
+    padding: 72px 0 96px;
   }
 }
 
@@ -2489,12 +2523,7 @@ body[data-page="single"] {
 }
 
 /* Responsive */
-@media (max-width: 1080px) {
-  .landing {
-    gap: 40px;
-    grid-template-columns: minmax(0, 1fr) minmax(350px, 0.9fr);
-  }
-
+@media (max-width: 1024px) {
   .output-name-wrap {
     display: flex;
   }
@@ -2509,7 +2538,7 @@ body[data-page="single"] {
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1024px) {
   .landing {
     grid-template-columns: 1fr;
     gap: 34px;
@@ -2542,12 +2571,15 @@ body[data-page="single"] {
     border-top: 1px solid var(--line);
   }
 
-  .field-grid {
-    grid-template-columns: 1fr;
+  /* Di tablet pratinjau penuh selebar konten, tapi tingginya dibatasi agar
+     form di bawahnya tetap terlihat tanpa menggulir terlalu jauh. */
+  .file-card--top .preview-frame--video,
+  .file-card--top .preview-frame--image {
+    --preview-cap: min(52vh, 420px);
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   .shell {
     width: min(100% - 28px, 1180px);
   }
@@ -2752,7 +2784,7 @@ body[data-page="single"] {
 
 .batch-summary {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   gap: 10px;
   margin: 18px 0 12px;
 }
@@ -2778,7 +2810,7 @@ body[data-page="single"] {
 
 .batch-limits {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
   margin-bottom: 18px;
 }
@@ -3545,7 +3577,7 @@ body[data-page="single"] {
   color: var(--faint);
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
   .batch-head,
   .batch-group-body {
     grid-template-columns: 1fr;
@@ -3555,11 +3587,6 @@ body[data-page="single"] {
     border-right: 0;
     border-bottom: 1px solid var(--line);
     max-height: none;
-  }
-
-  .batch-summary,
-  .batch-limits {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .batch-head-actions {
@@ -3839,7 +3866,7 @@ body[data-page="batch"] .header-link[data-nav="batch"] {
   pointer-events: none;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
   .landing-home {
     grid-template-columns: 1fr;
   }
@@ -3850,7 +3877,7 @@ body[data-page="batch"] .header-link[data-nav="batch"] {
 }
 
 /* Header saja butuh wrap di tablet agar nav tidak terpotong */
-@media (min-width: 701px) and (max-width: 980px) {
+@media (min-width: 701px) and (max-width: 1024px) {
   .header-inner {
     flex-wrap: wrap;
   }
@@ -4082,6 +4109,18 @@ html.theme-anim body * {
     --preview-cap: min(20vh, 180px);
   }
 
+  /* Daftar meta panjang (terutama audio) tidak boleh menutupi tab dan form
+     saat kartu menempel; detail tetap tersedia setelah menggulir ke atas. */
+  .preview-dock.is-pinned .file-card:not(.is-minimized) .meta-list,
+  .preview-dock.is-pinned .file-card:not(.is-minimized) .audio-cover-head {
+    display: none;
+  }
+
+  .preview-dock.is-pinned .file-card:not(.is-minimized) .file-info {
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+
   /* Landing / dropzone lebih ringkas */
   .drop-card {
     min-height: 280px;
@@ -4123,10 +4162,87 @@ html.theme-anim body * {
     height: 22px;
     accent-color: var(--brand);
   }
+
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .batch-file-name,
+  .batch-file-meta {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Form metadata satu kolom penuh di HP. */
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Tabel raw tag menjadi kartu vertikal: tag di atas, nilai di bawah.
+     Checkbox batch mengapung di kanan atas kartu. */
+  .raw-table-wrap {
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .raw-table,
+  .raw-table tbody {
+    display: block;
+  }
+
+  .raw-table thead {
+    display: none;
+  }
+
+  .raw-table tbody {
+    display: grid;
+    gap: 8px;
+  }
+
+  .raw-table tr {
+    display: block;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+
+  .raw-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .raw-table tr:hover td {
+    background: transparent;
+  }
+
+  .raw-table .raw-check {
+    float: right;
+    margin-left: 10px;
+  }
+
+  .raw-table .raw-name {
+    padding-right: 34px;
+  }
+
+  .raw-table .raw-tag,
+  .raw-table .raw-group {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .raw-table .raw-value {
+    margin-top: 4px;
+  }
 }
 
 /* Lansekap pendek: bar bawah dipadatkan */
-@media (max-height: 480px) and (max-width: 900px) {
+@media (max-height: 480px) and (max-width: 1024px) {
   .header-nav .header-link {
     min-height: 44px;
   }

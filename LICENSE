@@ -629,8 +629,9 @@ to attach them to the start of each source file to most effectively
 state the exclusion of warranty; and each file should have at least
 the "copyright" line and a pointer to where the full notice is found.
 
-    <one line to give the program's name and a brief idea of what it does.>
-    Copyright (C) <year>  <name of author>
+    MeInsert — Edit metadata file tanpa upload, 100% di browser.
+    Baca & tulis metadata gambar, audio, video, dan PDF langsung di perangkat.
+    Copyright (C) 2026 mifada2543
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -645,7 +646,12 @@ the "copyright" line and a pointer to where the full notice is found.
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Also add information on how to contact you by electronic and paper mail.
+    Source code and contact:
+      Repository: https://github.com/mifada2543/meinsert
+      Issues / contact: https://github.com/mifada2543/meinsert/issues
+      (No separate e-mail or postal address is published; please use
+      the repository issue tracker so that correspondence stays
+      publicly trackable with the project.)
 
 If your software can interact with users remotely through a computer
 network, you should also make sure that it provides a way for users to
@@ -655,7 +661,22 @@ of the code. There are many ways you could offer source, and different
 solutions will be better for different programs; see section 13 for the
 specific requirements.
 
+MeInsert complies with section 13 by (a) distributing its complete
+Corresponding Source from the public repository above at no charge,
+and (b) displaying a "Source" link plus links to this LICENSE and to
+assets/THIRD_PARTY_LICENSES.md in the footer of every HTML page.
+
 You should also get your employer (if you work as a programmer) or school,
 if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <https://www.gnu.org/licenses/>.
+
+Monetisation note (AGPL, sections 4-6 and 13): MeInsert's own code
+may be used in commercial and paid products and services, but any
+modified version that is conveyed or that provides remote network
+interaction must remain free software under this License and its
+Corresponding Source must remain available to all recipients/users
+on the same terms. If you modify or host MeInsert, you must offer the
+source of your version at no charge (section 13). See README section
+"Lisensi & Monetisasi" for a plain-language summary; this LICENSE
+text controls in case of any conflict.

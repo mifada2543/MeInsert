@@ -1,17 +1,17 @@
 <div align="center">
 
-<img src="assets/img/icon-512.png" alt="Meinsert" width="120" height="120" />
+<img src="assets/img/icon-512.png" alt="MeInsert" width="120" height="120" />
 
-# Meinsert
+# MeInsert
 
 **Edit metadata tanpa upload — 100% di browser**
 
 Baca & tulis metadata gambar, PDF, audio, dan video langsung di perangkat Anda.
 Tidak ada server. Tidak ada upload. Tidak ada akun.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_Now-2ea44f?style=for-the-badge)](https://mifada2543.github.io/Meinsert/)
-[![PWA](https://img.shields.io/badge/PWA-Installable-7B3FF2?style=for-the-badge)](https://mifada2543.github.io/Meinsert/)
-[![Offline](https://img.shields.io/badge/Offline-Ready-10b981?style=for-the-badge)](https://mifada2543.github.io/Meinsert/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_Now-2ea44f?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
+[![PWA](https://img.shields.io/badge/PWA-Installable-7B3FF2?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
+[![Offline](https://img.shields.io/badge/Offline-Ready-10b981?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
 
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue?style=for-the-badge)](./package.json)
 [![License](https://img.shields.io/badge/Lisensi-AGPLv3-orange?style=for-the-badge)](./LICENSE)
@@ -24,7 +24,7 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 
 <br/>
 
-[🚀 Coba Demo Langsung](https://mifada2543.github.io/Meinsert/) ·
+[🚀 Coba Demo Langsung](https://mifada2543.github.io/MeInsert/) ·
 [📄 Edit Satu File](./single.html) ·
 [📦 Proses Massal / Batch](./batch.html) ·
 [⚙️ Instalasi](#instalasi-cepat-xampp)
@@ -33,13 +33,13 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 
 </div>
 
-> **Meinsert** adalah editor metadata lokal berbasis web. Semua pemrosesan berjalan di sisi klien dengan WebAssembly + Web Workers — file Anda tidak pernah meninggalkan perangkat, bahkan bisa dipakai offline setelah kunjungan pertama.
+> **MeInsert** adalah editor metadata lokal berbasis web. Semua pemrosesan berjalan di sisi klien dengan WebAssembly + Web Workers — file Anda tidak pernah meninggalkan perangkat, bahkan bisa dipakai offline setelah kunjungan pertama.
 
 ---
 
 ## Daftar Isi
 
-- [Kenapa Meinsert?](#kenapa-meinsert)
+- [Kenapa MeInsert?](#kenapa-meinsert)
 - [Format Didukung](#format-didukung)
 - [Cara Pakai (30 Detik)](#cara-pakai-30-detik)
 - [Fitur Unggulan](#fitur-unggulan)
@@ -51,7 +51,7 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 
 ---
 
-## Kenapa Meinsert?
+## Kenapa MeInsert?
 
 | 🔒 Privasi Absolut | ⚡ Cepat & Ringan | 📴 Offline-First |
 |---|---|---|
@@ -121,15 +121,15 @@ Tidak perlu build. File HTML/CSS/JS statis, vendor sudah termasuk di repo.
 ```bash
 # 1. Clone ke htdocs
 cd /opt/lampp/htdocs
-git clone <repo> Meinsert
-cd Meinsert
+git clone <repo> MeInsert
+cd MeInsert
 
 # 2. (Sekali saja / saat update library) Pasang vendor
 npm install
 npm run vendor
 
 # 3. Buka di browser
-# http://localhost/Meinsert/
+# http://localhost/MeInsert/
 # → gunakan menu Install / Tambahkan ke layar utama untuk PWA
 ```
 
@@ -177,7 +177,7 @@ npm run serve  # http://localhost:8000
 ### Struktur proyek
 
 ```
-Meinsert/
+MeInsert/
 ├── index.html                 # Beranda: pilih Satu file / Banyak file
 ├── single.html                # Editor satu file
 ├── batch.html                 # Batch: periksa & proses banyak file
@@ -255,15 +255,42 @@ npx eslint assets/js --ext .js
 
 ## Lisensi
 
-**Kode aplikasi:** [AGPLv3](./LICENSE)
+**Kode aplikasi:** [AGPLv3](./LICENSE) — Copyright (C) 2026 mifada2543
 
-Library pihak ketiga yang dibundel (ExifTool WASM, Mediabunny, pdf-lib, browser-id3-writer, fflate, IBM Plex) tetap pada lisensi aslinya — lihat [assets/THIRD_PARTY_LICENSES.md](./assets/THIRD_PARTY_LICENSES.md).
+**Source:** [https://github.com/mifada2543/meinsert](https://github.com/mifada2543/meinsert) · tautan **Source** juga ada di footer setiap halaman (kewajiban transparansi AGPL §13).
+
+### Atribusi pihak ketiga
+
+Library pihak ketiga yang dibundel tetap pada lisensi aslinya — lihat [assets/THIRD_PARTY_LICENSES.md](./assets/THIRD_PARTY_LICENSES.md):
+
+- **ExifTool 13.60** oleh Phil Harvey — Perl Artistic License atau GPL (teks hak cipta di `assets/vendor/licenses/exiftool-LICENSE.txt`)
+- **@colorhythm/exiftool-wasm v1.0.5** — Apache-2.0, plus **zeroperl** (MIT) sebagai runtime WASM-nya
+- **Mediabunny** — MPL-2.0 · **pdf-lib**, **browser-id3-writer**, **fflate** — MIT (+ dependensi tersembunyi pdf-lib: pako MIT AND Zlib, standard-fonts/upng MIT, tslib 0BSD)
+- **Font IBM Plex** — SIL Open Font License 1.1 (`assets/fonts/OFL.txt`)
+- **Gambar merek** — karya asli proyek ini; provenance di [assets/img/PROVENANCE.md](./assets/img/PROVENANCE.md)
+
+Nama ExifTool, Mediabunny, pdf-lib, IBM Plex, dan zeroperl adalah merek dagang pemiliknya; penyebutan di sini hanya untuk identifikasi asal kode, bukan dukungan resmi.
+
+### Lisensi & Monetisasi (AGPLv3)
+
+MeInsert **boleh dimonetisasi** (produk berbayar, hosting berbayar, layanan premium). Syaratnya, AGPLv3 bersifat *copyleft jaringan*:
+
+- Anda boleh mengenakan biaya untuk distribusi, dukungan, atau layanan.
+- Jika Anda **mengubah** MeInsert dan menyebarkannya **atau** menjalankannya sebagai layanan jaringan (termasuk situs publik, SaaS, atau aplikasi yang berinteraksi dengan pengguna dari jarak jauh), Anda **wajib** menawarkan **Corresponding Source dari versi Anda** kepada semua penerima/pengguna secara gratis, melalui mekanisme standar (repo publik / tautan Source), selama versi itu berjalan.
+- Anda **tidak boleh** menutup kode modifikasi MeInsert di balik layanan proprietary.
+- Kontribusi pihak ketiga di atas tetap tunduk pada lisensinya masing-masing; AGPL tidak mengubahnya.
+
+Ringkasnya: **monetisasi boleh, menutup kode tidak boleh.** Teks [LICENSE](./LICENSE) yang mengikat; ringkasan ini hanya penjelasan bahasa sederhana.
+
+### Catatan penggunaan yang pantas
+
+MeInsert hanya menyediakan *alat* untuk membaca/menulis tag standar (EXIF, XMP, IPTC, ID3, Vorbis Comment, Matroska, Info Dictionary PDF). Anda bertanggung jawab atas file milik Anda: jangan menghapus atau memalsukan atribusi hak cipta pemilik karya, dan patuhi hukum setempat tentang penghapusan informasi manajemen hak cipta.
 
 ---
 
 <div align="center">
 
-**Meinsert** — Dibuat untuk file yang ingin tetap privat.
+**MeInsert** — Dibuat untuk file yang ingin tetap privat.
 
 _Tidak ada backend · Tidak ada upload · 100% di perangkat Anda_
 

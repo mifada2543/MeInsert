@@ -1,3 +1,6 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /** Shared implementation for Vorbis-comment based adapters (FLAC, OGG/Opus). */
 
 import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js';
@@ -58,7 +61,7 @@ export const fields = [
   { id: 'composer', section: 'umum', label: 'Komposer', type: 'text', native: 'COMPOSER', placeholder: 'Nama komposer', maxLength: 200 },
   { id: 'comment', section: 'umum', label: 'Komentar', type: 'textarea', native: 'COMMENT', placeholder: 'Catatan tentang audio…', maxLength: 2000 },
   { id: 'copyright', section: 'umum', label: 'Hak cipta', type: 'text', native: 'COPYRIGHT', placeholder: '© 2026 Nama Anda', maxLength: 300 },
-  { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'ENCODER', placeholder: 'Meinsert', maxLength: 200 },
+  { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'ENCODER', placeholder: 'MeInsert', maxLength: 200 },
   { id: 'lyrics', section: 'umum', label: 'Lirik', type: 'textarea', native: 'LYRICS', placeholder: 'Lirik lagu…', maxLength: 10000 },
 ];
 

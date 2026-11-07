@@ -1,4 +1,7 @@
 <!doctype html>
+<!-- MeInsert — Edit metadata file tanpa upload, 100% di browser. -->
+<!-- Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
+<!-- reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 -->
 <html lang="id">
 
 <head>
@@ -8,30 +11,30 @@
   <meta name="theme-color" content="#f5f4ed" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14141f" media="(prefers-color-scheme: dark)">
   <meta name="description"
-    content="Meinsert: baca dan tulis metadata file langsung di browser. Satu file atau proses massal. Tanpa upload, tanpa server.">
+    content="MeInsert: baca dan tulis metadata file langsung di browser. Satu file atau proses massal. Tanpa upload, tanpa server.">
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Meinsert">
+  <meta name="apple-mobile-web-app-title" content="MeInsert">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <script src="assets/js/theme-init.js"></script>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <!-- Open Graph -->
-  <meta property="og:title" content="Meinsert — Edit metadata file tanpa upload">
+  <meta property="og:title" content="MeInsert — Edit metadata file tanpa upload">
   <meta property="og:description"
     content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. Satu file atau batch. 100% lokal, file tidak pernah keluar perangkat.">
-  <meta property="og:image" content="https://mifada2543.github.io/Meinsert/assets/img/og-image.png">
-  <meta property="og:url" content="https://mifada2543.github.io/Meinsert/">
+  <meta property="og:image" content="https://mifada2543.github.io/MeInsert/assets/img/og-image.png">
+  <meta property="og:url" content="https://mifada2543.github.io/MeInsert/">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="id_ID">
-  <meta property="og:site_name" content="Meinsert">
+  <meta property="og:site_name" content="MeInsert">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Meinsert — Edit metadata file tanpa upload">
+  <meta name="twitter:title" content="MeInsert — Edit metadata file tanpa upload">
   <meta name="twitter:description"
     content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
-  <meta name="twitter:image" content="https://mifada2543.github.io/Meinsert/assets/img/og-image.png">
+  <meta name="twitter:image" content="https://mifada2543.github.io/MeInsert/assets/img/og-image.png">
   <meta name="google-site-verification" content="aJ9mn1d-sBbnDJeH4ZT38tnmWaFG3X9mzVqnwE9jkrE" />
   <title>MeInsert | Edit metadata tanpa upload</title>
   <link rel="stylesheet" href="assets/css/app.css">
@@ -45,11 +48,11 @@
 
   <header class="site-header">
     <div class="shell header-inner">
-      <a class="brand" href="./" aria-label="Meinsert Metadata lokal, kembali ke awal">
+      <a class="brand" href="./" aria-label="MeInsert Metadata lokal, kembali ke awal">
         <img class="brand-logo" src="assets/img/icon-192.png" width="42" height="42" alt="">
         <span class="brand-text">MeInsert<small>metadata lokal</small></span>
       </a>
-      <nav class="header-nav" aria-label="Mode Meinsert">
+      <nav class="header-nav" aria-label="Mode MeInsert">
         <a class="header-link" data-nav="single" href="./single.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg><span>Satu file</span></a>
         <a class="header-link" data-nav="batch" href="./batch.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 4.9-9 4.9-9-4.9Z"/><path d="m3 12 9 4.9 9-4.9"/><path d="m3 17 9 4.9 9-4.9"/></svg><span>Banyak file</span></a>
       </nav>
@@ -146,8 +149,8 @@
 
   <footer class="site-footer">
     <div class="shell footer-inner">
-      <p><strong>Meinsert</strong> — editor metadata statis. Dibuat untuk file yang ingin tetap privat.</p>
-      <p class="footer-meta">Tidak ada backend · Tidak ada upload · <span id="year"></span></p>
+      <p><strong>MeInsert</strong> — editor metadata statis. Dibuat untuk file yang ingin tetap privat.</p>
+      <p class="footer-meta">Tidak ada backend · Tidak ada upload · <a href="https://github.com/mifada2543/meinsert" rel="noopener noreferrer">Source</a> · <a href="./LICENSE">AGPLv3</a> · <a href="./assets/THIRD_PARTY_LICENSES.md">Atribusi</a> · <span id="year"></span></p>
     </div>
   </footer>
 
@@ -158,8 +161,8 @@
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "Meinsert",
-  "url": "https://mifada2543.github.io/Meinsert/",
+  "name": "MeInsert",
+  "url": "https://mifada2543.github.io/MeInsert/",
   "description": "Baca & tulis metadata gambar, audio, video, PDF langsung di browser. Satu file atau batch. 100% lokal, file tidak pernah keluar perangkat.",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "All",

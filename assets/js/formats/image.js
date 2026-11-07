@@ -1,3 +1,6 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import {
   asArray,
   asString,
@@ -50,7 +53,7 @@ export function fieldsFor(subtype) {
     { id: 'keywords', section: 'umum', label: 'Kata kunci', type: 'tags', native: 'XMP-dc:Subject', placeholder: 'pantai, sunset, bali', helper: 'Pisahkan dengan koma.', maxLength: 1000 },
     { id: 'rights', section: 'umum', label: 'Hak cipta', type: 'text', native: 'XMP-dc:Rights + EXIF:Copyright', placeholder: '© 2026 Nama Anda', maxLength: 300 },
     { id: 'date', section: 'umum', label: 'Tanggal dibuat', type: 'date', native: 'XMP-xmp:CreateDate' },
-    { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'XMP-xmp:CreatorTool + EXIF:Software', placeholder: 'Meinsert', maxLength: 200 },
+    { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'XMP-xmp:CreatorTool + EXIF:Software', placeholder: 'MeInsert', maxLength: 200 },
   ];
   if (subtype === 'png' || subtype === 'webp') return common;
   const withComment = [

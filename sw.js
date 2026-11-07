@@ -1,4 +1,7 @@
-/* Meinsert service worker: precaches the app shell + vendor libraries so the
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+/* MeInsert service worker: precaches the app shell + vendor libraries so the
  * editor works offline. The 27 MB ExifTool WASM is deliberately NOT precached;
  * it is cached on first use (format pages that need it keep working offline
  * afterwards). This keeps the first visit light instead of downloading 29 MB. */
@@ -81,7 +84,7 @@ self.addEventListener('install', (event) => {
       .map((result, index) => (result.status === 'rejected' ? PRECACHE_URLS[index] : null))
       .filter(Boolean);
     if (failed.length) {
-      console.warn('Meinsert: sebagian aset gagal di-precache:', failed);
+      console.warn('MeInsert: sebagian aset gagal di-precache:', failed);
     }
     await self.skipWaiting();
   })());
@@ -114,7 +117,7 @@ async function networkFirstNavigation(request) {
       || await cache.match('./index.html')
       || await cache.match('./');
     if (cached) return cached;
-    return new Response('Meinsert tidak tersedia offline.', {
+    return new Response('MeInsert tidak tersedia offline.', {
       status: 503,
       headers: { 'content-type': 'text/plain; charset=utf-8' },
     });

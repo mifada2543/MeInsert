@@ -1,3 +1,6 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags, applyCoverImages, mimeOf, scrubPrimaryCoverRaw } from '../core/image-utils.js';
@@ -29,7 +32,7 @@ export const fields = [
   { id: 'description', section: 'umum', label: 'Deskripsi', type: 'textarea', native: 'DESCRIPTION', placeholder: 'Deskripsi isi video…', maxLength: 2000 },
   { id: 'comment', section: 'umum', label: 'Komentar', type: 'textarea', native: 'COMMENT', placeholder: 'Catatan tambahan…', maxLength: 2000 },
   { id: 'copyright', section: 'umum', label: 'Hak cipta', type: 'text', native: 'COPYRIGHT', placeholder: '© 2026 Nama Anda', maxLength: 300 },
-  { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'ENCODER', placeholder: 'Meinsert', maxLength: 200 },
+  { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'ENCODER', placeholder: 'MeInsert', maxLength: 200 },
 ];
 
 const KNOWN_RAW = new Set([

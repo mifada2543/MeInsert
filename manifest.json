@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Meinsert — Edit metadata tanpa upload",
-  "short_name": "Meinsert",
+  "name": "MeInsert — Edit metadata tanpa upload",
+  "short_name": "MeInsert",
   "description": "Baca, tulis, dan bersihkan metadata gambar, audio, video, dan PDF langsung di browser. File tidak pernah keluar perangkat.",
   "lang": "id",
   "start_url": "./",

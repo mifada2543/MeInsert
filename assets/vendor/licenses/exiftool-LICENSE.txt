@@ -1,0 +1,22 @@
+ExifTool — Copyright and License Notice
+=======================================
+
+Copyright 2003-2026, Phil Harvey
+ExifTool by Phil Harvey (philharvey66 at gmail.com)
+https://exiftool.org/
+https://github.com/exiftool/exiftool
+
+This is free software; you can redistribute it and/or modify it under the
+same terms as Perl itself (either the Perl Artistic License or GPL).
+
+MeInsert bundles ExifTool 13.60 (Perl script + Image::ExifTool library,
+minified) inside @colorhythm/exiftool-wasm v1.0.5, which executes it in
+WebAssembly via zeroperl. The notice above is reproduced here per the
+licence condition to retain copyright notices. The upstream project
+distributes the full license text and test suite with the official
+tarball; the operative statement is the one quoted above.
+
+This notice does not re-license ExifTool. ExifTool remains under its
+original terms. MeInsert (AGPLv3) claims no rights in ExifTool itself
+and asserts no sponsorship or endorsement by Phil Harvey — see
+assets/THIRD_PARTY_LICENSES.md for details.

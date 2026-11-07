@@ -1,3 +1,6 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { detectFile } from './core/detector.js';
 import { adapterForDetection, fieldsBySection } from './core/registry.js';
 import { MetadataClient } from './core/worker-client.js';
@@ -67,7 +70,7 @@ if (page === 'batch') {
   import('./batch/batch-view.js')
     .then(({ BatchController }) => new BatchController(client))
     .catch((error) => {
-      console.error('Meinsert gagal memuat mode batch:', error);
+      console.error('MeInsert gagal memuat mode batch:', error);
     });
 }
 
