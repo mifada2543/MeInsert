@@ -18,6 +18,7 @@ import { icon } from '../ui/icons.js';
 import { showToast } from '../ui/toast.js';
 import { previewKind } from '../ui/file-card.js';
 import { asArray, asString, fileBaseName, fileExtension, safeOutputName } from '../core/tag-utils.js';
+import { STANDARD_FIELDS, crossFormatPatch } from '../core/format-map.js';
 
 const MP3_DELETABLE_FRAMES = new Set([
   'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
@@ -98,6 +99,14 @@ export class BatchController {
     this.updateFrame = 0;
     this.pendingUpdates = new Map();
     this.latestStage = '';
+    this.crossEnabled = false;
+    this.cross = {
+      key: 'cross',
+      label: 'Lintas format',
+      fields: STANDARD_FIELDS,
+      values: Object.fromEntries(STANDARD_FIELDS.map((field) => [field.id, ''])),
+      remove: new Set(),
+    };
 
     this.els = {
       landing: qs('#landing'),
@@ -113,6 +122,10 @@ export class BatchController {
       batchStatus: qs('#batchStatus'),
       batchSummary: qs('#batchSummary'),
       batchLimits: qs('#batchLimits'),
+      batchCross: qs('#batchCross'),
+      batchCrossToggle: qs('#batchCrossToggle'),
+      batchCrossBody: qs('#batchCrossBody'),
+      batchCrossFields: qs('#batchCrossFields'),
       batchGroups: qs('#batchGroups'),
       batchProgress: qs('#batchProgress'),
       batchProgressBar: qs('#batchProgressBar'),
@@ -164,6 +177,11 @@ export class BatchController {
     this.bindDrop(els.batchWorkspace);
     els.batchBackBtn.addEventListener('click', () => this.resetBatch({ confirmIfBusy: true }));
     els.batchDetailBackBtn.addEventListener('click', () => this.closeDetail());
+    els.batchCrossToggle.addEventListener('change', () => {
+      this.crossEnabled = els.batchCrossToggle.checked;
+      els.batchCrossBody.hidden = !this.crossEnabled;
+      this.syncApply();
+    });
     els.batchApplyBtn.addEventListener('click', () => this.handleApplyClick());
     els.batchZipBtn.addEventListener('click', () => this.downloadZip());
     els.batchReportJsonBtn.addEventListener('click', () => this.downloadReport('json'));
@@ -375,6 +393,7 @@ export class BatchController {
   renderFull() {
     this.renderSummary();
     this.renderLimits();
+    this.renderCrossForm();
     this.renderGroups();
     this.syncApply();
   }
@@ -425,6 +444,30 @@ export class BatchController {
       messages.append(el('p', { className: 'is-ok', textContent: 'Batas terpenuhi. File terpilih aman diproses.' }));
     }
     this.els.batchLimits.append(messages);
+  }
+
+  renderCrossForm() {
+    const hasItems = this.items.length > 0;
+    this.els.batchCross.hidden = !hasItems;
+    this.els.batchCrossToggle.disabled = !hasItems;
+    this.els.batchCrossToggle.checked = this.crossEnabled;
+    this.els.batchCrossBody.hidden = !this.crossEnabled;
+    clear(this.els.batchCrossFields);
+    for (const field of STANDARD_FIELDS) {
+      this.els.batchCrossFields.append(this.renderBatchField(this.cross, field));
+    }
+  }
+
+  crossPatchFor(item) {
+    if (!this.crossEnabled) return { set: {}, remove: [] };
+    const group = this.groupMap.get(item.groupKey);
+    const availableFields = new Set((group?.fields || []).map((field) => field.id));
+    return crossFormatPatch({
+      detectionId: item.detection?.id,
+      availableFields,
+      values: this.cross.values,
+      removed: [...this.cross.remove],
+    });
   }
 
   renderGroups() {
@@ -655,14 +698,19 @@ export class BatchController {
 
   operationCountFor(item) {
     const group = this.groupMap.get(item.groupKey);
-    let count = (group?.remove.size || 0) + (item.removeRaw?.size || 0);
+    const setIds = new Set();
+    const removeIds = new Set(group?.remove || []);
     if (group) {
       for (const field of group.fields) {
-        if (group.remove.has(field.id)) continue;
-        if (asString(group.values[field.id]).trim()) count += 1;
+        if (removeIds.has(field.id)) continue;
+        if (asString(group.values[field.id]).trim()) setIds.add(field.id);
       }
     }
-    return count;
+    const cross = this.crossPatchFor(item);
+    for (const id of Object.keys(cross.set)) setIds.add(id);
+    for (const id of cross.remove) removeIds.add(id);
+    for (const id of removeIds) setIds.delete(id);
+    return setIds.size + removeIds.size + (item.removeRaw?.size || 0);
   }
 
   collectGroupPayload(item) {
@@ -677,6 +725,9 @@ export class BatchController {
         set[field.id] = field.type === 'tags' ? asArray(raw) : raw;
       }
     }
+    const cross = this.crossPatchFor(item);
+    for (const [id, value] of Object.entries(cross.set)) set[id] = value;
+    for (const id of cross.remove) remove.push(id);
     const rawRemove = [...item.removeRaw];
     const operations = {
       set: Object.keys(set).length,
@@ -764,9 +815,15 @@ export class BatchController {
     this.groups = [];
     this.activeItemId = null;
     this.els.batchFileInput.value = '';
+    this.crossEnabled = false;
+    this.cross.values = Object.fromEntries(STANDARD_FIELDS.map((field) => [field.id, '']));
+    this.cross.remove.clear();
+    if (this.els.batchCrossToggle) this.els.batchCrossToggle.checked = false;
     clear(this.els.batchGroups);
     clear(this.els.batchSummary);
     clear(this.els.batchLimits);
+    clear(this.els.batchCrossFields);
+    this.els.batchCross.hidden = true;
     this.setApplyingUI(false);
     this.setStatus('');
     this.showProgress(false);
@@ -777,6 +834,8 @@ export class BatchController {
   setApplyingUI(applying) {
     this.els.batchGroups.inert = applying;
     this.els.batchGroups.classList.toggle('is-disabled', applying);
+    this.els.batchCross.inert = applying;
+    this.els.batchCross.classList.toggle('is-disabled', applying);
     this.setAddEnabled(!applying);
   }
 

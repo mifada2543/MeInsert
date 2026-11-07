@@ -20,7 +20,7 @@ import { renderForm, syncFormState, renderCoverBlock } from './ui/form-view.js';
 import { renderRaw } from './ui/raw-view.js';
 import { renderResultCard } from './ui/result-view.js';
 import { showToast } from './ui/toast.js';
-import { isSupportedCover, mimeOf } from './core/image-utils.js';
+import { coverFormatsLabelFor, isSupportedCover, mimeOf } from './core/image-utils.js';
 import { initTheme } from './ui/theme.js';
 import { registerServiceWorker } from './core/pwa.js';
 
@@ -148,8 +148,9 @@ const handlers = {
         showToast('Gambar terlalu besar. Maksimal 10 MB.', 'error', 6000);
         return;
       }
-      if (!isSupportedCover(u8)) {
-        showToast('Format gambar tidak didukung. Gunakan JPEG, PNG, atau WebP.', 'error', 6000);
+      const detectionId = state.detection?.id;
+      if (!isSupportedCover(u8, detectionId)) {
+        showToast(`Format gambar tidak didukung. Gunakan ${coverFormatsLabelFor(detectionId)}.`, 'error', 6000);
         return;
       }
       state.coverChosen = { data: u8, mimeType: file.type || mimeOf(u8), name: file.name };

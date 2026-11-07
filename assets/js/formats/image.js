@@ -23,8 +23,8 @@ export const meta = {
   mime: 'image/*',
 };
 
-function cameraFieldsSupported(subtype) {
-  return subtype === 'jpeg' || subtype === 'tiff';
+function xmpCamera(subtype) {
+  return subtype === 'png' || subtype === 'webp';
 }
 
 export function sectionsFor(subtype) {
@@ -35,13 +35,13 @@ export function sectionsFor(subtype) {
       description: 'Ditulis sebagai XMP dan EXIF agar terbaca di banyak aplikasi.',
     },
   ];
-  if (cameraFieldsSupported(subtype)) {
-    base.push({
-      id: 'kamera',
-      title: 'Info kamera',
-      description: 'Field EXIF opsional. Kosongkan jika tidak ingin mengubahnya.',
-    });
-  }
+  base.push({
+    id: 'kamera',
+    title: 'Info kamera',
+    description: xmpCamera(subtype)
+      ? 'Field XMP opsional (tanpa EXIF biner). Kosongkan jika tidak ingin mengubahnya.'
+      : 'Field EXIF opsional. Kosongkan jika tidak ingin mengubahnya.',
+  });
   return base;
 }
 
@@ -55,19 +55,25 @@ export function fieldsFor(subtype) {
     { id: 'date', section: 'umum', label: 'Tanggal dibuat', type: 'date', native: 'XMP-xmp:CreateDate' },
     { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'XMP-xmp:CreatorTool + EXIF:Software', placeholder: 'MeInsert', maxLength: 200 },
   ];
-  if (subtype === 'png' || subtype === 'webp') return common;
+  const camera = xmpCamera(subtype)
+    ? [
+        { id: 'make', section: 'kamera', label: 'Merek kamera', type: 'text', native: 'XMP-tiff:Make', placeholder: 'Canon', maxLength: 100 },
+        { id: 'model', section: 'kamera', label: 'Model kamera', type: 'text', native: 'XMP-tiff:Model', placeholder: 'EOS R6', maxLength: 100 },
+        { id: 'lens', section: 'kamera', label: 'Lensa', type: 'text', native: 'XMP-aux:Lens', placeholder: 'RF 24-70mm F2.8 L IS USM', maxLength: 150 },
+        { id: 'dateTaken', section: 'kamera', label: 'Tanggal pengambilan', type: 'date', native: 'XMP-exif:DateTimeOriginal' },
+      ]
+    : [
+        { id: 'make', section: 'kamera', label: 'Merek kamera', type: 'text', native: 'EXIF:Make', placeholder: 'Canon', maxLength: 100 },
+        { id: 'model', section: 'kamera', label: 'Model kamera', type: 'text', native: 'EXIF:Model', placeholder: 'EOS R6', maxLength: 100 },
+        { id: 'lens', section: 'kamera', label: 'Lensa', type: 'text', native: 'EXIF:LensModel', placeholder: 'RF 24-70mm F2.8 L IS USM', maxLength: 150 },
+        { id: 'dateTaken', section: 'kamera', label: 'Tanggal pengambilan', type: 'date', native: 'EXIF:DateTimeOriginal' },
+      ];
+  if (subtype === 'png' || subtype === 'webp') return [...common, ...camera];
   const withComment = [
     ...common,
     { id: 'comment', section: 'umum', label: 'Komentar', type: 'textarea', native: 'EXIF:UserComment', placeholder: 'Catatan tambahan…', maxLength: 2000 },
   ];
-  if (subtype !== 'jpeg' && subtype !== 'tiff') return withComment;
-  return [
-    ...withComment,
-    { id: 'make', section: 'kamera', label: 'Merek kamera', type: 'text', native: 'EXIF:Make', placeholder: 'Canon', maxLength: 100 },
-    { id: 'model', section: 'kamera', label: 'Model kamera', type: 'text', native: 'EXIF:Model', placeholder: 'EOS R6', maxLength: 100 },
-    { id: 'lens', section: 'kamera', label: 'Lensa', type: 'text', native: 'EXIF:LensModel', placeholder: 'RF 24-70mm F2.8 L IS USM', maxLength: 150 },
-    { id: 'dateTaken', section: 'kamera', label: 'Tanggal pengambilan', type: 'date', native: 'EXIF:DateTimeOriginal' },
-  ];
+  return [...withComment, ...camera];
 }
 
 // Legacy exports for registry
@@ -83,16 +89,23 @@ const READ_MAP = {
   date: ['XMP-xmp:CreateDate', 'EXIF:CreateDate', 'IFD0:DateTime'],
   software: ['XMP-xmp:CreatorTool', 'EXIF:Software', 'IFD0:Software'],
   comment: ['EXIF:UserComment', 'ExifIFD:UserComment'],
-  make: ['EXIF:Make', 'IFD0:Make'],
-  model: ['EXIF:Model', 'IFD0:Model'],
-  lens: ['EXIF:LensModel', 'ExifIFD:LensModel'],
-  dateTaken: ['EXIF:DateTimeOriginal', 'ExifIFD:DateTimeOriginal'],
+  make: ['EXIF:Make', 'IFD0:Make', 'XMP-tiff:Make'],
+  model: ['EXIF:Model', 'IFD0:Model', 'XMP-tiff:Model'],
+  lens: ['EXIF:LensModel', 'ExifIFD:LensModel', 'XMP-aux:Lens'],
+  dateTaken: ['EXIF:DateTimeOriginal', 'ExifIFD:DateTimeOriginal', 'XMP-exif:DateTimeOriginal'],
+};
+
+const CAMERA_XMP_READ = {
+  make: ['XMP-tiff:Make', 'EXIF:Make', 'IFD0:Make'],
+  model: ['XMP-tiff:Model', 'EXIF:Model', 'IFD0:Model'],
+  lens: ['XMP-aux:Lens', 'EXIF:LensModel', 'ExifIFD:LensModel'],
+  dateTaken: ['XMP-exif:DateTimeOriginal', 'EXIF:DateTimeOriginal', 'ExifIFD:DateTimeOriginal'],
 };
 
 function supportedFields(subtype) {
   const fields = ['title', 'creator', 'description', 'keywords', 'rights', 'date', 'software'];
   if (subtype !== 'png' && subtype !== 'webp') fields.push('comment');
-  if (subtype === 'jpeg' || subtype === 'tiff') fields.push('make', 'model', 'lens', 'dateTaken');
+  fields.push('make', 'model', 'lens', 'dateTaken');
   return new Set(fields);
 }
 
@@ -104,8 +117,9 @@ function withSafeName(file, extension) {
 export function mapTags(tags, subtype) {
   const supported = supportedFields(subtype);
   const out = {};
-  for (const [id, keys] of Object.entries(READ_MAP)) {
+  for (const [id, baseKeys] of Object.entries(READ_MAP)) {
     if (!supported.has(id)) continue;
+    const keys = xmpCamera(subtype) && CAMERA_XMP_READ[id] ? CAMERA_XMP_READ[id] : baseKeys;
     const value = pick(tags, keys);
     if (id === 'date' || id === 'dateTaken') out[id] = toDateInput(value);
     else if (id === 'keywords') out[id] = asArray(value);
@@ -137,7 +151,7 @@ export function collectRaw(tags) {
   return rows.sort((a, b) => a.tag.localeCompare(b.tag));
 }
 
-function buildTagMap(payload, subtype) {
+export function buildTagMap(payload, subtype) {
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
   const tags = {};
@@ -146,6 +160,7 @@ function buildTagMap(payload, subtype) {
   };
   const clear = (keys) => keys.forEach((key) => add(key, ''));
 
+  const xmp = xmpCamera(subtype);
   const map = {
     title: ['XMP-dc:Title'],
     creator: ['XMP-dc:Creator', 'EXIF:Artist'],
@@ -155,10 +170,10 @@ function buildTagMap(payload, subtype) {
     date: ['XMP-xmp:CreateDate'],
     software: ['XMP-xmp:CreatorTool', 'EXIF:Software'],
     comment: ['EXIF:UserComment'],
-    make: ['EXIF:Make'],
-    model: ['EXIF:Model'],
-    lens: ['EXIF:LensModel'],
-    dateTaken: ['EXIF:DateTimeOriginal'],
+    make: [xmp ? 'XMP-tiff:Make' : 'EXIF:Make'],
+    model: [xmp ? 'XMP-tiff:Model' : 'EXIF:Model'],
+    lens: [xmp ? 'XMP-aux:Lens' : 'EXIF:LensModel'],
+    dateTaken: [xmp ? 'XMP-exif:DateTimeOriginal' : 'EXIF:DateTimeOriginal'],
   };
 
   const supported = supportedFields(subtype);
@@ -176,7 +191,7 @@ function buildTagMap(payload, subtype) {
     } else if (id === 'date') {
       add('XMP-xmp:CreateDate', toIsoDate(value));
     } else if (id === 'dateTaken') {
-      add('EXIF:DateTimeOriginal', toExifDate(value));
+      add(keys[0], toExifDate(value));
     } else if (id === 'creator' || id === 'description') {
       add(keys[0], asString(value));
       if (keys[1]) add(keys[1], asString(value));

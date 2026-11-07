@@ -2858,6 +2858,69 @@ body[data-page="single"] {
   color: var(--success);
 }
 
+.batch-cross {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.batch-cross-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px 20px;
+  flex-wrap: wrap;
+}
+
+.batch-cross-head h2 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+
+.batch-cross-head p {
+  margin: 5px 0 0;
+  max-width: 66ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.batch-cross-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-cross-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.batch-cross-body {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.batch-cross-body .field-helper {
+  margin: 12px 0 0;
+}
+
+.batch-cross.is-disabled {
+  opacity: 0.6;
+}
+
 .batch-groups {
   display: grid;
   gap: 12px;

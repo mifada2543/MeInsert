@@ -59,7 +59,7 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 
 **Dua mode, satu prinsip:**
 - **Satu file** — editor satuan dengan field dinamis mengikuti format file
-- **Banyak file (Batch)** — periksa, edit per grup format, unduh ZIP + laporan JSON/CSV
+- **Banyak file (Batch)** — periksa, edit per grup format atau pakai field standar lintas format, unduh ZIP + laporan JSON/CSV
 
 ---
 
@@ -75,7 +75,7 @@ Deteksi otomatis dari **magic bytes** (bukan hanya ekstensi), lalu hanya field y
 | 🎬 **Video** | MP4 / M4A / MOV, MKV / WebM | ItemList + XMP (ExifTool), Matroska SimpleTag (remux lossless) |
 
 ### Sampul / Thumbnail
-Embed cover image (JPEG/PNG/WebP ≤ 10 MB) secara native per format — `APIC` untuk MP3, `METADATA_BLOCK_PICTURE` untuk FLAC/OGG/Opus, `covr` untuk MP4/M4A, Matroska attachment untuk MKV/WebM. Bisa diganti/dihapus.
+Embed cover image (JPEG/PNG/WebP ≤ 10 MB; GIF/BMP juga untuk MP3, FLAC, OGG/Opus, dan MKV) secara native per format — `APIC` untuk MP3, `METADATA_BLOCK_PICTURE` untuk FLAC/OGG/Opus, `covr` untuk MP4/M4A (JPEG/PNG/WebP saja), Matroska attachment untuk MKV/WebM. Bisa diganti/dihapus.
 
 ---
 
@@ -101,7 +101,7 @@ Klik **Simpan** → hasil dibaca ulang & diverifikasi otomatis → unduh file ba
 | | Satu File | Batch (Massal) |
 |---|---|---|
 | Batas | Maks. 4 GB per file | Video maks. 10 file, Audio maks. 20, Gambar/PDF maks. 50 |
-| Edit | Field dinamis, custom tags, raw table + search | Per grup format, pilih file yang diproses, raw tag per file |
+| Edit | Field dinamis, custom tags, raw table + search | Per grup format atau field standar lintas format, pilih file yang diproses, raw tag per file |
 | Hasil | Satu file terverifikasi + rename aman | ZIP + laporan JSON/CSV |
 
 ### Lainnya
@@ -188,13 +188,13 @@ MeInsert/
 ├── scripts/vendor.mjs         # Copy node_modules → assets/vendor/
 ├── tests/
 │   ├── e2e/smoke.mjs          # Smoke test browser/PWA/batch
-│   └── unit/                  # Unit test batch limits & report
+│   └── unit/                  # Unit test batch, XMP PDF, format lintas grup, cover
 └── assets/
     ├── css/app.css            # Styling (responsive, dark mode)
     ├── js/
     │   ├── home.js            # Entry beranda (theme + registrasi SW saja)
     │   ├── app.js             # App shell editor satu file & batch; registrasi SW
-    │   ├── core/              # detector, registry (adapter lazy), tag-utils, errors, pwa, worker-client
+    │   ├── core/              # detector, registry (adapter lazy), tag-utils, format-map, image-utils, errors, pwa, worker-client
     │   ├── batch/             # batch-limits, batch-processor, batch-view, batch-report, batch-zip
     │   ├── engines/exiftool.js
     │   ├── formats/           # image, pdf, mp3, flac, ogg, vorbis-common, mkv, mp4
@@ -207,7 +207,7 @@ MeInsert/
 
 - **ExifTool WASM** di-lazy-load via worker dan tidak di-precache; pertama kali ~1-2 detik, lalu tersimpan di cache service worker
 - **Loading**: beranda memakai `home.js` (kecil); adapter format dan UI batch di-`import()` hanya saat dibutuhkan
-- **PDF:** Info Dictionary + XMP stream ditulis ulang fresh (unknown XMP nodes tidak dipertahankan v1)
+- **PDF:** hanya properti XMP yang diubah yang ditulis ulang; Deskripsi dan properti asing (xmpMM, photoshop, namespace kustom) dipertahankan. Jika paket XMP tidak bisa diparse dengan aman, XMP ditulis ulang dan pengguna diberi peringatan
 - **MP3:** tag ID3 lama dihapus saat rewrite; hanya tag TXXX yang diketahui yang dipertahankan
 - **FLAC/OGG/MKV:** Mediabunny remux lossless (`copy: {mode:'forced'}`) — stream hash identik
 - **OGG/Opus:** membutuhkan `copy.shiftTolerance: Infinity` karena paket Ogg pertama ber-timestamp negatif (pre-roll)
@@ -223,12 +223,12 @@ MeInsert/
 
 - **MP3:** frame ID3 non-standar (selain yang dipetakan) hilang saat menulis
 - **MKV:** chapter & attachment tidak dipertahankan saat remux
-- **PDF:** XMP stream diganti penuh; PDF terenkripsi tidak didukung; PDF bertanda tangan digital → tanda tangan invalid
-- **TIFF/PNG/WebP:** field kamera (make/model/lens) hanya JPEG & TIFF; PNG/WebP hanya XMP/EXIF umum
+- **PDF:** PDF terenkripsi tidak didukung; PDF bertanda tangan digital → tanda tangan invalid; XMP yang rusak/aneh akan ditulis ulang (dengan peringatan), sehingga properti asing bisa hilang pada kasus itu
+- **PNG/WebP:** field kamera ditulis sebagai XMP (`XMP-tiff:Make/Model`, `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), bukan EXIF biner; aplikasi yang hanya membaca EXIF mungkin tidak menampilkannya
 - **Batch:** ZIP dibuat di memori browser — video maks. 10 file (≤1 jam, total ≤2 GB), audio maks. 20 (≤30 menit, ≤1 GB), gambar/PDF maks. 50 (≤1 GB); file dengan durasi tak terbaca dikunci
-- **Batch:** edit massal per grup format/subtype, bukan lintas format; custom tags tidak diedit massal di v1
+- **Batch:** field standar (judul, artis, album, tanggal, genre, komentar, hak cipta, komposer, perangkat lunak) bisa diterapkan lintas grup; field yang tidak tersedia di suatu format otomatis dilewati. Custom tags tetap per grup
 - **OGG:** hanya Vorbis & Opus (FLAC-in-Ogg/Speex ditolak); tidak semua pemutar tampilkan cover Ogg/Opus
-- **Cover:** hanya JPEG/PNG/WebP ≤10 MB
+- **Cover:** JPEG/PNG/WebP ≤10 MB untuk semua format; GIF/BMP ≤10 MB hanya untuk MP3/FLAC/OGG/MKV (MP4 `covr` menolak GIF/BMP). Tidak semua pemutar menampilkan cover Ogg/Opus
 
 ---
 
@@ -238,7 +238,7 @@ MeInsert/
 # Serve lokal
 npm run serve            # http://localhost:8000
 
-# Unit test (batch limits & laporan)
+# Unit test (batch, XMP PDF, pemetaan lintas format, cover, PNG round-trip)
 npm test
 
 # Smoke test browser (butuh Chrome/Chromium, override CHROME_BIN bila perlu)

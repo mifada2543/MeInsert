@@ -147,6 +147,24 @@
 
       <div class="batch-summary" id="batchSummary" aria-label="Ringkasan batch"></div>
       <div class="batch-limits" id="batchLimits" aria-label="Batas penggunaan batch"></div>
+
+      <section class="batch-cross" id="batchCross" aria-labelledby="batchCrossTitle" hidden>
+        <div class="batch-cross-head">
+          <div>
+            <h2 id="batchCrossTitle">Lintas format</h2>
+            <p>Isi field standar sekali, lalu terapkan ke semua file terpilih. Field yang tidak tersedia di suatu format otomatis dilewati; nilai di sini menimpa field yang sama di tiap grup.</p>
+          </div>
+          <label class="batch-cross-toggle">
+            <input type="checkbox" id="batchCrossToggle">
+            <span>Terapkan lintas format</span>
+          </label>
+        </div>
+        <div class="batch-cross-body" id="batchCrossBody" hidden>
+          <div class="field-grid batch-field-grid" id="batchCrossFields"></div>
+          <p class="field-helper">Hanya field standar: judul, artis, album, tanggal, genre, komentar, hak cipta, komposer, dan perangkat lunak.</p>
+        </div>
+      </section>
+
       <div class="batch-groups" id="batchGroups" aria-label="Daftar file dalam batch"></div>
 
       <div class="batch-footer">

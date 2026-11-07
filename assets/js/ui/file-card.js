@@ -3,6 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { el, clear, formatBytes, formatDuration } from './dom.js';
 import { icon } from './icons.js';
+import { coverAcceptFor } from '../core/image-utils.js';
 
 export function previewKind(detection) {
   if (!detection) return 'file';
@@ -74,10 +75,10 @@ function hasDraggedFiles(event) {
   return [...(event.dataTransfer?.types || [])].includes('Files');
 }
 
-function buildAudioStage({ cover, previewUrl, onCoverChooseFile, onCoverRemove, onCoverUndo, resumeAt }) {
+function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, onCoverRemove, onCoverUndo, resumeAt }) {
   const input = el('input', {
     type: 'file',
-    accept: 'image/jpeg,image/png,image/webp',
+    accept: coverAcceptFor(detectionId),
     hidden: true,
     'aria-hidden': 'true',
     tabindex: '-1',
@@ -254,6 +255,7 @@ export function renderFileCard(container, {
       frame.append(buildAudioStage({
         cover: cover ? { ...cover, previewUrl: cover.previewUrl || null } : null,
         previewUrl,
+        detectionId: detection?.id,
         onCoverChooseFile,
         onCoverRemove,
         onCoverUndo,

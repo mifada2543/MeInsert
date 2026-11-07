@@ -14,6 +14,7 @@ export function mimeOf(bytes) {
   if (u.length >= 8 && u[0] === 0x89 && ascii(u, 1, 3) === 'PNG') return 'image/png';
   if (u.length >= 12 && ascii(u, 0, 4) === 'RIFF' && ascii(u, 8, 4) === 'WEBP') return 'image/webp';
   if (u.length >= 6 && /^GIF8[79]a/.test(ascii(u, 0, 6))) return 'image/gif';
+  if (u.length >= 14 && ascii(u, 0, 2) === 'BM') return 'image/bmp';
   return 'image/jpeg';
 }
 
@@ -49,12 +50,33 @@ function bytesEqual(a, b) {
   return true;
 }
 
+const BASE_COVER_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+const LEGACY_COVER_CONTAINERS = new Set(['mp3', 'flac', 'ogg', 'mkv']);
+
+/** Containers whose picture block accepts GIF/BMP as well as the base types. */
+export function coverFormatsFor(detectionId) {
+  const mimes = [...BASE_COVER_MIMES];
+  if (LEGACY_COVER_CONTAINERS.has(detectionId)) mimes.push('image/gif', 'image/bmp');
+  return mimes;
+}
+
+export function coverAcceptFor(detectionId) {
+  return coverFormatsFor(detectionId).join(',');
+}
+
+export function coverFormatsLabelFor(detectionId) {
+  return coverFormatsFor(detectionId)
+    .map((mime) => ({ 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WebP', 'image/gif': 'GIF', 'image/bmp': 'BMP' }[mime]))
+    .join(', ');
+}
+
 /** Minimal magic-byte sanity check for images the user can embed. */
-export function isSupportedCover(bytes) {
+export function isSupportedCover(bytes, detectionId) {
   const u = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
   if (!u.length) return false;
   const mime = mimeOf(u);
-  return mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/webp';
+  if (mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/webp') return true;
+  return (mime === 'image/gif' || mime === 'image/bmp') && LEGACY_COVER_CONTAINERS.has(detectionId);
 }
 
 /** Normalizes Mediabunny tags.images[0] into a { cover, coverBytes } pair. */

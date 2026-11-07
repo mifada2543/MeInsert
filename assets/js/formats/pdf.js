@@ -281,63 +281,248 @@ function freshXmp() {
 <?xpacket end="w"?>`;
 }
 
-function buildXmp(existing, values) {
-  let xml = existing && /<x:xmpmeta[\s>]/i.test(existing)
-    ? existing
-    : freshXmp();
+// Field id -> XMP property names this app owns. Anything not listed here is
+// preserved byte-for-byte when the packet is updated.
+const XMP_FIELDS = {
+  title: [['dc', 'title']],
+  author: [['dc', 'creator']],
+  subject: [['dc', 'description']],
+  keywords: [['dc', 'subject'], ['pdf', 'Keywords']],
+  creator: [['xmp', 'CreatorTool']],
+  producer: [['pdf', 'Producer']],
+  creationDate: [['xmp', 'CreateDate']],
+  modDate: [['xmp', 'ModifyDate']],
+};
 
-  const fields = [
-    ['dc', 'title'],
-    ['dc', 'creator'],
-    ['dc', 'description'],
-    ['dc', 'subject'],
-    ['pdf', 'Keywords'],
-    ['pdf', 'Producer'],
-    ['xmp', 'CreatorTool'],
-    ['xmp', 'CreateDate'],
-    ['xmp', 'ModifyDate'],
-  ];
-  for (const [prefix, local] of fields) xml = removeField(xml, prefix, local);
+const XMP_FIELD_IDS = Object.keys(XMP_FIELDS);
+
+function tagEnd(xml, start) {
+  let quote = '';
+  for (let i = start + 1; i < xml.length; i += 1) {
+    const ch = xml[i];
+    if (quote) {
+      if (ch === quote) quote = '';
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '>') {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function attributesOf(tag) {
+  const out = [];
+  const body = tag.replace(/^<\s*\/?\s*[^\s/>]+/, '').replace(/\/?\s*>$/, '');
+  const re = /([A-Za-z_][\w.-]*:[\w.-]+|[A-Za-z_][\w.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+  let match;
+  while ((match = re.exec(body))) {
+    out.push({ name: match[1], value: match[2] ?? match[3] ?? '' });
+  }
+  return out;
+}
+
+function decodeXml(value) {
+  return String(value || '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+/**
+ * Lightweight XMP scanner. It does not build a DOM (PDF metadata is parsed in
+ * a worker, where DOMParser is unavailable); it validates tag balance and
+ * collects descriptions, namespaces, and property names so the writer can
+ * touch only the properties it owns.
+ */
+export function parseXmp(xml) {
+  const source = typeof xml === 'string' ? xml : '';
+  const namespaces = {};
+  const descriptions = [];
+  const properties = [];
+  const stack = [];
+  let current = null;
+  let ok = true;
+  let error = '';
+  let i = 0;
+
+  const fail = (message) => { ok = false; error = message; };
+
+  if (!source.trim()) return { ok: false, error: 'XMP kosong.', namespaces, descriptions, properties };
+
+  while (i < source.length) {
+    const lt = source.indexOf('<', i);
+    if (lt < 0) break;
+
+    if (source.startsWith('<!--', lt)) {
+      const end = source.indexOf('-->', lt + 4);
+      if (end < 0) { fail('Komentar XML tidak tertutup.'); break; }
+      i = end + 3;
+      continue;
+    }
+    if (source.startsWith('<![CDATA[', lt)) {
+      const end = source.indexOf(']]>', lt + 9);
+      if (end < 0) { fail('CDATA tidak tertutup.'); break; }
+      i = end + 3;
+      continue;
+    }
+    if (source.startsWith('<?', lt)) {
+      const end = source.indexOf('?>', lt + 2);
+      if (end < 0) { fail('Processing instruction tidak tertutup.'); break; }
+      i = end + 2;
+      continue;
+    }
+    if (source.startsWith('<!', lt)) {
+      const end = tagEnd(source, lt);
+      if (end < 0) { fail('Deklarasi XML tidak tertutup.'); break; }
+      i = end + 1;
+      continue;
+    }
+
+    const end = tagEnd(source, lt);
+    if (end < 0) { fail('Tag XML tidak tertutup.'); break; }
+    const raw = source.slice(lt, end + 1);
+    const closing = /^<\//.test(raw);
+    const selfClosing = /\/\s*>$/.test(raw);
+    const nameMatch = raw.match(/^<\s*\/?\s*([A-Za-z_][\w.-]*(?::[\w.-]+)?)/);
+    if (!nameMatch) { fail('Nama tag XML tidak valid.'); break; }
+    const name = nameMatch[1];
+
+    if (closing) {
+      const top = stack.pop();
+      if (!top || top.name !== name) { fail(`Tag penutup ${name} tidak cocok.`); break; }
+      if (name === 'rdf:Description' && current) {
+        current.end = end + 1;
+        descriptions.push(current);
+        current = null;
+      }
+      i = end + 1;
+      continue;
+    }
+
+    const attrs = attributesOf(raw);
+    for (const attr of attrs) {
+      if (attr.name.startsWith('xmlns:')) namespaces[attr.name.slice(6)] = attr.value;
+    }
+
+    if (name === 'rdf:Description') {
+      current = {
+        start: lt,
+        end: -1,
+        openTag: raw,
+        selfClosing,
+        properties: [],
+        namespaces: { ...namespaces },
+      };
+      for (const attr of attrs) {
+        if (attr.name === 'xmlns' || attr.name.startsWith('xmlns:') || attr.name.startsWith('rdf:')) continue;
+        const prop = attr.name.match(/^([\w.-]+):([\w.-]+)$/);
+        if (!prop) continue;
+        const entry = { prefix: prop[1], local: prop[2], qualified: attr.name, form: 'attribute', value: decodeXml(attr.value) };
+        current.properties.push(entry);
+        properties.push({ ...entry, description: descriptions.length });
+      }
+      if (selfClosing) {
+        current.end = end + 1;
+        descriptions.push(current);
+        current = null;
+      } else {
+        stack.push({ name, start: lt });
+      }
+    } else {
+      const parent = stack[stack.length - 1];
+      if (current && parent?.name === 'rdf:Description') {
+        const prop = name.match(/^([\w.-]+):([\w.-]+)$/);
+        if (prop) {
+          const entry = { prefix: prop[1], local: prop[2], qualified: name, form: 'element', value: '' };
+          current.properties.push(entry);
+          properties.push({ ...entry, description: descriptions.length });
+        }
+      }
+      if (!selfClosing) stack.push({ name, start: lt });
+    }
+    i = end + 1;
+  }
+
+  if (ok && stack.length) fail(`Tag ${stack[stack.length - 1].name} tidak tertutup.`);
+  if (ok && !descriptions.length) fail('Tidak ada rdf:Description.');
+  if (ok && !/<(?:x:xmpmeta|rdf:RDF)[\s>]/i.test(source)) fail('Paket XMP tidak dikenali.');
+  return { ok, error, namespaces, descriptions, properties };
+}
+
+function targetDescriptionIndex(parsed, ids) {
+  for (const id of ids) {
+    for (const [prefix, local] of XMP_FIELDS[id] || []) {
+      const found = parsed.properties.find((prop) => prop.prefix === prefix && prop.local === local);
+      if (found) return found.description;
+    }
+  }
+  return 0;
+}
+
+export function buildXmp(existing, values, ids = XMP_FIELD_IDS) {
+  const changed = new Set(ids.filter((id) => XMP_FIELDS[id]));
+  let xml = typeof existing === 'string' ? existing : '';
+  let fallback = false;
+  let targetIndex = 0;
+  let before = null;
+
+  if (!xml.trim() || !/<(?:x:xmpmeta|rdf:RDF)[\s>]/i.test(xml)) {
+    if (changed.size) xml = freshXmp();
+  } else {
+    before = parseXmp(xml);
+    if (!before.ok) {
+      fallback = true;
+      xml = freshXmp();
+      for (const id of XMP_FIELD_IDS) changed.add(id);
+    } else {
+      targetIndex = targetDescriptionIndex(before, changed);
+    }
+  }
+
+  if (!changed.size) return { xml, fallback };
+
+  for (const id of changed) {
+    for (const [prefix, local] of XMP_FIELDS[id]) xml = removeField(xml, prefix, local);
+  }
 
   const fragment = [
-    altField('dc', 'title', values.title),
-    listField('dc', 'creator', 'Seq', values.author ? [values.author] : []),
-    altField('dc', 'description', values.subject),
-    listField('dc', 'subject', 'Bag', values.keywords),
-    textField('pdf', 'Keywords', (values.keywords || []).join(', ')),
-    textField('pdf', 'Producer', values.producer),
-    textField('xmp', 'CreatorTool', values.creator),
-    textField('xmp', 'CreateDate', values.creationDate ? xmpDate(values.creationDate) : ''),
-    textField('xmp', 'ModifyDate', values.modDate ? xmpDate(values.modDate) : ''),
+    changed.has('title') ? altField('dc', 'title', values.title) : '',
+    changed.has('author') ? listField('dc', 'creator', 'Seq', values.author ? [values.author] : []) : '',
+    changed.has('subject') ? altField('dc', 'description', values.subject) : '',
+    changed.has('keywords') ? listField('dc', 'subject', 'Bag', values.keywords) : '',
+    changed.has('keywords') ? textField('pdf', 'Keywords', (values.keywords || []).join(', ')) : '',
+    changed.has('creator') ? textField('xmp', 'CreatorTool', values.creator) : '',
+    changed.has('producer') ? textField('pdf', 'Producer', values.producer) : '',
+    changed.has('creationDate') ? textField('xmp', 'CreateDate', values.creationDate ? xmpDate(values.creationDate) : '') : '',
+    changed.has('modDate') ? textField('xmp', 'ModifyDate', values.modDate ? xmpDate(values.modDate) : '') : '',
   ].filter(Boolean).join('');
 
-  const openMatch = xml.match(/<rdf:Description\b[^>]*>/i);
-  if (!openMatch) {
-    // A malformed XMP packet is replaced with a clean packet rather than
-    // risking a broken metadata stream.
-    return buildXmp('', values);
+  if (!fragment) return { xml, fallback };
+
+  const parsed = parseXmp(xml);
+  if (!parsed.ok || !parsed.descriptions.length) {
+    return { xml: buildXmp('', values, XMP_FIELD_IDS).xml, fallback: true };
   }
-  let openTag = openMatch[0];
-  let selfClosing = /\/\s*>$/.test(openTag);
-  if (selfClosing) {
-    openTag = openTag.replace(/\/\s*>$/, '>');
-    xml = xml.replace(openMatch[0], `${openTag}</rdf:Description>`);
-  } else {
-    xml = xml.replace(openTag, openTag);
-  }
+
+  const target = parsed.descriptions[Math.min(targetIndex, parsed.descriptions.length - 1)];
+  let openTag = target.openTag;
+  if (target.selfClosing) openTag = openTag.replace(/\/\s*>$/, '>');
   let enhanced = openTag;
   enhanced = addNamespace(enhanced, 'dc', DC);
   enhanced = addNamespace(enhanced, 'pdf', PDF_NS);
   enhanced = addNamespace(enhanced, 'xmp', XMP_NS);
   enhanced = addNamespace(enhanced, 'rdf', RDF);
-  xml = xml.replace(openTag, enhanced);
-  const closeIndex = xml.indexOf('</rdf:Description>', xml.indexOf(enhanced));
-  if (closeIndex < 0) return buildXmp('', values);
-  xml = `${xml.slice(0, closeIndex)}${fragment}${xml.slice(closeIndex)}`;
+  const tail = target.selfClosing ? `</rdf:Description>${xml.slice(target.start + target.openTag.length)}` : xml.slice(target.start + target.openTag.length);
+  xml = `${xml.slice(0, target.start)}${enhanced}${tail}`;
+  const insertAt = target.start + enhanced.length;
+  xml = `${xml.slice(0, insertAt)}${fragment}${xml.slice(insertAt)}`;
   if (!/<\?xpacket/i.test(xml)) {
     xml = `<?xpacket begin="\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>\n${xml}\n<?xpacket end="w"?>`;
   }
-  return xml;
+  return { xml, fallback };
 }
 
 export async function write(file, payload, options = {}, report = () => {}) {
@@ -432,12 +617,18 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
 
   report({ stage: 'Menulis metadata dan XMP…', pct: 45 });
-  const xmp = buildXmp(existingXmp, finalValues);
-  const xmpStream = doc.context.stream(new TextEncoder().encode(xmp), {
-    Type: 'Metadata',
-    Subtype: 'XML',
-  });
-  doc.catalog.set(PDFName.of('Metadata'), doc.context.register(xmpStream));
+  const changedXmp = new Set([...Object.keys(set), ...remove].filter((id) => XMP_FIELDS[id]));
+  if (changedXmp.size) {
+    const built = buildXmp(existingXmp, finalValues, [...changedXmp]);
+    if (built.fallback) {
+      warnings.push('XMP lama tidak bisa dibaca dengan aman. Metadata XMP ditulis ulang; properti asing mungkin hilang.');
+    }
+    const xmpStream = doc.context.stream(new TextEncoder().encode(built.xml), {
+      Type: 'Metadata',
+      Subtype: 'XML',
+    });
+    doc.catalog.set(PDFName.of('Metadata'), doc.context.register(xmpStream));
+  }
 
   let out;
   try {

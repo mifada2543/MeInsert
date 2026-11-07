@@ -4,6 +4,7 @@
 import { el, clear, formatBytes } from './dom.js';
 import { icon } from './icons.js';
 import { asArray, asString, fileBaseName } from '../core/tag-utils.js';
+import { coverAcceptFor, coverFormatsLabelFor } from '../core/image-utils.js';
 
 function inputsEqual(a, b, field) {
   if (field.type === 'tags') {
@@ -211,7 +212,8 @@ export function renderCoverBlock(adapter, state, handlers) {
         ? { text: 'Ada', className: 'is-ok' }
         : { text: 'Kosong', className: '' };
 
-  let hint = 'JPEG, PNG, atau WebP, maks. 10 MB.';
+  const detectionId = adapter?.meta?.id;
+  let hint = `${coverFormatsLabelFor(detectionId)}, maks. 10 MB.`;
   if (action === 'set' && chosen) {
     hint = `Terpilih: ${coverFileLabel({ name: chosen.name, size: chosen.data?.byteLength })}`;
   } else if (original) {
@@ -229,7 +231,7 @@ export function renderCoverBlock(adapter, state, handlers) {
 
   const input = el('input', {
     type: 'file',
-    accept: 'image/jpeg,image/png,image/webp',
+    accept: coverAcceptFor(detectionId),
     hidden: true,
     'aria-hidden': 'true',
     tabindex: '-1',
