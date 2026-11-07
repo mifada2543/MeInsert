@@ -91,6 +91,10 @@ export class BatchController {
     this.previewCoverUrl = null;
     this.previewNode = null;
     this.previewSignature = '';
+    this.groupMap = new Map();
+    this.updateFrame = 0;
+    this.pendingUpdates = new Map();
+    this.latestStage = '';
 
     this.els = {
       landing: qs('#landing'),
@@ -303,6 +307,7 @@ export class BatchController {
     }
     const order = { image: 0, pdf: 1, mp3: 2, flac: 2, ogg: 2, mp4: 3, mkv: 3 };
     this.groups = [...map.values()].sort((a, b) => (order[a.detection?.id] ?? 9) - (order[b.detection?.id] ?? 9) || a.label.localeCompare(b.label));
+    this.groupMap = map;
   }
 
   selectedItems() {
@@ -340,14 +345,28 @@ export class BatchController {
   }
 
   updateItem(item) {
-    if (item) this.updateRow(item);
+    if (!item) return;
+    // Worker progress can fire many times per second during container remux.
+    // Coalesce updates into one animation frame instead of rebuilding the
+    // summary, limits, group headers and apply-bar for every event.
+    this.pendingUpdates.set(item.id, item);
+    if (item.stage) this.latestStage = item.stage;
+    if (this.updateFrame) return;
+    this.updateFrame = requestAnimationFrame(() => this.flushItemUpdates());
+  }
+
+  flushItemUpdates() {
+    this.updateFrame = 0;
+    const pending = [...this.pendingUpdates.values()];
+    this.pendingUpdates.clear();
+    for (const item of pending) this.updateRow(item);
     this.renderSummary();
     this.renderLimits();
     this.updateGroupHeaders();
     this.syncApply();
     const done = this.items.filter((entry) => entry.status === 'done' || entry.status === 'ready' || entry.status === 'error' || entry.status === 'skipped' || entry.status === 'cancelled').length;
-    this.setProgress(Math.round((done / Math.max(1, this.items.length)) * 100), item?.stage || 'Memeriksa…');
-    if (this.activeItemId === item?.id) this.renderDetail();
+    this.setProgress(Math.round((done / Math.max(1, this.items.length)) * 100), this.latestStage || 'Memeriksa…');
+    if (this.activeItemId && pending.some((item) => item.id === this.activeItemId)) this.renderDetail();
   }
 
   renderFull() {
@@ -631,6 +650,18 @@ export class BatchController {
     }
   }
 
+  operationCountFor(item) {
+    const group = this.groupMap.get(item.groupKey);
+    let count = (group?.remove.size || 0) + (item.removeRaw?.size || 0);
+    if (group) {
+      for (const field of group.fields) {
+        if (group.remove.has(field.id)) continue;
+        if (asString(group.values[field.id]).trim()) count += 1;
+      }
+    }
+    return count;
+  }
+
   collectGroupPayload(item) {
     const group = this.groups.find((entry) => entry.key === item.groupKey);
     const set = {};
@@ -666,7 +697,7 @@ export class BatchController {
     const selected = this.selectedItems();
     const validation = validateSelection(this.items);
     let operationCount = 0;
-    for (const item of selected) operationCount += Object.values(this.collectGroupPayload(item).operations).reduce((sum, n) => sum + n, 0);
+    for (const item of selected) operationCount += this.operationCountFor(item);
     this.els.batchSelectedCount.textContent = `${selected.length} file dipilih`;
     this.els.batchOperationCount.textContent = `${operationCount} operasi`;
     this.els.batchApplyBtn.disabled = this.applying ? false : selected.length === 0 || !validation.ok;
@@ -709,6 +740,10 @@ export class BatchController {
   }
 
   resetBatch({ confirmIfBusy = false } = {}) {
+    if (this.updateFrame) cancelAnimationFrame(this.updateFrame);
+    this.updateFrame = 0;
+    this.pendingUpdates.clear();
+    this.latestStage = '';
     if (this.applying) {
       this.processor.cancel();
       this.setStatus('Membatalkan…');

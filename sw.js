@@ -1,5 +1,8 @@
-/* Meinsert service worker: precaches the full static app so it works offline. */
-const CACHE_VERSION = 'meinsert-v14';
+/* Meinsert service worker: precaches the app shell + vendor libraries so the
+ * editor works offline. The 27 MB ExifTool WASM is deliberately NOT precached;
+ * it is cached on first use (format pages that need it keep working offline
+ * afterwards). This keeps the first visit light instead of downloading 29 MB. */
+const CACHE_VERSION = 'meinsert-v15';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -9,10 +12,12 @@ const PRECACHE_URLS = [
   './assets/css/app.css',
   './assets/js/theme-init.js',
 
+  './assets/js/home.js',
   './assets/js/app.js',
   './assets/js/core/detector.js',
   './assets/js/core/errors.js',
   './assets/js/core/image-utils.js',
+  './assets/js/core/pwa.js',
   './assets/js/core/registry.js',
   './assets/js/core/tag-utils.js',
   './assets/js/core/worker-client.js',
@@ -31,6 +36,7 @@ const PRECACHE_URLS = [
   './assets/js/ui/icons.js',
   './assets/js/ui/raw-view.js',
   './assets/js/ui/result-view.js',
+  './assets/js/ui/theme.js',
   './assets/js/ui/toast.js',
   './assets/js/workers/exiftool.worker.js',
   './assets/js/workers/media.worker.js',
@@ -46,8 +52,6 @@ const PRECACHE_URLS = [
   './assets/vendor/mediabunny.mjs',
   './assets/vendor/pdf-lib.esm.js',
   './assets/vendor/fflate.mjs',
-  './assets/vendor/exiftool-wasm/index.js',
-  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm',
 
   './assets/fonts/ibm-plex-mono-400-latin-ext.woff2',
   './assets/fonts/ibm-plex-mono-400-latin.woff2',
@@ -67,13 +71,18 @@ const PRECACHE_URLS = [
   './assets/img/icon-192.png',
   './assets/img/icon-512.png',
   './assets/img/icon-maskable-512.png',
-  './assets/img/og-image.png',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_VERSION);
-    await cache.addAll(PRECACHE_URLS);
+    const results = await Promise.allSettled(PRECACHE_URLS.map((url) => cache.add(url)));
+    const failed = results
+      .map((result, index) => (result.status === 'rejected' ? PRECACHE_URLS[index] : null))
+      .filter(Boolean);
+    if (failed.length) {
+      console.warn('Meinsert: sebagian aset gagal di-precache:', failed);
+    }
     await self.skipWaiting();
   })());
 });

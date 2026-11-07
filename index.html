@@ -15,6 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="Meinsert">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <script src="assets/js/theme-init.js"></script>
+  <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <!-- Open Graph -->
   <meta property="og:title" content="Meinsert — Edit metadata file tanpa upload">
   <meta property="og:description"
@@ -45,7 +46,7 @@
   <header class="site-header">
     <div class="shell header-inner">
       <a class="brand" href="./" aria-label="Meinsert Metadata lokal, kembali ke awal">
-        <img class="brand-logo" src="assets/img/icon-512.png" width="42" height="42" alt="">
+        <img class="brand-logo" src="assets/img/icon-192.png" width="42" height="42" alt="">
         <span class="brand-text">MeInsert<small>metadata lokal</small></span>
       </a>
       <nav class="header-nav" aria-label="Mode Meinsert">
@@ -152,8 +153,7 @@
 
   <div class="toast-region" id="toastRegion" role="status" aria-live="polite" aria-atomic="false"></div>
 
-  <script type="module" src="assets/js/app.js"></script>
-</body>
+  <script type="module" src="assets/js/home.js"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -171,5 +171,6 @@
   }
 }
 </script>
+</body>
 
 </html>

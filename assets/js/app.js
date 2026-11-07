@@ -18,13 +18,10 @@ import { renderRaw } from './ui/raw-view.js';
 import { renderResultCard } from './ui/result-view.js';
 import { showToast } from './ui/toast.js';
 import { isSupportedCover, mimeOf } from './core/image-utils.js';
-import { BatchController } from './batch/batch-view.js';
+import { initTheme } from './ui/theme.js';
+import { registerServiceWorker } from './core/pwa.js';
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch((error) => {
-    console.warn('Meinsert gagal mendaftarkan service worker:', error);
-  });
-}
+registerServiceWorker();
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024;
 const PDF_STANDARD_KEYS = new Set([
@@ -59,17 +56,19 @@ const els = {
   progressBar: qs('#progressBar'),
   progressLabel: qs('#progressLabel'),
 
-  themeToggle: qs('#themeToggle'),
-  themeIconSun: qs('#themeIconSun'),
-  themeIconMoon: qs('#themeIconMoon'),
   toastRegion: qs('#toastRegion'),
 };
 
 const client = new MetadataClient();
 const page = document.body?.dataset.page || 'single';
 if (page === 'batch') {
-  const batchController = new BatchController(client);
-  void batchController;
+  // Batch UI + ZIP tooling are only needed on the batch page. Keep them out of
+  // the single-file entry so that page stays small.
+  import('./batch/batch-view.js')
+    .then(({ BatchController }) => new BatchController(client))
+    .catch((error) => {
+      console.error('Meinsert gagal memuat mode batch:', error);
+    });
 }
 
 const state = {
@@ -218,89 +217,10 @@ function refreshCoverUI() {
   scheduleDockUpdate();
 }
 
-function syncThemeButton(theme) {
-  const label = theme === 'dark' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap';
-  els.themeToggle.title = label;
-  els.themeToggle.setAttribute('aria-label', label);
-}
-
-function preferredTheme() {
-  let stored = null;
-  try {
-    stored = localStorage.getItem('meinsert-theme');
-  } catch {
-    stored = null;
-  }
-  if (stored === 'dark' || stored === 'light') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  try {
-    localStorage.setItem('meinsert-theme', theme);
-  } catch {
-    // Storage can be disabled; the theme still applies for this page.
-  }
-  syncThemeButton(theme);
-}
-
-function prefersReducedMotion() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-function themeTransitionOrigin() {
-  const rect = els.themeToggle.getBoundingClientRect();
-  return {
-    x: Math.round(rect.left + rect.width / 2),
-    y: Math.round(rect.top + rect.height / 2),
-  };
-}
-
-function applyThemeWithTransition(theme) {
-  const root = document.documentElement;
-  const origin = themeTransitionOrigin();
-  root.style.setProperty('--vt-x', `${origin.x}px`);
-  root.style.setProperty('--vt-y', `${origin.y}px`);
-  if (prefersReducedMotion() || typeof document.startViewTransition !== 'function') {
-    root.classList.add('theme-anim');
-    applyTheme(theme);
-    window.setTimeout(() => root.classList.remove('theme-anim'), 480);
-    return;
-  }
-  document.startViewTransition(() => applyTheme(theme));
-}
-
-function initTheme() {
-  const media = window.matchMedia('(prefers-color-scheme: dark)');
-  const theme = preferredTheme();
-  if (document.documentElement.dataset.theme !== theme) {
-    // Rare mismatch (e.g. theme-init.js unreachable); align without animating.
-    applyTheme(theme);
-  } else {
-    syncThemeButton(theme);
-  }
-  media.addEventListener?.('change', (event) => {
-    let hasStored = false;
-    try {
-      hasStored = Boolean(localStorage.getItem('meinsert-theme'));
-    } catch {
-      hasStored = false;
-    }
-    if (!hasStored) applyThemeWithTransition(event.matches ? 'dark' : 'light');
-  });
-  els.themeToggle.addEventListener('click', () => {
-    const current = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-    applyThemeWithTransition(current === 'dark' ? 'light' : 'dark');
-  });
-}
-
 function setIcons() {
   qs('#newFileBtn .icon')?.replaceChildren(icon('arrowLeft'));
   qs('#saveBtn .icon')?.replaceChildren(icon('download'));
   qs('#year').textContent = String(new Date().getFullYear());
-  if (els.themeIconSun) els.themeIconSun.replaceChildren(icon('sun'));
-  if (els.themeIconMoon) els.themeIconMoon.replaceChildren(icon('moon'));
 }
 
 function setStatus(text, isError = false) {
@@ -736,7 +656,7 @@ async function openFile(file) {
     showToast('Format file tidak dikenali. Gunakan JPG, PNG, WebP, TIFF, PDF, MP3, FLAC, OGG/Opus, MP4, M4A, MKV, atau WebM.', 'error', 7000);
     return;
   }
-  const adapter = adapterForDetection(detection);
+  const adapter = await adapterForDetection(detection);
   if (!adapter) {
     showToast(`Format ${detection.label} belum didukung.`, 'error', 5000);
     return;

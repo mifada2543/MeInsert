@@ -18,7 +18,7 @@ export class BatchProcessor {
   async prepare(file, index) {
     const detection = await detectFile(file);
     if (!detection) return null;
-    const adapter = adapterForDetection(detection);
+    const adapter = await adapterForDetection(detection);
     return {
       id: `batch-${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
       file,
