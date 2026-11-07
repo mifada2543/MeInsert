@@ -17,6 +17,7 @@ import { el, clear, formatBytes, downloadBlob, qs } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openLightbox } from '../ui/lightbox.js';
 import { showToast } from '../ui/toast.js';
+import { confirmNavigation } from '../ui/confirm.js';
 import { previewKind } from '../ui/file-card.js';
 import { asArray, asString, fileBaseName, fileExtension, safeOutputName } from '../core/tag-utils.js';
 import { STANDARD_FIELDS, crossFormatPatch } from '../core/format-map.js';
@@ -164,7 +165,7 @@ export class BatchController {
     });
     this.bindDrop(els.batchDropCard);
     this.bindDrop(els.batchWorkspace);
-    els.batchBackBtn.addEventListener('click', () => this.resetBatch({ confirmIfBusy: true }));
+    els.batchBackBtn.addEventListener('click', () => { void this.resetBatch({ confirmIfBusy: true }); });
     els.batchDetailBackBtn.addEventListener('click', () => this.closeDetail());
     els.batchCrossToggle.addEventListener('change', () => {
       this.crossEnabled = els.batchCrossToggle.checked;
@@ -177,6 +178,12 @@ export class BatchController {
     els.batchReportCsvBtn.addEventListener('click', () => this.downloadReport('csv'));
     els.batchTabSummary.addEventListener('click', () => this.setDetailTab('summary'));
     els.batchTabRaw.addEventListener('click', () => this.setDetailTab('raw'));
+    window.addEventListener('beforeunload', (event) => {
+      if (this.hasUnsavedChanges() || this.applying || this.scanning) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    });
     window.addEventListener('pagehide', () => {
       this.releasePreview();
       this.client.disposeAllSync();
@@ -465,7 +472,6 @@ export class BatchController {
         this.syncApply();
       });
       const head = el('div', { className: 'batch-group-head' }, toggle, selectWrap);
-
       const body = el('div', { className: 'batch-group-body', hidden: !group.open });
       const list = el('div', { className: 'batch-file-list' });
       for (const item of group.items) list.append(this.renderRow(item));
@@ -667,6 +673,14 @@ export class BatchController {
     for (const id of removeIds) setIds.delete(id);
     return setIds.size + removeIds.size + (item.removeRaw?.size || 0);
   }
+  unsavedSummary() {
+    const files = this.items.filter((item) => this.operationCountFor(item) > 0);
+    const operations = files.reduce((sum, item) => sum + this.operationCountFor(item), 0);
+    return { files: files.length, operations };
+  }
+  hasUnsavedChanges() {
+    return this.unsavedSummary().operations > 0;
+  }
   collectGroupPayload(item) {
     const group = this.groups.find((entry) => entry.key === item.groupKey);
     const set = {};
@@ -740,7 +754,7 @@ export class BatchController {
     this.els.batchWorkspace.hidden = true;
     this.els.batchDetail.hidden = true;
   }
-  resetBatch({ confirmIfBusy = false } = {}) {
+  async resetBatch({ confirmIfBusy = false } = {}) {
     if (this.updateFrame) cancelAnimationFrame(this.updateFrame);
     this.updateFrame = 0;
     this.pendingUpdates.clear();
@@ -751,8 +765,23 @@ export class BatchController {
       return;
     }
     if (confirmIfBusy && this.items.some((item) => item.status === 'processing' || item.status === 'scanning')) {
-      if (!window.confirm('Pemrosesan masih berjalan. Batalkan dan kembali?')) return;
+      const ok = await confirmNavigation({
+        title: 'Pemrosesan masih berjalan',
+        message: 'Progres pemrosesan ini akan dibatalkan. Lanjutkan kembali?',
+        confirmLabel: 'Ya, batalkan',
+        cancelLabel: 'Tetap di sini',
+      });
+      if (!ok) return;
       this.processor.cancel();
+    } else if (confirmIfBusy && this.hasUnsavedChanges()) {
+      const { files, operations } = this.unsavedSummary();
+      const ok = await confirmNavigation({
+        title: 'Perubahan belum disimpan',
+        message: `Anda memiliki ${operations} perubahan belum disimpan pada ${files} file. Progres ini akan hilang. Lanjutkan meninggalkan?`,
+        confirmLabel: 'Ya, tinggalkan',
+        cancelLabel: 'Tetap di sini',
+      });
+      if (!ok) return;
     }
     this.releasePreview();
     for (const item of this.items) {

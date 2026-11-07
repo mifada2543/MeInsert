@@ -1,8 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* Entry point. Urutan @import = urutan cascade; jangan diurutkan ulang tanpa menguji.
-   Untuk produksi: ./build.sh menghasilkan app.bundle.css (tanpa @import berantai). */
+/* Entry point. Urutan @import = urutan cascade; jangan diurutkan ulang tanpa menguji. */
 @import "./fonts.css";
 @import "./base/tokens.css";
 @import "./base/base.css";
@@ -22,6 +21,7 @@
 @import "./components/states.css";
 @import "./components/raw-table.css";
 @import "./components/toast.css";
+@import "./components/dialog.css";
 @import "./layout/footer.css";
 @import "./pages/landing.css";
 @import "./pages/batch.css";

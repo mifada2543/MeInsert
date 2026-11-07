@@ -1,0 +1,95 @@
+/* MeInsert · components/dialog.css — dialog konfirmasi destruktif (peringatan pergi). */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(11, 11, 16, 0.62);
+}
+.confirm-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(420px, 100%);
+  padding: 26px 24px 22px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+  animation: confirm-in 180ms ease both;
+}
+@keyframes confirm-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.confirm-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+.confirm-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.confirm-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+}
+.confirm-actions .button {
+  min-width: 140px;
+  min-height: 42px;
+}
+.confirm-btn-confirm {
+  border-color: transparent;
+  background: var(--danger);
+  color: #fff;
+}
+.confirm-btn-confirm:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 88%, #000);
+}
+@media (max-width: 700px) {
+  .confirm-backdrop {
+    padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    align-items: end;
+  }
+  .confirm-card {
+    width: 100%;
+    padding: 22px 18px 18px;
+  }
+  .confirm-actions {
+    flex-direction: column-reverse;
+  }
+  .confirm-actions .button {
+    width: 100%;
+    min-height: 46px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-card { animation: none; }
+}

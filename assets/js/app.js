@@ -20,6 +20,7 @@ import { renderForm, syncFormState, renderCoverBlock } from './ui/form-view.js';
 import { renderRaw } from './ui/raw-view.js';
 import { renderResultCard } from './ui/result-view.js';
 import { showToast } from './ui/toast.js';
+import { confirmNavigation } from './ui/confirm.js';
 import { coverFormatsLabelFor, isSupportedCover, mimeOf } from './core/image-utils.js';
 import { initTheme } from './ui/theme.js';
 import { registerServiceWorker } from './core/pwa.js';
@@ -836,11 +837,26 @@ function resetChanges() {
   syncActionBar();
   showToast('Perubahan dibatalkan.', 'info', 2800);
 }
-function goHome() {
-  if (state.processing) {
-    const shouldCancel = window.confirm('Pemrosesan masih berjalan. Batalkan dan ganti file?');
+async function goHome() {
+  const busy = Boolean(state.processing);
+  const dirty = (state.dirtyCount || 0) > 0;
+  if (busy) {
+    const shouldCancel = await confirmNavigation({
+      title: 'Pemrosesan masih berjalan',
+      message: 'Progres pemrosesan ini akan dibatalkan. Lanjutkan mengganti file?',
+      confirmLabel: 'Ya, batalkan',
+      cancelLabel: 'Tetap di sini',
+    });
     if (!shouldCancel) return;
     if (state.adapter) client.cancel(state.adapter.meta.engine);
+  } else if (dirty) {
+    const shouldLeave = await confirmNavigation({
+      title: 'Perubahan belum disimpan',
+      message: `Perubahan yang belum Anda simpan (${state.dirtyCount} perubahan) akan hilang. Lanjutkan meninggalkan?`,
+      confirmLabel: 'Ya, tinggalkan',
+      cancelLabel: 'Tetap di sini',
+    });
+    if (!shouldLeave) return;
   }
   state.readToken += 1;
   cleanupUrls();
