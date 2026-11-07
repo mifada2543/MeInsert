@@ -13,7 +13,7 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 [![PWA](https://img.shields.io/badge/PWA-Installable-7B3FF2?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
 [![Offline](https://img.shields.io/badge/Offline-Ready-10b981?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue?style=for-the-badge)](./package.json)
+[![Version](https://img.shields.io/badge/version-v1.2.0-blue?style=for-the-badge)](./package.json)
 [![License](https://img.shields.io/badge/Lisensi-AGPLv3-orange?style=for-the-badge)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25_Client--side-lightgrey?style=for-the-badge)]()
 [![No Build](https://img.shields.io/badge/Static-No%20Build-purple?style=for-the-badge)]()
@@ -108,6 +108,7 @@ Klik **Simpan** → hasil dibaca ulang & diverifikasi otomatis → unduh file ba
 - **Verifikasi otomatis** — output dibaca ulang sebelum unduh
 - **Tag kustom** — tambah metadata non-standar per format (nama native per engine)
 - **Global search raw tag** — lihat semua tag mentah + cari cepat
+- **Perbesar pratinjau** — klik gambar (pratinjau utama, cover audio, pratinjau cover, pratinjau batch) untuk lightbox layar penuh; klik lagi / scroll untuk zoom, geser untuk menggeser, Esc untuk tutup
 - **Tema gelap/terang** — ikut sistem, bisa manual, transisi circular reveal, tanpa flicker (tema diterapkan sebelum paint pertama)
 - **PWA Installable** — pasang ke layar utama dari menu browser; precache app shell + library vendor (~2 MB), ExifTool WASM di-cache saat pertama dipakai
 - **Manajemen memori WASM** — worker & ExifTool WASM dilepas otomatis setelah batch, saat idle (~8 menit), dan saat halaman ditutup
@@ -225,7 +226,7 @@ MeInsert/
 - **MKV:** chapter & attachment tidak dipertahankan saat remux
 - **PDF:** PDF terenkripsi tidak didukung; PDF bertanda tangan digital → tanda tangan invalid; XMP yang rusak/aneh akan ditulis ulang (dengan peringatan), sehingga properti asing bisa hilang pada kasus itu
 - **PNG/WebP:** field kamera ditulis sebagai XMP (`XMP-tiff:Make/Model`, `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), bukan EXIF biner; aplikasi yang hanya membaca EXIF mungkin tidak menampilkannya
-- **Batch:** ZIP dibuat di memori browser — video maks. 10 file (≤1 jam, total ≤2 GB), audio maks. 20 (≤30 menit, ≤1 GB), gambar/PDF maks. 50 (≤1 GB); file dengan durasi tak terbaca dikunci
+- **Batch:** ZIP di browser tanpa mengunduh ulang seluruh arsip bila didukung (`showSavePicker` di Chrome/Edge — streaming langsung ke disk); fallback ke memori di browser lain — video maks. 10 file (≤1 jam, total ≤2 GB), audio maks. 20 (≤30 menit, ≤1 GB), gambar/PDF maks. 50 (≤1 GB); file dengan durasi tak terbaca dikunci
 - **Batch:** field standar (judul, artis, album, tanggal, genre, komentar, hak cipta, komposer, perangkat lunak) bisa diterapkan lintas grup; field yang tidak tersedia di suatu format otomatis dilewati. Custom tags tetap per grup
 - **OGG:** hanya Vorbis & Opus (FLAC-in-Ogg/Speex ditolak); tidak semua pemutar tampilkan cover Ogg/Opus
 - **Cover:** JPEG/PNG/WebP ≤10 MB untuk semua format; GIF/BMP ≤10 MB hanya untuk MP3/FLAC/OGG/MKV (MP4 `covr` menolak GIF/BMP). Tidak semua pemutar menampilkan cover Ogg/Opus

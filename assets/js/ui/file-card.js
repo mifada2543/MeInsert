@@ -4,6 +4,7 @@
 import { el, clear, formatBytes, formatDuration } from './dom.js';
 import { icon } from './icons.js';
 import { coverAcceptFor } from '../core/image-utils.js';
+import { openLightbox } from './lightbox.js';
 
 export function previewKind(detection) {
   if (!detection) return 'file';
@@ -134,6 +135,25 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
     if (file) onCoverChooseFile(file);
   });
 
+  const coverZoom = el('button', {
+    className: 'audio-cover-zoom',
+    type: 'button',
+    title: 'Klik untuk perbesar thumbnail',
+    'aria-label': 'Perbesar thumbnail audio',
+    hidden: !(cover?.previewUrl),
+    on: {
+      click: (event) => {
+        event.stopPropagation();
+        openLightbox({
+          src: cover.previewUrl,
+          alt: 'Thumbnail audio',
+          caption: coverLabel(cover) || 'Thumbnail audio',
+        });
+      },
+    },
+  }, icon('expand'));
+  const coverBox = el('div', { className: 'audio-cover-wrap' }, coverButton, coverZoom);
+
   const showRemove = cover?.action !== 'remove' && Boolean(cover?.original || cover?.chosen || cover?.action === 'set');
   const actions = el('div', { className: 'audio-cover-actions' },
     el('button', {
@@ -177,7 +197,7 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
       actions,
     ),
     el('div', { className: 'audio-body' },
-      coverButton,
+      coverBox,
       el('div', { className: 'audio-player' },
         audio,
         el('p', { className: 'audio-cover-hint', textContent: coverHint(cover) }),
@@ -239,7 +259,23 @@ export function renderFileCard(container, {
         load: () => setMediaRatio(frame, img.naturalWidth, img.naturalHeight),
       },
     });
-    frame.append(img);
+    const zoom = el('button', {
+      className: 'preview-zoom',
+      type: 'button',
+      title: 'Klik untuk perbesar',
+      'aria-label': `Perbesar pratinjau ${file.name}`,
+      on: {
+        click: () => {
+          const dims = info.width && info.height ? `${info.width} × ${info.height}` : '';
+          openLightbox({
+            src: previewUrl,
+            alt: `Pratinjau ${file.name}`,
+            caption: dims ? `${file.name} · ${dims}` : file.name,
+          });
+        },
+      },
+    }, img, el('span', { className: 'preview-zoom-badge', 'aria-hidden': 'true' }, icon('expand')));
+    frame.append(zoom);
   } else if (kind === 'video' && previewUrl) {
     const video = el('video', {
       src: previewUrl,

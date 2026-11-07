@@ -3,6 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { el, clear, formatBytes } from './dom.js';
 import { icon } from './icons.js';
+import { openLightbox } from './lightbox.js';
 import { asArray, asString, fileBaseName } from '../core/tag-utils.js';
 import { coverAcceptFor, coverFormatsLabelFor } from '../core/image-utils.js';
 
@@ -222,7 +223,21 @@ export function renderCoverBlock(adapter, state, handlers) {
 
   const preview = el('div', { className: 'cover-preview', dataset: { coverPreview: '' } },
     hasImage
-      ? el('img', { src: previewUrl, alt: 'Pratinjau thumbnail' })
+      ? el('button', {
+          className: 'cover-zoom',
+          type: 'button',
+          title: 'Klik untuk perbesar thumbnail',
+          'aria-label': 'Perbesar pratinjau thumbnail',
+          on: {
+            click: () => openLightbox({
+              src: previewUrl,
+              alt: 'Pratinjau thumbnail',
+              caption: hint || 'Pratinjau thumbnail',
+            }),
+          },
+        },
+          el('img', { src: previewUrl, alt: 'Pratinjau thumbnail' }),
+          el('span', { className: 'cover-zoom-badge', 'aria-hidden': 'true' }, icon('expand')))
       : el('div', { className: 'cover-placeholder' },
           icon('image'),
           el('span', { textContent: original && !previewUrl ? 'Cover ada (pratinjau tidak tersedia)' : 'Belum ada thumbnail' }),

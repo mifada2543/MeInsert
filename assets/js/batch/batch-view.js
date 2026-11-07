@@ -12,9 +12,10 @@ import {
   validateSelection,
 } from './batch-limits.js';
 import { makeCsvReport, makeJsonReport } from './batch-report.js';
-import { buildZip } from './batch-zip.js';
+import { saveZipStreaming } from './batch-zip.js';
 import { el, clear, formatBytes, downloadBlob, qs } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
+import { openLightbox } from '../ui/lightbox.js';
 import { showToast } from '../ui/toast.js';
 import { previewKind } from '../ui/file-card.js';
 import { asArray, asString, fileBaseName, fileExtension, safeOutputName } from '../core/tag-utils.js';
@@ -911,15 +912,24 @@ export class BatchController {
     this.setProgress(0, 'Menyiapkan ZIP…');
     try {
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const zip = await buildZip(doneItems, {
+      const result = await saveZipStreaming(doneItems, {
         reportJson: makeJsonReport(this.items),
+        suggestedName: `meinsert-batch-${stamp}.zip`,
         onProgress: ({ stage, pct }) => this.setProgress(pct, stage),
       });
-      downloadBlob(zip, `meinsert-batch-${stamp}.zip`);
-      this.setStatus(`${doneItems.length} file masuk ZIP.`);
+      if (result.streaming) {
+        this.setStatus(`${doneItems.length} file disimpan langsung ke ZIP.`);
+      } else {
+        downloadBlob(result.blob, `meinsert-batch-${stamp}.zip`);
+        this.setStatus(`${doneItems.length} file masuk ZIP.`);
+      }
     } catch (error) {
-      showToast(`ZIP gagal dibuat: ${error?.message || error}`, 'error', 8000);
-      this.setStatus('ZIP gagal dibuat.', true);
+      if (error?.code === 'SAVE_CANCELLED' || error?.name === 'AbortError') {
+        this.setStatus('Penyimpanan ZIP dibatalkan.');
+      } else {
+        showToast(`ZIP gagal dibuat: ${error?.message || error}`, 'error', 8000);
+        this.setStatus('ZIP gagal dibuat.', true);
+      }
     } finally {
       this.showProgress(false);
       this.syncApply();
@@ -1059,7 +1069,23 @@ export class BatchController {
       const img = el('img', { src: this.previewUrl, alt: `Pratinjau ${item.file.name}`, decoding: 'async' });
       img.addEventListener('load', () => this.setPreviewRatio(stage, img.naturalWidth, img.naturalHeight));
       img.addEventListener('error', () => stage.replaceChildren(this.previewFallback(item, 'Gambar tidak bisa ditampilkan di browser ini.')));
-      stage.append(img);
+      const zoom = el('button', {
+        className: 'batch-preview-zoom',
+        type: 'button',
+        title: 'Klik untuk perbesar',
+        'aria-label': `Perbesar pratinjau ${item.file.name}`,
+        on: {
+          click: () => {
+            const dims = info.width && info.height ? ` · ${info.width} × ${info.height}` : '';
+            openLightbox({
+              src: this.previewUrl,
+              alt: `Pratinjau ${item.file.name}`,
+              caption: `${item.file.name}${dims}`,
+            });
+          },
+        },
+      }, img, el('span', { className: 'preview-zoom-badge', 'aria-hidden': 'true' }, icon('expand')));
+      stage.append(zoom);
     } else if (kind === 'video') {
       const video = el('video', {
         src: this.previewUrl,
@@ -1076,7 +1102,20 @@ export class BatchController {
       if (this.previewCoverUrl) {
         const coverImg = el('img', { src: this.previewCoverUrl, alt: `Cover ${item.file.name}`, decoding: 'async' });
         coverImg.addEventListener('error', () => cover.replaceChildren(icon('audio'), el('span', { textContent: 'Tanpa cover' })));
-        cover.append(coverImg);
+        const coverZoom = el('button', {
+          className: 'batch-preview-cover-zoom',
+          type: 'button',
+          title: 'Klik untuk perbesar cover',
+          'aria-label': `Perbesar cover ${item.file.name}`,
+          on: {
+            click: () => openLightbox({
+              src: this.previewCoverUrl,
+              alt: `Cover ${item.file.name}`,
+              caption: `Cover · ${item.file.name}`,
+            }),
+          },
+        }, coverImg, el('span', { className: 'cover-zoom-badge', 'aria-hidden': 'true' }, icon('expand')));
+        cover.append(coverZoom);
       } else {
         cover.append(icon('audio'), el('span', { textContent: 'Tanpa cover' }));
       }
