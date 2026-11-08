@@ -70,6 +70,7 @@ function planDetails(plan, { open = false } = {}) {
     plan.outputName && plan.outputName !== fileLabel
       ? el('p', { className: 'review-output', textContent: `Nama hasil: ${plan.outputName}` })
       : null,
+    xmpSection(plan),
     operationGroup('Field', fields),
     operationGroup('Tag kustom', custom),
     operationGroup('Hapus tag mentah', raw),
@@ -84,11 +85,16 @@ function planDetails(plan, { open = false } = {}) {
 function summaryChips(plans) {
   const operations = plans.reduce((sum, plan) => sum + (plan.operations?.length || 0), 0);
   const unchanged = plans.reduce((sum, plan) => sum + (plan.unchanged?.fields || 0) + (plan.unchanged?.custom || 0) + (plan.unchanged?.raw || 0), 0);
-  return el('div', { className: 'review-summary' },
+  const memory = plans[0]?.memory;
+  const chips = [
     el('span', { className: 'review-chip is-strong' }, `${operations} perubahan`),
     el('span', { className: 'review-chip' }, `${plans.length} file`),
     el('span', { className: 'review-chip' }, `${unchanged} metadata tetap`),
-  );
+  ];
+  if (memory?.estimatedLabel) {
+    chips.push(el('span', { className: `review-chip${memory.level && memory.level !== 'ok' ? ' is-warn' : ''}` }, `Estimasi memori ~${memory.estimatedLabel}`));
+  }
+  return el('div', { className: 'review-summary' }, ...chips);
 }
 function uniqueRisks(plans) {
   const seen = new Set();
@@ -102,6 +108,55 @@ function uniqueRisks(plans) {
     }
   }
   return risks;
+}
+const XMP_OWNED_FIELD = {
+  'dc:title': 'title',
+  'dc:creator': 'author',
+  'dc:description': 'subject',
+  'dc:subject': 'keywords',
+  'pdf:keywords': 'keywords',
+  'pdf:producer': 'producer',
+  'xmp:creatortool': 'creator',
+  'xmp:createdate': 'creationDate',
+  'xmp:modifydate': 'modDate',
+};
+function xmpSection(plan) {
+  const properties = plan?.before?.xmp?.properties || [];
+  const present = plan?.before?.xmp?.present || properties.length > 0;
+  if (!present) return null;
+  if (!properties.length) {
+    return el('section', { className: 'review-group' },
+      el('div', { className: 'review-group-head' }, el('h3', { textContent: 'XMP' })),
+      el('p', { className: 'review-unchanged', textContent: 'Paket XMP ada, tetapi tidak ada properti yang terdaftar.' }),
+    );
+  }
+  const changedIds = new Set((plan.operations || []).filter((op) => op.kind === 'field').map((op) => op.id));
+  const rows = properties.map((prop) => {
+    const qualified = String(prop.qualified || `${prop.prefix}:${prop.local}`).trim();
+    const ownedField = XMP_OWNED_FIELD[qualified.toLowerCase()] || '';
+    const changed = ownedField && changedIds.has(ownedField);
+    const status = changed ? 'akan ditulis ulang' : ownedField ? 'dipakai field' : 'asing · dipertahankan';
+    return el('tr', {},
+      el('td', { className: 'review-xmp-tag', textContent: qualified }),
+      el('td', { textContent: displayValue(prop.value) }),
+      el('td', { className: `review-xmp-status ${changed ? 'is-changed' : ownedField ? '' : 'is-foreign'}`.trim(), textContent: status }),
+    );
+  });
+  return el('section', { className: 'review-group' },
+    el('div', { className: 'review-group-head' },
+      el('h3', { textContent: 'XMP (read-only)' }),
+      el('span', { className: 'review-count', textContent: String(properties.length) }),
+      el('p', { textContent: 'Inventaris properti XMP sebelum tulis. Properti asing dipertahankan; yang dipakai field ditandai.' }),
+    ),
+    el('table', { className: 'review-xmp-table' },
+      el('thead', {}, el('tr', {},
+        el('th', { textContent: 'Properti' }),
+        el('th', { textContent: 'Nilai' }),
+        el('th', { textContent: 'Status' }),
+      )),
+      el('tbody', {}, ...rows),
+    ),
+  );
 }
 export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
   if (typeof document === 'undefined') return Promise.resolve(false);
@@ -134,6 +189,42 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
     summaryChips(plans),
     risksBlock(risks),
   );
+  const mismatches = plans.filter((plan) => plan?.extensionMismatch?.found);
+  let lowMemoryInput = null;
+  let extKeepInput = null;
+  if (mode === 'batch') {
+    lowMemoryInput = el('input', { type: 'checkbox', id: 'reviewLowMemory' });
+    body.append(
+      el('label', { className: 'review-low-memory', for: 'reviewLowMemory' },
+        lowMemoryInput,
+        el('span', {},
+          el('strong', { textContent: 'Modus hemat memori' }),
+          el('span', { textContent: 'Unduh tiap hasil segera setelah ditulis, bukan menahan semua output sampai ZIP. Disarankan untuk batch video/audio besar.' }),
+        ),
+      ),
+    );
+  }
+  if (mismatches.length) {
+    const first = mismatches[0];
+    const recommended = first.extensionMismatch.recommendedName || first.outputName || '';
+    const alternative = first.extensionMismatch.alternativeName || recommended;
+    const followInput = el('input', { type: 'radio', name: 'review-ext-choice', value: 'follow', checked: true });
+    extKeepInput = el('input', { type: 'radio', name: 'review-ext-choice', value: 'keep' });
+    body.append(
+      el('section', { className: 'review-ext-choice' },
+        el('h3', { textContent: 'Ekstensi tidak cocok dengan isi' }),
+        el('p', { textContent: `${mismatches.length} file memiliki nama/ekstensi berbeda dari isi terdeteksi. Pilih bagaimana nama hasil ditulis:` }),
+        el('label', { className: 'review-ext-radio' },
+          followInput,
+          el('span', {}, 'Ikuti isi file (aman) — ', el('code', { textContent: recommended }), mismatches.length > 1 ? ` (dan ${mismatches.length - 1} lainnya)` : ''),
+        ),
+        el('label', { className: 'review-ext-radio' },
+          extKeepInput,
+          el('span', {}, 'Pertahankan ekstensi asli — ', el('code', { textContent: alternative }), ' (isi tetap sesuai deteksi; hanya nama yang dipertahankan.)'),
+        ),
+      ),
+    );
+  }
   if (mode === 'single') {
     body.append(planDetails(plans[0], { open: true }));
   } else {
@@ -197,7 +288,7 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
-      finish(false);
+      finish({ confirmed: false, lowMemory: false, keepOriginalExt: null });
       return;
     }
     if (event.key !== 'Tab') return;
@@ -214,11 +305,15 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
     }
   };
   document.addEventListener('keydown', onKeydown, true);
-  cancelButton.addEventListener('click', () => finish(false));
-  card.querySelector('.review-close').addEventListener('click', () => finish(false));
-  confirmButton.addEventListener('click', () => finish(true));
+  cancelButton.addEventListener('click', () => finish({ confirmed: false, lowMemory: false, keepOriginalExt: null }));
+  card.querySelector('.review-close').addEventListener('click', () => finish({ confirmed: false, lowMemory: false, keepOriginalExt: null }));
+  confirmButton.addEventListener('click', () => finish({
+    confirmed: true,
+    lowMemory: Boolean(lowMemoryInput?.checked),
+    keepOriginalExt: extKeepInput ? Boolean(extKeepInput.checked) : null,
+  }));
   backdrop.addEventListener('click', (event) => {
-    if (event.target === backdrop) finish(false);
+    if (event.target === backdrop) finish({ confirmed: false, lowMemory: false, keepOriginalExt: null });
   });
   current = backdrop;
   cancelButton.focus();

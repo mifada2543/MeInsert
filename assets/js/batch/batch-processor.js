@@ -97,7 +97,9 @@ export class BatchProcessor {
     }
     await this.client.disposeAll();
   }
-  async applyPlans(plans, skipped = [], onUpdate) {
+  async applyPlans(plans, skipped = [], onUpdate, { lowMemory = false, onOutput = null, maxFailures = 0 } = {}) {
+    this.cancelRequested = false;
+    let failures = 0;
     this.cancelRequested = false;
     const entries = (plans || []).filter((plan) => plan?.item && plan?.payload);
     const skippedItems = [...new Set(skipped || [])].filter((item) => !entries.some((plan) => plan.item === item));
@@ -113,12 +115,13 @@ export class BatchProcessor {
       item.integrity = null;
       onUpdate?.(item);
     }
+    let stoppedReason = '';
     for (const plan of entries) {
       const item = plan.item;
       if (this.cancelRequested) {
         if (item.status === 'queued' || item.status === 'ready' || item.status === 'processing') {
           item.status = 'cancelled';
-          item.skipReason = 'Dibatalkan.';
+          item.skipReason = stoppedReason || 'Dibatalkan.';
           onUpdate?.(item);
         }
         continue;
@@ -151,10 +154,6 @@ export class BatchProcessor {
         }
         const integrity = verifyIntegrity(plan, afterSnapshot);
         const blob = result.blob;
-        item.outputFile = new File([blob], outputName, {
-          type: blob.type || item.detection?.mime || item.file?.type || 'application/octet-stream',
-          lastModified: Date.now(),
-        });
         item.warnings = warnings;
         item.integrity = integrity;
         item.operations = this.operationCounts(plan);
@@ -163,6 +162,21 @@ export class BatchProcessor {
         item.stage = integrity.status === 'failed'
           ? 'Selesai · perlu diperiksa'
           : integrity.status === 'warning' ? 'Selesai · ada catatan' : 'Selesai';
+        if (lowMemory && onOutput) {
+          // Hemat memori: unduh saat ini juga, jangan tahan semua output untuk ZIP.
+          try {
+            onOutput(item, blob);
+            item.downloadedPerFile = true;
+          } catch {
+            item.downloadedPerFile = false;
+          }
+          item.outputFile = null;
+        } else {
+          item.outputFile = new File([blob], outputName, {
+            type: blob.type || item.detection?.mime || item.file?.type || 'application/octet-stream',
+            lastModified: Date.now(),
+          });
+        }
         processed.push(item);
         onUpdate?.(item);
       } catch (error) {
@@ -173,6 +187,11 @@ export class BatchProcessor {
           item.status = 'error';
           item.error = error;
           item.skipReason = error?.message || 'File gagal diproses.';
+          failures += 1;
+          if (maxFailures > 0 && failures >= maxFailures) {
+            stoppedReason = `Dihentikan setelah ${failures} kegagalan.`;
+            this.cancelRequested = true;
+          }
         }
         item.outputFile = null;
         item.integrity = null;

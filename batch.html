@@ -157,6 +157,14 @@
         <div class="batch-footer-copy">
           <strong id="batchSelectedCount">0 file dipilih</strong>
           <span id="batchOperationCount">0 operasi</span>
+          <button class="button ghost small batch-retry-btn" id="batchRetryBtn" type="button" hidden>
+            Coba lagi file gagal
+          </button>
+          <label class="batch-stop-after">
+            Henti setelah
+            <input id="batchStopAfter" type="number" min="1" max="20" step="1" value="3">
+            gagal
+          </label>
         </div>
         <button class="button primary" id="batchApplyBtn" type="button" disabled>
           <span class="icon" aria-hidden="true"></span>

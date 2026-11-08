@@ -21,6 +21,7 @@ import { confirmNavigation } from '../ui/confirm.js';
 import { openReviewDialog } from '../ui/review-dialog.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
 import { buildChangePlan } from '../core/change-plan.js';
+import { estimateForBatch } from '../core/memory-estimate.js';
 import { previewKind } from '../ui/file-card.js';
 import { asArray, asString, fileBaseName, fileExtension, safeOutputName, sameValue } from '../core/tag-utils.js';
 import { STANDARD_FIELDS, crossFormatPatch } from '../core/format-map.js';
@@ -135,6 +136,8 @@ export class BatchController {
       batchApplyBtn: qs('#batchApplyBtn'),
       batchSelectedCount: qs('#batchSelectedCount'),
       batchOperationCount: qs('#batchOperationCount'),
+      batchRetryBtn: qs('#batchRetryBtn'),
+      batchStopAfter: qs('#batchStopAfter'),
       batchZipBtn: qs('#batchZipBtn'),
       batchReportJsonBtn: qs('#batchReportJsonBtn'),
       batchReportCsvBtn: qs('#batchReportCsvBtn'),
@@ -185,6 +188,7 @@ export class BatchController {
     });
     els.batchApplyBtn.addEventListener('click', () => this.handleApplyClick());
     els.batchZipBtn.addEventListener('click', () => this.downloadZip());
+    els.batchRetryBtn?.addEventListener('click', () => this.retryFailed());
     els.batchReportJsonBtn.addEventListener('click', () => this.downloadReport('json'));
     els.batchReportCsvBtn.addEventListener('click', () => this.downloadReport('csv'));
     els.batchTabSummary.addEventListener('click', () => this.setDetailTab('summary'));
@@ -707,6 +711,30 @@ export class BatchController {
   hasUnsavedChanges() {
     return this.unsavedSummary().operations > 0;
   }
+  failedItems() {
+    return this.items.filter((item) => item.status === 'error');
+  }
+  retryFailed() {
+    const failed = this.failedItems();
+    if (!failed.length || this.applying) return;
+    for (const item of failed) {
+      item.status = item.readResult ? 'ready' : 'queued';
+      item.included = true;
+      item.excluded = false;
+      item.skipReason = '';
+      item.error = null;
+      item.outputFile = null;
+      item.integrity = null;
+      item.progress = 0;
+      item.stage = item.readResult ? 'Siap diulang' : 'Antre ulang';
+      this.updateItem(item);
+    }
+    this.setStatus(`Mengulang ${failed.length} file gagal…`);
+    const queued = this.items.filter((item) => item.status === 'queued');
+    return queued.length
+      ? this.scanQueued().then(() => this.apply())
+      : this.apply();
+  }
   collectGroupPayload(item) {
     const group = this.groups.find((entry) => entry.key === item.groupKey);
     const set = {};
@@ -752,6 +780,12 @@ export class BatchController {
     this.els.batchApplyBtn.querySelector('.icon')?.replaceChildren(icon(this.applying ? 'x' : 'check'));
     this.els.batchApplyBtn.lastChild.textContent = label;
     this.els.batchApplyBtn.title = validation.messages[0] || '';
+    const failedCount = this.items.filter((item) => item.status === 'error').length;
+    if (this.els.batchRetryBtn) {
+      this.els.batchRetryBtn.hidden = failedCount === 0 || this.applying;
+      this.els.batchRetryBtn.disabled = this.applying;
+      this.els.batchRetryBtn.textContent = `Coba lagi ${failedCount} file gagal`;
+    }
     this.els.batchZipBtn.disabled = !this.items.some(zipEligible);
     const noItems = this.items.length === 0;
     this.els.batchReportJsonBtn.disabled = noItems;
@@ -865,9 +899,24 @@ export class BatchController {
       payload: this.collectGroupPayload(item).payload,
       outputName,
       source: 'batch',
+      memory: this._batchMemory || null,
     });
     plan.fileName = item.file.name;
     plan.item = item;
+    {
+      const originalExt = fileExtension(item.file?.name || '');
+      const detectedExt = (item.detection?.ext || '').toLowerCase();
+      const base = outputName.replace(/\.[^.]+$/, '');
+      if (originalExt && detectedExt && originalExt.toLowerCase() !== detectedExt) {
+        plan.extensionMismatch = {
+          found: true,
+          originalExt: originalExt.toLowerCase(),
+          detectedExt,
+          recommendedName: outputName,
+          alternativeName: `${base}.${originalExt.toLowerCase()}`,
+        };
+      }
+    }
     return plan;
   }
   async apply() {
@@ -879,6 +928,7 @@ export class BatchController {
       showToast(validation.messages[0], 'error', 7500);
       return;
     }
+    this._batchMemory = estimateForBatch(selected.map((item) => ({ file: item.file })));
     const usedNames = new Set();
     const plans = [];
     const skipped = [];
@@ -892,21 +942,55 @@ export class BatchController {
       showToast('Tidak ada perubahan nyata pada file terpilih.', 'info', 4500);
       return;
     }
-    const confirmed = await openReviewDialog({ plans, mode: 'batch' });
+    const reviewResult = await openReviewDialog({ plans, mode: 'batch' });
+    const confirmed = typeof reviewResult === 'object' && reviewResult !== null ? Boolean(reviewResult.confirmed) : Boolean(reviewResult);
     if (!confirmed) {
       this.setStatus('Perubahan belum diterapkan.');
       return;
     }
+    const lowMemory = typeof reviewResult === 'object' ? Boolean(reviewResult.lowMemory) : false;
+    if (typeof reviewResult === 'object' && reviewResult.keepOriginalExt) {
+      const used = new Set();
+      for (const plan of plans) {
+        if (!plan.extensionMismatch?.alternativeName) continue;
+        const base = plan.extensionMismatch.alternativeName.replace(/\.[^.]+$/, '');
+        let candidate = plan.extensionMismatch.alternativeName;
+        let n = 2;
+        while (used.has(candidate.toLowerCase())) {
+          candidate = `${base} (${n}).${plan.extensionMismatch.originalExt}`;
+          n += 1;
+        }
+        used.add(candidate.toLowerCase());
+        plan.outputName = candidate;
+        if (plan.item) plan.item.outputName = candidate;
+      }
+    }
+    this._lowMemory = lowMemory;
     this.applying = true;
     this.els.batchApplyBtn.classList.add('is-processing');
     this.setApplyingUI(true);
-    this.setStatus(`Menerapkan ke ${plans.length} file…`);
+    this.setStatus(lowMemory ? `Menerapkan hemat memori ke ${plans.length} file…` : `Menerapkan ke ${plans.length} file…`);
     this.showProgress(true);
     this.setProgress(2, 'Menyiapkan…');
     this.syncApply();
     let result;
+    const maxFailures = Math.max(0, Number(this.els.batchStopAfter?.value) || 0);
     try {
-      result = await this.processor.applyPlans(plans, skipped, (item) => this.updateItem(item));
+      result = await this.processor.applyPlans(
+        plans,
+        skipped,
+        (item) => this.updateItem(item),
+        {
+          lowMemory,
+          maxFailures,
+          onOutput: lowMemory
+            ? (item, blob) => {
+                downloadBlob(blob, item.outputName || item.file.name);
+                item.downloadedPerFile = true;
+              }
+            : null,
+        },
+      );
     } catch (error) {
       this.setStatus(error?.message || 'Batch gagal diproses.', true);
       showToast(error?.message || 'Batch gagal diproses.', 'error', 8000);
@@ -954,6 +1038,11 @@ export class BatchController {
   async downloadZip() {
     const doneItems = this.items.filter(zipEligible);
     if (!doneItems.length) {
+      const perFile = this.items.filter((item) => item.downloadedPerFile).length;
+      if (perFile) {
+        showToast('Semua hasil sudah diunduh per file (modus hemat memori).', 'info', 6000);
+        return;
+      }
       const flagged = this.items.filter((item) => item.outputFile && item.integrity?.status === 'failed').length;
       if (flagged) {
         showToast(`${flagged} file perlu diperiksa dan tidak disertakan. Pilih "Sertakan di ZIP" pada detail file bila tetap ingin mengunduhnya.`, 'error', 9000);

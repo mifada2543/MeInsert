@@ -356,3 +356,88 @@
   .review-card { animation: none; }
   .review-file-summary::before { transition: none; }
 }
+
+.review-chip.is-warn {
+  border-color: var(--warning);
+  background: var(--warning-soft, transparent);
+  color: var(--warning);
+}
+
+.review-low-memory {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+  cursor: pointer;
+}
+
+.review-low-memory input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--brand);
+}
+
+.review-low-memory strong { display: block; font-size: 12.5px; }
+.review-low-memory span { display: block; color: var(--muted); font-size: 12px; }
+
+.review-ext-choice {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1.5px solid var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--warning-soft, var(--surface-2));
+}
+
+.review-ext-choice h3 {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+}
+
+.review-ext-choice p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.review-ext-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.review-ext-radio:hover { background: var(--surface); }
+.review-ext-radio input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--brand); }
+.review-ext-radio code { font-family: var(--mono); font-size: 12px; }
+
+.review-xmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.review-xmp-table th, .review-xmp-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.review-xmp-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.review-xmp-tag { font-family: var(--mono); font-size: 11.5px; }
+.review-xmp-status { white-space: nowrap; }
+.review-xmp-status.is-foreign { color: var(--muted); }
+.review-xmp-status.is-changed { color: var(--warning); font-weight: 700; }

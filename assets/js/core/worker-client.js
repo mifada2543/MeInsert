@@ -6,6 +6,17 @@ const WORKER_URLS = {
   media: new URL('../workers/media.worker.js', import.meta.url),
   pdf: new URL('../workers/pdf.worker.js', import.meta.url),
 };
+
+export function timeoutForAction(action) {
+  if (action === 'write') return 300_000;
+  if (action === 'dispose') return 10_000;
+  return 90_000;
+}
+
+export function retryableReadError(error) {
+  const code = error?.code;
+  return code === 'WATCHDOG_TIMEOUT' || code === 'WORKER_CRASH';
+}
 class EngineWorker {
   constructor(url) {
     this.url = url;
@@ -42,7 +53,7 @@ class EngineWorker {
       const error = new Error(event.message || 'Worker berhenti secara tidak terduga.');
       error.code = 'WORKER_CRASH';
       error.detail = event.filename ? `${event.filename}:${event.lineno}` : '';
-      for (const pending of this.pending.values()) pending.reject(error);
+      for (const pending of [...this.pending.values()]) pending.reject(error);
       this.pending.clear();
       this.worker = null;
       this.onActivity();
@@ -50,7 +61,7 @@ class EngineWorker {
     worker.onmessageerror = () => {
       const error = new Error('Data dari worker tidak bisa dibaca.');
       error.code = 'WORKER_MESSAGE_ERROR';
-      for (const pending of this.pending.values()) pending.reject(error);
+      for (const pending of [...this.pending.values()]) pending.reject(error);
       this.pending.clear();
     };
     this.worker = worker;
@@ -59,9 +70,40 @@ class EngineWorker {
   request(message, onProgress) {
     const worker = this.ensure();
     const id = ++this.sequence;
+    const timeoutMs = timeoutForAction(message?.action);
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, onProgress });
-      worker.postMessage({ id, ...message });
+      const timer = setTimeout(() => {
+        if (!this.pending.has(id)) return;
+        this.pending.delete(id);
+        const error = new Error('Mesin metadata tidak menjawab (timeout). Mesin dimulai ulang.');
+        error.code = 'WATCHDOG_TIMEOUT';
+        error.detail = `action=${message?.action || 'unknown'} timeout=${timeoutMs}ms`;
+        // Restart a hung engine so the next request gets a fresh worker.
+        try {
+          this.worker?.terminate();
+        } catch { /* ignore */ }
+        this.worker = null;
+        this.onActivity();
+        reject(error);
+      }, timeoutMs);
+      const settle = (fn, value) => {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        fn(value);
+      };
+      this.pending.set(id, {
+        onProgress: (msg) => { onProgress?.(msg); },
+        resolve: (value) => settle(resolve, value),
+        reject: (err) => settle(reject, err),
+        timer,
+      });
+      try {
+        worker.postMessage({ id, ...message });
+      } catch (error) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
   terminate() {
@@ -70,6 +112,7 @@ class EngineWorker {
       this.worker = null;
     }
     for (const pending of this.pending.values()) {
+      if (pending.timer) clearTimeout(pending.timer);
       const error = new Error('Pemrosesan dibatalkan.');
       error.code = 'CANCELLED';
       pending.reject(error);
@@ -106,8 +149,17 @@ export class MetadataClient {
       this.disposeAllSync();
     }, this.idleTimeout);
   }
-  read(engine, format, file, options, onProgress) {
-    return this.workerFor(engine).request({ action: 'read', format, file, options }, onProgress);
+  async read(engine, format, file, options, onProgress) {
+    const attempt = () => this.workerFor(engine).request({ action: 'read', format, file, options }, onProgress);
+    try {
+      return await attempt();
+    } catch (error) {
+      // Retry read exactly once after a hang/crash; writes never auto-retry.
+      if (!retryableReadError(error)) throw error;
+      try { onProgress?.({ stage: 'Mesin metadata dimulai ulang…', pct: 1 }); } catch { /* UI best-effort */ }
+      try { this.cancel(engine); } catch { /* fresh worker below */ }
+      return await attempt();
+    }
   }
   write(engine, format, file, payload, options, onProgress) {
     return this.workerFor(engine).request({ action: 'write', format, file, payload, options }, onProgress);

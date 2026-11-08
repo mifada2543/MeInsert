@@ -24,6 +24,7 @@ import { confirmNavigation } from './ui/confirm.js';
 import { openReviewDialog } from './ui/review-dialog.js';
 import { createSnapshot } from './core/metadata-snapshot.js';
 import { buildChangePlan } from './core/change-plan.js';
+import { estimateForSingle } from './core/memory-estimate.js';
 import { verifyIntegrity } from './core/integrity.js';
 import { coverFormatsLabelFor, isSupportedCover, mimeOf } from './core/image-utils.js';
 import { initTheme } from './ui/theme.js';
@@ -758,11 +759,15 @@ async function saveMetadata() {
     showToast('Belum ada perubahan. Ubah minimal satu field terlebih dahulu.', 'info', 4200);
     return;
   }
-  const filename = ensureOutputName();
+  let filename = ensureOutputName();
   state.outputName = filename;
   const baseline = state.baselineSnapshot
     || createSnapshot({ adapter: state.adapter, detection: state.detection, readResult: state.readResult });
   state.baselineSnapshot = baseline;
+  const memory = estimateForSingle({
+    fileSize: state.file?.size || 0,
+    coverBytes: state.coverChosen?.data?.byteLength || 0,
+  });
   const plan = buildChangePlan({
     adapter: state.adapter,
     detection: state.detection,
@@ -770,16 +775,37 @@ async function saveMetadata() {
     payload,
     outputName: filename,
     source: 'single',
+    memory,
   });
   plan.fileName = state.file.name;
+  {
+    const originalExt = (state.file?.name || '').includes('.') ? (state.file.name.split('.').pop() || '').toLowerCase() : '';
+    const detectedExt = (state.detection?.ext || '').toLowerCase();
+    const base = state.outputBase || filename.replace(/\.[^.]+$/, '');
+    if (originalExt && detectedExt && originalExt !== detectedExt) {
+      plan.extensionMismatch = {
+        found: true,
+        originalExt,
+        detectedExt,
+        recommendedName: `${base}.${detectedExt}`,
+        alternativeName: `${base}.${originalExt}`,
+      };
+    }
+  }
   if (!plan.hasOperations) {
     showToast('Perubahan yang dipilih sama dengan metadata saat ini.', 'info', 4200);
     return;
   }
-  const confirmed = await openReviewDialog({ plans: [plan], mode: 'single' });
+  const reviewResult = await openReviewDialog({ plans: [plan], mode: 'single' });
+  const confirmed = typeof reviewResult === 'object' && reviewResult !== null ? Boolean(reviewResult.confirmed) : Boolean(reviewResult);
   if (!confirmed) {
     setStatus(`${state.detection.label} · perubahan belum disimpan`);
     return;
+  }
+  if (typeof reviewResult === 'object' && reviewResult?.keepOriginalExt && plan.extensionMismatch?.alternativeName) {
+    filename = plan.extensionMismatch.alternativeName;
+    state.outputName = filename;
+    plan.outputName = filename;
   }
   state.saveError = null;
   state.result = null;
