@@ -602,10 +602,29 @@ export async function write(file, payload, options = {}, report = () => {}) {
       warnings.push(`Field "${id}" tidak terbaca kembali persis seperti yang diminta.`);
     }
   }
+  const verifyCustom = [];
+  if (verifyInfo && typeof verifyInfo.entries === 'function') {
+    for (const [keyObj, value] of verifyInfo.entries()) {
+      const key = typeof keyObj.decodeText === 'function'
+        ? keyObj.decodeText()
+        : String(keyObj.asString()).replace(/^\//, '');
+      if (STANDARD_INFO.has(key)) continue;
+      verifyCustom.push({ key, value: pdfObjectToString(value), originalKey: key });
+    }
+  }
+  const verifyRaw = [
+    ...Object.entries(verifyFields).map(([key, value]) => ({
+      group: 'Info',
+      tag: `/${INFO_KEYS[key] || key}`,
+      value: Array.isArray(value) ? value.join(', ') : value,
+    })),
+    ...verifyCustom.map((row) => ({ group: 'Custom', tag: row.key, value: row.value })),
+  ].filter((row) => row.value !== '');
   return {
     blob,
     fields: verifyFields,
-    raw: [],
+    custom: verifyCustom,
+    raw: verifyRaw,
     info: { pages: verifyDoc.getPageCount(), signed: false },
     warnings,
   };

@@ -26,6 +26,7 @@ export function makeReport(items) {
       ready: safeItems.filter((item) => item.status === 'ready' || item.status === 'done').length,
       done: safeItems.filter((item) => item.status === 'done').length,
       failed: safeItems.filter((item) => item.status === 'error').length,
+      flagged: safeItems.filter((item) => item.status === 'done' && item.integrity?.status === 'failed').length,
       skipped: safeItems.filter((item) => item.excluded || item.status === 'skipped').length,
       bytes: safeItems.reduce((sum, item) => sum + (Number(item.file?.size) || 0), 0),
     },
@@ -46,6 +47,19 @@ export function makeReport(items) {
         : null,
       rawTagCount: raw.length,
       operations: operation,
+      integrity: item.integrity ? {
+        status: item.integrity.status,
+        summary: item.integrity.summary,
+        findings: (item.integrity.findings || []).map((finding) => ({
+          severity: finding.severity,
+          code: finding.code,
+          target: finding.target,
+          message: finding.message,
+          before: finding.before,
+          after: finding.after,
+        })),
+        includedInZip: Boolean(item.outputFile) && (item.integrity.status !== 'failed' || Boolean(item.includeFailedInZip)),
+      } : null,
       warnings: item.warnings || [],
       error: item.error?.message || item.error || '',
       outputName: item.outputName || '',
@@ -58,7 +72,7 @@ export function makeJsonReport(items) {
 }
 export function makeCsvReport(items) {
   const rows = [
-    ['Nama file', 'Kategori', 'Format', 'Subtype', 'Ukuran (byte)', 'Durasi (detik)', 'Status', 'Alasan dilewati', 'Jumlah tag', 'Ubah', 'Hapus', 'Hapus tag mentah', 'Warning', 'Error', 'Nama hasil'],
+    ['Nama file', 'Kategori', 'Format', 'Subtype', 'Ukuran (byte)', 'Durasi (detik)', 'Status', 'Status integritas', 'Temuan integritas', 'Masuk ZIP', 'Alasan dilewati', 'Jumlah tag', 'Ubah', 'Hapus', 'Hapus tag mentah', 'Warning', 'Error', 'Nama hasil'],
   ];
   for (const item of makeReport(items).files) {
     rows.push([
@@ -69,6 +83,9 @@ export function makeCsvReport(items) {
       item.size,
       item.duration ?? '',
       item.status,
+      item.integrity?.status || '',
+      (item.integrity?.findings || []).map((finding) => finding.message).join(' | '),
+      item.outputName ? (item.integrity?.includedInZip === false ? 'tidak' : 'ya') : '',
       item.skippedReason,
       item.rawTagCount,
       item.operations.set,

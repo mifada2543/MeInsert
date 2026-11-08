@@ -22,6 +22,7 @@
 @import "./components/raw-table.css";
 @import "./components/toast.css";
 @import "./components/dialog.css";
+@import "./components/review.css";
 @import "./layout/footer.css";
 @import "./pages/landing.css";
 @import "./pages/batch.css";

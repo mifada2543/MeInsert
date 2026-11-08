@@ -69,6 +69,21 @@ function customTags(tags) {
   if (!txxx || typeof txxx !== 'object') return [];
   return Object.entries(txxx).map(([key, value]) => ({ key, value: asString(value), originalKey: key }));
 }
+function rawRows(tags) {
+  return Object.entries(tags?.raw || {})
+    .flatMap(([tag, value]) => {
+      if (value == null || value instanceof Uint8Array) return [];
+      if (tag === 'TXXX' && value && typeof value === 'object') {
+        return Object.entries(value).map(([description, itemValue]) => ({
+          group: 'ID3',
+          tag: `TXXX:${description}`,
+          value: rawValue(itemValue),
+        }));
+      }
+      return [{ group: 'ID3', tag, value: rawValue(value) }];
+    })
+    .filter((row) => row.value);
+}
 function warningsFor(tags) {
   const raw = tags?.raw || {};
   const unknown = Object.keys(raw).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_FRAMES.has(id));
@@ -101,23 +116,10 @@ export async function read(file) {
       hasCover: Boolean(tags.images?.length),
       unknownFrames: Object.keys(tags.raw || {}).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_FRAMES.has(id)),
     };
-    const raw = Object.entries(tags.raw || {})
-      .flatMap(([tag, value]) => {
-        if (value == null || value instanceof Uint8Array) return [];
-        if (tag === 'TXXX' && value && typeof value === 'object') {
-          return Object.entries(value).map(([description, itemValue]) => ({
-            group: 'ID3',
-            tag: `TXXX:${description}`,
-            value: rawValue(itemValue),
-          }));
-        }
-        return [{ group: 'ID3', tag, value: rawValue(value) }];
-      })
-      .filter((row) => row.value);
     return {
       fields: tagsToFields(tags),
       custom: customTags(tags),
-      raw,
+      raw: rawRows(tags),
       info,
       ...coverFromTags(tags),
       warnings: warningsFor(tags),
@@ -259,8 +261,9 @@ export async function write(file, payload, options = {}, report = () => {}) {
       blob,
       fields: after,
       custom: customTags(afterTags),
-      raw: [],
+      raw: rawRows(afterTags),
       info: { kind: 'audio', hasCover: Boolean(afterTags.images?.length) },
+      ...coverFromTags(afterTags),
       warnings: [...new Set(warnings)],
     };
   } catch (error) {

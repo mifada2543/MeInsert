@@ -12,14 +12,17 @@ import {
   validateSelection,
 } from './batch-limits.js';
 import { makeCsvReport, makeJsonReport } from './batch-report.js';
-import { saveZipStreaming } from './batch-zip.js';
+import { saveZipStreaming, uniqueOutputName } from './batch-zip.js';
 import { el, clear, formatBytes, downloadBlob, qs } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openLightbox } from '../ui/lightbox.js';
 import { showToast } from '../ui/toast.js';
 import { confirmNavigation } from '../ui/confirm.js';
+import { openReviewDialog } from '../ui/review-dialog.js';
+import { createSnapshot } from '../core/metadata-snapshot.js';
+import { buildChangePlan } from '../core/change-plan.js';
 import { previewKind } from '../ui/file-card.js';
-import { asArray, asString, fileBaseName, fileExtension, safeOutputName } from '../core/tag-utils.js';
+import { asArray, asString, fileBaseName, fileExtension, safeOutputName, sameValue } from '../core/tag-utils.js';
 import { STANDARD_FIELDS, crossFormatPatch } from '../core/format-map.js';
 const MP3_DELETABLE_FRAMES = new Set([
   'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
@@ -37,6 +40,8 @@ function groupKey(item) {
   return `${item.detection?.id || 'unknown'}:${item.detection?.subtype || 'unknown'}`;
 }
 function statusLabel(item) {
+  if (item?.status === 'done' && item.integrity?.status === 'failed') return 'Perlu diperiksa';
+  if (item?.status === 'done' && item.integrity?.status === 'warning') return 'Selesai · catatan';
   switch (item?.status) {
     case 'queued': return 'Menunggu';
     case 'scanning': return 'Memeriksa';
@@ -51,10 +56,15 @@ function statusLabel(item) {
 }
 function statusClass(item) {
   const status = item?.status || 'queued';
+  if (status === 'done' && item.integrity?.status === 'failed') return 'is-error';
+  if (status === 'done' && item.integrity?.status === 'warning') return 'is-skipped';
   if (status === 'skipped' || status === 'cancelled') return 'is-skipped';
   if (status === 'error') return 'is-error';
   if (status === 'done' || status === 'ready') return 'is-ready';
   return 'is-busy';
+}
+function zipEligible(item) {
+  return Boolean(item?.outputFile) && (item.integrity?.status !== 'failed' || Boolean(item.includeFailedInZip));
 }
 function fileIconName(item) {
   const id = item?.detection?.id;
@@ -381,11 +391,13 @@ export class BatchController {
     const totalBytes = this.items.reduce((sum, item) => sum + (Number(item.file?.size) || 0), 0);
     const ready = this.items.filter((item) => item.status === 'ready' || item.status === 'done').length;
     const failed = this.items.filter((item) => item.status === 'error').length;
+    const flagged = this.items.filter((item) => item.status === 'done' && item.integrity?.status === 'failed').length;
     const skipped = this.items.filter((item) => item.status === 'skipped' || item.excluded).length;
     const stats = [
       [this.items.length, 'file'],
       [ready, 'siap'],
       [failed, 'gagal'],
+      [flagged, 'perlu diperiksa'],
       [skipped, 'dilewati'],
       [formatBytes(totalBytes), 'ukuran'],
     ];
@@ -659,19 +671,31 @@ export class BatchController {
   }
   operationCountFor(item) {
     const group = this.groupMap.get(item.groupKey);
-    const setIds = new Set();
-    const removeIds = new Set(group?.remove || []);
+    const before = item.readResult?.fields || {};
+    const changed = new Set();
     if (group) {
       for (const field of group.fields) {
-        if (removeIds.has(field.id)) continue;
-        if (asString(group.values[field.id]).trim()) setIds.add(field.id);
+        if (group.remove.has(field.id)) {
+          if (asString(before[field.id]).trim()) changed.add(`remove:${field.id}`);
+          continue;
+        }
+        const value = group.values[field.id];
+        if (asString(value).trim() && !sameValue(value, before[field.id])) changed.add(`field:${field.id}`);
       }
     }
     const cross = this.crossPatchFor(item);
-    for (const id of Object.keys(cross.set)) setIds.add(id);
-    for (const id of cross.remove) removeIds.add(id);
-    for (const id of removeIds) setIds.delete(id);
-    return setIds.size + removeIds.size + (item.removeRaw?.size || 0);
+    for (const [id, value] of Object.entries(cross.set || {})) {
+      if (!sameValue(value, before[id])) changed.add(`field:${id}`);
+    }
+    for (const id of cross.remove || []) {
+      if (asString(before[id]).trim()) changed.add(`remove:${id}`);
+    }
+    for (const key of item.removeRaw || []) {
+      const tag = asString(key).trim().toLowerCase();
+      const exists = (item.readResult?.raw || []).some((row) => asString(row.tag).trim().toLowerCase() === tag);
+      if (exists) changed.add(`raw:${tag}`);
+    }
+    return changed.size;
   }
   unsavedSummary() {
     const files = this.items.filter((item) => this.operationCountFor(item) > 0);
@@ -726,7 +750,7 @@ export class BatchController {
     this.els.batchApplyBtn.querySelector('.icon')?.replaceChildren(icon(this.applying ? 'x' : 'check'));
     this.els.batchApplyBtn.lastChild.textContent = label;
     this.els.batchApplyBtn.title = validation.messages[0] || '';
-    this.els.batchZipBtn.disabled = !this.items.some((item) => item.outputFile);
+    this.els.batchZipBtn.disabled = !this.items.some(zipEligible);
     const noItems = this.items.length === 0;
     this.els.batchReportJsonBtn.disabled = noItems;
     this.els.batchReportCsvBtn.disabled = noItems;
@@ -821,6 +845,26 @@ export class BatchController {
     }
     this.apply();
   }
+  planForItem(item, outputName) {
+    if (!item.baselineSnapshot) {
+      item.baselineSnapshot = createSnapshot({
+        adapter: item.adapter,
+        detection: item.detection,
+        readResult: item.readResult,
+      });
+    }
+    const plan = buildChangePlan({
+      adapter: item.adapter,
+      detection: item.detection,
+      baseline: item.baselineSnapshot,
+      payload: this.collectGroupPayload(item).payload,
+      outputName,
+      source: 'batch',
+    });
+    plan.fileName = item.file.name;
+    plan.item = item;
+    return plan;
+  }
   async apply() {
     const selected = this.selectedItems();
     const validation = validateSelection(this.items);
@@ -830,16 +874,34 @@ export class BatchController {
       showToast(validation.messages[0], 'error', 7500);
       return;
     }
+    const usedNames = new Set();
+    const plans = [];
+    const skipped = [];
+    for (const item of selected) {
+      const outputName = uniqueOutputName(item.file, usedNames, '-meinsert');
+      const plan = this.planForItem(item, outputName);
+      if (plan.hasOperations) plans.push(plan);
+      else skipped.push(item);
+    }
+    if (!plans.length) {
+      showToast('Tidak ada perubahan nyata pada file terpilih.', 'info', 4500);
+      return;
+    }
+    const confirmed = await openReviewDialog({ plans, mode: 'batch' });
+    if (!confirmed) {
+      this.setStatus('Perubahan belum diterapkan.');
+      return;
+    }
     this.applying = true;
     this.els.batchApplyBtn.classList.add('is-processing');
     this.setApplyingUI(true);
-    this.setStatus(`Menerapkan ke ${selected.length} file…`);
+    this.setStatus(`Menerapkan ke ${plans.length} file…`);
     this.showProgress(true);
     this.setProgress(2, 'Menyiapkan…');
     this.syncApply();
     let result;
     try {
-      result = await this.processor.apply(this.items, (item) => this.collectGroupPayload(item), (item) => this.updateItem(item));
+      result = await this.processor.applyPlans(plans, skipped, (item) => this.updateItem(item));
     } catch (error) {
       this.setStatus(error?.message || 'Batch gagal diproses.', true);
       showToast(error?.message || 'Batch gagal diproses.', 'error', 8000);
@@ -859,8 +921,18 @@ export class BatchController {
     }
     const done = this.items.filter((item) => item.status === 'done').length;
     const failed = this.items.filter((item) => item.status === 'error').length;
-    this.setStatus(`${done} selesai · ${failed} gagal`, failed > 0);
-    showToast(failed ? `${failed} file gagal; ${done} file berhasil diproses.` : `${done} file berhasil diproses. Unduh ZIP di atas.`, failed ? 'error' : 'success', 7000);
+    const flagged = this.items.filter((item) => item.integrity?.status === 'failed').length;
+    const warned = this.items.filter((item) => item.integrity?.status === 'warning').length;
+    this.setStatus(`${done} selesai · ${failed} gagal${flagged ? ` · ${flagged} perlu diperiksa` : warned ? ` · ${warned} bercatatan` : ''}`, failed > 0 || flagged > 0);
+    if (flagged) {
+      showToast(`${flagged} file perlu diperiksa integritasnya. Buka detail file sebelum mengunduh ZIP.`, 'error', 9000);
+    } else if (failed) {
+      showToast(`${failed} file gagal; ${done} file berhasil diproses.`, 'error', 7000);
+    } else if (warned) {
+      showToast(`${done} file berhasil dengan ${warned} catatan integritas.`, 'info', 7000);
+    } else {
+      showToast(`${done} file berhasil diproses. Unduh ZIP di atas.`, 'success', 7000);
+    }
     this.renderSummary();
     this.renderLimits();
     this.updateAllRows();
@@ -875,8 +947,15 @@ export class BatchController {
     downloadBlob(new Blob([makeJsonReport(this.items)], { type: 'application/json' }), `meinsert-laporan-${stamp}.json`);
   }
   async downloadZip() {
-    const doneItems = this.items.filter((item) => item.outputFile);
-    if (!doneItems.length) return;
+    const doneItems = this.items.filter(zipEligible);
+    if (!doneItems.length) {
+      const flagged = this.items.filter((item) => item.outputFile && item.integrity?.status === 'failed').length;
+      if (flagged) {
+        showToast(`${flagged} file perlu diperiksa dan tidak disertakan. Pilih "Sertakan di ZIP" pada detail file bila tetap ingin mengunduhnya.`, 'error', 9000);
+      }
+      return;
+    }
+    const excludedFailed = this.items.filter((item) => item.outputFile && !zipEligible(item)).length;
     this.els.batchZipBtn.disabled = true;
     this.showProgress(true);
     this.setProgress(0, 'Menyiapkan ZIP…');
@@ -887,11 +966,14 @@ export class BatchController {
         suggestedName: `meinsert-batch-${stamp}.zip`,
         onProgress: ({ stage, pct }) => this.setProgress(pct, stage),
       });
+      const excludedNote = excludedFailed
+        ? ` · ${excludedFailed} file bermasalah tidak disertakan`
+        : '';
       if (result.streaming) {
-        this.setStatus(`${doneItems.length} file disimpan langsung ke ZIP.`);
+        this.setStatus(`${doneItems.length} file disimpan langsung ke ZIP${excludedNote}.`);
       } else {
         downloadBlob(result.blob, `meinsert-batch-${stamp}.zip`);
-        this.setStatus(`${doneItems.length} file masuk ZIP.`);
+        this.setStatus(`${doneItems.length} file masuk ZIP${excludedNote}.`);
       }
     } catch (error) {
       if (error?.code === 'SAVE_CANCELLED' || error?.name === 'AbortError') {
@@ -1195,15 +1277,61 @@ export class BatchController {
         ),
       ));
     }
+    if (item.integrity) panel.append(this.renderIntegrityReport(item));
     if (item.outputFile) {
       panel.append(el('div', { className: 'batch-output-note' },
         icon('check'),
         el('div', {},
           el('h3', { textContent: 'Hasil siap diunduh' }),
-          el('p', { textContent: `${item.outputFile.name} · ${formatBytes(item.outputFile.size)}. File masuk ke ZIP saat tombol Unduh ZIP ditekan.` }),
+          el('p', { textContent: `${item.outputFile.name} · ${formatBytes(item.outputFile.size)}. ${zipEligible(item) ? 'File masuk ke ZIP saat tombol Unduh ZIP ditekan.' : 'File tidak masuk ZIP sampai Anda memilih untuk menyertakannya.'}` }),
         ),
       ));
     }
+  }
+  renderIntegrityReport(item) {
+    const integrity = item.integrity;
+    const counts = integrity.summary || {};
+    const block = el('div', { className: `batch-integrity is-${integrity.status}` });
+    block.append(el('h3', {
+      textContent: integrity.status === 'failed'
+        ? 'Integritas metadata perlu diperiksa'
+        : integrity.status === 'warning' ? 'Metadata tersimpan dengan catatan' : 'Integritas metadata terverifikasi',
+    }));
+    block.append(el('p', { className: 'batch-integrity-summary' },
+      `${counts.checked || 0} diperiksa · ${counts.preserved || 0} utuh`
+      + `${counts.lost ? ` · ${counts.lost} hilang` : ''}`
+      + `${counts.changed ? ` · ${counts.changed} berubah` : ''}`
+      + `${counts.added ? ` · ${counts.added} baru` : ''}`
+      + `${counts.knownLoss ? ` · ${counts.knownLoss} kehilangan dikenal` : ''}`
+      + `${counts.unverified ? ` · ${counts.unverified} belum terverifikasi` : ''}`,
+    ));
+    if (integrity.findings?.length) {
+      const list = el('div', { className: 'batch-integrity-findings' });
+      for (const finding of integrity.findings) {
+        const value = finding.before || finding.after
+          ? ` · ${finding.before || '—'} → ${finding.after || '—'}`
+          : '';
+        list.append(el('p', { className: `batch-integrity-finding is-${finding.severity || 'warning'}` },
+          el('strong', { textContent: finding.message }),
+          value ? el('span', { textContent: value }) : null,
+        ));
+      }
+      block.append(list);
+    }
+    if (integrity.status === 'failed' && item.outputFile) {
+      const checkbox = el('input', { type: 'checkbox', id: `zip-failed-${item.id}` });
+      checkbox.checked = Boolean(item.includeFailedInZip);
+      checkbox.addEventListener('change', () => {
+        item.includeFailedInZip = checkbox.checked;
+        this.syncApply();
+        this.renderSummaryDetail(item);
+      });
+      block.append(el('label', { className: 'batch-integrity-include', for: `zip-failed-${item.id}` },
+        checkbox,
+        el('span', { textContent: 'Sertakan file ini di ZIP meskipun integritasnya perlu diperiksa' }),
+      ));
+    }
+    return block;
   }
   rawDeletability(item, row) {
     const tag = row.tag || '';

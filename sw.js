@@ -5,7 +5,7 @@
  * editor works offline. The 27 MB ExifTool WASM is deliberately NOT precached;
  * it is cached on first use (format pages that need it keep working offline
  * afterwards). This keeps the first visit light instead of downloading 29 MB. */
-const CACHE_VERSION = 'meinsert-v30';
+const CACHE_VERSION = 'meinsert-v31';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -19,7 +19,11 @@ const PRECACHE_URLS = [
   './assets/js/core/detector.js',
   './assets/js/core/errors.js',
   './assets/js/core/format-map.js',
+  './assets/js/core/change-plan.js',
   './assets/js/core/image-utils.js',
+  './assets/js/core/integrity-rules.js',
+  './assets/js/core/integrity.js',
+  './assets/js/core/metadata-snapshot.js',
   './assets/js/core/pwa.js',
   './assets/js/core/registry.js',
   './assets/js/core/tag-utils.js',
@@ -41,6 +45,7 @@ const PRECACHE_URLS = [
   './assets/js/ui/lightbox.js',
   './assets/js/ui/raw-view.js',
   './assets/js/ui/result-view.js',
+  './assets/js/ui/review-dialog.js',
   './assets/js/ui/theme.js',
   './assets/js/ui/toast.js',
   './assets/js/workers/exiftool.worker.js',

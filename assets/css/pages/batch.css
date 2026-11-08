@@ -670,8 +670,55 @@
   margin: 0;
   font-weight: 650;
 }
-.batch-warning-list,.batch-output-note,.batch-raw-note {
+.batch-warning-list,.batch-output-note,.batch-raw-note,.batch-integrity {
   margin-top: 16px;
+}
+.batch-integrity {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--success);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.batch-integrity.is-warning {
+  border-left-color: var(--warning);
+}
+.batch-integrity.is-failed {
+  border-left-color: var(--danger);
+}
+.batch-integrity h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.batch-integrity-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.batch-integrity-findings {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+.batch-integrity-finding {
+  margin: 0;
+  font-size: 12px;
+  color: var(--warning);
+}
+.batch-integrity-finding.is-error {
+  color: var(--danger);
+}
+.batch-integrity-finding span {
+  color: var(--muted);
+}
+.batch-integrity-include {
+  display: flex;
+  gap: 8px;
+  align-items: start;
+  margin-top: 10px;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 650;
 }
 .batch-warning-list {
   border-left: 3px solid var(--warning);

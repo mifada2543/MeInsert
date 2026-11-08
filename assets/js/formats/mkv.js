@@ -218,7 +218,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     } else if (coverAction === 'remove' && afterTags.images?.some((img) => img.kind !== 'coverBack')) {
       warnings.push('Cover thumbnail belum terhapus.');
     }
-    return { blob, fields, custom: customFrom(afterTags), raw: rawRows(afterTags), info: { kind: 'video', hasCover: Boolean(afterTags.images?.length), rewrite: true }, warnings };
+    return { blob, fields, custom: customFrom(afterTags), raw: rawRows(afterTags), info: { kind: 'video', hasCover: Boolean(afterTags.images?.length), rewrite: true }, ...coverFromTags(afterTags), warnings };
   } catch (error) {
     return { blob, fields: {}, custom: [], raw: [], info: {}, warnings: [`File sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`] };
   }

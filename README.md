@@ -88,7 +88,7 @@ Buka beranda → pilih **Satu file** untuk edit satuan atau **Banyak file** untu
 Field muncul dinamis sesuai format. Ubah yang Anda butuhkan, tambah **tag kustom**, ganti sampul, atau kosongkan field untuk menghapus tag.
 
 ### 3. Simpan & Unduh
-Klik **Simpan** → hasil dibaca ulang & diverifikasi otomatis → unduh file baru (atau ZIP untuk batch). File asli tidak pernah ditimpa.
+Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ulang & diverifikasi otomatis → unduh file baru (atau ZIP untuk batch). File asli tidak pernah ditimpa.
 
 > **Aman by design:** hanya field yang berubah yang ditulis (dirty tracking). Nama file hasil bebas diganti, tapi ekstensi terkunci mengikuti format terdeteksi — tidak bisa `.mp3` → `.flac` hanya lewat rename.
 
@@ -105,7 +105,8 @@ Klik **Simpan** → hasil dibaca ulang & diverifikasi otomatis → unduh file ba
 | Hasil | Satu file terverifikasi + rename aman | ZIP + laporan JSON/CSV |
 
 ### Lainnya
-- **Verifikasi otomatis** — output dibaca ulang sebelum unduh
+- **Review sebelum tulis** — dialog menampilkan seluruh field, tag kustom, raw tag, dan sampul yang berubah; perubahan yang tidak mengubah nilai otomatis dilewati
+- **Verifikasi otomatis** — output dibaca ulang, lalu metadata di luar rencana dibandingkan sebelum vs sesudah (field, tag kustom, raw tag, sampul, dan struktur file)
 - **Tag kustom** — tambah metadata non-standar per format (nama native per engine)
 - **Global search raw tag** — lihat semua tag mentah + cari cepat
 - **Perbesar pratinjau** — klik gambar (pratinjau utama, cover audio, pratinjau cover, pratinjau batch) untuk lightbox layar penuh; klik lagi / scroll untuk zoom, geser untuk menggeser, Esc untuk tutup
@@ -189,17 +190,17 @@ MeInsert/
 ├── scripts/vendor.mjs         # Copy node_modules → assets/vendor/
 ├── tests/
 │   ├── e2e/smoke.mjs          # Smoke test browser/PWA/batch
-│   └── unit/                  # Unit test batch, XMP PDF, format lintas grup, cover
+│   └── unit/                  # Unit test batch, XMP PDF, format lintas grup, cover, snapshot/change-plan/integrity
 └── assets/
     ├── css/app.css            # Styling (responsive, dark mode)
     ├── js/
     │   ├── home.js            # Entry beranda (theme + registrasi SW saja)
     │   ├── app.js             # App shell editor satu file & batch; registrasi SW
-    │   ├── core/              # detector, registry (adapter lazy), tag-utils, format-map, image-utils, errors, pwa, worker-client
+    │   ├── core/              # detector, registry, tag-utils, format-map, image-utils, errors, pwa, worker-client, metadata-snapshot, change-plan, integrity
     │   ├── batch/             # batch-limits, batch-processor, batch-view, batch-report, batch-zip
     │   ├── engines/exiftool.js
     │   ├── formats/           # image, pdf, mp3, flac, ogg, vorbis-common, mkv, mp4
-    │   ├── ui/                # dom, icons, toast, theme, file-card, form-view, raw-view, result-view
+    │   ├── ui/                # dom, icons, toast, theme, file-card, form-view, raw-view, result-view, review-dialog
     │   └── workers/           # rpc, exiftool.worker, media.worker, pdf.worker
     └── vendor/                # Bundled libraries (tanpa build)
 ```
@@ -227,6 +228,7 @@ MeInsert/
 - **PDF:** PDF terenkripsi tidak didukung; PDF bertanda tangan digital → tanda tangan invalid; XMP yang rusak/aneh akan ditulis ulang (dengan peringatan), sehingga properti asing bisa hilang pada kasus itu
 - **PNG/WebP:** field kamera ditulis sebagai XMP (`XMP-tiff:Make/Model`, `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), bukan EXIF biner; aplikasi yang hanya membaca EXIF mungkin tidak menampilkannya
 - **Batch:** ZIP di browser tanpa mengunduh ulang seluruh arsip bila didukung (`showSavePicker` di Chrome/Edge — streaming langsung ke disk); fallback ke memori di browser lain — video maks. 10 file (≤1 jam, total ≤2 GB), audio maks. 20 (≤30 menit, ≤1 GB), gambar/PDF maks. 50 (≤1 GB); file dengan durasi tak terbaca dikunci
+- **Batch:** file yang status integritasnya `failed` tidak otomatis masuk ZIP; sertakan lewat opsi di detail file bila tetap ingin mengunduhnya
 - **Batch:** field standar (judul, artis, album, tanggal, genre, komentar, hak cipta, komposer, perangkat lunak) bisa diterapkan lintas grup; field yang tidak tersedia di suatu format otomatis dilewati. Custom tags tetap per grup
 - **OGG:** hanya Vorbis & Opus (FLAC-in-Ogg/Speex ditolak); tidak semua pemutar tampilkan cover Ogg/Opus
 - **Cover:** JPEG/PNG/WebP ≤10 MB untuk semua format; GIF/BMP ≤10 MB hanya untuk MP3/FLAC/OGG/MKV (MP4 `covr` menolak GIF/BMP). Tidak semua pemutar menampilkan cover Ogg/Opus

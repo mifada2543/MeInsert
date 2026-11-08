@@ -148,6 +148,7 @@ export function describeFile(tags) {
     width: tags['QuickTime:ImageWidth'] || '',
     height: tags['QuickTime:ImageHeight'] || '',
     kind: 'video',
+    hasCover: Boolean(tags['ItemList:CoverArt'] || tags['CoverArt']),
   };
 }
 export function collectRaw(tags) {
@@ -240,6 +241,19 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const output = new File([bytes], `output.${options.extension || 'mp4'}`, { type: blob.type });
   const tagsAfter = await readTags(output);
   const fields = mapTags(tagsAfter);
+  const infoAfter = describeFile(tagsAfter);
+  let coverAfter = null;
+  let coverBytesAfter = null;
+  if (infoAfter.hasCover) {
+    try {
+      const { Input, ALL_FORMATS, BlobSource } = await import('../../vendor/mediabunny.mjs');
+      const probe = new Input({ source: new BlobSource(output), formats: ALL_FORMATS });
+      const coverTags = await probe.getMetadataTags();
+      ({ cover: coverAfter, coverBytes: coverBytesAfter } = coverFromTags(coverTags));
+    } catch {
+      coverAfter = { mimeType: 'image/jpeg', kind: 'coverFront', name: 'cover', size: 0 };
+    }
+  }
   const warnings = [];
   for (const [id, value] of Object.entries(payload?.set || {})) {
     if (id in fields && !sameValue(value, fields[id])) {
@@ -250,7 +264,9 @@ export async function write(file, payload, options = {}, report = () => {}) {
     blob,
     fields,
     raw: collectRaw(tagsAfter),
-    info: describeFile(tagsAfter),
+    info: infoAfter,
+    cover: coverAfter,
+    coverBytes: coverBytesAfter,
     warnings,
   };
 }

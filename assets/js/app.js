@@ -21,6 +21,10 @@ import { renderRaw } from './ui/raw-view.js';
 import { renderResultCard } from './ui/result-view.js';
 import { showToast } from './ui/toast.js';
 import { confirmNavigation } from './ui/confirm.js';
+import { openReviewDialog } from './ui/review-dialog.js';
+import { createSnapshot } from './core/metadata-snapshot.js';
+import { buildChangePlan } from './core/change-plan.js';
+import { verifyIntegrity } from './core/integrity.js';
 import { coverFormatsLabelFor, isSupportedCover, mimeOf } from './core/image-utils.js';
 import { initTheme } from './ui/theme.js';
 import { registerServiceWorker } from './core/pwa.js';
@@ -72,6 +76,7 @@ const state = {
   adapter: null,
   status: 'idle',
   readResult: null,
+  baselineSnapshot: null,
   readError: null,
   values: {},
   originalValues: {},
@@ -618,6 +623,7 @@ async function openFile(file) {
   state.adapter = adapter;
   state.status = 'loading';
   state.readResult = null;
+  state.baselineSnapshot = null;
   state.readError = null;
   state.saveError = null;
   state.result = null;
@@ -653,6 +659,7 @@ async function openFile(file) {
     );
     if (token !== state.readToken) return;
     state.readResult = result;
+    state.baselineSnapshot = createSnapshot({ adapter, detection, readResult: result });
     state.values = valuesFromFields(result.fields || {});
     state.originalValues = { ...state.values };
     state.customRows = makeRows(result.custom);
@@ -752,6 +759,27 @@ async function saveMetadata() {
   }
   const filename = ensureOutputName();
   state.outputName = filename;
+  const baseline = state.baselineSnapshot
+    || createSnapshot({ adapter: state.adapter, detection: state.detection, readResult: state.readResult });
+  state.baselineSnapshot = baseline;
+  const plan = buildChangePlan({
+    adapter: state.adapter,
+    detection: state.detection,
+    baseline,
+    payload,
+    outputName: filename,
+    source: 'single',
+  });
+  plan.fileName = state.file.name;
+  if (!plan.hasOperations) {
+    showToast('Perubahan yang dipilih sama dengan metadata saat ini.', 'info', 4200);
+    return;
+  }
+  const confirmed = await openReviewDialog({ plans: [plan], mode: 'single' });
+  if (!confirmed) {
+    setStatus(`${state.detection.label} · perubahan belum disimpan`);
+    return;
+  }
   state.saveError = null;
   state.result = null;
   qs('.result-card', els.panel)?.remove();
@@ -765,7 +793,7 @@ async function saveMetadata() {
       state.adapter.meta.engine,
       state.adapter.meta.id,
       state.file,
-      payload,
+      plan.payload,
       {
         extension: state.detection.ext,
         subtype: state.detection.subtype,
@@ -782,18 +810,30 @@ async function saveMetadata() {
       },
     );
     result.filename = filename;
+    const afterSnapshot = createSnapshot({
+      adapter: state.adapter,
+      detection: state.detection,
+      readResult: result,
+    });
+    result.integrity = verifyIntegrity(plan, afterSnapshot);
     applyOutput(result);
+    state.baselineSnapshot = afterSnapshot;
     state.processing = false;
     state.status = 'ready';
     state.saveError = null;
     renderWorkspace();
     syncActionBar();
     showProgress(false);
-    setStatus(`${state.detection.label} · metadata diperbarui`);
-    if (result.warnings?.length) {
-      showToast(result.warnings[0], 'info', 9000);
+    const integrityStatus = result.integrity?.status;
+    setStatus(integrityStatus === 'failed'
+      ? `${state.detection.label} · perlu diperiksa`
+      : `${state.detection.label} · metadata diperbarui`);
+    if (integrityStatus === 'failed') {
+      showToast('File tersimpan, tetapi ada metadata yang perlu diperiksa. Buka laporan integritas.', 'error', 9000);
+    } else if (integrityStatus === 'warning' || result.warnings?.length) {
+      showToast('Metadata tersimpan dengan catatan. Periksa laporan integritas.', 'info', 9000);
     } else {
-      showToast('Metadata tersimpan dan sudah diverifikasi. Unduh file hasil di atas.', 'success', 6000);
+      showToast('Metadata tersimpan dan seluruh metadata lain tetap utuh.', 'success', 6000);
     }
   } catch (error) {
     state.processing = false;
@@ -865,6 +905,7 @@ async function goHome() {
   state.adapter = null;
   state.status = 'idle';
   state.readResult = null;
+  state.baselineSnapshot = null;
   state.readError = null;
   state.values = {};
   state.originalValues = {};

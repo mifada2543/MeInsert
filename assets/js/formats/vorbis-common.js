@@ -245,6 +245,7 @@ export async function writeVorbis(file, payload, options, report, config) {
       custom: customFrom(afterTags),
       raw: rawRows(afterTags),
       info: { kind: 'audio', hasCover: Boolean(afterTags.images?.length) },
+      ...coverFromTags(afterTags),
       warnings,
     };
   } catch (error) {

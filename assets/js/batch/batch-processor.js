@@ -3,8 +3,9 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { detectFile } from '../core/detector.js';
 import { adapterForDetection } from '../core/registry.js';
+import { createSnapshot } from '../core/metadata-snapshot.js';
+import { verifyIntegrity } from '../core/integrity.js';
 import { applyDurationLimits, categoryForDetection, validateSelection } from './batch-limits.js';
-import { uniqueOutputName } from './batch-zip.js';
 export class BatchProcessor {
   constructor(client) {
     this.client = client;
@@ -32,12 +33,15 @@ export class BatchProcessor {
       progress: 0,
       stage: 'Menunggu…',
       readResult: null,
+      baselineSnapshot: null,
       warnings: [],
       error: null,
+      integrity: null,
       removeRaw: new Set(),
       operations: null,
       outputFile: null,
       outputName: '',
+      includeFailedInZip: false,
     };
   }
   async scan(items, onUpdate) {
@@ -90,15 +94,24 @@ export class BatchProcessor {
     }
     await this.client.disposeAll();
   }
-  async apply(items, buildPayload, onUpdate) {
+  async applyPlans(plans, skipped = [], onUpdate) {
     this.cancelRequested = false;
-    const selection = validateSelection(items);
+    const entries = (plans || []).filter((plan) => plan?.item && plan?.payload);
+    const skippedItems = [...new Set(skipped || [])].filter((item) => !entries.some((plan) => plan.item === item));
+    const selection = validateSelection([...entries.map((plan) => plan.item), ...skippedItems]);
     if (!selection.ok) {
       return { ok: false, messages: selection.messages };
     }
-    const usedNames = new Set();
     const processed = [];
-    for (const item of items) {
+    for (const item of skippedItems) {
+      item.status = 'skipped';
+      item.skipReason = 'Tidak ada perubahan nyata pada file ini.';
+      item.operations = { set: 0, remove: 0, rawRemove: 0, custom: 0 };
+      item.integrity = null;
+      onUpdate?.(item);
+    }
+    for (const plan of entries) {
+      const item = plan.item;
       if (this.cancelRequested) {
         if (item.status === 'queued' || item.status === 'ready' || item.status === 'processing') {
           item.status = 'cancelled';
@@ -107,20 +120,13 @@ export class BatchProcessor {
         }
         continue;
       }
-      const plan = buildPayload?.(item) || null;
-      if (!plan || !plan.hasOperations) {
-        item.status = 'skipped';
-        item.skipReason = 'Tidak ada perubahan yang dipilih.';
-        item.operations = { set: 0, remove: 0, rawRemove: 0 };
-        onUpdate?.(item);
-        continue;
-      }
-      const outputName = uniqueOutputName(item.file, usedNames, '-meinsert');
+      const outputName = plan.outputName || item.outputName || item.file.name;
       item.status = 'processing';
       item.progress = 2;
       item.stage = 'Menyiapkan output…';
       item.outputName = outputName;
       item.error = null;
+      item.integrity = null;
       onUpdate?.(item);
       try {
         const result = await this.writeItem(item, plan.payload, outputName, (progress) => {
@@ -130,16 +136,30 @@ export class BatchProcessor {
         });
         const warnings = [...(result.warnings || [])];
         this.verifyRawRemoval(item, result, warnings);
+        let afterSnapshot = null;
+        try {
+          afterSnapshot = createSnapshot({
+            adapter: item.adapter,
+            detection: item.detection,
+            readResult: result,
+          });
+        } catch {
+          afterSnapshot = null;
+        }
+        const integrity = verifyIntegrity(plan, afterSnapshot);
         const blob = result.blob;
         item.outputFile = new File([blob], outputName, {
           type: blob.type || item.detection?.mime || item.file?.type || 'application/octet-stream',
           lastModified: Date.now(),
         });
         item.warnings = warnings;
-        item.operations = plan.operations;
+        item.integrity = integrity;
+        item.operations = this.operationCounts(plan);
         item.status = 'done';
         item.progress = 100;
-        item.stage = 'Selesai';
+        item.stage = integrity.status === 'failed'
+          ? 'Selesai · perlu diperiksa'
+          : integrity.status === 'warning' ? 'Selesai · ada catatan' : 'Selesai';
         processed.push(item);
         onUpdate?.(item);
       } catch (error) {
@@ -152,11 +172,21 @@ export class BatchProcessor {
           item.skipReason = error?.message || 'File gagal diproses.';
         }
         item.outputFile = null;
+        item.integrity = null;
         onUpdate?.(item);
       }
     }
     await this.client.disposeAll();
     return { ok: true, processed };
+  }
+  operationCounts(plan) {
+    const payload = plan?.payload || {};
+    return {
+      set: Object.keys(payload.set || {}).length,
+      remove: (payload.remove || []).length,
+      rawRemove: (payload.rawRemove || []).length,
+      custom: (payload.custom || []).length + (payload.customRemove || []).length,
+    };
   }
   async readItem(item, onProgress) {
     const { adapter, detection, file } = item;
