@@ -108,6 +108,22 @@ export function knownLossFor(row, rules) {
   }
   return null;
 }
+const PDF_XMP_FOR_FIELD = {
+  title: ['dc:title'],
+  author: ['dc:creator'],
+  subject: ['dc:description'],
+  keywords: ['dc:subject', 'pdf:keywords'],
+  creator: ['xmp:creatortool'],
+  producer: ['pdf:producer'],
+  creationDate: ['xmp:createdate'],
+  modDate: ['xmp:modifydate'],
+};
+
+/** XMP properties that a PDF field edit is expected to change. */
+export function xmpTagsForField(field) {
+  return new Set(PDF_XMP_FOR_FIELD[field?.id] || []);
+}
+
 export function nativeTagsForField(field) {
   const native = String(field?.native || '');
   const tags = new Set();

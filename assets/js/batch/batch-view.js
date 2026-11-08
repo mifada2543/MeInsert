@@ -42,6 +42,7 @@ function groupKey(item) {
 function statusLabel(item) {
   if (item?.status === 'done' && item.integrity?.status === 'failed') return 'Perlu diperiksa';
   if (item?.status === 'done' && item.integrity?.status === 'warning') return 'Selesai · catatan';
+  if (item?.status === 'ready' && item.warnings?.length) return 'Siap · catatan';
   switch (item?.status) {
     case 'queued': return 'Menunggu';
     case 'scanning': return 'Memeriksa';
@@ -529,6 +530,7 @@ export class BatchController {
     const duration = durationOf(item);
     if (duration) parts.push(formatDuration(duration));
     if (item.readResult) parts.push(`${tagCountOf(item)} tag`);
+    if (item.warnings?.length) parts.push(`${item.warnings.length} catatan`);
     if (item.skipReason && item.status !== 'done') parts.push(item.skipReason);
     return parts.join(' · ');
   }
@@ -850,7 +852,10 @@ export class BatchController {
       item.baselineSnapshot = createSnapshot({
         adapter: item.adapter,
         detection: item.detection,
-        readResult: item.readResult,
+        readResult: {
+          ...item.readResult,
+          warnings: [...new Set([item.detection?.warning, ...(item.readResult?.warnings || [])].filter(Boolean))],
+        },
       });
     }
     const plan = buildChangePlan({

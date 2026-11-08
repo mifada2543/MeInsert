@@ -6,6 +6,9 @@ import { adapterForDetection } from '../core/registry.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
 import { verifyIntegrity } from '../core/integrity.js';
 import { applyDurationLimits, categoryForDetection, validateSelection } from './batch-limits.js';
+function mergeWarnings(...groups) {
+  return [...new Set(groups.flat().filter(Boolean))];
+}
 export class BatchProcessor {
   constructor(client) {
     this.client = client;
@@ -34,7 +37,7 @@ export class BatchProcessor {
       stage: 'Menunggu…',
       readResult: null,
       baselineSnapshot: null,
-      warnings: [],
+      warnings: detection.warning ? [detection.warning] : [],
       error: null,
       integrity: null,
       removeRaw: new Set(),
@@ -71,7 +74,7 @@ export class BatchProcessor {
           onUpdate?.(item);
         });
         item.readResult = result;
-        item.warnings = result.warnings || [];
+        item.warnings = mergeWarnings(item.warnings, result.warnings);
         item.status = 'ready';
         item.progress = 100;
         item.stage = 'Siap';
@@ -134,7 +137,7 @@ export class BatchProcessor {
           item.stage = progress.stage || item.stage;
           onUpdate?.(item);
         });
-        const warnings = [...(result.warnings || [])];
+        const warnings = mergeWarnings(item.warnings, result.warnings);
         this.verifyRawRemoval(item, result, warnings);
         let afterSnapshot = null;
         try {

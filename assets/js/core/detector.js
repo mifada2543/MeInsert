@@ -80,6 +80,14 @@ function sniff(bytes) {
   if (ogg) return ogg;
   return null;
 }
+function extensionMatches(ext, byExt, byMagic) {
+  if (byExt.id !== byMagic.id) return false;
+  if (byExt.subtype === byMagic.subtype) return true;
+  // These extensions describe a container that may hold more than one subtype.
+  if ((ext === 'ogg' || ext === 'oga') && byMagic.id === 'ogg') return true;
+  if ((ext === 'mp4' || ext === 'm4v') && byMagic.id === 'mp4') return true;
+  return false;
+}
 const EXT_BY_SUBTYPE = {
   jpeg: 'jpg',
   png: 'png',
@@ -102,10 +110,22 @@ export async function detectFile(file) {
   const ext = fileExtension(file.name);
   const byExt = EXTENSIONS[ext];
   if (byMagic) {
-    if (byExt && byExt.id !== byMagic.id) {
-      return { ...byMagic, ext: EXT_BY_SUBTYPE[byMagic.subtype] || ext, warning: `Ekstensi .${ext} tidak cocok dengan isi file; jenis file mengikuti isi.` };
+    const actualExt = EXT_BY_SUBTYPE[byMagic.subtype] || ext || 'bin';
+    if (byExt && !extensionMatches(ext, byExt, byMagic)) {
+      return {
+        ...byMagic,
+        ext: actualExt,
+        warning: `Ekstensi .${ext} tidak cocok dengan isi file; terdeteksi ${byMagic.label}. Jenis file mengikuti isi.`,
+      };
     }
-    return { ...byMagic, ext: EXT_BY_SUBTYPE[byMagic.subtype] || ext || 'bin' };
+    if (!byExt && ext) {
+      return {
+        ...byMagic,
+        ext: actualExt,
+        warning: `Ekstensi .${ext} tidak dikenal; terdeteksi ${byMagic.label}. Jenis file mengikuti isi.`,
+      };
+    }
+    return { ...byMagic, ext: actualExt };
   }
   if (byExt) {
     return { ...byExt, ext, warning: 'Jenis file dikenali dari ekstensi; isi file tidak dikenali.' };

@@ -658,6 +658,7 @@ async function openFile(file) {
       },
     );
     if (token !== state.readToken) return;
+    result.warnings = [...new Set([detection.warning, ...(result.warnings || [])].filter(Boolean))];
     state.readResult = result;
     state.baselineSnapshot = createSnapshot({ adapter, detection, readResult: result });
     state.values = valuesFromFields(result.fields || {});
@@ -724,7 +725,7 @@ function applyOutput(result) {
   })));
   state.customBaseline = cloneRows(state.customRows);
   state.removedCustom.clear();
-  const warnings = result.warnings || [];
+  const warnings = [...new Set([state.detection?.warning, ...(result.warnings || [])].filter(Boolean))];
   state.readResult = {
     ...(state.readResult || {}),
     fields: result.fields || state.values,

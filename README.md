@@ -105,8 +105,9 @@ Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ula
 | Hasil | Satu file terverifikasi + rename aman | ZIP + laporan JSON/CSV |
 
 ### Lainnya
+- **Peringatan ekstensi** — jika ekstensi tidak cocok dengan magic bytes, file tetap diproses mengikuti isi dan UI menampilkan peringatan (single maupun batch)
 - **Review sebelum tulis** — dialog menampilkan seluruh field, tag kustom, raw tag, dan sampul yang berubah; perubahan yang tidak mengubah nilai otomatis dilewati
-- **Verifikasi otomatis** — output dibaca ulang, lalu metadata di luar rencana dibandingkan sebelum vs sesudah (field, tag kustom, raw tag, sampul, dan struktur file)
+- **Verifikasi otomatis** — output dibaca ulang, lalu metadata di luar rencana dibandingkan sebelum vs sesudah (field, tag kustom, raw tag, properti XMP PDF, sampul, dan struktur file)
 - **Tag kustom** — tambah metadata non-standar per format (nama native per engine)
 - **Global search raw tag** — lihat semua tag mentah + cari cepat
 - **Perbesar pratinjau** — klik gambar (pratinjau utama, cover audio, pratinjau cover, pratinjau batch) untuk lightbox layar penuh; klik lagi / scroll untuk zoom, geser untuk menggeser, Esc untuk tutup
@@ -209,7 +210,7 @@ MeInsert/
 
 - **ExifTool WASM** di-lazy-load via worker dan tidak di-precache; pertama kali ~1-2 detik, lalu tersimpan di cache service worker
 - **Loading**: beranda memakai `home.js` (kecil); adapter format dan UI batch di-`import()` hanya saat dibutuhkan
-- **PDF:** hanya properti XMP yang diubah yang ditulis ulang; Deskripsi dan properti asing (xmpMM, photoshop, namespace kustom) dipertahankan. Jika paket XMP tidak bisa diparse dengan aman, XMP ditulis ulang dan pengguna diberi peringatan
+- **PDF:** hanya properti XMP yang diubah yang ditulis ulang; Deskripsi dan properti asing (xmpMM, photoshop, namespace kustom) dipertahankan. Properti XMP diinventarisasi sebelum dan sesudah write; jika paket XMP tidak bisa diparse dengan aman, XMP ditulis ulang dan pengguna diberi peringatan
 - **MP3:** tag ID3 lama dihapus saat rewrite; hanya tag TXXX yang diketahui yang dipertahankan
 - **FLAC/OGG/MKV:** Mediabunny remux lossless (`copy: {mode:'forced'}`) — stream hash identik
 - **OGG/Opus:** membutuhkan `copy.shiftTolerance: Infinity` karena paket Ogg pertama ber-timestamp negatif (pre-roll)

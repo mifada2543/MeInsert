@@ -321,9 +321,7 @@ export function renderFileCard(container, {
     }
     infoBlock.append(list);
   }
-  const warnings = [];
-  if (detection?.warning) warnings.push(detection.warning);
-  if (readResult?.warnings?.length) warnings.push(...readResult.warnings);
+  const warnings = [...new Set([detection?.warning, ...(readResult?.warnings || [])].filter(Boolean))];
   if (warnings.length) {
     infoBlock.append(el('div', { className: 'file-warning' },
       icon('alert'),

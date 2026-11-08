@@ -101,8 +101,7 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
       };
     })
     .filter((row) => row.key && row.value)
-    .sort((a, b) => a.canonicalKey.localeCompare(b.canonicalKey) || a.key.localeCompare(b.key));
-  const raw = (readResult?.raw || [])
+    .sort((a, b) => a.canonicalKey.localeCompare(b.canonicalKey) || a.key.localeCompare(b.key));  const raw = (readResult?.raw || [])
     .map((row) => {
       const group = normalizeText(row?.group);
       const tag = normalizeText(row?.tag);
@@ -118,6 +117,38 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
     .filter((row) => !IGNORED_GROUPS.has(row.group))
     .filter((row) => !IGNORED_RAW.test(row.tag))
     .sort((a, b) => a.canonicalTag.localeCompare(b.canonicalTag) || a.value.localeCompare(b.value));
+
+  const xmpSource = readResult?.xmp;
+  const xmpRows = Array.isArray(xmpSource) ? xmpSource : xmpSource?.properties || [];
+  const xmpByKey = new Map();
+  for (const row of xmpRows) {
+    const qualified = normalizeText(row?.qualified);
+    if (!qualified) continue;
+    const key = normalizeRawTag(qualified);
+    let entry = xmpByKey.get(key);
+    if (!entry) {
+      entry = {
+        prefix: normalizeText(row?.prefix),
+        local: normalizeText(row?.local),
+        qualified,
+        canonicalTag: key,
+        form: normalizeText(row?.form),
+        values: new Set(),
+      };
+      xmpByKey.set(key, entry);
+    }
+    const value = normalizeText(row?.value);
+    if (value) entry.values.add(value);
+  }
+  const xmp = {
+    present: Array.isArray(xmpSource) ? xmpRows.length > 0 : Boolean(xmpSource?.present),
+    ok: Array.isArray(xmpSource) ? true : xmpSource?.ok !== false,
+    error: Array.isArray(xmpSource) ? '' : normalizeText(xmpSource?.error),
+    properties: [...xmpByKey.values()]
+      .map(({ values, ...entry }) => ({ ...entry, value: [...values].join(' | ') }))
+      .sort((a, b) => a.canonicalTag.localeCompare(b.canonicalTag)),
+  };
+
   return {
     version: SNAPSHOT_VERSION,
     format: {
@@ -128,6 +159,7 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
     fields,
     custom,
     raw,
+    xmp,
     cover: coverSnapshot(readResult),
     structure: structureSnapshot(readResult?.info),
     warnings: [...(readResult?.warnings || [])],
@@ -135,6 +167,7 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
       fields: Object.values(fields).filter((field) => field.normalized).length,
       custom: custom.length,
       raw: raw.length,
+      xmp: xmp.properties.length,
     },
   };
 }

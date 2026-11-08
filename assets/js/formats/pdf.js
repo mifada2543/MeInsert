@@ -185,6 +185,7 @@ export async function read(file) {
     })),
     ...custom.map((row) => ({ group: 'Custom', tag: row.key, value: row.value })),
   ].filter((row) => row.value !== '');
+  const xmp = xmpInventory(xmpPacket(doc, PDFName));
   const warnings = [];
   if (signedWarning(bytes)) {
     warnings.push('PDF ini memiliki tanda tangan digital. Menulis metadata akan membuat tanda tangan tidak valid.');
@@ -193,6 +194,7 @@ export async function read(file) {
     fields,
     custom,
     raw,
+    xmp,
     info: { pages: doc.getPageCount(), signed: signedWarning(bytes) },
     warnings,
   };
@@ -401,6 +403,69 @@ export function parseXmp(xml) {
   if (ok && !/<(?:x:xmpmeta|rdf:RDF)[\s>]/i.test(source)) fail('Paket XMP tidak dikenali.');
   return { ok, error, namespaces, descriptions, properties };
 }
+function escapeRegExp(value) {
+  return String(value ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function elementText(value) {
+  return decodeXml(String(value || '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+}
+function elementValue(xml, property) {
+  const name = escapeRegExp(property.qualified);
+  const open = new RegExp(`<${name}\\b[^>]*>`, 'i').exec(xml);
+  if (!open) return '';
+  if (/\/\s*>$/.test(open[0])) return '';
+  const start = open.index + open[0].length;
+  const close = new RegExp(`<\\/${name}\\s*>`, 'i').exec(xml.slice(start));
+  if (!close) return '';
+  const inner = xml.slice(start, start + close.index);
+  const listItems = [...inner.matchAll(/<rdf:li\b[^>]*>([\s\S]*?)<\/rdf:li>/gi)]
+    .map((match) => elementText(match[1]))
+    .filter(Boolean);
+  return listItems.length ? listItems.join(', ') : elementText(inner);
+}
+export function xmpInventory(xml) {
+  const source = typeof xml === 'string' ? xml : '';
+  const parsed = parseXmp(source);
+  const byKey = new Map();
+  for (const property of parsed.properties || []) {
+    if (!property.qualified) continue;
+    const key = property.qualified.toLowerCase();
+    let entry = byKey.get(key);
+    if (!entry) {
+      entry = {
+        prefix: property.prefix,
+        local: property.local,
+        qualified: property.qualified,
+        canonicalTag: key,
+        form: property.form,
+        values: new Set(),
+      };
+      byKey.set(key, entry);
+    }
+    const value = property.form === 'attribute' ? property.value : elementValue(source, property);
+    if (value) entry.values.add(value);
+  }
+  const properties = [...byKey.values()]
+    .map(({ values, ...entry }) => ({ ...entry, value: [...values].join(' | ') }))
+    .sort((a, b) => a.canonicalTag.localeCompare(b.canonicalTag));
+  return {
+    present: Boolean(source.trim()),
+    ok: parsed.ok,
+    error: parsed.error || '',
+    properties,
+  };
+}
+function xmpPacket(doc, PDFName) {
+  try {
+    const metaRef = doc.catalog.get(PDFName.of('Metadata'));
+    if (!metaRef) return '';
+    const stream = doc.context.lookup(metaRef);
+    if (!stream || typeof stream.getContents !== 'function') return '';
+    return new TextDecoder().decode(stream.getContents());
+  } catch {
+    return '';
+  }
+}
 function targetDescriptionIndex(parsed, ids) {
   for (const id of ids) {
     for (const [prefix, local] of XMP_FIELDS[id] || []) {
@@ -539,18 +604,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     creationDate: pdfObjectToString(info.get(PDFName.of('CreationDate'))),
     modDate: pdfObjectToString(info.get(PDFName.of('ModDate'))),
   };
-  let existingXmp = '';
-  try {
-    const metaRef = doc.catalog.get(PDFName.of('Metadata'));
-    if (metaRef) {
-      const stream = doc.context.lookup(metaRef);
-      if (stream && typeof stream.getContents === 'function') {
-        existingXmp = new TextDecoder().decode(stream.getContents());
-      }
-    }
-  } catch {
-    existingXmp = '';
-  }
+  const existingXmp = xmpPacket(doc, PDFName);
   report({ stage: 'Menulis metadata dan XMP…', pct: 45 });
   const changedXmp = new Set([...Object.keys(set), ...remove].filter((id) => XMP_FIELDS[id]));
   if (changedXmp.size) {
@@ -620,11 +674,13 @@ export async function write(file, payload, options = {}, report = () => {}) {
     })),
     ...verifyCustom.map((row) => ({ group: 'Custom', tag: row.key, value: row.value })),
   ].filter((row) => row.value !== '');
+  const xmp = xmpInventory(xmpPacket(verifyDoc, PDFName));
   return {
     blob,
     fields: verifyFields,
     custom: verifyCustom,
     raw: verifyRaw,
+    xmp,
     info: { pages: verifyDoc.getPageCount(), signed: false },
     warnings,
   };

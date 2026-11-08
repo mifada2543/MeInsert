@@ -10,6 +10,7 @@ import {
   knownLossFor,
   nativeTagsForField,
   rulesFor,
+  xmpTagsForField,
 } from './integrity-rules.js';
 function emptyNormalized(value) {
   return !value || value === '[]';
@@ -89,6 +90,17 @@ function expectedRawTags(plan) {
   }
   return tags;
 }
+function expectedXmpTags(plan) {
+  const tags = new Set();
+  for (const op of plan?.operations || []) {
+    if (op.kind !== 'field') continue;
+    for (const tag of xmpTagsForField(plan?.before?.fields?.[op.id] || { id: op.id })) {
+      tags.add(tag);
+    }
+  }
+  return tags;
+}
+
 function makeSummary(plan) {
   return {
     checked: 0,
@@ -348,6 +360,74 @@ export function verifyIntegrity(plan, afterSnapshot) {
       });
     }
   }
+  const beforeXmp = before.xmp || { present: false, ok: true, properties: [] };
+  const afterXmp = after.xmp || { present: false, ok: true, properties: [] };
+  if (beforeXmp.present && beforeXmp.ok === false) {
+    summary.unverified += 1;
+    add({
+      severity: 'warning',
+      code: 'XMP_UNVERIFIED',
+      target: 'xmp',
+      message: 'XMP lama tidak bisa diinventarisasi dengan aman, jadi properti XMP tidak bisa dibandingkan.',
+      before: beforeXmp.error || '',
+      after: '',
+    });
+  } else if (afterXmp.present && afterXmp.ok === false) {
+    summary.unverified += 1;
+    add({
+      severity: 'warning',
+      code: 'XMP_UNVERIFIED',
+      target: 'xmp',
+      message: 'XMP hasil tidak bisa diinventarisasi dengan aman, jadi properti XMP belum bisa dipastikan.',
+      before: '',
+      after: afterXmp.error || '',
+    });
+  } else {
+    const targetXmp = expectedXmpTags(plan);
+    const beforeXmpMap = new Map((beforeXmp.properties || []).map((row) => [row.canonicalTag, row]));
+    const afterXmpMap = new Map((afterXmp.properties || []).map((row) => [row.canonicalTag, row]));
+    for (const [tag, row] of beforeXmpMap) {
+      summary.checked += 1;
+      if (targetXmp.has(tag)) continue;
+      const actual = afterXmpMap.get(tag);
+      if (!actual) {
+        add({
+          severity: 'error',
+          code: 'XMP_LOST',
+          target: `xmp:${row.qualified}`,
+          message: `Properti XMP "${row.qualified}" hilang padahal tidak diubah.`,
+          before: row.value,
+          after: '',
+        });
+        continue;
+      }
+      if (actual.value !== row.value) {
+        add({
+          severity: 'error',
+          code: 'XMP_CHANGED_UNEXPECTED',
+          target: `xmp:${row.qualified}`,
+          message: `Properti XMP "${row.qualified}" berubah padahal tidak diubah.`,
+          before: row.value,
+          after: actual.value,
+        });
+        continue;
+      }
+      summary.preserved += 1;
+    }
+    for (const [tag, row] of afterXmpMap) {
+      if (beforeXmpMap.has(tag) || targetXmp.has(tag)) continue;
+      summary.checked += 1;
+      add({
+        severity: 'warning',
+        code: 'XMP_ADDED',
+        target: `xmp:${row.qualified}`,
+        message: `Properti XMP baru "${row.qualified}" muncul setelah penulisan.`,
+        before: '',
+        after: row.value,
+      });
+    }
+  }
+
   summary.checked += 1;
   if (!coversMatch(before.cover, after.cover)) {
     const coverOp = (plan?.operations || []).find((op) => op.kind === 'cover');
