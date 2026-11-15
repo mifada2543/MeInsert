@@ -4,6 +4,8 @@
 
 # MeInsert
 
+**🇮🇩 Indonesia** · [🇬🇧 English](README-en.md)
+
 **Edit metadata tanpa upload — 100% di browser**
 
 Baca & tulis metadata gambar, PDF, audio, dan video langsung di perangkat Anda.
@@ -44,11 +46,13 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 - [Format Didukung](#format-didukung)
 - [Cara Pakai (30 Detik)](#cara-pakai-30-detik)
 - [Fitur Unggulan](#fitur-unggulan)
+- [Bahasa Antarmuka](#bahasa-antarmuka)
 - [Instalasi Cepat (XAMPP)](#instalasi-cepat-xampp)
 - [Teknologi](#teknologi)
-- [Keterbatasan v1](#keterbatasan-v1)
+- [Keterbatasan](#keterbatasan)
 - [Development](#development)
 - [Lisensi](#lisensi)
+- [Kebijakan Penggunaan dan Privasi](#kebijakan-penggunaan-dan-privasi)
 
 ---
 
@@ -56,7 +60,7 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 
 | 🔒 Privasi Absolut | ⚡ Cepat & Ringan | 📴 Offline-First |
 |---|---|---|
-| Semua dibaca/ditulis di browser via WASM + Workers. Tidak ada upload ke server mana pun. | Statis — tanpa backend, tanpa build step. Jalan langsung dari XAMPP/Apache. | PWA terinstal, cache lengkap termasuk WASM. Setelah kunjungan pertama, jalan offline. |
+| Semua dibaca/ditulis di browser via WASM + Workers. Tidak ada upload ke server mana pun. | Statis — tanpa backend dan tanpa build saat deploy. Jalan langsung dari XAMPP/Apache. | App shell tersedia offline setelah pemasangan cache selesai. Engine format dan WASM tersedia offline setelah sekali dimuat. |
 
 **Dua mode, satu prinsip:**
 - **Satu file** — editor satuan dengan field dinamis mengikuti format file
@@ -71,7 +75,7 @@ Deteksi otomatis dari **magic bytes** (bukan hanya ekstensi), lalu hanya field y
 | Kategori | Format | Metode Penulisan |
 |---|---|---|
 | 🖼️ **Gambar** | JPEG, PNG, WebP, TIFF | XMP + EXIF, IPTC untuk JPEG/TIFF |
-| 📄 **PDF** | PDF | Info Dictionary + XMP stream, struktur tetap utuh |
+| 📄 **PDF** | PDF | Info Dictionary + XMP stream |
 | 🎵 **Audio** | MP3, FLAC, OGG Vorbis / Opus | ID3v2.3, Vorbis Comment (remux lossless) |
 | 🎬 **Video** | MP4 / M4A / MOV, MKV / WebM | ItemList + XMP (ExifTool), Matroska SimpleTag (remux lossless) |
 
@@ -91,7 +95,7 @@ Field muncul dinamis sesuai format. Ubah yang Anda butuhkan, tambah **tag kustom
 ### 3. Simpan & Unduh
 Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ulang & diverifikasi otomatis → unduh file baru (atau ZIP untuk batch). File asli tidak pernah ditimpa.
 
-> **Aman by design:** hanya field yang berubah yang ditulis (dirty tracking). Nama file hasil bebas diganti, tapi ekstensi terkunci mengikuti format terdeteksi — tidak bisa `.mp3` → `.flac` hanya lewat rename.
+> **Pelacakan perubahan:** hanya perubahan field yang diminta yang dikirim untuk ditulis. Ini bukan jaminan seluruh tag yang tidak didukung tetap utuh; periksa temuan integritas dan keterbatasan di bawah. Ekstensi hasil secara default mengikuti isi terdeteksi; dialog mismatch juga menawarkan pilihan mempertahankan ekstensi asli. Mengganti nama bukan konversi format.
 
 ---
 
@@ -113,8 +117,24 @@ Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ula
 - **Global search raw tag** — lihat semua tag mentah + cari cepat
 - **Perbesar pratinjau** — klik gambar (pratinjau utama, cover audio, pratinjau cover, pratinjau batch) untuk lightbox layar penuh; klik lagi / scroll untuk zoom, geser untuk menggeser, Esc untuk tutup
 - **Tema gelap/terang** — ikut sistem, bisa manual, transisi circular reveal, tanpa flicker (tema diterapkan sebelum paint pertama)
-- **PWA Installable** — pasang ke layar utama dari menu browser; precache app shell (±570 KB), library vendor + ExifTool WASM di-cache saat pertama dipakai
+- **Bahasa Indonesia / Inggris** — pilih **ID / EN** di samping tombol tema; preferensi disimpan di perangkat, tanpa menerjemahkan metadata Anda
+- **PWA Installable** — pasang ke layar utama dari menu browser; precache app shell, library vendor + ExifTool WASM di-cache saat pertama dipakai
 - **Manajemen memori WASM** — worker & ExifTool WASM dilepas otomatis setelah batch, saat idle (~8 menit), dan saat halaman ditutup
+
+---
+
+## Bahasa Antarmuka
+
+Pilih **ID** (Indonesia) atau **EN** (English) di samping tombol tema pada
+beranda, editor satu file, maupun batch.
+
+- Pilihan disimpan secara lokal menggunakan kunci `meinsert-language`.
+- Saat belum ada pilihan tersimpan, bahasa browser Indonesia/Inggris digunakan;
+  bahasa lain memakai Indonesia sebagai fallback.
+- Pergantian bahasa tidak memuat ulang halaman dan tidak mengubah file, nilai
+  metadata, nama tag teknis, atau skema laporan JSON/CSV.
+- Pilihan bahasa berlaku lintas halaman dan tersedia offline bersama app shell.
+- Dokumentasi: **[Indonesia](README.md)** · **[English](README-en.md)**.
 
 ---
 
@@ -125,7 +145,7 @@ Tidak perlu build. File HTML/CSS/JS statis, vendor sudah termasuk di repo.
 ```bash
 # 1. Clone ke htdocs
 cd /opt/lampp/htdocs
-git clone <repo> MeInsert
+git clone https://github.com/mifada2543/meinsert.git MeInsert
 cd MeInsert
 
 # 2. (Sekali saja / saat update library) Pasang vendor
@@ -137,7 +157,7 @@ npm run vendor
 # → gunakan menu Install / Tambahkan ke layar utama untuk PWA
 ```
 
-> Kunjungan pertama tetap online agar service worker bisa mengunduh cache offline (±570 KB). Setelah itu, semua halaman (`/`, `/single.html`, `/batch.html`) bekerja offline. Library vendor (mediabunny, pdf-lib, fflate) dan ExifTool WASM (~27 MB) tidak ikut di-precache — semuanya diambil saat pertama dipakai lalu tersimpan, jadi format yang memakainya menjadi offline setelah satu kali pemakaian.
+> Kunjungan pertama tetap online sampai service worker selesai menyimpan app shell. Setelah itu, semua halaman (`/`, `/single.html`, `/batch.html`) bisa dibuka offline. Library vendor (mediabunny, pdf-lib, fflate), adapter format, dan ExifTool WASM (~27 MB) diambil saat pertama dipakai lalu disimpan, jadi pemrosesan format terkait tersedia offline setelah dependensinya selesai dimuat.
 
 **Catatan:** `assets/vendor/` sudah dibundel di repo — `npm run vendor` hanya diperlukan saat update versi library.
 
@@ -166,7 +186,7 @@ npm run serve  # http://localhost:8000
 
 ### Alur kerja
 
-1. **PWA** → `sw.js` precache app shell (±570 KB); library vendor + ExifTool WASM di-cache on-demand → offline setelah kunjungan pertama
+1. **PWA** → `sw.js` precache app shell; library vendor + ExifTool WASM di-cache on-demand → pemrosesan offline setelah dependensi format dimuat
 2. **Deteksi** → `detector.js` baca 128 byte pertama → format & subtype
 3. **Adapter** → `registry.js` pilih adapter per format
 4. **Worker** → `worker-client.js` spawn worker per engine, dengan dispose/idle timeout
@@ -189,18 +209,24 @@ MeInsert/
 ├── sw.js                      # Service worker (precache app shell, vendor & WASM on-demand)
 ├── .htaccess                  # MIME types & cache headers
 ├── package.json               # Dev deps & vendor script
+├── README.md                  # Dokumentasi Indonesia
+├── README-en.md               # Dokumentasi Inggris
 ├── scripts/vendor.mjs         # Copy node_modules → assets/vendor/
 ├── scripts/build-css.mjs      # Bundel CSS modular → app.bundle.css
 ├── eslint.config.js           # Konfigurasi lint (flat config)
 ├── tests/
 │   ├── e2e/smoke.mjs          # Smoke test browser/PWA/batch
+│   ├── compat/                # Harness browser dengan worker/adapter asli
+│   ├── fixtures/              # Media sintetis kecil + generator dan provenance
 │   └── unit/                  # Unit test batch, XMP PDF, format lintas grup, cover, snapshot/change-plan/integrity, manifest
 └── assets/
     ├── css/app.css            # Entry point styling (@import modul; responsif, dark mode)
     ├── css/app.bundle.css     # Bundel hasil `npm run build:css` (di-commit, 1 request)
     ├── js/
-    │   ├── home.js            # Entry beranda (theme + registrasi SW saja)
+    │   ├── home.js            # Entry beranda (tema, bahasa, registrasi SW)
     │   ├── app.js             # App shell editor satu file & batch; registrasi SW
+    │   ├── editor/            # State, shell, perubahan, tampilan, intake, simpan
+    │   ├── i18n/              # Runtime bahasa + kamus Indonesia/Inggris
     │   ├── core/              # detector, registry, tag-utils, format-map, image-utils, errors, pwa, worker-client, metadata-snapshot, change-plan, integrity
     │   ├── batch/             # batch-limits, batch-processor, batch-view, batch-report, batch-zip
     │   ├── engines/exiftool.js
@@ -212,13 +238,13 @@ MeInsert/
 
 ### Catatan teknis
 
-- **ExifTool WASM** di-lazy-load via worker dan tidak di-precache; pertama kali ~1-2 detik, lalu tersimpan di cache service worker
+- **ExifTool WASM** di-lazy-load via worker dan tidak di-precache; waktu unduh awal bergantung koneksi/perangkat, lalu tersimpan di cache service worker
 - **Loading**: beranda memakai `home.js` (kecil); adapter format dan UI batch di-`import()` hanya saat dibutuhkan
 - **CSS**: 27 modul digabung jadi 1 bundel (`app.bundle.css`, di-commit) — 26 request @import turun jadi 1
 - **Logo header**: `logo-96.png` (2,4 KB, 96×96) untuk tampilan 42 px; ikon PWA 192/512 tetap terpisah
 - **PDF:** hanya properti XMP yang diubah yang ditulis ulang; Deskripsi dan properti asing (xmpMM, photoshop, namespace kustom) dipertahankan. Properti XMP diinventarisasi sebelum dan sesudah write; jika paket XMP tidak bisa diparse dengan aman, XMP ditulis ulang dan pengguna diberi peringatan
 - **MP3:** tag ID3 lama dihapus saat rewrite; hanya tag TXXX yang diketahui yang dipertahankan
-- **FLAC/OGG/MKV:** Mediabunny remux lossless (`copy: {mode:'forced'}`) — stream hash identik
+- **FLAC/OGG/MKV:** Mediabunny memakai mode salin stream (`copy: {mode:'forced'}`), tanpa sengaja melakukan encoding ulang. Ini bukan jaminan seluruh metadata, timestamp, atau durasi identik; lihat temuan compatibility harness
 - **OGG/Opus:** membutuhkan `copy.shiftTolerance: Infinity` karena paket Ogg pertama ber-timestamp negatif (pre-roll)
 - **MP4 cover:** dibaca via pass tambahan Mediabunny (ExifTool WASM tidak bisa kembalikan byte binary murni)
 - **Custom tags:** native ExifTool names untuk Gambar/MP4, Info dict keys untuk PDF, TXXX untuk MP3, Vorbis/Matroska keys (uppercase) untuk FLAC/OGG/MKV
@@ -228,13 +254,13 @@ MeInsert/
 
 ---
 
-## Keterbatasan v1
+## Keterbatasan
 
 - **MP3:** frame ID3 non-standar (selain yang dipetakan) hilang saat menulis
 - **MKV:** chapter & attachment tidak dipertahankan saat remux
 - **PDF:** PDF terenkripsi tidak didukung; PDF bertanda tangan digital → tanda tangan invalid; XMP yang rusak/aneh akan ditulis ulang (dengan peringatan), sehingga properti asing bisa hilang pada kasus itu
 - **PNG/WebP:** field kamera ditulis sebagai XMP (`XMP-tiff:Make/Model`, `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), bukan EXIF biner; aplikasi yang hanya membaca EXIF mungkin tidak menampilkannya
-- **Batch:** ZIP di browser tanpa mengunduh ulang seluruh arsip bila didukung (`showSavePicker` di Chrome/Edge — streaming langsung ke disk); fallback ke memori di browser lain — video maks. 10 file (≤1 jam, total ≤2 GB), audio maks. 20 (≤30 menit, ≤1 GB), gambar/PDF maks. 50 (≤1 GB); file dengan durasi tak terbaca dikunci
+- **Batch:** ZIP di browser memakai File System Access API bila didukung (Chrome/Edge — streaming langsung ke disk); fallback ke memori di browser lain — video maks. 10 file (≤1 jam per file, total ≤2 GB), audio maks. 20 (≤30 menit per file, ≤1 GB), gambar/PDF maks. 50 (≤1 GB); file dengan durasi tak terbaca dikunci
 - **Batch:** file yang status integritasnya `failed` tidak otomatis masuk ZIP; sertakan lewat opsi di detail file bila tetap ingin mengunduhnya
 - **Batch:** field standar (judul, artis, album, tanggal, genre, komentar, hak cipta, komposer, perangkat lunak) bisa diterapkan lintas grup; field yang tidak tersedia di suatu format otomatis dilewati. Custom tags tetap per grup
 - **OGG:** hanya Vorbis & Opus (FLAC-in-Ogg/Speex ditolak); tidak semua pemutar tampilkan cover Ogg/Opus
@@ -253,6 +279,15 @@ npm test
 
 # Smoke test browser (butuh Chrome/Chromium, override CHROME_BIN bila perlu)
 npm run test:e2e
+
+# Uji UI bilingual ID/EN, pergantian bahasa tanpa reload, dan offline
+npm run test:i18n
+
+# Compatibility harness dengan fixture nyata dan worker/adapter produksi
+CHROME_BIN=/usr/bin/google-chrome npm run test:compat
+
+# Regenerasi fixture sintetis (prasyarat: lihat tests/fixtures/README.md)
+npm run fixtures:generate
 
 # Update vendor libraries
 npm install && npm run vendor
@@ -282,7 +317,7 @@ bundelnya basi.
 
 ### Service worker
 
-- `sw.js` hanya meng-`precache` *app shell* (±570 KB): halaman, bundel CSS,
+- `sw.js` meng-`precache` *app shell*: halaman, bundel CSS,
   modul inti, worker, font latin, ikon kecil.
 - Library besar (mediabunny, pdf-lib, fflate, id3-writer), adapter format,
   font latin-ext, dan ExifTool WASM (27 MB) **diambil saat dipakai** lalu
@@ -293,6 +328,30 @@ bundelnya basi.
   dengan tombol *Muat ulang* — aset tidak pernah tertukar diam-diam di tengah
   pemakaian.
 
+### Terjemahan dan pengujian kompatibilitas
+
+Kamus UI berada di `assets/js/i18n/`. Gunakan key semantik dan parameter yang
+sama untuk Indonesia/Inggris; jangan menerjemahkan nilai metadata pengguna,
+identifier format, atau key laporan mesin. Perubahan bahasa harus memperbarui
+tampilan tanpa mereset form atau pekerjaan batch. Modul bahasa ikut precache;
+perubahan CSS tetap memerlukan `npm run build:css`.
+
+`tests/compat/README.md` menjelaskan harness browser yang menjalankan
+`MetadataClient`, worker, adapter, dan WASM produksi menggunakan fixture sintetis.
+Fixture dan generatornya didokumentasikan di `tests/fixtures/README.md`.
+
+**Baseline compatibility saat harness diperkenalkan: 25/33 pemeriksaan lolos.**
+Delapan kegagalan mencakup temuan offset TIFF/MP4/M4A/MOV, perubahan vendor
+FLAC/Ogg, dimensi picture-block Ogg, dan perubahan durasi MKV 0,3 → 0,2 detik.
+Temuan ini tidak disembunyikan: `npm run test:compat` dan job CI compatibility
+keluar dengan status gagal selama assertion terkait belum terpenuhi. Jumlah ini
+adalah baseline, bukan jaminan hasil untuk setiap browser atau versi berikutnya.
+
+Fixture PDF bertanda tangan self-signed divalidasi terpisah menggunakan OpenSSL
+dan `pdfsig`: setelah edit, byte Contents tanda tangan masih ada, tetapi byte
+yang ditandatangani berubah dan validitas tanda tangan hilang. Mempertahankan
+Contents **bukan** mempertahankan validitas kriptografis.
+
 ---
 
 ## Lisensi
@@ -300,6 +359,8 @@ bundelnya basi.
 **Kode aplikasi:** [AGPLv3](./LICENSE) — Copyright (C) 2026 mifada2543
 
 **Source:** [https://github.com/mifada2543/meinsert](https://github.com/mifada2543/meinsert) · tautan **Source** juga ada di footer setiap halaman (kewajiban transparansi AGPL §13).
+
+**Pemberitahuan:** [NOTICE.md](./NOTICE.md) (Indonesia) · [NOTICE-en.md](./NOTICE-en.md) (English) — ringkasan lisensi, atribusi pihak ketiga, copyleft jaringan, dan aturan merek dagang.
 
 ### Atribusi pihak ketiga
 
@@ -318,15 +379,31 @@ Nama ExifTool, Mediabunny, pdf-lib, IBM Plex, dan zeroperl adalah merek dagang p
 MeInsert **boleh dimonetisasi** (produk berbayar, hosting berbayar, layanan premium). Syaratnya, AGPLv3 bersifat *copyleft jaringan*:
 
 - Anda boleh mengenakan biaya untuk distribusi, dukungan, atau layanan.
-- Jika Anda **mengubah** MeInsert dan menyebarkannya **atau** menjalankannya sebagai layanan jaringan (termasuk situs publik, SaaS, atau aplikasi yang berinteraksi dengan pengguna dari jarak jauh), Anda **wajib** menawarkan **Corresponding Source dari versi Anda** kepada semua penerima/pengguna secara gratis, melalui mekanisme standar (repo publik / tautan Source), selama versi itu berjalan.
-- Anda **tidak boleh** menutup kode modifikasi MeInsert di balik layanan proprietary.
+- Saat mendistribusikan perangkat lunak yang tercakup, sediakan **Corresponding Source** sesuai ketentuan AGPLv3 yang berlaku.
+- Jika Anda memodifikasi Program dan versi tersebut mendukung interaksi jaringan jarak jauh, pasal 13 mewajibkan penawaran yang jelas kepada pengguna yang berinteraksi dari jarak jauh untuk memperoleh Corresponding Source versi tersebut secara gratis melalui cara yang lazim.
+- Modifikasi privat saja tidak mewajibkan publikasi ke umum. Kewajiban berlaku pada karya yang tercakup, bukan otomatis pada perangkat lunak independen yang digunakan bersamanya.
 - Kontribusi pihak ketiga di atas tetap tunduk pada lisensinya masing-masing; AGPL tidak mengubahnya.
 
-Ringkasnya: **monetisasi boleh, menutup kode tidak boleh.** Teks [LICENSE](./LICENSE) yang mengikat; ringkasan ini hanya penjelasan bahasa sederhana.
+Ringkasnya: **monetisasi boleh; kewajiban berbagi sumber yang berlaku tetap harus dipenuhi.** Teks [LICENSE](./LICENSE) yang mengikat; ringkasan ini hanya penjelasan bahasa sederhana.
 
 ### Catatan penggunaan yang pantas
 
 MeInsert hanya menyediakan *alat* untuk membaca/menulis tag standar (EXIF, XMP, IPTC, ID3, Vorbis Comment, Matroska, Info Dictionary PDF). Anda bertanggung jawab atas file milik Anda: jangan menghapus atau memalsukan atribusi hak cipta pemilik karya, dan patuhi hukum setempat tentang penghapusan informasi manajemen hak cipta.
+
+## Kebijakan Penggunaan dan Privasi
+
+- **Kebijakan Penggunaan:** [Indonesia](TERMS.md) · [English](TERMS-en.md).
+- **Kebijakan Privasi:** [Indonesia](PRIVACY.md) · [English](PRIVACY-en.md).
+
+**Isi berkas, metadata yang diedit, sampul, dan hasil pemrosesan tidak dikirim
+atau diunggah ke server oleh aplikasi resmi.** Baca kebijakan privasi untuk alur
+pemrosesan lokal, cache/preferensi browser, unduhan, serta perbedaan dengan log
+akses hosting saat memuat situs.
+
+**Pemalsuan untuk menipu atau melakukan pelanggaran hukum dilarang.** Pelanggaran
+yang terbukti dapat dikenai sanksi pidana, perdata, dan/atau administratif sesuai
+hukum dan proses pihak berwenang; MeInsert tidak menjatuhkan hukuman otomatis.
+Kebijakan penggunaan tidak menambahkan pembatasan pada lisensi AGPL.
 
 ---
 

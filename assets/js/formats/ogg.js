@@ -20,5 +20,4 @@ export const write = (file, payload, options, report) => writeVorbis(file, paylo
   copy: { shiftTolerance: Infinity },
   formatClass: 'OggOutputFormat',
 });
-
 export default { meta, sections, fields, read, write };

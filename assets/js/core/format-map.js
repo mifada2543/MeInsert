@@ -86,7 +86,6 @@ const FORMAT_FIELDS = {
 export function crossTarget(detectionId, fieldId) {
   return FORMAT_FIELDS[detectionId]?.[fieldId] || '';
 }
-
 function crossValue(target, value) {
   const text = asString(value).trim();
   if (target === 'year') {

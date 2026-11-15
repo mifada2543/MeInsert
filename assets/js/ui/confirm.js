@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { translated } from '../i18n/index.js';
 import { el } from './dom.js';
 import { icon } from './icons.js';
 let current = null;
@@ -21,12 +22,12 @@ export function confirmNavigation({
   const cancelButton = el('button', {
     className: 'button ghost confirm-btn-cancel',
     type: 'button',
-    textContent: cancelLabel,
+    textContent: translated(() => (cancelLabel)),
   });
   const confirmButton = el('button', {
     className: 'button confirm-btn-confirm',
     type: 'button',
-    textContent: confirmLabel,
+    textContent: translated(() => (confirmLabel)),
   });
   const card = el('div', {
     className: 'confirm-card',
@@ -36,8 +37,8 @@ export function confirmNavigation({
     'aria-describedby': 'confirmMessage',
   },
     el('div', { className: 'confirm-icon', 'aria-hidden': 'true' }, icon('alert')),
-    el('h2', { className: 'confirm-title', id: 'confirmTitle', textContent: title }),
-    el('p', { className: 'confirm-message', id: 'confirmMessage', textContent: message }),
+    el('h2', { className: 'confirm-title', id: 'confirmTitle', textContent: translated(() => (title)) }),
+    el('p', { className: 'confirm-message', id: 'confirmMessage', textContent: translated(() => (message)) }),
     el('div', { className: 'confirm-actions' }, cancelButton, confirmButton),
   );
   const backdrop = el('div', { className: 'confirm-backdrop' }, card);

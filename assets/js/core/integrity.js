@@ -427,7 +427,6 @@ export function verifyIntegrity(plan, afterSnapshot) {
       });
     }
   }
-
   summary.checked += 1;
   if (!coversMatch(before.cover, after.cover)) {
     const coverOp = (plan?.operations || []).find((op) => op.kind === 'cover');

@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { t, translated } from '../i18n/index.js';
 import { el } from './dom.js';
 import { icon } from './icons.js';
 let current = null;
@@ -17,13 +18,13 @@ function operationRow(operation) {
   const arrow = el('span', { className: 'review-arrow', 'aria-hidden': 'true' }, '→');
   return el('div', { className: 'review-operation' },
     el('div', { className: 'review-operation-label' },
-      el('strong', { textContent: label }),
+      el('strong', { textContent: operation.kind === 'field' || operation.kind === 'cover' ? translated(() => label) : label }),
       operation.native ? el('span', { className: 'review-native', textContent: operation.native }) : null,
     ),
     el('div', { className: 'review-operation-value' },
       el('span', { className: `review-before${operation.action === 'remove' ? ' is-removed' : ''}`, textContent: before }),
       arrow,
-      el('span', { className: `review-after${operation.action === 'remove' ? ' is-removed' : ''}`, textContent: after }),
+      el('span', { className: `review-after${operation.action === 'remove' ? ' is-removed' : ''}`, textContent: operation.action === 'remove' ? translated(() => t('ui.removed')) : after }),
     ),
   );
 }
@@ -31,9 +32,9 @@ function operationGroup(title, operations, description = '') {
   if (!operations.length) return null;
   return el('section', { className: 'review-group' },
     el('div', { className: 'review-group-head' },
-      el('h3', { textContent: title }),
-      el('span', { className: 'review-count', textContent: String(operations.length) }),
-      description ? el('p', { textContent: description }) : null,
+      el('h3', { textContent: translated(() => (title)) }),
+      el('span', { className: 'review-count', textContent: translated(() => (String(operations.length))) }),
+      description ? el('p', { textContent: translated(() => (description)) }) : null,
     ),
     el('div', { className: 'review-operations' }, ...operations.map(operationRow)),
   );
@@ -44,11 +45,11 @@ function risksBlock(risks) {
   for (const risk of risks) {
     list.append(el('p', { className: `review-risk is-${risk.severity || 'warning'}` },
       el('span', { className: 'review-risk-icon', 'aria-hidden': 'true' }, icon('alert')),
-      el('span', { textContent: risk.message }),
+      el('span', { textContent: translated(() => (risk.message)) }),
     ));
   }
   return el('section', { className: 'review-group' },
-    el('div', { className: 'review-group-head' }, el('h3', { textContent: 'Peringatan' })),
+    el('div', { className: 'review-group-head' }, el('h3', { textContent: translated(() => (t('ui.warnings'))) })),
     list,
   );
 }
@@ -63,12 +64,12 @@ function planDetails(plan, { open = false } = {}) {
   const fileLabel = plan.fileName || plan.outputName || plan.format?.label || 'File';
   const summary = el('summary', { className: 'review-file-summary' },
     el('span', { className: 'review-file-name', textContent: fileLabel }),
-    el('span', { className: 'review-file-format', textContent: plan.format?.label || plan.format?.id || '' }),
-    el('span', { className: 'review-file-count', textContent: `${operations.length} perubahan` }),
+    el('span', { className: 'review-file-format', textContent: translated(() => (plan.format?.label || plan.format?.id || '')) }),
+    el('span', { className: 'review-file-count', textContent: translated(() => (t('ui.changes', { v0: operations.length }))) }),
   );
   const body = el('div', { className: 'review-file-body' },
     plan.outputName && plan.outputName !== fileLabel
-      ? el('p', { className: 'review-output', textContent: `Nama hasil: ${plan.outputName}` })
+      ? el('p', { className: 'review-output', textContent: translated(() => (t('ui.outputName', { v0: plan.outputName }))) })
       : null,
     xmpSection(plan),
     operationGroup('Field', fields),
@@ -76,7 +77,7 @@ function planDetails(plan, { open = false } = {}) {
     operationGroup('Hapus tag mentah', raw),
     operationGroup('Sampul', cover),
     el('p', { className: 'review-unchanged' },
-      `${unchanged.fields || 0} field, ${unchanged.custom || 0} tag kustom, dan ${unchanged.raw || 0} tag mentah tetap tidak berubah.`,
+      translated(() => (t('ui.fieldsCustomTagsAndRawTagsRemainUnchanged', { v0: unchanged.fields || 0, v1: unchanged.custom || 0, v2: unchanged.raw || 0 }))),
     ),
   );
   details.append(summary, body);
@@ -87,12 +88,12 @@ function summaryChips(plans) {
   const unchanged = plans.reduce((sum, plan) => sum + (plan.unchanged?.fields || 0) + (plan.unchanged?.custom || 0) + (plan.unchanged?.raw || 0), 0);
   const memory = plans[0]?.memory;
   const chips = [
-    el('span', { className: 'review-chip is-strong' }, `${operations} perubahan`),
-    el('span', { className: 'review-chip' }, `${plans.length} file`),
-    el('span', { className: 'review-chip' }, `${unchanged} metadata tetap`),
+    el('span', { className: 'review-chip is-strong' }, translated(() => (t('ui.changes', { v0: operations })))),
+    el('span', { className: 'review-chip' }, translated(() => (t('ui.files', { v0: plans.length })))),
+    el('span', { className: 'review-chip' }, translated(() => (t('ui.metadataEntriesUnchanged', { v0: unchanged })))),
   ];
   if (memory?.estimatedLabel) {
-    chips.push(el('span', { className: `review-chip${memory.level && memory.level !== 'ok' ? ' is-warn' : ''}` }, `Estimasi memori ~${memory.estimatedLabel}`));
+    chips.push(el('span', { className: `review-chip${memory.level && memory.level !== 'ok' ? ' is-warn' : ''}` }, translated(() => (t('ui.estimatedMemory', { v0: memory.estimatedLabel })))));
   }
   return el('div', { className: 'review-summary' }, ...chips);
 }
@@ -127,7 +128,7 @@ function xmpSection(plan) {
   if (!properties.length) {
     return el('section', { className: 'review-group' },
       el('div', { className: 'review-group-head' }, el('h3', { textContent: 'XMP' })),
-      el('p', { className: 'review-unchanged', textContent: 'Paket XMP ada, tetapi tidak ada properti yang terdaftar.' }),
+      el('p', { className: 'review-unchanged', textContent: translated(() => (t('ui.anXMPPacketExistsButNoPropertiesWereListed'))) }),
     );
   }
   const changedIds = new Set((plan.operations || []).filter((op) => op.kind === 'field').map((op) => op.id));
@@ -139,19 +140,19 @@ function xmpSection(plan) {
     return el('tr', {},
       el('td', { className: 'review-xmp-tag', textContent: qualified }),
       el('td', { textContent: displayValue(prop.value) }),
-      el('td', { className: `review-xmp-status ${changed ? 'is-changed' : ownedField ? '' : 'is-foreign'}`.trim(), textContent: status }),
+      el('td', { className: `review-xmp-status ${changed ? 'is-changed' : ownedField ? '' : 'is-foreign'}`.trim(), textContent: translated(() => (status)) }),
     );
   });
   return el('section', { className: 'review-group' },
     el('div', { className: 'review-group-head' },
-      el('h3', { textContent: 'XMP (read-only)' }),
-      el('span', { className: 'review-count', textContent: String(properties.length) }),
-      el('p', { textContent: 'Inventaris properti XMP sebelum tulis. Properti asing dipertahankan; yang dipakai field ditandai.' }),
+      el('h3', { textContent: translated(() => t('review.xmpReadOnly')) }),
+      el('span', { className: 'review-count', textContent: translated(() => (String(properties.length))) }),
+      el('p', { textContent: translated(() => (t('ui.xmpPropertyInventoryBeforeWritingForeignPropertiesArePreserved'))) }),
     ),
     el('table', { className: 'review-xmp-table' },
       el('thead', {}, el('tr', {},
-        el('th', { textContent: 'Properti' }),
-        el('th', { textContent: 'Nilai' }),
+        el('th', { textContent: translated(() => (t('ui.property'))) }),
+        el('th', { textContent: translated(() => (t('ui.value'))) }),
         el('th', { textContent: 'Status' }),
       )),
       el('tbody', {}, ...rows),
@@ -169,22 +170,21 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
   const cancelButton = el('button', {
     className: 'button ghost review-btn-cancel',
     type: 'button',
-    textContent: mode === 'batch' ? 'Batal' : 'Kembali ke editor',
+    textContent: translated(() => (mode === 'batch' ? t('ui.cancel') : t('ui.backToEditor'))),
   });
   const risks = uniqueRisks(plans);
   const danger = risks.some((risk) => risk.severity === 'danger');
   const confirmButton = el('button', {
     className: `button primary review-btn-confirm${danger ? ' is-danger' : ''}`,
     type: 'button',
-    textContent: mode === 'batch'
-      ? `${danger ? 'Tetap terapkan' : 'Terapkan'} ke ${plans.length} file`
-      : danger ? 'Tetap simpan' : 'Simpan metadata',
+    textContent: translated(() => (mode === 'batch'
+      ? t(danger ? 'review.applyAnywayFiles' : 'review.applyFiles', { v0: plans.length })
+      : danger ? t('ui.saveAnyway') : t('ui.saveDownload'))),
   });
   const title = mode === 'batch' ? 'Periksa batch sebelum menerapkan' : 'Periksa sebelum menyimpan';
   const subtitle = mode === 'batch'
     ? 'Pastikan seluruh perubahan di bawah ini sudah benar. Setelah dikonfirmasi, file akan diproses.'
     : 'Periksa seluruh perubahan. File asli tidak ditimpa; hasil dapat diunduh setelah verifikasi.';
-
   const body = el('div', { className: 'review-body' },
     summaryChips(plans),
     risksBlock(risks),
@@ -198,8 +198,8 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
       el('label', { className: 'review-low-memory', for: 'reviewLowMemory' },
         lowMemoryInput,
         el('span', {},
-          el('strong', { textContent: 'Modus hemat memori' }),
-          el('span', { textContent: 'Unduh tiap hasil segera setelah ditulis, bukan menahan semua output sampai ZIP. Disarankan untuk batch video/audio besar.' }),
+          el('strong', { textContent: translated(() => (t('ui.lowMemoryMode'))) }),
+          el('span', { textContent: translated(() => (t('ui.downloadEachResultImmediatelyAfterWritingInsteadOfRetaining'))) }),
         ),
       ),
     );
@@ -212,15 +212,15 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
     extKeepInput = el('input', { type: 'radio', name: 'review-ext-choice', value: 'keep' });
     body.append(
       el('section', { className: 'review-ext-choice' },
-        el('h3', { textContent: 'Ekstensi tidak cocok dengan isi' }),
-        el('p', { textContent: `${mismatches.length} file memiliki nama/ekstensi berbeda dari isi terdeteksi. Pilih bagaimana nama hasil ditulis:` }),
+        el('h3', { textContent: translated(() => (t('ui.extensionDoesNotMatchContents'))) }),
+        el('p', { textContent: translated(() => (t('ui.filesHaveNamesExtensionsThatDifferFromTheirDetected', { v0: mismatches.length }))) }),
         el('label', { className: 'review-ext-radio' },
           followInput,
-          el('span', {}, 'Ikuti isi file (aman) — ', el('code', { textContent: recommended }), mismatches.length > 1 ? ` (dan ${mismatches.length - 1} lainnya)` : ''),
+          el('span', {}, translated(() => (t('ui.followFileContentsSafe'))), el('code', { textContent: recommended }), translated(() => mismatches.length > 1 ? t('ui.andOthers', { v0: mismatches.length - 1 }) : '')),
         ),
         el('label', { className: 'review-ext-radio' },
           extKeepInput,
-          el('span', {}, 'Pertahankan ekstensi asli — ', el('code', { textContent: alternative }), ' (isi tetap sesuai deteksi; hanya nama yang dipertahankan.)'),
+          el('span', {}, translated(() => (t('ui.keepOriginalExtension'))), el('code', { textContent: alternative }), translated(() => (t('ui.contentsStillFollowDetectionOnlyTheNameIsKept')))),
         ),
       ),
     );
@@ -234,7 +234,7 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
     if (plans.length > visible.length) {
       const remaining = plans.slice(visible.length);
       const load = el('button', { className: 'button ghost small review-load-more', type: 'button' },
-        `Muat semua ${plans.length} file`);
+        translated(() => (t('ui.loadAllFiles', { v0: plans.length }))));
       load.addEventListener('click', () => {
         list.append(...remaining.map((plan) => planDetails(plan)));
         load.remove();
@@ -252,14 +252,14 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
     el('div', { className: 'review-head' },
       el('div', { className: 'review-head-icon', 'aria-hidden': 'true' }, icon('check')),
       el('div', {},
-        el('h2', { id: 'reviewTitle', className: 'review-title', textContent: title }),
-        el('p', { id: 'reviewSubtitle', className: 'review-subtitle', textContent: subtitle }),
+        el('h2', { id: 'reviewTitle', className: 'review-title', textContent: translated(() => (title)) }),
+        el('p', { id: 'reviewSubtitle', className: 'review-subtitle', textContent: translated(() => (subtitle)) }),
       ),
-      el('button', { className: 'review-close', type: 'button', 'aria-label': 'Tutup', textContent: '×' }),
+      el('button', { className: 'review-close', type: 'button', 'aria-label': translated(() => (t('ui.close'))), textContent: '×' }),
     ),
     body,
     el('div', { className: 'review-foot' },
-      el('p', { className: 'review-foot-note', textContent: mode === 'batch' ? `${plans.length} file akan ditulis ulang di browser.` : 'Tidak ada upload; semua proses lokal.' }),
+      el('p', { className: 'review-foot-note', textContent: translated(() => (mode === 'batch' ? t('ui.filesWillBeRewrittenInTheBrowser', { v0: plans.length }) : t('ui.noUploadsAllProcessingIsLocal'))) }),
       el('div', { className: 'review-actions' }, cancelButton, confirmButton),
     ),
   );

@@ -1,13 +1,14 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { t, translated, translateSource } from '../i18n/index.js';
 import { el } from './dom.js';
 import { icon } from './icons.js';
 let current = null;
 export function isLightboxOpen() {
   return Boolean(current);
 }
-export function openLightbox({ src, alt = '', caption = '', trigger = null } = {}) {
+export function openLightbox({ src, alt = '', caption = '', captionMessage = false, trigger = null } = {}) {
   if (typeof document === 'undefined' || !src) return null;
   closeLightbox();
   const focusBefore = trigger instanceof HTMLElement
@@ -24,16 +25,16 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
   const captionText = (caption || '').trim();
   const captionNode = el('span', {
     className: 'lightbox-caption-text',
-    textContent: captionText,
+    textContent: captionMessage ? translated(() => captionText) : captionText,
   });
   const isTouch = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   const hintNode = el('span', {
     className: 'lightbox-caption-hint',
-    textContent: isTouch
-      ? 'Ketuk 2x gambar untuk memperbesar/memperkecil · Seret untuk menggeser · Ketuk × untuk tutup'
-      : 'Klik 2x gambar untuk memperbesar/memperkecil · Seret/panah untuk menggeser · Esc untuk tutup',
+    textContent: translated(() => (isTouch
+      ? t('ui.doubleTapToZoomDragToPanTapTo')
+      : t('ui.doubleClickToZoomDragArrowKeysToPan'))),
   });
-  const img = el('img', { className: 'lightbox-img', src, alt: alt || 'Pratinjau ukuran penuh', decoding: 'async', draggable: 'false' });
+  const img = el('img', { className: 'lightbox-img', src, alt: translated(() => (alt || t('ui.fullSizePreview'))), decoding: 'async', draggable: 'false' });
   const panTop = el('div', { className: 'lightbox-pan-fade lightbox-pan-top', 'aria-hidden': 'true' });
   const panBottom = el('div', { className: 'lightbox-pan-fade lightbox-pan-bottom', 'aria-hidden': 'true' });
   const viewport = el('div', { className: 'lightbox-viewport' }, img);
@@ -141,20 +142,20 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
   const zoomInButton = el('button', {
     className: 'lightbox-zoom-btn',
     type: 'button',
-    'aria-label': 'Perbesar gambar',
-    title: 'Perbesar',
+    'aria-label': translated(() => (t('ui.zoomIn'))),
+    title: translated(() => (t('ui.enlarge'))),
   }, icon('plus'));
   const zoomOutButton = el('button', {
     className: 'lightbox-zoom-btn',
     type: 'button',
-    'aria-label': 'Perkecil gambar',
-    title: 'Perkecil',
+    'aria-label': translated(() => (t('ui.zoomOut'))),
+    title: translated(() => (t('ui.shrink'))),
   }, icon('minimize'));
   const resetButton = el('button', {
     className: 'lightbox-zoom-btn',
     type: 'button',
-    'aria-label': 'Kembalikan ke ukuran pas',
-    title: 'Ukuran pas',
+    'aria-label': translated(() => (t('ui.resetToFit'))),
+    title: translated(() => (t('ui.fit'))),
     textContent: '1:1',
   });
   const resetToFit = () => {
@@ -182,10 +183,10 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
   const closeButton = el('button', {
     className: 'lightbox-close',
     type: 'button',
-    'aria-label': 'Tutup pratinjau',
-    title: 'Tutup',
+    'aria-label': translated(() => (t('ui.closePreview'))),
+    title: translated(() => (t('ui.close'))),
   }, icon('x'));
-  const controls = el('div', { className: 'lightbox-controls', role: 'group', 'aria-label': 'Kontrol zoom' },
+  const controls = el('div', { className: 'lightbox-controls', role: 'group', 'aria-label': translated(() => (t('ui.zoomControls'))) },
     zoomOutButton, resetButton, zoomInButton);
   const figure = el('figure', { className: 'lightbox-figure' },
     stageEl,
@@ -197,7 +198,7 @@ export function openLightbox({ src, alt = '', caption = '', trigger = null } = {
     className: 'lightbox',
     role: 'dialog',
     'aria-modal': 'true',
-    'aria-label': captionText ? `Pratinjau ${captionText}` : 'Pratinjau ukuran penuh',
+    'aria-label': translated(() => (captionText ? t('ui.preview', { v0: captionMessage ? translateSource(captionText) : captionText }) : t('ui.fullSizePreview'))),
   }, figure);
   document.body.append(backdrop);
   const cleanup = () => {

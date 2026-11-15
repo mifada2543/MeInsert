@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { bindTranslation, t, translated, translateSource } from '../i18n/index.js';
 import { el, clear, formatBytes, formatDuration } from './dom.js';
 import { icon } from './icons.js';
 import { coverAcceptFor } from '../core/image-utils.js';
@@ -87,15 +88,15 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
   const coverButton = el('button', {
     className: 'audio-cover',
     type: 'button',
-    title: 'Seret gambar ke sini atau klik untuk memilih',
-    'aria-label': cover?.previewUrl ? 'Ganti thumbnail audio' : 'Pilih thumbnail audio',
+    title: translated(() => (t('ui.dragAnImageHereOrClickToChoose'))),
+    'aria-label': translated(() => (cover?.previewUrl ? t('ui.replaceAudioThumbnail') : t('ui.chooseAudioThumbnail'))),
     on: { click: pick },
   },
     cover?.previewUrl
-      ? el('img', { src: cover.previewUrl, alt: 'Thumbnail audio' })
+      ? el('img', { src: cover.previewUrl, alt: translated(() => (t('ui.audioThumbnail'))) })
       : el('span', { className: 'audio-cover-empty' },
           icon('image'),
-          el('span', { textContent: 'Belum ada thumbnail' }),
+          el('span', { textContent: translated(() => (t('ui.noThumbnailYet'))) }),
         ),
   );
   let dragDepth = 0;
@@ -125,8 +126,8 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
   const coverZoom = el('button', {
     className: 'audio-cover-zoom',
     type: 'button',
-    title: 'Klik untuk perbesar thumbnail',
-    'aria-label': 'Perbesar thumbnail audio',
+    title: translated(() => (t('ui.clickToEnlargeThumbnail'))),
+    'aria-label': translated(() => (t('ui.enlargeAudioThumbnail'))),
     hidden: !(cover?.previewUrl),
     on: {
       click: (event) => {
@@ -135,6 +136,7 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
           src: cover.previewUrl,
           alt: 'Thumbnail audio',
           caption: coverLabel(cover) || 'Thumbnail audio',
+          captionMessage: !coverLabel(cover),
         });
       },
     },
@@ -146,20 +148,20 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
       className: 'button ghost small',
       type: 'button',
       on: { click: pick },
-    }, icon('plus'), 'Pilih gambar…'),
+    }, icon('plus'), translated(() => (t('ui.chooseImage')))),
     el('button', {
       className: 'button ghost danger small',
       type: 'button',
       hidden: !showRemove,
       on: { click: onCoverRemove },
-    }, icon('trash'), 'Hapus thumbnail'),
+    }, icon('trash'), translated(() => (t('ui.removeThumbnail')))),
     onCoverUndo
       ? el('button', {
           className: 'button ghost small',
           type: 'button',
           hidden: cover?.action === 'keep',
           on: { click: onCoverUndo },
-        }, 'Batalkan')
+        }, translated(() => (t('ui.cancel2'))))
       : null,
   );
   const audio = el('audio', { src: previewUrl, controls: true, preload: 'metadata' });
@@ -174,8 +176,8 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
   const stage = el('div', { className: 'audio-stage' },
     el('div', { className: 'audio-cover-head' },
       el('div', { className: 'audio-cover-title' },
-        el('span', { textContent: 'Thumbnail / Sampul' }),
-        el('span', { className: `cover-badge ${badge.className}`.trim(), textContent: badge.text }),
+        el('span', { textContent: translated(() => (t('ui.thumbnailCover'))) }),
+        el('span', { className: `cover-badge ${badge.className}`.trim(), textContent: translated(() => (badge.text)) }),
       ),
       actions,
     ),
@@ -183,7 +185,7 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
       coverBox,
       el('div', { className: 'audio-player' },
         audio,
-        el('p', { className: 'audio-cover-hint', textContent: coverHint(cover) }),
+        el('p', { className: 'audio-cover-hint', textContent: translated(() => (coverHint(cover))) }),
       ),
     ),
   );
@@ -194,13 +196,13 @@ export function setCardMinimized(container, minimized) {
   container.classList.toggle('is-minimized', minimized);
   const button = container.querySelector('.preview-toggle');
   if (!button) return;
-  const label = minimized ? 'Tampilkan' : 'Kecilkan';
+  const label = () => t(minimized ? 'common.show' : 'common.minimize');
   const description = minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau';
   button.setAttribute('aria-expanded', String(!minimized));
-  button.setAttribute('aria-label', description);
-  button.title = description;
+  bindTranslation(button, 'aria-label', () => (description));
+  bindTranslation(button, 'title', () => (description));
   const text = button.querySelector('.preview-toggle-label');
-  if (text) text.textContent = label;
+  if (text) bindTranslation(text, 'textContent', label);
   const iconSlot = button.querySelector('.preview-toggle-icon');
   if (iconSlot) iconSlot.replaceChildren(icon(minimized ? 'expand' : 'minimize'));
 }
@@ -232,7 +234,7 @@ export function renderFileCard(container, {
   } else if (kind === 'image' && previewUrl) {
     const img = el('img', {
       src: previewUrl,
-      alt: `Pratinjau ${file.name}`,
+      alt: translated(() => (t('ui.preview', { v0: file.name }))),
       on: {
         load: () => setMediaRatio(frame, img.naturalWidth, img.naturalHeight),
       },
@@ -240,8 +242,8 @@ export function renderFileCard(container, {
     const zoom = el('button', {
       className: 'preview-zoom',
       type: 'button',
-      title: 'Klik untuk perbesar',
-      'aria-label': `Perbesar pratinjau ${file.name}`,
+      title: translated(() => (t('ui.clickToEnlarge'))),
+      'aria-label': translated(() => (t('ui.enlargePreviewOf', { v0: file.name }))),
       on: {
         click: () => {
           const dims = info.width && info.height ? `${info.width} × ${info.height}` : '';
@@ -279,7 +281,7 @@ export function renderFileCard(container, {
       frame.append(el('audio', { src: previewUrl, controls: true, preload: 'metadata' }));
     }
   } else if (kind === 'pdf' && previewUrl) {
-    frame.append(el('iframe', { src: previewUrl, title: `Pratinjau ${file.name}` }));
+    frame.append(el('iframe', { src: previewUrl, title: translated(() => (t('ui.preview', { v0: file.name }))) }));
   } else {
     frame.append(el('div', { className: 'preview-icon' }, icon(kind === 'pdf' ? 'pdf' : 'file')));
   }
@@ -289,12 +291,12 @@ export function renderFileCard(container, {
         type: 'button',
         'aria-expanded': String(!minimized),
         'aria-controls': 'previewFrame',
-        'aria-label': minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau',
-        title: minimized ? 'Tampilkan pratinjau' : 'Kecilkan pratinjau',
+        'aria-label': translated(() => (minimized ? t('ui.showPreview') : t('ui.minimizePreview'))),
+        title: translated(() => (minimized ? t('ui.showPreview') : t('ui.minimizePreview'))),
         on: { click: onToggleMinimize },
       },
         el('span', { className: 'preview-toggle-icon' }, icon(minimized ? 'expand' : 'minimize')),
-        el('span', { className: 'preview-toggle-label', textContent: minimized ? 'Tampilkan' : 'Kecilkan' }),
+        el('span', { className: 'preview-toggle-label', textContent: translated(() => t(minimized ? 'common.show' : 'common.minimize')) }),
       )
     : null;
   const infoBlock = el('div', { className: 'file-info' },
@@ -304,18 +306,18 @@ export function renderFileCard(container, {
         detection?.label || 'File',
       ),
       el('span', { className: 'file-kind-aside' },
-        el('span', { className: 'file-local' }, 'lokal'),
+        el('span', { className: 'file-local' }, translated(() => t('common.local'))),
         toggleButton,
       ),
     ),
     el('h2', { className: 'file-name', title: file.name, textContent: file.name }),
-    el('p', { className: 'file-sub', textContent: `${detection?.mime || file.type || 'application/octet-stream'} · ${formatBytes(file.size)}` }),
+    el('p', { className: 'file-sub', textContent: translated(() => (`${detection?.mime || file.type || 'application/octet-stream'} · ${formatBytes(file.size)}`)) }),
   );
   if (readResult) {
     const list = el('dl', { className: 'meta-list' });
     for (const [label, value] of statRows(file, detection, readResult)) {
       list.append(el('div', { className: 'meta-row' },
-        el('dt', { textContent: label }),
+        el('dt', { textContent: translated(() => (label)) }),
         el('dd', { textContent: value }),
       ));
     }
@@ -325,7 +327,7 @@ export function renderFileCard(container, {
   if (warnings.length) {
     infoBlock.append(el('div', { className: 'file-warning' },
       icon('alert'),
-      el('span', { textContent: warnings.join(' ') }),
+      el('span', { textContent: translated(() => (warnings.map(translateSource).join(' '))) }),
     ));
   }
   container.append(frame, infoBlock);

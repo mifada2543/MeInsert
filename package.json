@@ -12,7 +12,10 @@
     "lint": "eslint assets/js sw.js scripts tests",
     "serve": "python3 -m http.server 8000",
     "test": "node --test tests/unit/*.test.js",
-    "test:e2e": "node tests/e2e/smoke.mjs"
+    "test:e2e": "node tests/e2e/smoke.mjs",
+    "test:i18n": "node tests/e2e/i18n.mjs",
+    "test:compat": "node tests/compat/run.mjs",
+    "fixtures:generate": "node tests/fixtures/generate.mjs"
   },
   "devDependencies": {
     "@colorhythm/exiftool-wasm": "1.0.5",

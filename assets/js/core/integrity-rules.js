@@ -5,7 +5,6 @@ const KNOWN_ID3_FRAME = {
   code: 'UNKNOWN_ID3_FRAME',
   message: 'Frame ID3 yang tidak didukung hilang saat metadata ditulis ulang.',
 };
-/** Daftar frame ID3v2 yang dipahami MeInsert. Sumber tunggal untuk mp3.js & integrity. */
 export const KNOWN_ID3 = new Set([
   'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
   'TCOM', 'COMM', 'USLT', 'TCOP', 'TSSE', 'TENC', 'TXXX', 'APIC', 'TDAT',
@@ -119,12 +118,9 @@ const PDF_XMP_FOR_FIELD = {
   creationDate: ['xmp:createdate'],
   modDate: ['xmp:modifydate'],
 };
-
-/** XMP properties that a PDF field edit is expected to change. */
 export function xmpTagsForField(field) {
   return new Set(PDF_XMP_FOR_FIELD[field?.id] || []);
 }
-
 export function nativeTagsForField(field) {
   const native = String(field?.native || '');
   const tags = new Set();

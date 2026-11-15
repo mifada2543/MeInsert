@@ -1,27 +1,17 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-
-/** Kasar dan jujur: browser tidak memberi angka memori yang konsisten. */
 export const MEMORY_WARN_MB = 350;
 export const MEMORY_BLOCK_MB = 900;
-
 function budgetFor(peakMb) {
   if (peakMb >= MEMORY_BLOCK_MB) return 'block';
   if (peakMb >= MEMORY_WARN_MB) return 'warn';
   return 'ok';
 }
-
 export function formatMemoryMb(bytes) {
   const mb = (Number(bytes) || 0) / (1024 * 1024);
   return `${Math.round(mb)} MB`;
 }
-
-/**
- * Totestimate peak browser memory for a write plan.
- * Peak ≈ inputs*copyFactor + held outputs + cover + engine overhead.
- * Bukan jaminan — hanya sinyal untuk dialog review.
- */
 export function estimateMemory({
   inputSizes = [],
   heldOutputSizes = [],
@@ -49,7 +39,6 @@ export function estimateMemory({
     breakdown: { inputs, held, cover, copyFactor, engineOverheadMb },
   };
 }
-
 export function estimateForSingle({ fileSize = 0, coverBytes = 0 } = {}) {
   return estimateMemory({
     inputSizes: [fileSize],
@@ -59,7 +48,6 @@ export function estimateForSingle({ fileSize = 0, coverBytes = 0 } = {}) {
     engineOverheadMb: 30,
   });
 }
-
 export function estimateForBatch(items = []) {
   const sizes = (items || []).map((item) => Number(item?.file?.size) || 0);
   return estimateMemory({

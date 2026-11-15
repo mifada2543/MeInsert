@@ -70,7 +70,7 @@ if (!address || typeof address === 'string') {
 }
 const base = `http://127.0.0.1:${address.port}`;
 const browser = await chromium.launch({ executablePath: findChrome(), headless: true, args: ['--disable-dev-shm-usage'] });
-const context = await browser.newContext({ serviceWorkers: 'allow', acceptDownloads: true });
+const context = await browser.newContext({ locale: 'id-ID', serviceWorkers: 'allow', acceptDownloads: true });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
@@ -112,7 +112,7 @@ try {
   await context.setOffline(false);
 
   // Mobile pass: bottom glass nav, sticky preview, no horizontal overflow.
-  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const mobileContext = await browser.newContext({ locale: 'id-ID', viewport: { width: 390, height: 844 } });
   const mobilePage = await mobileContext.newPage();
   try {
     await mobilePage.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });

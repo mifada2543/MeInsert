@@ -14,29 +14,23 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cssDir = join(root, 'assets', 'css');
 const entry = join(cssDir, 'app.css');
 const outFile = join(cssDir, 'app.bundle.css');
-
 const BANNER = `/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Bundel otomatis dari assets/css/*.css — JANGAN diedit langsung.
  * Sumber: assets/css/app.css + @import. Jalankan \`npm run build:css\`. */`;
-
 const IMPORT_RE = /@import\s+"([^"]+)";\s*/g;
-
 async function readCss(file) {
   return readFile(file, 'utf8');
 }
-
 /** Resolve an @import target relative to the importing file. */
 function resolveImport(fromFile, spec) {
   return resolve(dirname(fromFile), spec);
 }
-
 /**
  * Flattens the @import graph. Order follows the source order in each file,
  * depth-first, exactly like the browser cascade.
@@ -44,7 +38,6 @@ function resolveImport(fromFile, spec) {
 export async function bundleCss(entryFile = entry) {
   const chunks = [];
   const seen = new Set();
-
   async function walk(file) {
     const key = file;
     if (seen.has(key)) return;
@@ -61,11 +54,9 @@ export async function bundleCss(entryFile = entry) {
     const rest = source.slice(cursor);
     if (rest.trim()) chunks.push(rest.trim());
   }
-
   await walk(entryFile);
   return `${BANNER}\n\n${chunks.join('\n\n')}\n`;
 }
-
 export async function buildCss({ write = true } = {}) {
   const css = await bundleCss();
   if (write) {
@@ -75,18 +66,14 @@ export async function buildCss({ write = true } = {}) {
   }
   return css;
 }
-
 function seenCount(css) {
   return (css.match(/\{/g) || []).length;
 }
-
-/** True when the committed bundle matches a fresh build of the sources. */
 export async function cssIsUpToDate() {
   const current = await readCss(outFile, 'utf8').catch(() => '');
   const fresh = await bundleCss();
   return current.trim() === fresh.trim();
 }
-
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   if (process.argv.includes('--check')) {

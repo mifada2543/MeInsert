@@ -2,8 +2,10 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v35';
+const CACHE_VERSION = 'meinsert-v38';
+const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
+  ...DOCUMENT_URLS,
   './',
   './index.html',
   './single.html',
@@ -13,6 +15,15 @@ const SHELL_URLS = [
   './assets/js/theme-init.js',
   './assets/js/home.js',
   './assets/js/app.js',
+  './assets/js/i18n/index.js',
+  './assets/js/i18n/id.js',
+  './assets/js/i18n/en.js',
+  './assets/js/editor/editor-state.js',
+  './assets/js/editor/editor-shell.js',
+  './assets/js/editor/editor-changes.js',
+  './assets/js/editor/editor-view.js',
+  './assets/js/editor/editor-file.js',
+  './assets/js/editor/editor-save.js',
   './assets/js/core/change-plan.js',
   './assets/js/core/detector.js',
   './assets/js/core/errors.js',
@@ -45,6 +56,11 @@ const SHELL_URLS = [
   './assets/js/batch/batch-processor.js',
   './assets/js/batch/batch-report.js',
   './assets/js/batch/batch-view.js',
+  './assets/js/batch/batch-item.js',
+  './assets/js/batch/batch-groups-view.js',
+  './assets/js/batch/batch-save-flow.js',
+  './assets/js/batch/batch-detail-view.js',
+  './assets/js/batch/batch-preview.js',
   './assets/js/batch/batch-zip.js',
   './assets/fonts/ibm-plex-mono-400-latin.woff2',
   './assets/fonts/ibm-plex-mono-500-latin.woff2',
@@ -101,7 +117,7 @@ function staleWhileRevalidate(event) {
     if (cached) return cached;
     const response = await network;
     if (response) return response;
-    return new Response('MeInsert tidak tersedia offline.', {
+    return new Response('MeInsert tidak tersedia offline / MeInsert is unavailable offline.', {
       status: 503,
       headers: { 'content-type': 'text/plain; charset=utf-8' },
     });
@@ -122,6 +138,12 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  const policyDocument = DOCUMENT_URLS.some((path) => new URL(path, self.registration.scope).pathname === url.pathname);
+  if (policyDocument) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
+  if (/\.md$/i.test(url.pathname)) return;
   if (request.mode === 'navigate') {
     event.respondWith(staleWhileRevalidate(event));
     return;

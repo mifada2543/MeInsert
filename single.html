@@ -9,8 +9,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f5f4ed" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14141f" media="(prefers-color-scheme: dark)">
-  <meta name="description"
-    content="MeInsert: baca dan tulis metadata file langsung di browser. Tanpa upload, tanpa server.">
+  <meta name="description" content="MeInsert: baca dan tulis metadata file langsung di browser. Tanpa upload, tanpa server.">
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,8 +18,7 @@
   <script src="assets/js/theme-init.js"></script>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <meta property="og:title" content="MeInsert — Edit metadata file tanpa upload">
-  <meta property="og:description"
-    content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
+  <meta property="og:description" content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
   <meta property="og:image" content="https://mifada2543.github.io/MeInsert/assets/img/og-image.png">
   <meta property="og:url" content="https://mifada2543.github.io/MeInsert/">
   <meta property="og:type" content="website">
@@ -28,8 +26,7 @@
   <meta property="og:site_name" content="MeInsert">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="MeInsert — Edit metadata file tanpa upload">
-  <meta name="twitter:description"
-    content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
+  <meta name="twitter:description" content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
   <meta name="twitter:image" content="https://mifada2543.github.io/MeInsert/assets/img/og-image.png">
   <title>MeInsert | Edit metadata tanpa upload</title>
   <link rel="stylesheet" href="assets/css/app.bundle.css">
@@ -38,23 +35,24 @@
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 </head>
 <body data-page="single">
-  <a class="skip-link" href="#main">Lewati ke konten</a>
+  <a class="skip-link" href="#main"><span data-i18n="ui.skipToContent">Lewati ke konten</span></a>
   <header class="site-header">
     <div class="shell header-inner">
-      <a class="brand" href="./" aria-label="MeInsert Metadata lokal, kembali ke awal">
+      <a class="brand" href="./" aria-label="MeInsert Metadata lokal, kembali ke awal" data-i18n-aria-label="ui.meinsertLocalMetadataBackToHome">
         <img class="brand-logo" src="assets/img/logo-96.png" width="42" height="42" alt="">
-        <span class="brand-text">MeInsert<small>metadata lokal</small></span>
+        <span class="brand-text">MeInsert<small><span data-i18n="ui.localMetadata">metadata lokal</span></small></span>
       </a>
-      <nav class="header-nav" aria-label="Mode MeInsert">
-        <a class="header-link" data-nav="single" href="./single.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg><span>Satu file</span></a>
-        <a class="header-link" data-nav="batch" href="./batch.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 4.9-9 4.9-9-4.9Z"/><path d="m3 12 9 4.9 9-4.9"/><path d="m3 17 9 4.9 9-4.9"/></svg><span>Banyak file</span></a>
+      <nav class="header-nav" aria-label="Mode MeInsert" data-i18n-aria-label="ui.meinsertModes">
+        <a class="header-link" data-nav="single" href="./single.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg><span><span data-i18n="ui.singleFile">Satu file</span></span></a>
+        <a class="header-link" data-nav="batch" href="./batch.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 4.9-9 4.9-9-4.9Z"/><path d="m3 12 9 4.9 9-4.9"/><path d="m3 17 9 4.9 9-4.9"/></svg><span><span data-i18n="ui.batch">Banyak file</span></span></a>
       </nav>
       <div class="header-actions">
-        <span class="privacy-pill" title="File tidak pernah dikirim ke server">
+        <span class="privacy-pill" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer">
           <span class="privacy-dot"></span>
-          100% di perangkat
+          <span data-i18n="ui.100OnDevice">100% di perangkat</span>
         </span>
-        <button class="icon-button" id="themeToggle" type="button" aria-label="Ganti tema" title="Ganti tema">
+        <button class="icon-button language-toggle" type="button" data-language-toggle aria-label="Ganti bahasa ke English" title="Ganti bahasa ke English">ID</button>
+        <button class="icon-button" id="themeToggle" type="button" aria-label="Ganti tema" data-i18n-aria-label="ui.changeTheme" title="Ganti tema" data-i18n-title="ui.changeTheme">
           <span class="theme-icon theme-icon-sun" id="themeIconSun" aria-hidden="true"></span>
           <span class="theme-icon theme-icon-moon" id="themeIconMoon" aria-hidden="true"></span>
         </button>
@@ -64,12 +62,12 @@
   <main class="shell" id="main">
     <section class="landing" id="landing">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="eyebrow-line"></span>Metadata editor untuk file sehari-hari</p>
-        <h1>Tempel metadata.<br><span class="accent-text" title="File tidak pernah dikirim ke server">Tanpa
-            upload.</span></h1>
-        <p class="lede">Ubah judul, penulis, tag, dan info kamera langsung di browser. File tetap di perangkat Anda —
-          tidak ada server, tidak ada antrean, tidak ada akun.</p>
-        <div class="format-chips" aria-label="Format yang didukung">
+        <p class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="ui.aMetadataEditorForEverydayFiles">Metadata editor untuk file sehari-hari</span></p>
+        <h1><span data-i18n="ui.addMetadata">Tempel metadata.</span><br><span class="accent-text" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer"><span data-i18n="ui.noUploads">Tanpa
+            upload.</span></span></h1>
+        <p class="lede"><span data-i18n="ui.editTitlesAuthorsTagsAndCameraInformationRightIn">Ubah judul, penulis, tag, dan info kamera langsung di browser. File tetap di perangkat Anda —
+          tidak ada server, tidak ada antrean, tidak ada akun.</span></p>
+        <div class="format-chips" aria-label="Format yang didukung" data-i18n-aria-label="ui.supportedFormats">
           <span class="chip"><span class="chip-dot image"></span>JPG</span>
           <span class="chip"><span class="chip-dot image"></span>PNG</span>
           <span class="chip"><span class="chip-dot image"></span>WebP</span>
@@ -82,11 +80,11 @@
           <span class="chip"><span class="chip-dot video"></span>MKV</span>
         </div>
         <div class="trust-row">
-          <span><strong>01</strong> Deteksi otomatis</span>
-          <span><strong>02</strong> Preview perubahan</span>
-          <span><strong>03</strong> Unduh hasil</span>
+          <span><strong>01</strong> <span data-i18n="ui.automaticDetection">Deteksi otomatis</span></span>
+          <span><strong>02</strong> <span data-i18n="ui.reviewChanges">Preview perubahan</span></span>
+          <span><strong>03</strong> <span data-i18n="ui.downloadResult">Unduh hasil</span></span>
         </div>
-        <p class="hero-crosslink">Mau proses banyak file sekaligus? <a href="./batch.html">Buka Mode batch</a></p>
+        <p class="hero-crosslink"><span data-i18n="ui.wantToProcessMultipleFilesAtOnce">Mau proses banyak file sekaligus?</span> <a href="./batch.html"><span data-i18n="ui.openBatch">Buka Mode batch</span></a></p>
       </div>
       <div class="drop-wrap">
         <section class="drop-card" id="dropCard">
@@ -101,65 +99,65 @@
             </div>
             <span class="drop-plus">+</span>
           </div>
-          <h2>Pilih satu file</h2>
-          <p class="drop-copy">Seret file ke sini atau <button class="text-button" id="browseBtn" type="button">telusuri
-              file</button></p>
-          <p class="drop-meta">Satu file per proses · Maks. 4 GB · Tidak diunggah</p>
+          <h2><span data-i18n="ui.chooseASingleFile">Pilih satu file</span></h2>
+          <p class="drop-copy"><span data-i18n="ui.dragAFileHereOr">Seret file ke sini atau</span> <button class="text-button" id="browseBtn" type="button"><span data-i18n="ui.browseFiles">telusuri
+              file</span></button></p>
+          <p class="drop-meta"><span data-i18n="ui.oneFileAtATimeMax4GBNo">Satu file per proses · Maks. 4 GB · Tidak diunggah</span></p>
           <div class="drop-formats" aria-hidden="true">
-            <span>Gambar</span><span>PDF</span><span>Audio</span><span>Video</span>
+            <span><span data-i18n="ui.images">Gambar</span></span><span>PDF</span><span>Audio</span><span>Video</span>
           </div>
         </section>
-        <p class="drop-footnote"><span class="lock-dot" aria-hidden="true"></span>Diproses oleh browser Anda sendiri.
-          Tidak ada file yang meninggalkan perangkat.</p>
+        <p class="drop-footnote"><span class="lock-dot" aria-hidden="true"></span><span data-i18n="ui.processedInYourOwnBrowserNoFilesLeaveYour">Diproses oleh browser Anda sendiri.
+          Tidak ada file yang meninggalkan perangkat.</span></p>
       </div>
     </section>
     <section class="workspace" id="workspace" hidden>
       <div class="workspace-top">
         <button class="back-button" id="newFileBtn" type="button">
           <span class="icon" aria-hidden="true"></span>
-          Ganti file
+          <span data-i18n="ui.changeFile">Ganti file</span>
         </button>
         <div class="workspace-status" id="readStatus" role="status" aria-live="polite"></div>
       </div>
 
       <div class="preview-dock" id="previewDock">
-        <section class="file-card file-card--top" id="fileCard" aria-label="Pratinjau dan informasi file"></section>
+        <section class="file-card file-card--top" id="fileCard" aria-label="Pratinjau dan informasi file" data-i18n-aria-label="ui.filePreviewAndInformation"></section>
       </div>
       <div class="workspace-grid">
-        <section class="editor-card" aria-label="Editor metadata">
+        <section class="editor-card" aria-label="Editor metadata" data-i18n-aria-label="ui.metadataEditor">
           <div class="editor-head">
-            <div class="tabs" role="tablist" aria-label="Bagian editor">
+            <div class="tabs" role="tablist" aria-label="Bagian editor" data-i18n-aria-label="ui.editorSections">
               <button class="tab is-active" id="tabMetadata" type="button" role="tab" aria-selected="true"
                 aria-controls="panel" data-tab="metadata">Metadata</button>
               <button class="tab" id="tabRaw" type="button" role="tab" aria-selected="false" aria-controls="panel"
-                data-tab="raw">Tag mentah <span class="tab-count" id="rawCount">0</span></button>
+                data-tab="raw"><span data-i18n="ui.rawTags">Tag mentah</span> <span class="tab-count" id="rawCount">0</span></button>
             </div>
-            <span class="editor-badge" id="editorBadge">Belum dibaca</span>
+            <span class="editor-badge" id="editorBadge"><span data-i18n="ui.notReadYet">Belum dibaca</span></span>
           </div>
           <div id="panel" class="panel" role="tabpanel" aria-labelledby="tabMetadata"></div>
           <div class="action-bar" id="actionBar">
             <div class="action-summary">
               <span class="dirty-dot" id="dirtyDot"></span>
-              <span id="dirtyState">Belum ada perubahan</span>
+              <span id="dirtyState"><span data-i18n="ui.noChangesYet">Belum ada perubahan</span></span>
             </div>
             <div class="output-name-wrap">
-              <label for="outputBase">Nama file hasil</label>
+              <label for="outputBase"><span data-i18n="ui.outputFilename">Nama file hasil</span></label>
               <div class="output-name-field">
-                <input id="outputBase" type="text" autocomplete="off" spellcheck="false" placeholder="nama-file"
+                <input id="outputBase" type="text" autocomplete="off" spellcheck="false" placeholder="nama-file" data-i18n-placeholder="ui.filename"
                   aria-describedby="outputExt">
-                <span class="output-ext" id="outputExt" title="Ekstensi dikunci sesuai format file">.bin</span>
+                <span class="output-ext" id="outputExt" title="Ekstensi dikunci sesuai format file" data-i18n-title="ui.extensionLockedToTheFileFormat">.bin</span>
               </div>
             </div>
             <div class="action-buttons">
-              <button class="button ghost" id="resetBtn" type="button" disabled>Batalkan perubahan</button>
+              <button class="button ghost" id="resetBtn" type="button" disabled><span data-i18n="ui.discardChanges">Batalkan perubahan</span></button>
               <button class="button primary" id="saveBtn" type="button" disabled>
                 <span class="icon" aria-hidden="true"></span>
-                <span id="saveLabel">Simpan metadata</span>
+                <span id="saveLabel"><span data-i18n="ui.saveDownload">Simpan metadata</span></span>
               </button>
             </div>
             <div class="progress" id="progress" hidden>
               <div class="progress-track"><span class="progress-bar" id="progressBar"></span></div>
-              <span class="progress-label" id="progressLabel">Menyiapkan…</span>
+              <span class="progress-label" id="progressLabel"><span data-i18n="ui.preparing">Menyiapkan…</span></span>
             </div>
           </div>
         </section>
@@ -167,49 +165,49 @@
           <section class="side-note">
             <span class="side-note-icon" aria-hidden="true"></span>
             <div>
-              <h3>Data tetap lokal</h3>
-              <p>MeInsert membaca dan menulis file di memori browser. Tidak ada request upload, penyimpanan server, atau
-                pelacakan file.</p>
+              <h3><span data-i18n="ui.dataStaysLocal">Data tetap lokal</span></h3>
+              <p><span data-i18n="ui.meinsertReadsAndWritesFilesInBrowserMemoryNo">MeInsert membaca dan menulis file di memori browser. Tidak ada request upload, penyimpanan server, atau
+                pelacakan file.</span></p>
             </div>
           </section>
           <section class="side-note muted">
             <div>
-              <h3>Tips aman</h3>
-              <p>Simpan file asli sampai hasilnya sudah diperiksa. Beberapa format ditulis ulang untuk memperbarui
-                metadata.</p>
+              <h3><span data-i18n="ui.safetyTip">Tips aman</span></h3>
+              <p><span data-i18n="ui.keepTheOriginalUntilYouHaveCheckedTheResult">Simpan file asli sampai hasilnya sudah diperiksa. Beberapa format ditulis ulang untuk memperbarui
+                metadata.</span></p>
             </div>
           </section>
         </div>
       </div>
     </section>
-    <section class="support-strip" aria-label="Cara kerja">
+    <section class="support-strip" aria-label="Cara kerja" data-i18n-aria-label="ui.howItWorks">
       <div class="support-item">
         <span class="support-number">01</span>
         <div>
-          <h3>Deteksi dari isi file</h3>
-          <p>Magic bytes menentukan format, bukan hanya ekstensi. Field yang muncul menyesuaikan format.</p>
+          <h3><span data-i18n="ui.detectFromFileContents">Deteksi dari isi file</span></h3>
+          <p><span data-i18n="ui.magicBytesDetermineTheFormatNotJustTheExtension">Magic bytes menentukan format, bukan hanya ekstensi. Field yang muncul menyesuaikan format.</span></p>
         </div>
       </div>
       <div class="support-item">
         <span class="support-number">02</span>
         <div>
-          <h3>Hanya yang berubah</h3>
-          <p>Field yang tidak disentuh dibiarkan. Mengosongkan field akan menghapus tag terkait.</p>
+          <h3><span data-i18n="ui.onlyWhatChanges">Hanya yang berubah</span></h3>
+          <p><span data-i18n="ui.untouchedFieldsStayAsTheyAreClearingAField">Field yang tidak disentuh dibiarkan. Mengosongkan field akan menghapus tag terkait.</span></p>
         </div>
       </div>
       <div class="support-item">
         <span class="support-number">03</span>
         <div>
-          <h3>Verifikasi sebelum unduh</h3>
-          <p>Hasil dibaca ulang di browser. Unduh file baru; file asli tidak pernah ditimpa.</p>
+          <h3><span data-i18n="ui.verifyBeforeDownloading">Verifikasi sebelum unduh</span></h3>
+          <p><span data-i18n="ui.resultsAreReadBackInYourBrowserDownloadA">Hasil dibaca ulang di browser. Unduh file baru; file asli tidak pernah ditimpa.</span></p>
         </div>
       </div>
     </section>
   </main>
   <footer class="site-footer">
     <div class="shell footer-inner">
-      <p><strong>MeInsert</strong> — editor metadata statis. Dibuat untuk file yang ingin tetap privat.</p>
-      <p class="footer-meta">Tidak ada backend · Tidak ada upload · <a href="https://github.com/mifada2543/meinsert" rel="noopener noreferrer">Source</a> · <a href="./LICENSE">AGPLv3</a> · <a href="./assets/THIRD_PARTY_LICENSES.md">Atribusi</a> · <span id="year"></span></p>
+      <p><strong>MeInsert</strong> <span data-i18n="ui.aStaticMetadataEditorMadeForFilesYouWant">— editor metadata statis. Dibuat untuk file yang ingin tetap privat.</span></p>
+      <p class="footer-meta"><span data-i18n="ui.noBackendNoUploads">Tidak ada backend · Tidak ada upload ·</span> <a href="https://github.com/mifada2543/meinsert" rel="noopener noreferrer">Source</a> · <a href="./LICENSE">AGPLv3</a> · <a href="./assets/THIRD_PARTY_LICENSES.md"><span data-i18n="ui.attributions">Atribusi</span></a> · <a href="./NOTICE.md" data-notice>NOTICE</a> · <a href="./TERMS.md" data-policy="terms"><span data-i18n="ui.termsOfUse">Kebijakan Penggunaan</span></a> · <a href="./PRIVACY.md" data-policy="privacy"><span data-i18n="ui.privacy">Privasi</span></a> · <span id="year"></span></p>
     </div>
   </footer>
   <div class="toast-region" id="toastRegion" role="status" aria-live="polite" aria-atomic="false"></div>

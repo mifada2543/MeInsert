@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { bindTranslation } from '../i18n/index.js';
 import { qs } from './dom.js';
 import { icon } from './icons.js';
 const STORAGE_KEY = 'meinsert-theme';
@@ -11,8 +12,8 @@ function syncThemeButton(theme) {
   const toggle = themeToggle();
   if (!toggle) return;
   const label = theme === 'dark' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap';
-  toggle.title = label;
-  toggle.setAttribute('aria-label', label);
+  bindTranslation(toggle, 'title', () => (label));
+  bindTranslation(toggle, 'aria-label', () => (label));
 }
 function preferredTheme() {
   let stored = null;

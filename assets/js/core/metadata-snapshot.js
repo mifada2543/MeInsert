@@ -117,7 +117,6 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
     .filter((row) => !IGNORED_GROUPS.has(row.group))
     .filter((row) => !IGNORED_RAW.test(row.tag))
     .sort((a, b) => a.canonicalTag.localeCompare(b.canonicalTag) || a.value.localeCompare(b.value));
-
   const xmpSource = readResult?.xmp;
   const xmpRows = Array.isArray(xmpSource) ? xmpSource : xmpSource?.properties || [];
   const xmpByKey = new Map();
@@ -148,7 +147,6 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
       .map(({ values, ...entry }) => ({ ...entry, value: [...values].join(' | ') }))
       .sort((a, b) => a.canonicalTag.localeCompare(b.canonicalTag)),
   };
-
   return {
     version: SNAPSHOT_VERSION,
     format: {

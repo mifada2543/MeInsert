@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { t, translateSource, translated } from '../i18n/index.js';
 import { el, clear, formatBytes } from './dom.js';
 import { icon } from './icons.js';
 import { openLightbox } from './lightbox.js';
@@ -59,14 +60,14 @@ function buildField(field, state, handlers) {
   });
   const inputId = `field-${field.id}`;
   const head = el('div', { className: 'field-head' },
-    el('label', { for: inputId, textContent: field.label }),
+    el('label', { for: inputId, textContent: translated(() => (field.label)) }),
     el('span', { className: 'field-native', textContent: field.native || '' }),
-    el('span', { className: 'field-dirty', hidden: true, title: 'Field ini berubah' }),
+    el('span', { className: 'field-dirty', hidden: true, title: translated(() => (t('ui.thisFieldHasChanged'))) }),
     el('button', {
       className: 'field-clear',
       type: 'button',
-      title: 'Hapus nilai field ini',
-      'aria-label': `Hapus nilai ${field.label}`,
+      title: translated(() => (t('ui.clearThisField'))),
+      'aria-label': translated(() => (t('ui.clear', { v0: translateSource(field.label) }))),
       on: {
         click: (event) => {
           event.preventDefault();
@@ -86,7 +87,7 @@ function buildField(field, state, handlers) {
     autocomplete: 'off',
     spellcheck: field.type === 'text' || field.type === 'textarea' || field.type === 'tags' ? 'true' : 'false',
     value,
-    placeholder: field.placeholder || '',
+    placeholder: translated(() => (field.placeholder || '')),
     on: {
       input: (event) => {
         handlers.onFieldChange(field.id, event.target.value);
@@ -111,7 +112,7 @@ function buildField(field, state, handlers) {
     input.value = value;
   }
   wrapper.append(head, input);
-  if (field.helper) wrapper.append(el('p', { className: 'field-helper', textContent: field.helper }));
+  if (field.helper) wrapper.append(el('p', { className: 'field-helper', textContent: translated(() => (field.helper)) }));
   syncField(wrapper, field, state);
   return wrapper;
 }
@@ -133,7 +134,7 @@ export function syncFormState(container, state) {
 function renderCustomRows(list, state, handlers) {
   clear(list);
   if (!state.customRows.length) {
-    list.append(el('div', { className: 'custom-empty', textContent: 'Belum ada tag kustom. Tambahkan jika perlu.' }));
+    list.append(el('div', { className: 'custom-empty', textContent: translated(() => (t('ui.noCustomTagsYetAddThemIfNeeded'))) }));
     return;
   }
   for (const row of state.customRows) {
@@ -142,10 +143,10 @@ function renderCustomRows(list, state, handlers) {
       name: 'custom-tag-name',
       type: 'text',
       value: row.key || '',
-      placeholder: customPlaceholder(state.adapter.meta.id),
+      placeholder: translated(() => (customPlaceholder(state.adapter.meta.id))),
       autocomplete: 'off',
       spellcheck: 'false',
-      'aria-label': 'Nama tag kustom',
+      'aria-label': translated(() => (t('ui.customTagName'))),
       on: {
         input: (event) => handlers.onCustomChange(row.uid, 'key', event.target.value),
       },
@@ -154,9 +155,9 @@ function renderCustomRows(list, state, handlers) {
       type: 'text',
       name: 'custom-tag-value',
       value: row.value || '',
-      placeholder: 'Nilai',
+      placeholder: translated(() => (t('ui.value'))),
       autocomplete: 'off',
-      'aria-label': 'Nilai tag kustom',
+      'aria-label': translated(() => (t('ui.customTagValue'))),
       on: {
         input: (event) => handlers.onCustomChange(row.uid, 'value', event.target.value),
       },
@@ -164,8 +165,8 @@ function renderCustomRows(list, state, handlers) {
     const remove = el('button', {
       className: 'custom-delete',
       type: 'button',
-      title: 'Hapus tag kustom',
-      'aria-label': `Hapus tag ${row.key || 'kustom'}`,
+      title: translated(() => (t('ui.removeCustomTag'))),
+      'aria-label': translated(() => (t('ui.removeTag', { v0: row.key || t('common.custom') }))),
       on: {
         click: () => {
           handlers.onCustomDelete(row.uid);
@@ -175,7 +176,7 @@ function renderCustomRows(list, state, handlers) {
     }, icon('trash'));
     list.append(el('div', {
       className: 'custom-row',
-      title: row.originalKey ? 'Tag sudah ada di file' : 'Tag baru',
+      title: translated(() => (row.originalKey ? t('ui.tagAlreadyExistsInTheFile') : t('ui.newTag'))),
     }, keyInput, valueInput, remove));
   }
 }
@@ -211,21 +212,22 @@ export function renderCoverBlock(adapter, state, handlers) {
       ? el('button', {
           className: 'cover-zoom',
           type: 'button',
-          title: 'Klik untuk perbesar thumbnail',
-          'aria-label': 'Perbesar pratinjau thumbnail',
+          title: translated(() => (t('ui.clickToEnlargeThumbnail'))),
+          'aria-label': translated(() => (t('ui.enlargeThumbnailPreview'))),
           on: {
             click: () => openLightbox({
               src: previewUrl,
               alt: 'Pratinjau thumbnail',
               caption: hint || 'Pratinjau thumbnail',
+              captionMessage: true,
             }),
           },
         },
-          el('img', { src: previewUrl, alt: 'Pratinjau thumbnail' }),
+          el('img', { src: previewUrl, alt: translated(() => (t('ui.thumbnailPreview'))) }),
           el('span', { className: 'cover-zoom-badge', 'aria-hidden': 'true' }, icon('expand')))
       : el('div', { className: 'cover-placeholder' },
           icon('image'),
-          el('span', { textContent: original && !previewUrl ? 'Cover ada (pratinjau tidak tersedia)' : 'Belum ada thumbnail' }),
+          el('span', { textContent: translated(() => (original && !previewUrl ? t('ui.coverExistsPreviewUnavailable') : t('ui.noThumbnailYet'))) }),
         ),
   );
   const input = el('input', {
@@ -245,26 +247,26 @@ export function renderCoverBlock(adapter, state, handlers) {
     className: 'button ghost',
     type: 'button',
     on: { click: () => input.click() },
-  }, icon('plus'), 'Pilih gambar…');
+  }, icon('plus'), translated(() => (t('ui.chooseImage'))));
   const remove = el('button', {
     className: 'button ghost danger',
     type: 'button',
     hidden: !(action !== 'remove' && (original || chosen || action === 'set')),
     on: { click: () => handlers.onCoverRemove() },
-  }, icon('trash'), 'Hapus thumbnail');
+  }, icon('trash'), translated(() => (t('ui.removeThumbnail'))));
   const undo = el('button', {
     className: 'button ghost',
     type: 'button',
     hidden: action === 'keep',
     on: { click: () => handlers.onCoverUndo() },
-  }, 'Batalkan');
+  }, translated(() => (t('ui.cancel2'))));
   return el('section', { className: 'cover-block' },
     el('div', { className: 'cover-head' },
       el('div', {},
-        el('h2', { textContent: 'Thumbnail / Sampul' }),
-        el('p', { textContent: 'Gambar sampul di-embed ke dalam file (MP3: APIC, FLAC/Ogg: METADATA_BLOCK_PICTURE, MP4: covr, MKV: attachment). Tidak semua pemutar menampilkannya.' }),
+        el('h2', { textContent: translated(() => (t('ui.thumbnailCover'))) }),
+        el('p', { textContent: translated(() => (t('ui.theCoverImageIsEmbeddedInTheFileMP3'))) }),
       ),
-      el('span', { className: `cover-badge ${badge.className}`.trim(), textContent: badge.text }),
+      el('span', { className: `cover-badge ${badge.className}`.trim(), textContent: translated(() => (badge.text)) }),
     ),
     el('div', { className: 'cover-body' },
       preview,
@@ -272,7 +274,7 @@ export function renderCoverBlock(adapter, state, handlers) {
         choose,
         remove,
         undo,
-        el('p', { className: 'cover-hint', textContent: hint }),
+        el('p', { className: 'cover-hint', textContent: translated(() => (hint)) }),
         input,
       ),
     ),
@@ -288,10 +290,10 @@ export function renderForm(container, { adapter, sections, state, handlers, cove
     const block = el('section', { className: 'form-section' },
       el('div', { className: 'section-head' },
         el('div', {},
-          el('h2', { textContent: section.title }),
-          section.description ? el('p', { textContent: section.description }) : null,
+          el('h2', { textContent: translated(() => (section.title)) }),
+          section.description ? el('p', { textContent: translated(() => (section.description)) }) : null,
         ),
-        el('span', { className: 'section-index', textContent: String(index).padStart(2, '0') }),
+        el('span', { className: 'section-index', textContent: translated(() => (String(index).padStart(2, '0'))) }),
       ),
       el('div', { className: 'field-grid' }, ...sectionFields.map((field) => buildField(field, state, handlers))),
     );
@@ -310,12 +312,12 @@ export function renderForm(container, { adapter, sections, state, handlers, cove
         renderCustomRows(list, state, handlers);
       },
     },
-  }, icon('plus'), 'Tambah tag');
+  }, icon('plus'), translated(() => (t('ui.addTag'))));
   container.append(el('section', { className: 'custom-block' },
     el('div', { className: 'custom-head' },
       el('div', {},
-        el('h2', { textContent: 'Tag kustom' }),
-        el('p', { textContent: customHint(adapter.meta.id) }),
+        el('h2', { textContent: translated(() => (t('ui.customTags'))) }),
+        el('p', { textContent: translated(() => (customHint(adapter.meta.id))) }),
       ),
       addButton,
     ),

@@ -1,15 +1,12 @@
 name: CI
-
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   unit:
     name: Unit test & manifest
@@ -40,5 +37,23 @@ jobs:
     - run: npm ci
     - name: Smoke test (Chrome headless)
       run: npm run test:e2e
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Bilingual UI (Chrome headless)
+      run: npm run test:i18n
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+  compat:
+    name: Real fixture compatibility (Chrome)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: npm
+    - run: npm ci
+    - name: Compatibility harness (checked-in fixtures)
+      run: npm run test:compat
       env:
         CHROME_BIN: /usr/bin/google-chrome

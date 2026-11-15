@@ -83,7 +83,6 @@ function sniff(bytes) {
 function extensionMatches(ext, byExt, byMagic) {
   if (byExt.id !== byMagic.id) return false;
   if (byExt.subtype === byMagic.subtype) return true;
-  // These extensions describe a container that may hold more than one subtype.
   if ((ext === 'ogg' || ext === 'oga') && byMagic.id === 'ogg') return true;
   if ((ext === 'mp4' || ext === 'm4v') && byMagic.id === 'mp4') return true;
   return false;

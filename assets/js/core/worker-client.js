@@ -6,13 +6,11 @@ const WORKER_URLS = {
   media: new URL('../workers/media.worker.js', import.meta.url),
   pdf: new URL('../workers/pdf.worker.js', import.meta.url),
 };
-
 export function timeoutForAction(action) {
   if (action === 'write') return 300_000;
   if (action === 'dispose') return 10_000;
   return 90_000;
 }
-
 export function retryableReadError(error) {
   const code = error?.code;
   return code === 'WATCHDOG_TIMEOUT' || code === 'WORKER_CRASH';
@@ -78,7 +76,6 @@ class EngineWorker {
         const error = new Error('Mesin metadata tidak menjawab (timeout). Mesin dimulai ulang.');
         error.code = 'WATCHDOG_TIMEOUT';
         error.detail = `action=${message?.action || 'unknown'} timeout=${timeoutMs}ms`;
-        // Restart a hung engine so the next request gets a fresh worker.
         try {
           this.worker?.terminate();
         } catch { /* ignore */ }
@@ -154,7 +151,6 @@ export class MetadataClient {
     try {
       return await attempt();
     } catch (error) {
-      // Retry read exactly once after a hang/crash; writes never auto-retry.
       if (!retryableReadError(error)) throw error;
       try { onProgress?.({ stage: 'Mesin metadata dimulai ulang…', pct: 1 }); } catch { /* UI best-effort */ }
       try { this.cancel(engine); } catch { /* fresh worker below */ }

@@ -3,7 +3,6 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { createSnapshot, hashBytes, normalizeCustomKey, normalizeFieldValue, normalizeRawTag, normalizeText } from './metadata-snapshot.js';
 import { isCoverRaw, rulesFor } from './integrity-rules.js';
-
 function fieldsFor(adapter, detection) {
   if (!adapter) return [];
   if (typeof adapter.fieldsFor === 'function') return adapter.fieldsFor(detection?.subtype) || [];

@@ -67,7 +67,6 @@ export default [
     },
   },
   {
-    // Callback page.evaluate() dieksekusi di dalam browser.
     files: ['tests/e2e/**/*.mjs'],
     languageOptions: {
       globals: {

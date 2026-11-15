@@ -163,7 +163,6 @@ export class BatchProcessor {
           ? 'Selesai · perlu diperiksa'
           : integrity.status === 'warning' ? 'Selesai · ada catatan' : 'Selesai';
         if (lowMemory && onOutput) {
-          // Hemat memori: unduh saat ini juga, jangan tahan semua output untuk ZIP.
           try {
             onOutput(item, blob);
             item.downloadedPerFile = true;

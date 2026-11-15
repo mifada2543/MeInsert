@@ -13,7 +13,5 @@
   const theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
   try {
     document.documentElement.dataset.theme = theme;
-  } catch {
-    // DOM belum siap — biarkan tema bawaan.
-  }
+  } catch {}
 }());

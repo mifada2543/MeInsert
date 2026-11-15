@@ -63,7 +63,6 @@ export function pick(tags, keys) {
 export function uniqueStrings(values) {
   return [...new Set(values.map((v) => asString(v).trim()).filter(Boolean))];
 }
-
 export function validateCustomKey(key) {
   if (!key) return 'Nama tag wajib diisi.';
   if (!/^[A-Za-z0-9_][A-Za-z0-9_.:-]{0,63}$/.test(key)) {
@@ -73,7 +72,7 @@ export function validateCustomKey(key) {
 }
 export function safeOutputName(name, fallback = 'file') {
   const base = String(name || fallback)
-    // eslint-disable-next-line no-control-regex -- sengaja menyingkirkan karakter kontrol.
+    // eslint-disable-next-line no-control-regex -- Remove control characters from filenames.
     .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-')
     .replace(/\s+/g, ' ')
     .trim()

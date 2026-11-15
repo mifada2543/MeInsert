@@ -9,8 +9,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#f5f4ed" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14141f" media="(prefers-color-scheme: dark)">
-  <meta name="description"
-    content="MeInsert: baca dan tulis metadata file langsung di browser. Tanpa upload, tanpa server.">
+  <meta name="description" content="MeInsert: baca dan tulis metadata file langsung di browser. Tanpa upload, tanpa server.">
   <link rel="manifest" href="manifest.json">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,8 +18,7 @@
   <script src="assets/js/theme-init.js"></script>
   <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
   <meta property="og:title" content="MeInsert — Edit metadata file tanpa upload">
-  <meta property="og:description"
-    content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
+  <meta property="og:description" content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
   <meta property="og:image" content="https://mifada2543.github.io/MeInsert/assets/img/og-image.png">
   <meta property="og:url" content="https://mifada2543.github.io/MeInsert/">
   <meta property="og:type" content="website">
@@ -28,8 +26,7 @@
   <meta property="og:site_name" content="MeInsert">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="MeInsert — Edit metadata file tanpa upload">
-  <meta name="twitter:description"
-    content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
+  <meta name="twitter:description" content="Baca & tulis metadata gambar, audio, video, PDF langsung di browser. 100% lokal, file tidak pernah keluar perangkat.">
   <meta name="twitter:image" content="https://mifada2543.github.io/MeInsert/assets/img/og-image.png">
   <title>MeInsert | Batch metadata tanpa upload</title>
   <link rel="stylesheet" href="assets/css/app.bundle.css">
@@ -38,23 +35,24 @@
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 </head>
 <body data-page="batch">
-  <a class="skip-link" href="#main">Lewati ke konten</a>
+  <a class="skip-link" href="#main"><span data-i18n="ui.skipToContent">Lewati ke konten</span></a>
   <header class="site-header">
     <div class="shell header-inner">
-      <a class="brand" href="./" aria-label="MeInsert Metadata lokal, kembali ke awal">
+      <a class="brand" href="./" aria-label="MeInsert Metadata lokal, kembali ke awal" data-i18n-aria-label="ui.meinsertLocalMetadataBackToHome">
         <img class="brand-logo" src="assets/img/logo-96.png" width="42" height="42" alt="">
-        <span class="brand-text">MeInsert<small>metadata lokal</small></span>
+        <span class="brand-text">MeInsert<small><span data-i18n="ui.localMetadata">metadata lokal</span></small></span>
       </a>
-      <nav class="header-nav" aria-label="Mode MeInsert">
-        <a class="header-link" data-nav="single" href="./single.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg><span>Satu file</span></a>
-        <a class="header-link" data-nav="batch" href="./batch.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 4.9-9 4.9-9-4.9Z"/><path d="m3 12 9 4.9 9-4.9"/><path d="m3 17 9 4.9 9-4.9"/></svg><span>Banyak file</span></a>
+      <nav class="header-nav" aria-label="Mode MeInsert" data-i18n-aria-label="ui.meinsertModes">
+        <a class="header-link" data-nav="single" href="./single.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg><span><span data-i18n="ui.singleFile">Satu file</span></span></a>
+        <a class="header-link" data-nav="batch" href="./batch.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 4.9-9 4.9-9-4.9Z"/><path d="m3 12 9 4.9 9-4.9"/><path d="m3 17 9 4.9 9-4.9"/></svg><span><span data-i18n="ui.batch">Banyak file</span></span></a>
       </nav>
       <div class="header-actions">
-        <span class="privacy-pill" title="File tidak pernah dikirim ke server">
+        <span class="privacy-pill" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer">
           <span class="privacy-dot"></span>
-          100% di perangkat
+          <span data-i18n="ui.100OnDevice">100% di perangkat</span>
         </span>
-        <button class="icon-button" id="themeToggle" type="button" aria-label="Ganti tema" title="Ganti tema">
+        <button class="icon-button language-toggle" type="button" data-language-toggle aria-label="Ganti bahasa ke English" title="Ganti bahasa ke English">ID</button>
+        <button class="icon-button" id="themeToggle" type="button" aria-label="Ganti tema" data-i18n-aria-label="ui.changeTheme" title="Ganti tema" data-i18n-title="ui.changeTheme">
           <span class="theme-icon theme-icon-sun" id="themeIconSun" aria-hidden="true"></span>
           <span class="theme-icon theme-icon-moon" id="themeIconMoon" aria-hidden="true"></span>
         </button>
@@ -64,10 +62,10 @@
   <main class="shell" id="main">
     <section class="landing" id="landing">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="eyebrow-line"></span>Proses massal untuk banyak file</p>
-        <h1>Periksa semua file,<br><span class="accent-text" title="File tidak pernah dikirim ke server">lalu terapkan.</span></h1>
-        <p class="lede">Unggah beberapa file sekaligus. MeInsert mengelompokkan metadata per format, menjaga file yang tidak dicentang tetap utuh, lalu mengunduh hasilnya sebagai ZIP — lengkap dengan laporan.</p>
-        <div class="format-chips" aria-label="Format yang didukung">
+        <p class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="ui.batchProcessingForMultipleFiles">Proses massal untuk banyak file</span></p>
+        <h1><span data-i18n="ui.reviewAllFiles">Periksa semua file,</span><br><span class="accent-text" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer"><span data-i18n="ui.thenApply">lalu terapkan.</span></span></h1>
+        <p class="lede"><span data-i18n="ui.chooseMultipleLocalFilesMeInsertGroupsMetadataByFormat">Unggah beberapa file sekaligus. MeInsert mengelompokkan metadata per format, menjaga file yang tidak dicentang tetap utuh, lalu mengunduh hasilnya sebagai ZIP — lengkap dengan laporan.</span></p>
+        <div class="format-chips" aria-label="Format yang didukung" data-i18n-aria-label="ui.supportedFormats">
           <span class="chip"><span class="chip-dot image"></span>JPG</span>
           <span class="chip"><span class="chip-dot image"></span>PNG</span>
           <span class="chip"><span class="chip-dot image"></span>WebP</span>
@@ -80,9 +78,9 @@
           <span class="chip"><span class="chip-dot video"></span>MKV</span>
         </div>
         <div class="trust-row">
-          <span><strong>01</strong> Cek massal</span>
-          <span><strong>02</strong> Pilih per grup</span>
-          <span><strong>03</strong> Unduh ZIP</span>
+          <span><strong>01</strong> <span data-i18n="ui.batchReview">Cek massal</span></span>
+          <span><strong>02</strong> <span data-i18n="ui.selectByGroup">Pilih per grup</span></span>
+          <span><strong>03</strong> <span data-i18n="ui.downloadZIP">Unduh ZIP</span></span>
         </div>
       </div>
       <div class="drop-wrap">
@@ -98,16 +96,16 @@
             </div>
             <span class="drop-plus">+</span>
           </div>
-          <h2>Pilih banyak file</h2>
-          <p class="drop-copy">Seret beberapa file ke sini atau <button class="text-button" id="batchBrowseBtn" type="button">telusuri
-              file</button></p>
-          <p class="drop-meta">Video maks. 10 · Audio maks. 20 · Gambar/PDF maks. 50 · Total maks. 2 GB</p>
+          <h2><span data-i18n="ui.chooseMultipleFiles">Pilih banyak file</span></h2>
+          <p class="drop-copy"><span data-i18n="ui.dragMultipleFilesHereOr">Seret beberapa file ke sini atau</span> <button class="text-button" id="batchBrowseBtn" type="button"><span data-i18n="ui.browseFiles">telusuri
+              file</span></button></p>
+          <p class="drop-meta"><span data-i18n="ui.max10Videos20AudioFiles50ImagesPDFs">Video maks. 10 · Audio maks. 20 · Gambar/PDF maks. 50 · Total maks. 2 GB</span></p>
           <div class="drop-formats" aria-hidden="true">
-            <span>ZIP hasil</span><span>Laporan</span><span>Per file</span><span>Grup format</span>
+            <span><span data-i18n="ui.outputZIP">ZIP hasil</span></span><span><span data-i18n="ui.reports">Laporan</span></span><span><span data-i18n="ui.perFile">Per file</span></span><span><span data-i18n="ui.formatGroups">Grup format</span></span>
           </div>
         </section>
-        <p class="drop-footnote"><span class="lock-dot" aria-hidden="true"></span>Diproses oleh browser Anda sendiri.
-          Tidak ada file yang meninggalkan perangkat.</p>
+        <p class="drop-footnote"><span class="lock-dot" aria-hidden="true"></span><span data-i18n="ui.processedInYourOwnBrowserNoFilesLeaveYour">Diproses oleh browser Anda sendiri.
+          Tidak ada file yang meninggalkan perangkat.</span></p>
       </div>
     </section>
     <section class="batch-workspace" id="batchWorkspace" hidden>
@@ -115,115 +113,115 @@
       <div class="workspace-top">
         <button class="back-button" id="batchBackBtn" type="button">
           <span class="icon" aria-hidden="true"></span>
-          Kembali
+          <span data-i18n="ui.back">Kembali</span>
         </button>
         <div class="workspace-status batch-status-full" id="batchStatus" role="status" aria-live="polite"></div>
       </div>
       <div class="batch-head">
         <div>
-          <p class="eyebrow"><span class="eyebrow-line"></span>Proses massal</p>
-          <h1>Periksa, pilih,<br><span class="accent-text">lalu terapkan.</span></h1>
-          <p class="batch-lede">File dikelompokkan menurut format. Field mengikuti tiap format; centang file yang ingin diproses. Hasil diunduh sebagai ZIP.</p>
+          <p class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="ui.batchProcessing2">Proses massal</span></p>
+          <h1><span data-i18n="ui.reviewSelect">Periksa, pilih,</span><br><span class="accent-text"><span data-i18n="ui.thenApply">lalu terapkan.</span></span></h1>
+          <p class="batch-lede"><span data-i18n="ui.filesAreGroupedByFormatFieldsAdaptToEach">File dikelompokkan menurut format. Field mengikuti tiap format; centang file yang ingin diproses. Hasil diunduh sebagai ZIP.</span></p>
         </div>
         <div class="batch-head-actions">
-          <button class="button ghost" id="batchReportJsonBtn" type="button">Laporan JSON</button>
-          <button class="button ghost" id="batchReportCsvBtn" type="button">Laporan CSV</button>
+          <button class="button ghost" id="batchReportJsonBtn" type="button"><span data-i18n="ui.jsonReport">Laporan JSON</span></button>
+          <button class="button ghost" id="batchReportCsvBtn" type="button"><span data-i18n="ui.csvReport">Laporan CSV</span></button>
           <button class="button primary" id="batchZipBtn" type="button" disabled>
             <span class="icon" aria-hidden="true"></span>
-            Unduh ZIP
+            <span data-i18n="ui.downloadZIP">Unduh ZIP</span>
           </button>
         </div>
       </div>
-      <div class="batch-summary" id="batchSummary" aria-label="Ringkasan batch"></div>
-      <div class="batch-limits" id="batchLimits" aria-label="Batas penggunaan batch"></div>
+      <div class="batch-summary" id="batchSummary" aria-label="Ringkasan batch" data-i18n-aria-label="ui.batchSummary"></div>
+      <div class="batch-limits" id="batchLimits" aria-label="Batas penggunaan batch" data-i18n-aria-label="ui.batchUsageLimits"></div>
       <section class="batch-cross" id="batchCross" aria-labelledby="batchCrossTitle" hidden>
         <div class="batch-cross-head">
           <div>
-            <h2 id="batchCrossTitle">Lintas format</h2>
-            <p>Isi field standar sekali, lalu terapkan ke semua file terpilih. Field yang tidak tersedia di suatu format otomatis dilewati; nilai di sini menimpa field yang sama di tiap grup.</p>
+            <h2 id="batchCrossTitle"><span data-i18n="ui.acrossFormats">Lintas format</span></h2>
+            <p><span data-i18n="ui.fillInStandardFieldsOnceAndApplyThemTo">Isi field standar sekali, lalu terapkan ke semua file terpilih. Field yang tidak tersedia di suatu format otomatis dilewati; nilai di sini menimpa field yang sama di tiap grup.</span></p>
           </div>
           <label class="batch-cross-toggle">
             <input type="checkbox" id="batchCrossToggle">
-            <span>Terapkan lintas format</span>
+            <span><span data-i18n="ui.applyAcrossFormats">Terapkan lintas format</span></span>
           </label>
         </div>
         <div class="batch-cross-body" id="batchCrossBody" hidden>
           <div class="field-grid batch-field-grid" id="batchCrossFields"></div>
-          <p class="field-helper">Hanya field standar: judul, artis, album, tanggal, genre, komentar, hak cipta, komposer, dan perangkat lunak.</p>
+          <p class="field-helper"><span data-i18n="ui.standardFieldsOnlyTitleArtistAlbumDateGenreComment">Hanya field standar: judul, artis, album, tanggal, genre, komentar, hak cipta, komposer, dan perangkat lunak.</span></p>
         </div>
       </section>
-      <div class="batch-groups" id="batchGroups" aria-label="Daftar file dalam batch"></div>
+      <div class="batch-groups" id="batchGroups" aria-label="Daftar file dalam batch" data-i18n-aria-label="ui.filesInThisBatch"></div>
       <div class="batch-footer">
         <div class="batch-footer-copy">
           <strong id="batchSelectedCount">0 file dipilih</strong>
           <span id="batchOperationCount">0 operasi</span>
           <button class="button ghost small batch-retry-btn" id="batchRetryBtn" type="button" hidden>
-            Coba lagi file gagal
+            <span data-i18n="ui.retryFailedFiles">Coba lagi file gagal</span>
           </button>
           <label class="batch-stop-after">
-            Henti setelah
+            <span data-i18n="ui.stopAfter">Henti setelah</span>
             <input id="batchStopAfter" type="number" min="1" max="20" step="1" value="3">
-            gagal
+            <span data-i18n="ui.failed">gagal</span>
           </label>
         </div>
         <button class="button primary" id="batchApplyBtn" type="button" disabled>
           <span class="icon" aria-hidden="true"></span>
-          Terapkan
+          <span data-i18n="ui.apply">Terapkan</span>
         </button>
       </div>
       <div class="progress batch-progress" id="batchProgress" hidden>
         <div class="progress-track"><span class="progress-bar" id="batchProgressBar"></span></div>
-        <span class="progress-label" id="batchProgressLabel">Menyiapkan…</span>
+        <span class="progress-label" id="batchProgressLabel"><span data-i18n="ui.preparing">Menyiapkan…</span></span>
       </div>
     </section>
     <section class="batch-detail" id="batchDetail" hidden>
       <div class="workspace-top">
         <button class="back-button" id="batchDetailBackBtn" type="button">
           <span class="icon" aria-hidden="true"></span>
-          Daftar file
+          <span data-i18n="ui.fileList">Daftar file</span>
         </button>
         <div class="workspace-status" id="batchDetailStatus" role="status" aria-live="polite"></div>
       </div>
-      <section class="batch-detail-card" aria-label="Detail file dalam batch">
+      <section class="batch-detail-card" aria-label="Detail file dalam batch" data-i18n-aria-label="ui.batchFileDetails">
         <div class="batch-detail-head" id="batchDetailHeader"></div>
-        <div class="batch-tabs" role="tablist" aria-label="Bagian detail file">
+        <div class="batch-tabs" role="tablist" aria-label="Bagian detail file" data-i18n-aria-label="ui.fileDetailSections">
           <button class="batch-tab is-active" id="batchTabSummary" type="button" role="tab" aria-selected="true"
-            aria-controls="batchDetailPanel" data-tab="summary">Ringkasan</button>
+            aria-controls="batchDetailPanel" data-tab="summary"><span data-i18n="ui.summary">Ringkasan</span></button>
           <button class="batch-tab" id="batchTabRaw" type="button" role="tab" aria-selected="false"
-            aria-controls="batchDetailPanel" data-tab="raw">Hapus tag <span class="tab-count" id="batchRawCount">0</span></button>
+            aria-controls="batchDetailPanel" data-tab="raw"><span data-i18n="ui.removeTags">Hapus tag</span> <span class="tab-count" id="batchRawCount">0</span></button>
         </div>
-        <div id="batchPreview" class="batch-preview" aria-label="Pratinjau file" hidden></div>
+        <div id="batchPreview" class="batch-preview" aria-label="Pratinjau file" data-i18n-aria-label="ui.filePreview" hidden></div>
         <div id="batchDetailPanel" class="batch-detail-panel" role="tabpanel" aria-labelledby="batchTabSummary"></div>
       </section>
     </section>
-    <section class="support-strip" aria-label="Cara kerja">
+    <section class="support-strip" aria-label="Cara kerja" data-i18n-aria-label="ui.howItWorks">
       <div class="support-item">
         <span class="support-number">01</span>
         <div>
-          <h3>Deteksi dari isi file</h3>
-          <p>Magic bytes menentukan format, bukan hanya ekstensi. Field yang muncul menyesuaikan format.</p>
+          <h3><span data-i18n="ui.detectFromFileContents">Deteksi dari isi file</span></h3>
+          <p><span data-i18n="ui.magicBytesDetermineTheFormatNotJustTheExtension">Magic bytes menentukan format, bukan hanya ekstensi. Field yang muncul menyesuaikan format.</span></p>
         </div>
       </div>
       <div class="support-item">
         <span class="support-number">02</span>
         <div>
-          <h3>Hanya yang berubah</h3>
-          <p>Field yang tidak disentuh dibiarkan. Mengosongkan field akan menghapus tag terkait.</p>
+          <h3><span data-i18n="ui.onlyWhatChanges">Hanya yang berubah</span></h3>
+          <p><span data-i18n="ui.untouchedFieldsStayAsTheyAreClearingAField">Field yang tidak disentuh dibiarkan. Mengosongkan field akan menghapus tag terkait.</span></p>
         </div>
       </div>
       <div class="support-item">
         <span class="support-number">03</span>
         <div>
-          <h3>Verifikasi sebelum unduh</h3>
-          <p>Hasil dibaca ulang di browser. Unduh file baru; file asli tidak pernah ditimpa.</p>
+          <h3><span data-i18n="ui.verifyBeforeDownloading">Verifikasi sebelum unduh</span></h3>
+          <p><span data-i18n="ui.resultsAreReadBackInYourBrowserDownloadA">Hasil dibaca ulang di browser. Unduh file baru; file asli tidak pernah ditimpa.</span></p>
         </div>
       </div>
     </section>
   </main>
   <footer class="site-footer">
     <div class="shell footer-inner">
-      <p><strong>MeInsert</strong> — editor metadata statis. Dibuat untuk file yang ingin tetap privat.</p>
-      <p class="footer-meta">Tidak ada backend · Tidak ada upload · <a href="https://github.com/mifada2543/meinsert" rel="noopener noreferrer">Source</a> · <a href="./LICENSE">AGPLv3</a> · <a href="./assets/THIRD_PARTY_LICENSES.md">Atribusi</a> · <span id="year"></span></p>
+      <p><strong>MeInsert</strong> <span data-i18n="ui.aStaticMetadataEditorMadeForFilesYouWant">— editor metadata statis. Dibuat untuk file yang ingin tetap privat.</span></p>
+      <p class="footer-meta"><span data-i18n="ui.noBackendNoUploads">Tidak ada backend · Tidak ada upload ·</span> <a href="https://github.com/mifada2543/meinsert" rel="noopener noreferrer">Source</a> · <a href="./LICENSE">AGPLv3</a> · <a href="./assets/THIRD_PARTY_LICENSES.md"><span data-i18n="ui.attributions">Atribusi</span></a> · <a href="./NOTICE.md" data-notice>NOTICE</a> · <a href="./TERMS.md" data-policy="terms"><span data-i18n="ui.termsOfUse">Kebijakan Penggunaan</span></a> · <a href="./PRIVACY.md" data-policy="privacy"><span data-i18n="ui.privacy">Privasi</span></a> · <span id="year"></span></p>
     </div>
   </footer>
   <div class="toast-region" id="toastRegion" role="status" aria-live="polite" aria-atomic="false"></div>

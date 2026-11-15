@@ -4,6 +4,8 @@
 import { qs } from './ui/dom.js';
 import { initTheme } from './ui/theme.js';
 import { registerServiceWorker } from './core/pwa.js';
+import { initLanguage } from './i18n/index.js';
+initLanguage();
 registerServiceWorker();
 initTheme();
 const year = qs('#year');

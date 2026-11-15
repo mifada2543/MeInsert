@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { bindTranslation, t, translated } from '../i18n/index.js';
 import { el, clear } from './dom.js';
 import { icon } from './icons.js';
 export function renderRaw(container, { raw = [], query = '' }) {
@@ -8,18 +9,18 @@ export function renderRaw(container, { raw = [], query = '' }) {
   if (!raw.length) {
     container.append(el('div', { className: 'empty-state' },
       el('div', { className: 'empty-icon' }, icon('tag')),
-      el('h2', { textContent: 'Belum ada tag terbaca' }),
-      el('p', { textContent: 'File ini belum memiliki metadata yang bisa ditampilkan, atau formatnya menyimpan metadata di tempat yang tidak diekspos.' }),
+      el('h2', { textContent: translated(() => (t('ui.noTagsReadYet'))) }),
+      el('p', { textContent: translated(() => (t('ui.thisFileHasNoDisplayableMetadataOrItsFormat'))) }),
     ));
     return;
   }
-  const count = el('span', { className: 'raw-count', textContent: `${raw.length} tag` });
+  const count = el('span', { className: 'raw-count', textContent: translated(() => (t('ui.tags', { v0: raw.length }))) });
   const search = el('input', {
     type: 'search',
-    placeholder: 'Cari nama tag atau nilai…',
+    placeholder: translated(() => (t('ui.searchTagNamesOrValues'))),
     value: query,
     autocomplete: 'off',
-    'aria-label': 'Cari tag mentah',
+    'aria-label': translated(() => (t('ui.searchRawTags2'))),
   });
   const tbody = el('tbody');
   const rows = raw.map((row) => {
@@ -42,7 +43,7 @@ export function renderRaw(container, { raw = [], query = '' }) {
       row.hidden = !match;
       if (match) visible += 1;
     }
-    count.textContent = q ? `${visible} dari ${raw.length} tag` : `${raw.length} tag`;
+    bindTranslation(count, 'textContent', () => (q ? t('ui.ofTags', { v0: visible, v1: raw.length }) : t('ui.tags', { v0: raw.length })));
   });
   container.append(
     el('div', { className: 'raw-toolbar' },
@@ -53,7 +54,7 @@ export function renderRaw(container, { raw = [], query = '' }) {
       el('table', { className: 'raw-table' },
         el('thead', {}, el('tr', {},
           el('th', { textContent: 'Tag' }),
-          el('th', { textContent: 'Nilai' }),
+          el('th', { textContent: translated(() => (t('ui.value'))) }),
         )),
         tbody,
       ),

@@ -1,9 +1,9 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { t, translated, translatedNode, translateSource } from '../i18n/index.js';
 import { el, formatBytes } from './dom.js';
 import { icon } from './icons.js';
-
 function integrityCopy(integrity) {
   if (!integrity) {
     return { title: 'Metadata berhasil disimpan', tone: 'ok', note: 'Hasil sudah dibaca ulang dan siap diunduh.' };
@@ -35,13 +35,12 @@ function integrityCopy(integrity) {
     note: 'Seluruh metadata yang tidak diubah tetap utuh.',
   };
 }
-
 function integrityRow(finding) {
   const before = String(finding.before ?? '').trim();
   const after = String(finding.after ?? '').trim();
   return el('li', { className: `result-finding is-${finding.severity || 'warning'}` },
     el('div', { className: 'result-finding-head' },
-      el('strong', { textContent: finding.message || finding.code || 'Temuan integritas' }),
+      el('strong', { textContent: translated(() => (finding.message || finding.code || t('ui.integrityFindings'))) }),
       el('span', { className: 'result-finding-target', textContent: finding.target || '' }),
     ),
     before || after
@@ -49,7 +48,6 @@ function integrityRow(finding) {
       : null,
   );
 }
-
 function integrityDetails(integrity) {
   if (!integrity) return null;
   const summary = integrity.summary || {};
@@ -57,21 +55,20 @@ function integrityDetails(integrity) {
   const details = el('details', { className: 'result-integrity' },
     el('summary', { className: 'result-integrity-summary' },
       icon('tag'),
-      el('span', { textContent: 'Laporan integritas' }),
-      el('span', { className: 'result-integrity-badge', textContent: String(findings.length) }),
+      el('span', { textContent: translated(() => (t('ui.integrityReport'))) }),
+      el('span', { className: 'result-integrity-badge', textContent: translated(() => (String(findings.length))) }),
     ),
     el('div', { className: 'result-integrity-body' },
       el('p', { className: 'result-integrity-counts' },
-        `${summary.checked || 0} metadata diperiksa · ${summary.expected || 0} sesuai rencana · ${summary.preserved || 0} tetap`,
+        translated(() => (t('ui.metadataEntriesCheckedAsPlannedUnchanged', { v0: summary.checked || 0, v1: summary.expected || 0, v2: summary.preserved || 0 }))),
       ),
       findings.length
         ? el('ul', { className: 'result-findings' }, ...findings.map(integrityRow))
-        : el('p', { className: 'result-integrity-ok', textContent: 'Tidak ada perubahan di luar rencana.' }),
+        : el('p', { className: 'result-integrity-ok', textContent: translated(() => (t('ui.noChangesOutsideThePlan'))) }),
     ),
   );
   return details;
 }
-
 export function renderResultCard(result, { onDownload }) {
   const warnings = result.warnings || [];
   const integrity = result.integrity || null;
@@ -84,18 +81,18 @@ export function renderResultCard(result, { onDownload }) {
       click: () => {
         onDownload();
         button.classList.add('is-done');
-        button.replaceChildren(icon('check'), document.createTextNode('Terunduh'));
+        button.replaceChildren(icon('check'), translatedNode(() => t('ui.downloaded')));
       },
     },
-  }, icon('download'), buttonLabel);
+  }, icon('download'), translated(() => (buttonLabel)));
   return el('div', { className: `result-card is-${copy.tone}`, role: 'status' },
     el('div', { className: 'result-icon' }, icon(copy.tone === 'ok' ? 'check' : 'alert')),
     el('div', { className: 'result-copy' },
-      el('h2', { textContent: copy.title }),
+      el('h2', { textContent: translated(() => (copy.title)) }),
       el('p', { textContent: `${result.filename || 'file'} · ${formatBytes(result.blob?.size || 0)}` }),
-      el('p', { className: `result-warnings${copy.tone === 'ok' ? '' : ' is-visible'}`, textContent: copy.note }),
+      el('p', { className: `result-warnings${copy.tone === 'ok' ? '' : ' is-visible'}`, textContent: translated(() => (copy.note)) }),
       warnings.length
-        ? el('p', { className: 'result-warnings is-visible', textContent: warnings.join(' ') })
+        ? el('p', { className: 'result-warnings is-visible', textContent: translated(() => (warnings.map(translateSource).join(' '))) })
         : null,
       integrityDetails(integrity),
     ),
