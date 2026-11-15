@@ -120,6 +120,6 @@ KONTAK
 ------
 
 Proyek: https://github.com/mifada2543/meinsert
-Live:   https://mifada2543.github.io/MeInsert/
+Live:   https://meinsert.my.id/
 Penulis: mifada2543
 Email:   mifada2543@gmail.com

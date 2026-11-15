@@ -92,6 +92,7 @@ export async function buildPolicies({ check = false } = {}) {
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="${title} MeInsert — pemrosesan metadata lokal, batas penggunaan, dan tanggung jawab pengguna.">
   <title>MeInsert | ${title}</title>
+  <link rel="canonical" href="https://meinsert.my.id/${path}">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="64x64" href="assets/img/favicon-64.png">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">

@@ -11,9 +11,9 @@
 Read and write image, PDF, audio, and video metadata directly on your device.
 No backend. No uploads. No account.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_Now-2ea44f?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
-[![PWA](https://img.shields.io/badge/PWA-Installable-7B3FF2?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
-[![Offline](https://img.shields.io/badge/Offline-Ready-10b981?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_Now-2ea44f?style=for-the-badge)](https://meinsert.my.id/)
+[![PWA](https://img.shields.io/badge/PWA-Installable-7B3FF2?style=for-the-badge)](https://meinsert.my.id/)
+[![Offline](https://img.shields.io/badge/Offline-Ready-10b981?style=for-the-badge)](https://meinsert.my.id/)
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
 
 [![Version](https://img.shields.io/badge/version-v1.2.0-blue?style=for-the-badge)](./package.json)
@@ -27,7 +27,7 @@ No backend. No uploads. No account.
 
 <br/>
 
-[🚀 Try the Live Demo](https://mifada2543.github.io/MeInsert/) ·
+[🚀 Try the Live Demo](https://meinsert.my.id/) ·
 [📄 Edit a Single File](./single.html) ·
 [📦 Batch Processing](./batch.html) ·
 [⚙️ Installation](#quick-installation-xampp)

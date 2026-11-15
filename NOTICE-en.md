@@ -115,6 +115,6 @@ CONTACT
 -------
 
 Project: https://github.com/mifada2543/meinsert
-Live:    https://mifada2543.github.io/MeInsert/
+Live:    https://meinsert.my.id/
 Author:  mifada2543
 Email:   mifada2543@gmail.com

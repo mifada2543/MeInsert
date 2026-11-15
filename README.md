@@ -11,9 +11,9 @@
 Baca & tulis metadata gambar, PDF, audio, dan video langsung di perangkat Anda.
 Tidak ada server. Tidak ada upload. Tidak ada akun.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_Now-2ea44f?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
-[![PWA](https://img.shields.io/badge/PWA-Installable-7B3FF2?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
-[![Offline](https://img.shields.io/badge/Offline-Ready-10b981?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_Now-2ea44f?style=for-the-badge)](https://meinsert.my.id/)
+[![PWA](https://img.shields.io/badge/PWA-Installable-7B3FF2?style=for-the-badge)](https://meinsert.my.id/)
+[![Offline](https://img.shields.io/badge/Offline-Ready-10b981?style=for-the-badge)](https://meinsert.my.id/)
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
 
 [![Version](https://img.shields.io/badge/version-v1.2.0-blue?style=for-the-badge)](./package.json)
@@ -27,7 +27,7 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 
 <br/>
 
-[🚀 Coba Demo Langsung](https://mifada2543.github.io/MeInsert/) ·
+[🚀 Coba Demo Langsung](https://meinsert.my.id/) ·
 [📄 Edit Satu File](./single.html) ·
 [📦 Proses Massal / Batch](./batch.html) ·
 [⚙️ Instalasi](#instalasi-cepat-xampp)
