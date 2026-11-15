@@ -107,11 +107,6 @@ const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 const DC = 'http://purl.org/dc/elements/1.1/';
 const PDF_NS = 'http://ns.adobe.com/pdf/1.3/';
 const XMP_NS = 'http://ns.adobe.com/xap/1.0/';
-const XML_NS = 'http://www.w3.org/XML/1998/namespace';
-function pdfString(value) {
-  const s = String(value ?? '');
-  return s;
-}
 function pdfObjectToString(obj) {
   if (!obj) return '';
   if (typeof obj.decodeDate === 'function') {
@@ -199,7 +194,7 @@ export async function read(file) {
     warnings,
   };
 }
-function ensureInfo(doc, PDFName) {
+function ensureInfo(doc) {
   let ref = doc.context.trailerInfo.Info;
   let info = ref ? doc.context.lookup(ref) : undefined;
   if (!info || typeof info.set !== 'function') {
@@ -208,10 +203,6 @@ function ensureInfo(doc, PDFName) {
     doc.context.trailerInfo.Info = ref;
   }
   return info;
-}
-function dateString(value) {
-  const date = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 }
 function xmpDate(value) {
   return toIsoDate(value);
@@ -531,7 +522,7 @@ export function buildXmp(existing, values, ids = XMP_FIELD_IDS) {
   }
   return { xml, fallback };
 }
-export async function write(file, payload, options = {}, report = () => {}) {
+export async function write(file, payload, _options = {}, report = () => {}) {
   const { PDFDocument, PDFName, PDFString } = await getLib();
   const bytes = new Uint8Array(await file.arrayBuffer());
   let doc;
@@ -544,7 +535,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     }
     throw new AppError('CORRUPT_FILE', 'PDF tidak bisa dibuka untuk ditulis.', message);
   }
-  const info = ensureInfo(doc, PDFName);
+  const info = ensureInfo(doc);
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
   const warnings = [];

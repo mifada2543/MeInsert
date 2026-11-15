@@ -12,6 +12,7 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Try_Now-2ea44f?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
 [![PWA](https://img.shields.io/badge/PWA-Installable-7B3FF2?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
 [![Offline](https://img.shields.io/badge/Offline-Ready-10b981?style=for-the-badge)](https://mifada2543.github.io/MeInsert/)
+[![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
 
 [![Version](https://img.shields.io/badge/version-v1.2.0-blue?style=for-the-badge)](./package.json)
 [![License](https://img.shields.io/badge/Lisensi-AGPLv3-orange?style=for-the-badge)](./LICENSE)
@@ -112,7 +113,7 @@ Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ula
 - **Global search raw tag** — lihat semua tag mentah + cari cepat
 - **Perbesar pratinjau** — klik gambar (pratinjau utama, cover audio, pratinjau cover, pratinjau batch) untuk lightbox layar penuh; klik lagi / scroll untuk zoom, geser untuk menggeser, Esc untuk tutup
 - **Tema gelap/terang** — ikut sistem, bisa manual, transisi circular reveal, tanpa flicker (tema diterapkan sebelum paint pertama)
-- **PWA Installable** — pasang ke layar utama dari menu browser; precache app shell + library vendor (~2 MB), ExifTool WASM di-cache saat pertama dipakai
+- **PWA Installable** — pasang ke layar utama dari menu browser; precache app shell (±570 KB), library vendor + ExifTool WASM di-cache saat pertama dipakai
 - **Manajemen memori WASM** — worker & ExifTool WASM dilepas otomatis setelah batch, saat idle (~8 menit), dan saat halaman ditutup
 
 ---
@@ -136,7 +137,7 @@ npm run vendor
 # → gunakan menu Install / Tambahkan ke layar utama untuk PWA
 ```
 
-> Kunjungan pertama tetap online agar service worker bisa mengunduh cache offline (~2 MB). Setelah itu, semua halaman (`/`, `/single.html`, `/batch.html`) bekerja offline. ExifTool WASM (~27 MB) tidak ikut di-precache; format yang memakainya menjadi offline setelah sekali pemakaian.
+> Kunjungan pertama tetap online agar service worker bisa mengunduh cache offline (±570 KB). Setelah itu, semua halaman (`/`, `/single.html`, `/batch.html`) bekerja offline. Library vendor (mediabunny, pdf-lib, fflate) dan ExifTool WASM (~27 MB) tidak ikut di-precache — semuanya diambil saat pertama dipakai lalu tersimpan, jadi format yang memakainya menjadi offline setelah satu kali pemakaian.
 
 **Catatan:** `assets/vendor/` sudah dibundel di repo — `npm run vendor` hanya diperlukan saat update versi library.
 
@@ -152,7 +153,7 @@ npm run serve  # http://localhost:8000
 | Lapisan | Teknologi |
 |---|---|
 | **App** | Vanilla JS (ES2022), HTML5, CSS3 (responsive + dark mode) |
-| **PWA** | Manifest + Service Worker (precache app shell + vendor; WASM on-demand) |
+| **PWA** | Manifest + Service Worker (precache app shell; vendor & WASM on-demand) |
 | **Engine Gambar/MP4** | ExifTool WASM (~27 MB, lazy-load via Worker) |
 | **Engine Media** | Mediabunny — remux lossless MP3/FLAC/OGG/MKV |
 | **Engine PDF** | pdf-lib — Info Dict + XMP stream |
@@ -165,7 +166,7 @@ npm run serve  # http://localhost:8000
 
 ### Alur kerja
 
-1. **PWA** → `sw.js` precache app shell + library vendor; ExifTool WASM di-cache on-demand → offline setelah kunjungan pertama
+1. **PWA** → `sw.js` precache app shell (±570 KB); library vendor + ExifTool WASM di-cache on-demand → offline setelah kunjungan pertama
 2. **Deteksi** → `detector.js` baca 128 byte pertama → format & subtype
 3. **Adapter** → `registry.js` pilih adapter per format
 4. **Worker** → `worker-client.js` spawn worker per engine, dengan dispose/idle timeout
@@ -185,15 +186,18 @@ MeInsert/
 ├── single.html                # Editor satu file
 ├── batch.html                 # Batch: periksa & proses banyak file
 ├── manifest.json              # PWA manifest
-├── sw.js                      # Service worker (precache app shell + vendor, WASM on-demand)
+├── sw.js                      # Service worker (precache app shell, vendor & WASM on-demand)
 ├── .htaccess                  # MIME types & cache headers
 ├── package.json               # Dev deps & vendor script
 ├── scripts/vendor.mjs         # Copy node_modules → assets/vendor/
+├── scripts/build-css.mjs      # Bundel CSS modular → app.bundle.css
+├── eslint.config.js           # Konfigurasi lint (flat config)
 ├── tests/
 │   ├── e2e/smoke.mjs          # Smoke test browser/PWA/batch
-│   └── unit/                  # Unit test batch, XMP PDF, format lintas grup, cover, snapshot/change-plan/integrity
+│   └── unit/                  # Unit test batch, XMP PDF, format lintas grup, cover, snapshot/change-plan/integrity, manifest
 └── assets/
-    ├── css/app.css            # Styling (responsive, dark mode)
+    ├── css/app.css            # Entry point styling (@import modul; responsif, dark mode)
+    ├── css/app.bundle.css     # Bundel hasil `npm run build:css` (di-commit, 1 request)
     ├── js/
     │   ├── home.js            # Entry beranda (theme + registrasi SW saja)
     │   ├── app.js             # App shell editor satu file & batch; registrasi SW
@@ -210,6 +214,8 @@ MeInsert/
 
 - **ExifTool WASM** di-lazy-load via worker dan tidak di-precache; pertama kali ~1-2 detik, lalu tersimpan di cache service worker
 - **Loading**: beranda memakai `home.js` (kecil); adapter format dan UI batch di-`import()` hanya saat dibutuhkan
+- **CSS**: 27 modul digabung jadi 1 bundel (`app.bundle.css`, di-commit) — 26 request @import turun jadi 1
+- **Logo header**: `logo-96.png` (2,4 KB, 96×96) untuk tampilan 42 px; ikon PWA 192/512 tetap terpisah
 - **PDF:** hanya properti XMP yang diubah yang ditulis ulang; Deskripsi dan properti asing (xmpMM, photoshop, namespace kustom) dipertahankan. Properti XMP diinventarisasi sebelum dan sesudah write; jika paket XMP tidak bisa diparse dengan aman, XMP ditulis ulang dan pengguna diberi peringatan
 - **MP3:** tag ID3 lama dihapus saat rewrite; hanya tag TXXX yang diketahui yang dipertahankan
 - **FLAC/OGG/MKV:** Mediabunny remux lossless (`copy: {mode:'forced'}`) — stream hash identik
@@ -251,9 +257,41 @@ npm run test:e2e
 # Update vendor libraries
 npm install && npm run vendor
 
-# Lint (opsional)
-npx eslint assets/js --ext .js
+# Lint
+npm run lint
 ```
+
+### CSS: sumber modular → satu bundel
+
+`assets/css/app.css` adalah **entry point** yang meng-`@import` modul per
+folder (`base/`, `components/`, `layout/`, `pages/`). Urutan `@import` = urutan
+cascade, jadi jangan diurutkan ulang tanpa menguji.
+
+Browser mengunduh tiap `@import` sebagai request terpisah (26 request). Supaya
+halaman hanya menarik **1 request CSS**, modul digabung otomatis:
+
+```bash
+npm run build:css        # tulis assets/css/app.bundle.css (di-commit)
+npm run check:css       # verifikasi bundel sinkron dengan sumber
+```
+
+`assets/css/app.bundle.css` **di-commit** ke repository, jadi deploy ke
+GitHub Pages tetap tanpa langkah build. Kalau CSS sumber berubah, jalankan
+`npm run build:css` — `npm test` (test manifest) dan CI akan gagal kalau
+bundelnya basi.
+
+### Service worker
+
+- `sw.js` hanya meng-`precache` *app shell* (±570 KB): halaman, bundel CSS,
+  modul inti, worker, font latin, ikon kecil.
+- Library besar (mediabunny, pdf-lib, fflate, id3-writer), adapter format,
+  font latin-ext, dan ExifTool WASM (27 MB) **diambil saat dipakai** lalu
+  otomatis tersimpan — kunjungan pertama jauh lebih ringan.
+- Navigasi memakai *stale-while-revalidate*: kunjungan berikutnya dilayani
+  seketika dari cache, versi baru diambil di latar belakang.
+- Saat ada versi baru, toast **"Versi baru MeInsert sudah tersedia"** muncul
+  dengan tombol *Muat ulang* — aset tidak pernah tertukar diam-diam di tengah
+  pemakaian.
 
 ---
 

@@ -4,7 +4,6 @@
 import { BatchProcessor } from './batch-processor.js';
 import {
   BATCH_LIMITS,
-  categoryLabel,
   formatDuration,
   formatLimitBytes,
   selectionTotals,
@@ -23,7 +22,7 @@ import { createSnapshot } from '../core/metadata-snapshot.js';
 import { buildChangePlan } from '../core/change-plan.js';
 import { estimateForBatch } from '../core/memory-estimate.js';
 import { previewKind } from '../ui/file-card.js';
-import { asArray, asString, fileBaseName, fileExtension, safeOutputName, sameValue } from '../core/tag-utils.js';
+import { asArray, asString, fileExtension, sameValue } from '../core/tag-utils.js';
 import { STANDARD_FIELDS, crossFormatPatch } from '../core/format-map.js';
 const MP3_DELETABLE_FRAMES = new Set([
   'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
@@ -1464,7 +1463,7 @@ export class BatchController {
     const rows = [];
     const updateSelectedCount = () => {
       selectedCount.textContent = `${item.removeRaw.size} dipilih dari ${raw.length} tag`;
-      for (const { tr, row, checkbox } of rows) checkbox.checked = item.removeRaw.has(row.tag);
+      for (const { row, checkbox } of rows) checkbox.checked = item.removeRaw.has(row.tag);
     };
     for (const row of raw) {
       const { ok, reason } = this.rawDeletability(item, row);

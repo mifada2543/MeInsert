@@ -3,7 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
-import { applyCoverImages, coverFromTags, mimeOf, scrubPrimaryCoverRaw } from '../core/image-utils.js';
+import { applyCoverImages, coverFromTags, scrubPrimaryCoverRaw } from '../core/image-utils.js';
 export const KNOWN_RAW = new Set([
   'vendor', 'ENCODER', 'TITLE', 'ARTIST', 'ALBUM', 'ALBUMARTIST', 'DATE',
   'GENRE', 'TRACKNUMBER', 'TRACKTOTAL', 'DISCNUMBER', 'DISCTOTAL',

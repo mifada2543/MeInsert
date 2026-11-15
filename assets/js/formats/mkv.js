@@ -3,7 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
-import { coverFromTags, applyCoverImages, mimeOf, scrubPrimaryCoverRaw } from '../core/image-utils.js';
+import { coverFromTags, applyCoverImages, scrubPrimaryCoverRaw } from '../core/image-utils.js';
 export const meta = {
   id: 'mkv',
   engine: 'media',

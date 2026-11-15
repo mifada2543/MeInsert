@@ -1,4 +1,4 @@
 .agents
 node_modules/
-tests
-*.bundle.css
+tests/tmp-*
+tests/tmp-shots/

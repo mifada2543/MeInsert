@@ -20,7 +20,7 @@ export function asArray(value) {
 export function toDateInput(value) {
   const text = asString(value).trim();
   if (!text) return '';
-  let m = text.match(/^(\d{4})[:\-](\d{2})[:\-](\d{2})/);
+  let m = text.match(/^(\d{4})[:-](\d{2})[:-](\d{2})/);
   if (!m) m = text.match(/^D:(\d{4})(\d{2})(\d{2})/);
   if (m) {
     const year = Number(m[1]);
@@ -73,6 +73,7 @@ export function validateCustomKey(key) {
 }
 export function safeOutputName(name, fallback = 'file') {
   const base = String(name || fallback)
+    // eslint-disable-next-line no-control-regex -- sengaja menyingkirkan karakter kontrol.
     .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-')
     .replace(/\s+/g, ' ')
     .trim()

@@ -1,9 +1,10 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-import { asArray, asString, pick, rawValue, sameValue, toYear } from '../core/tag-utils.js';
+import { asString, rawValue, sameValue, toYear } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags } from '../core/image-utils.js';
+import { KNOWN_ID3 } from '../core/integrity-rules.js';
 export const meta = {
   id: 'mp3',
   engine: 'media',
@@ -35,19 +36,11 @@ export const fields = [
   { id: 'copyright', section: 'umum', label: 'Hak cipta', type: 'text', native: 'TCOP', placeholder: '© 2026 Nama Anda', maxLength: 300 },
   { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'TSSE', placeholder: 'MeInsert', maxLength: 200 },
 ];
-const KNOWN_FRAMES = new Set([
-  'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TCON', 'TRCK', 'TPOS', 'TCOM',
-  'COMM', 'USLT', 'TCOP', 'TSSE', 'TENC', 'TXXX', 'APIC', 'TDRC', 'TDAT',
-  'TIME', 'TRDA', 'TEXT', 'TIT1', 'TIT3', 'TPUB', 'TBPM', 'TKEY', 'TLAN',
-  'TCMP', 'TSRC', 'TLEN', 'WXXX', 'WCOM', 'WCOP', 'WOAF', 'WOAR', 'WOAS',
-  'WORS', 'WPAY', 'WPUB', 'PRIV', 'CHAP', 'CTOC', 'SYLT', 'IPLS',
-]);
 function frame(tags, id) {
   const raw = tags?.raw || {};
   return raw[id];
 }
 function tagsToFields(tags) {
-  const raw = tags?.raw || {};
   return {
     title: asString(tags.title ?? frame(tags, 'TIT2')),
     artist: asString(tags.artist ?? frame(tags, 'TPE1')),
@@ -86,7 +79,7 @@ function rawRows(tags) {
 }
 function warningsFor(tags) {
   const raw = tags?.raw || {};
-  const unknown = Object.keys(raw).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_FRAMES.has(id));
+  const unknown = Object.keys(raw).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_ID3.has(id));
   return unknown.length
     ? [`${unknown.length} frame ID3 tidak didukung dan akan hilang saat metadata ditulis: ${unknown.slice(0, 8).join(', ')}${unknown.length > 8 ? '…' : ''}.`]
     : [];
@@ -114,7 +107,7 @@ export async function read(file) {
       channels: audio ? await audio.getNumberOfChannels().catch(() => '') : '',
       codec: audio ? await audio.getCodec().catch(() => '') : '',
       hasCover: Boolean(tags.images?.length),
-      unknownFrames: Object.keys(tags.raw || {}).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_FRAMES.has(id)),
+      unknownFrames: Object.keys(tags.raw || {}).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_ID3.has(id)),
     };
     return {
       fields: tagsToFields(tags),
@@ -128,7 +121,7 @@ export async function read(file) {
     throw new AppError('READ_FAILED', 'File MP3 tidak bisa dibaca.', error.message || String(error));
   }
 }
-export async function write(file, payload, options = {}, report = () => {}) {
+export async function write(file, payload, _options = {}, report = () => {}) {
   const { Input, ALL_FORMATS, BlobSource } = await mediaLib();
   const { ID3Writer } = await import('../../vendor/browser-id3-writer.mjs');
   const set = payload?.set || {};

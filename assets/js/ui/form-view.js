@@ -4,7 +4,7 @@
 import { el, clear, formatBytes } from './dom.js';
 import { icon } from './icons.js';
 import { openLightbox } from './lightbox.js';
-import { asArray, asString, fileBaseName } from '../core/tag-utils.js';
+import { asArray, asString } from '../core/tag-utils.js';
 import { coverAcceptFor, coverFormatsLabelFor } from '../core/image-utils.js';
 function inputsEqual(a, b, field) {
   if (field.type === 'tags') {

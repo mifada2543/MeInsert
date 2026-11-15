@@ -9,7 +9,8 @@ under any other license. They are part of MeInsert (AGPLv3 — see
 | File | Dimensions | Purpose | First appeared in git |
 |---|---|---|---|
 | `icon-512.png` | 512×512 | App icon (PWA, favicon large) | `ff03603` (2026-11-03) |
-| `icon-192.png` | 192×192 | Header logo, PWA 192 | `f4b2059` (2026-11-04) |
+| `icon-192.png` | 192×192 | PWA 192 | `f4b2059` (2026-11-04) |
+| `logo-96.png` | 96×96 | Header logo (tampil 42×42 / 36×36 CSS px). Turunan terkuantisasi dari `icon-192.png` dengan ImageMagick (`-resize 96x96 -strip -colors 128 -define png:compression-level=9`); RMSE vs sumber 0,0099 (tak kasat mata). 18,6 KB → 2,4 KB | (versi ini) |
 | `icon-maskable-512.png` | 512×512 | PWA maskable icon (safe-zone padded derivative of `icon-512.png`) | `f4b2059` (2026-11-04) |
 | `favicon-64.png` | 64×64 | Browser favicon | `ff03603` (2026-11-03) |
 | `apple-touch-icon.png` | 180×180 | Apple touch icon | `ff03603` (2026-11-03) |

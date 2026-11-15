@@ -1,7 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-import { asArray, asString, toDateInput } from './tag-utils.js';
+import { asArray, toDateInput } from './tag-utils.js';
 export const SNAPSHOT_VERSION = 1;
 const IGNORED_RAW = /^(File|System|ExifTool|SourceFile|ExifToolVersion|Composite):/i;
 const IGNORED_GROUPS = new Set(['File', 'System', 'ExifTool', 'Composite']);

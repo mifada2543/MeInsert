@@ -300,7 +300,7 @@ export function renderFileCard(container, {
   const infoBlock = el('div', { className: 'file-info' },
     el('div', { className: 'file-kind' },
       el('span', { className: 'file-badge' },
-        el('span', { className: 'chip-dot ' + (detection?.id === 'pdf' ? 'pdf' : detection?.id === 'image' ? 'image' : detection?.id === 'mp4' || detection?.id === 'mkv' ? 'video' : 'audio') }),
+        el('span', { className: `chip-dot ${detection?.id === 'pdf' ? 'pdf' : detection?.id === 'image' ? 'image' : detection?.id === 'mp4' || detection?.id === 'mkv' ? 'video' : 'audio'}` }),
         detection?.label || 'File',
       ),
       el('span', { className: 'file-kind-aside' },

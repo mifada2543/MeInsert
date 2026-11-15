@@ -9,14 +9,13 @@ import {
   asString,
   fileBaseName,
   safeOutputName,
-  sameValue,
   toDateInput,
   validateCustomKey,
 } from './core/tag-utils.js';
-import { el, clear, qs, formatBytes } from './ui/dom.js';
+import { el, clear, qs } from './ui/dom.js';
 import { icon } from './ui/icons.js';
 import { renderFileCard, setCardMinimized, previewKind } from './ui/file-card.js';
-import { renderForm, syncFormState, renderCoverBlock } from './ui/form-view.js';
+import { renderForm, renderCoverBlock } from './ui/form-view.js';
 import { renderRaw } from './ui/raw-view.js';
 import { renderResultCard } from './ui/result-view.js';
 import { showToast } from './ui/toast.js';

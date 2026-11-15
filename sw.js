@@ -1,44 +1,33 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* MeInsert service worker: precaches the app shell + vendor libraries so the
- * editor works offline. The 27 MB ExifTool WASM is deliberately NOT precached;
- * it is cached on first use (format pages that need it keep working offline
- * afterwards). This keeps the first visit light instead of downloading 29 MB. */
-const CACHE_VERSION = 'meinsert-v34';
-const PRECACHE_URLS = [
+/* MeInsert service worker.*/
+const CACHE_VERSION = 'meinsert-v35';
+const SHELL_URLS = [
   './',
   './index.html',
   './single.html',
   './batch.html',
   './manifest.json',
-  './assets/css/app.css',
+  './assets/css/app.bundle.css',
   './assets/js/theme-init.js',
   './assets/js/home.js',
   './assets/js/app.js',
+  './assets/js/core/change-plan.js',
   './assets/js/core/detector.js',
   './assets/js/core/errors.js',
   './assets/js/core/format-map.js',
-  './assets/js/core/change-plan.js',
   './assets/js/core/image-utils.js',
   './assets/js/core/integrity-rules.js',
   './assets/js/core/integrity.js',
+  './assets/js/core/memory-estimate.js',
   './assets/js/core/metadata-snapshot.js',
   './assets/js/core/pwa.js',
   './assets/js/core/registry.js',
   './assets/js/core/tag-utils.js',
   './assets/js/core/worker-client.js',
-  './assets/js/engines/exiftool.js',
-  './assets/js/formats/flac.js',
-  './assets/js/formats/image.js',
-  './assets/js/formats/mkv.js',
-  './assets/js/formats/mp3.js',
-  './assets/js/formats/mp4.js',
-  './assets/js/formats/ogg.js',
-  './assets/js/formats/pdf.js',
-  './assets/js/formats/vorbis-common.js',
-  './assets/js/ui/dom.js',
   './assets/js/ui/confirm.js',
+  './assets/js/ui/dom.js',
   './assets/js/ui/file-card.js',
   './assets/js/ui/form-view.js',
   './assets/js/ui/icons.js',
@@ -57,39 +46,26 @@ const PRECACHE_URLS = [
   './assets/js/batch/batch-report.js',
   './assets/js/batch/batch-view.js',
   './assets/js/batch/batch-zip.js',
-  './assets/vendor/browser-id3-writer.mjs',
-  './assets/vendor/mediabunny.mjs',
-  './assets/vendor/pdf-lib.esm.js',
-  './assets/vendor/fflate.mjs',
-  './assets/fonts/ibm-plex-mono-400-latin-ext.woff2',
   './assets/fonts/ibm-plex-mono-400-latin.woff2',
-  './assets/fonts/ibm-plex-mono-500-latin-ext.woff2',
   './assets/fonts/ibm-plex-mono-500-latin.woff2',
-  './assets/fonts/ibm-plex-sans-condensed-500-latin-ext.woff2',
   './assets/fonts/ibm-plex-sans-condensed-500-latin.woff2',
-  './assets/fonts/ibm-plex-sans-condensed-600-latin-ext.woff2',
   './assets/fonts/ibm-plex-sans-condensed-600-latin.woff2',
-  './assets/fonts/ibm-plex-sans-condensed-700-latin-ext.woff2',
   './assets/fonts/ibm-plex-sans-condensed-700-latin.woff2',
-  './assets/fonts/ibm-plex-sans-latin-ext.woff2',
   './assets/fonts/ibm-plex-sans-latin.woff2',
   './assets/img/apple-touch-icon.png',
   './assets/img/favicon-64.png',
-  './assets/img/icon-192.png',
-  './assets/img/icon-512.png',
-  './assets/img/icon-maskable-512.png',
+  './assets/img/logo-96.png',
 ];
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_VERSION);
-    const results = await Promise.allSettled(PRECACHE_URLS.map((url) => cache.add(url)));
+    const results = await Promise.allSettled(SHELL_URLS.map((url) => cache.add(url)));
     const failed = results
-      .map((result, index) => (result.status === 'rejected' ? PRECACHE_URLS[index] : null))
+      .map((result, index) => (result.status === 'rejected' ? SHELL_URLS[index] : null))
       .filter(Boolean);
     if (failed.length) {
       console.warn('MeInsert: sebagian aset gagal di-precache:', failed);
     }
-    await self.skipWaiting();
   })());
 });
 self.addEventListener('activate', (event) => {
@@ -104,24 +80,32 @@ self.addEventListener('activate', (event) => {
 function isCacheableAsset(pathname) {
   return /\.(css|js|mjs|wasm|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
 }
-async function networkFirstNavigation(request) {
-  const cache = await caches.open(CACHE_VERSION);
-  try {
-    const response = await fetch(request);
-    if (response && response.ok) {
-      await cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
+function staleWhileRevalidate(event) {
+  const { request } = event;
+  const cachePromise = caches.open(CACHE_VERSION);
+  const network = fetch(request)
+    .then(async (response) => {
+      if (response && response.ok) {
+        const cache = await cachePromise;
+        await cache.put(request, response.clone());
+      }
+      return response;
+    })
+    .catch(() => null);
+  event.waitUntil(network);
+  return (async () => {
+    const cache = await cachePromise;
     const cached = await cache.match(request, { ignoreSearch: true })
       || await cache.match('./index.html')
       || await cache.match('./');
     if (cached) return cached;
+    const response = await network;
+    if (response) return response;
     return new Response('MeInsert tidak tersedia offline.', {
       status: 503,
       headers: { 'content-type': 'text/plain; charset=utf-8' },
     });
-  }
+  })();
 }
 async function cacheFirst(request) {
   const cached = await caches.match(request, { ignoreSearch: true });
@@ -139,7 +123,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirstNavigation(request));
+    event.respondWith(staleWhileRevalidate(event));
     return;
   }
   if (isCacheableAsset(url.pathname)) {

@@ -1,7 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-import { el, clear } from './dom.js';
+import { el } from './dom.js';
 import { icon } from './icons.js';
 let current = null;
 export function isLightboxOpen() {

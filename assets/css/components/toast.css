@@ -54,6 +54,27 @@
 .toast p {
   margin: 1px 0 0;
 }
+.toast .toast-action {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.toast .toast-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.toast .toast-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .toast.is-leaving {
   animation: toast-out 180ms ease both;
 }

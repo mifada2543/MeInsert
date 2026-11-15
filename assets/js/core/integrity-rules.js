@@ -5,7 +5,8 @@ const KNOWN_ID3_FRAME = {
   code: 'UNKNOWN_ID3_FRAME',
   message: 'Frame ID3 yang tidak didukung hilang saat metadata ditulis ulang.',
 };
-const KNOWN_ID3 = new Set([
+/** Daftar frame ID3v2 yang dipahami MeInsert. Sumber tunggal untuk mp3.js & integrity. */
+export const KNOWN_ID3 = new Set([
   'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
   'TCOM', 'COMM', 'USLT', 'TCOP', 'TSSE', 'TENC', 'TXXX', 'APIC', 'TDAT',
   'TIME', 'TRDA', 'TEXT', 'TIT1', 'TIT3', 'TPUB', 'TBPM', 'TKEY', 'TLAN',

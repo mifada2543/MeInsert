@@ -1,0 +1,9 @@
+# MeInsert — konfigurasi Jekyll minimal.
+exclude:
+  - node_modules
+  - tests
+  - scripts
+  - package.json
+  - package-lock.json
+  - .agents
+  - .freebuff

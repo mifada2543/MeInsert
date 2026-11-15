@@ -2,16 +2,18 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 (function applyInitialTheme() {
+  let stored = null;
   try {
-    var stored = null;
-    try {
-      stored = window.localStorage.getItem('meinsert-theme');
-    } catch (error) {
-      stored = null;
-    }
-    var theme = stored === 'dark' || stored === 'light'
-      ? stored
-      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    stored = window.localStorage.getItem('meinsert-theme');
+  } catch {
+    stored = null;
+  }
+  const prefersDark = window.matchMedia
+    && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
+  try {
     document.documentElement.dataset.theme = theme;
-  } catch (error) {}
+  } catch {
+    // DOM belum siap — biarkan tema bawaan.
+  }
 }());

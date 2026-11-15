@@ -10,7 +10,7 @@ import {
   toExifDate,
 } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
-import { coverFromTags, mimeOf } from '../core/image-utils.js';
+import { coverFromTags } from '../core/image-utils.js';
 export const meta = {
   id: 'mp4',
   engine: 'exiftool',

@@ -13,7 +13,7 @@
  * intentionally leaves them untouched; do not delete assets/vendor/licenses/
  * wholesale on a re-vendor run. See assets/THIRD_PARTY_LICENSES.md.
  */
-import { cp, mkdir, readdir, copyFile, stat } from 'node:fs/promises';
+import { cp, mkdir, readdir, copyFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
