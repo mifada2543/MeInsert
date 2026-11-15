@@ -15,6 +15,7 @@ import { makeCsvReport, makeJsonReport } from './batch-report.js';
 import { saveZipStreaming, uniqueOutputName } from './batch-zip.js';
 import { zipEligible } from './batch-item.js';
 import { batchDraftKey, setEditingNavigation } from '../ui/editing-navigation.js';
+import { setReloadUnsafe } from '../core/reload-guard.js';
 export class BatchSaveFlow {
   operationCountFor(item) {
     const group = this.groupMap.get(item.groupKey);
@@ -120,6 +121,7 @@ export class BatchSaveFlow {
     const pending = this.items.some((item) => ['queued', 'reading', 'ready', 'processing'].includes(item.status));
     const editedAgain = this._navigationCompletedDraft !== undefined && draft !== this._navigationCompletedDraft;
     setEditingNavigation(this.busy() || pending || this.items.length > 0 && editedAgain);
+    setReloadUnsafe('batch-busy', this.applying || this.scanning || this.hasUnsavedChanges());
     bindTranslation(this.els.batchSelectedCount, 'textContent', () => (t('ui.filesSelected', { v0: selected.length })));
     bindTranslation(this.els.batchOperationCount, 'textContent', () => (t('ui.operations', { v0: operationCount })));
     this.els.batchApplyBtn.disabled = this.applying ? false : selected.length === 0 || !validation.ok;

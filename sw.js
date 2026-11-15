@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v42';
+const CACHE_VERSION = 'meinsert-v43';
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -38,6 +38,8 @@ const SHELL_URLS = [
   './assets/js/core/memory-estimate.js',
   './assets/js/core/metadata-snapshot.js',
   './assets/js/core/pwa.js',
+  './assets/js/core/build.js',
+  './assets/js/core/reload-guard.js',
   './assets/js/core/registry.js',
   './assets/js/core/tag-utils.js',
   './assets/js/core/worker-client.js',
@@ -80,13 +82,18 @@ const SHELL_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_VERSION);
-    const results = await Promise.allSettled(SHELL_URLS.map((url) => cache.add(url)));
+    const results = await Promise.allSettled(SHELL_URLS.map(async (url) => {
+      const response = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
+      if (!response.ok) throw new Error(`Precache gagal untuk ${url}`);
+      await cache.put(url, response);
+    }));
     const failed = results
       .map((result, index) => (result.status === 'rejected' ? SHELL_URLS[index] : null))
       .filter(Boolean);
     if (failed.length) {
       console.warn('MeInsert: sebagian aset gagal di-precache:', failed);
     }
+    await self.skipWaiting();
   })());
 });
 self.addEventListener('activate', (event) => {
@@ -129,11 +136,11 @@ function staleWhileRevalidate(event) {
   })();
 }
 async function cacheFirst(request) {
-  const cached = await caches.match(request, { ignoreSearch: true });
+  const cache = await caches.open(CACHE_VERSION);
+  const cached = await cache.match(request, { ignoreSearch: true });
   if (cached) return cached;
   const response = await fetch(request);
   if (response && response.ok) {
-    const cache = await caches.open(CACHE_VERSION);
     await cache.put(request, response.clone());
   }
   return response;
@@ -159,4 +166,9 @@ self.addEventListener('fetch', (event) => {
 });
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'GET_VERSION') {
+    const reply = { type: 'VERSION', version: CACHE_VERSION };
+    if (event.ports?.[0]) event.ports[0].postMessage(reply);
+    else event.source?.postMessage(reply);
+  }
 });

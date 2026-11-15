@@ -321,7 +321,10 @@ The generated bundle is tracked in Git so deployment needs no build step. Regene
 - The app shell includes pages, bundled CSS, core modules, Workers, Latin fonts, and small icons.
 - Heavy libraries, format adapters, extended fonts, and ExifTool WASM are fetched and cached on demand.
 - Navigation uses stale-while-revalidate: cached pages are returned immediately while a network refresh runs in the background.
-- A new-version notification offers **Reload** rather than automatically reloading an active editing session.
+- **Automatic updates.** `sw.js` uses `skipWaiting()` plus `clients.claim()`, so a new version takes over immediately without closing every tab. A page that is mid-edit is never force-reloaded: `reload-guard` defers the refresh until the work is done, then asks for confirmation through the *"A new version of MeInsert is available"* toast.
+- **Outdated worker detection.** The page probes the active worker's build marker. If the worker controlling the page is older than the page itself — for example when a CDN still serves the previous `sw.js` — the page forces a worker update and then refreshes itself, so an old page cannot get stuck on an incompatible version.
+- **The shell is cached without the HTTP cache.** Precaching uses `cache: 'reload'`, and asset lookup only uses `caches.open(CACHE_VERSION)` rather than a cross-cache `caches.match()`, so entries from an outdated cache cannot pin stale code.
+- Deployment note: `.htaccess` sends `sw.js` with `Cache-Control: no-cache, must-revalidate` (XAMPP/Apache). On GitHub Pages, set a **Cloudflare Cache Rule** so `/sw.js` is not cached at the edge, or purge the cache after each deploy. Otherwise browsers can keep an old worker for hours.
 
 ### Policy Pages
 

@@ -5,6 +5,7 @@ import { bindTranslation, t } from '../i18n/index.js';
 import { asArray, asString, validateCustomKey } from '../core/tag-utils.js';
 import { PDF_STANDARD_KEYS } from './editor-state.js';
 import { setEditingNavigation, singleEditing } from '../ui/editing-navigation.js';
+import { setReloadUnsafe } from '../core/reload-guard.js';
 export function inputSame(a, b, field) {
   if (field.type === 'tags') return JSON.stringify(asArray(a)) === JSON.stringify(asArray(b));
   return asString(a).trim() === asString(b).trim();
@@ -92,6 +93,7 @@ export function syncActionBar(els, state) {
   const count = changes.count;
   state.dirtyCount = count;
   setEditingNavigation(singleEditing(state, count));
+  setReloadUnsafe('editor-dirty', state.processing || count > 0);
   const canSave = state.processing || (ready && count > 0);
 
   bindTranslation(els.dirtyState, 'textContent', () => (state.processing

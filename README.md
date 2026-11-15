@@ -330,9 +330,24 @@ bundelnya basi.
   otomatis tersimpan — kunjungan pertama jauh lebih ringan.
 - Navigasi memakai *stale-while-revalidate*: kunjungan berikutnya dilayani
   seketika dari cache, versi baru diambil di latar belakang.
-- Saat ada versi baru, toast **"Versi baru MeInsert sudah tersedia"** muncul
-  dengan tombol *Muat ulang* — aset tidak pernah tertukar diam-diam di tengah
-  pemakaian.
+- **Pembaruan otomatis.** `sw.js` memakai `skipWaiting()` + `clients.claim()`,
+  jadi versi baru langsung mengambil alih tanpa perlu menutup semua tab.
+  Halaman yang sedang menyunting tidak di-reload paksa: `reload-guard` menunda
+  refresh sampai pekerjaan selesai, lalu meminta persetujuan lewat toast
+  *"Versi baru MeInsert sudah tersedia"*.
+- **Deteksi worker basi.** Halaman melakukan probe versi ke worker aktif. Bila
+  worker yang mengendalikan halaman lebih lama dari build halaman — misalnya
+  CDN masih menyajikan `sw.js` lama — halaman memaksa pembaruan worker lalu
+  menyegarkan diri sendiri. Ini mencegah halaman lama "macet" di versi yang
+  tidak kompatibel.
+- **Cache shell di-refresh tanpa cache HTTP.** Precache memakai
+  `cache: 'reload'`, dan pencarian aset hanya memakai `caches.open(CACHE_VERSION)`
+  — bukan `caches.match()` lintas-cache — agar entri dari cache versi lama tidak
+  membekukan kode usang.
+- Catatan deployment: `sw.js` dikirim dengan `Cache-Control: no-cache,
+  must-revalidate` oleh `.htaccess` (XAMPP/Apache). Pada GitHub Pages, atur
+  **Cloudflare Cache Rule** agar `/sw.js` tidak di-cache di edge, atau purge
+  cache setiap deploy. Tanpa itu, browser bisa menahan worker lama beberapa jam.
 
 ### Halaman kebijakan
 
