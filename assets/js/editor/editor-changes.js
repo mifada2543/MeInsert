@@ -3,6 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { bindTranslation, t } from '../i18n/index.js';
 import { asArray, asString, validateCustomKey } from '../core/tag-utils.js';
+import { canRedo, canUndo } from '../core/history.js';
 import { PDF_STANDARD_KEYS } from './editor-state.js';
 import { setEditingNavigation, singleEditing } from '../ui/editing-navigation.js';
 import { setReloadUnsafe } from '../core/reload-guard.js';
@@ -107,6 +108,8 @@ export function syncActionBar(els, state) {
   bindTranslation(els.saveLabel, 'textContent', () => (state.processing ? t('ui.cancel2') : t('ui.saveDownload')));
   els.resetBtn.disabled = state.processing || !ready || count === 0;
   els.outputBase.disabled = state.processing;
+  if (els.undoBtn) els.undoBtn.disabled = state.processing || !canUndo(state.history);
+  if (els.redoBtn) els.redoBtn.disabled = state.processing || !canRedo(state.history);
   if (state.detection) {
     els.outputBase.value = state.outputBase;
     els.outputExt.textContent = `.${state.detection.ext}`;

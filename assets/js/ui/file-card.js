@@ -6,6 +6,27 @@ import { el, clear, formatBytes, formatDuration } from './dom.js';
 import { icon } from './icons.js';
 import { coverAcceptFor } from '../core/image-utils.js';
 import { openLightbox } from './lightbox.js';
+import { captureMediaSession, canReuseMedia, restoreMediaSession } from './media-session.js';
+
+// The preview card is rebuilt on every relevant state change. The live
+// <video>/<audio> element survives that rebuild, so the frame that owns it
+// changes while the element does not. This map keeps the current frame for
+// every media element so the loadedmetadata listener always targets the
+// frame that is really on screen.
+const mediaFrames = new WeakMap();
+const mediaRatioBound = new WeakSet();
+
+function bindMediaRatio(media, frame) {
+  mediaFrames.set(media, frame);
+  if (media.readyState >= 1) setMediaRatio(frame, media.videoWidth, media.videoHeight);
+  if (mediaRatioBound.has(media)) return;
+  mediaRatioBound.add(media);
+  media.addEventListener('loadedmetadata', () => {
+    const current = mediaFrames.get(media);
+    if (!current) return;
+    setMediaRatio(current, media.videoWidth, media.videoHeight);
+  });
+}
 export function previewKind(detection) {
   if (!detection) return 'file';
   if (detection.id === 'image') return 'image';
@@ -68,7 +89,7 @@ function coverHint(cover) {
 function hasDraggedFiles(event) {
   return [...(event.dataTransfer?.types || [])].includes('Files');
 }
-function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, onCoverRemove, onCoverUndo, resumeAt }) {
+function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, onCoverRemove, onCoverUndo, session }) {
   const input = el('input', {
     type: 'file',
     accept: coverAcceptFor(detectionId),
@@ -164,15 +185,11 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
         }, translated(() => (t('ui.cancel2'))))
       : null,
   );
-  const audio = el('audio', { src: previewUrl, controls: true, preload: 'metadata' });
-  if (resumeAt > 0) {
-    audio.addEventListener('loadedmetadata', () => {
-      try {
-        audio.currentTime = Math.min(resumeAt, audio.duration || resumeAt);
-      } catch {
-      }
-    }, { once: true });
-  }
+  // The same source keeps the same <audio> node, so the playback survives
+  // the rebuild of the card. A different file gets a fresh element.
+  const audio = canReuseMedia(session, previewUrl)
+    ? session.element
+    : el('audio', { src: previewUrl, controls: true, preload: 'metadata' });
   const stage = el('div', { className: 'audio-stage' },
     el('div', { className: 'audio-cover-head' },
       el('div', { className: 'audio-cover-title' },
@@ -219,8 +236,10 @@ export function renderFileCard(container, {
   onCoverRemove,
   onCoverUndo,
 }) {
-  const previousAudio = container.querySelector('audio');
-  const resumeAt = previousAudio ? previousAudio.currentTime : 0;
+  // Capture the live media element before the card is rebuilt, so the same
+  // node (and its playback state) can be moved into the new card.
+  const session = captureMediaSession(container);
+  const reuseMedia = canReuseMedia(session, previewUrl);
   clear(container);
   container.classList.toggle('is-minimized', minimized);
   const kind = previewKind(detection);
@@ -257,14 +276,10 @@ export function renderFileCard(container, {
     }, img, el('span', { className: 'preview-zoom-badge', 'aria-hidden': 'true' }, icon('expand')));
     frame.append(zoom);
   } else if (kind === 'video' && previewUrl) {
-    const video = el('video', {
-      src: previewUrl,
-      controls: true,
-      preload: 'metadata',
-      on: {
-        loadedmetadata: () => setMediaRatio(frame, video.videoWidth, video.videoHeight),
-      },
-    });
+    const video = reuseMedia
+      ? session.element
+      : el('video', { src: previewUrl, controls: true, preload: 'metadata' });
+    bindMediaRatio(video, frame);
     frame.append(video);
   } else if (kind === 'audio' && previewUrl) {
     if (onCoverChooseFile) {
@@ -275,10 +290,13 @@ export function renderFileCard(container, {
         onCoverChooseFile,
         onCoverRemove,
         onCoverUndo,
-        resumeAt,
+        session,
       }));
     } else {
-      frame.append(el('audio', { src: previewUrl, controls: true, preload: 'metadata' }));
+      const audio = reuseMedia
+        ? session.element
+        : el('audio', { src: previewUrl, controls: true, preload: 'metadata' });
+      frame.append(audio);
     }
   } else if (kind === 'pdf' && previewUrl) {
     frame.append(el('iframe', { src: previewUrl, title: translated(() => (t('ui.preview', { v0: file.name }))) }));
@@ -331,4 +349,8 @@ export function renderFileCard(container, {
     ));
   }
   container.append(frame, infoBlock);
+  // The element is back in the document, so the play state can be restored.
+  // A changed source is a different file: that element is discarded and a
+  // new one was created above, so nothing is resumed here.
+  if (reuseMedia) restoreMediaSession(session, { src: previewUrl });
 }

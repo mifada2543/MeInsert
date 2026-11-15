@@ -763,7 +763,7 @@ body[data-page="single"] {
 .editor-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 16px;
   padding: 0 22px;
   border-bottom: 1px solid var(--line);
@@ -807,6 +807,7 @@ body[data-page="single"] {
   font-size: 9px;
 }
 .editor-badge {
+  margin-left: auto;
   padding: 5px 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -819,6 +820,43 @@ body[data-page="single"] {
   border-color: color-mix(in srgb, var(--success) 26%, var(--line));
   background: var(--success-soft);
   color: var(--success);
+}
+/* Tombol urungkan/ulangkan: breathable di sebelah tab, tetap muat di layar sempit. */
+.editor-head-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+}
+.editor-tool {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.editor-tool:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.editor-tool:active:not(:disabled) {
+  transform: translateY(0);
+}
+.editor-tool:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+.editor-tool .icon {
+  width: 15px;
+  height: 15px;
 }
 .panel {
   min-height: 360px;
@@ -850,10 +888,18 @@ body[data-page="single"] {
     padding: 17px 14px;
   }
   .editor-head {
+    gap: 10px;
     padding: 0 14px;
   }
   .editor-badge {
     display: none;
+  }
+  .editor-head-tools {
+    gap: 4px;
+  }
+  .editor-tool {
+    width: 38px;
+    height: 38px;
   }
   .tabs {
     overflow-x: auto;
@@ -3671,6 +3717,25 @@ h1 {
   color: var(--muted);
   font-size: 13px;
   user-select: none;
+}
+/* Tombol undo/redo per grup format: menempel di kanan header, di sebelah
+   "Pilih semua". Hanya menyentuh state grup itu sendiri. */
+.batch-group-head {
+  flex-wrap: wrap;
+}
+.batch-group-head .batch-group-select {
+  margin-left: auto;
+}
+.batch-group-head [data-group-action="undo"],
+.batch-group-head [data-group-action="redo"] {
+  flex: 0 0 auto;
+  min-width: 34px;
+  padding: 6px 9px;
+}
+.batch-group-head [data-group-action="undo"] .icon,
+.batch-group-head [data-group-action="redo"] .icon {
+  width: 16px;
+  height: 16px;
 }
 .batch-group-body {
   display: grid;

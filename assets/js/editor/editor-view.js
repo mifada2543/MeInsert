@@ -12,6 +12,7 @@ import { coverFormatsLabelFor, isSupportedCover, mimeOf } from '../core/image-ut
 import { setEditorBadge, skeletonPanel, errorCard } from './editor-shell.js';
 import { syncActionBar } from './editor-changes.js';
 import { cloneRows } from './editor-state.js';
+import { beginChange, redo, undo } from '../core/history.js';
 export function previewUrlFor(file, detection) {
   if (!file || !detection) return null;
   const previewable = ['image', 'pdf', 'mp3', 'flac', 'ogg', 'mp4', 'mkv'];
@@ -198,6 +199,8 @@ export function renderWorkspace(ctx) {
 export function resetChanges(ctx) {
   const { els, state } = ctx;
   if (state.processing) return;
+  // Recorded before the discard so the discard itself can be undone.
+  beginChange(state.history);
   state.values = { ...state.originalValues };
   state.removedFields.clear();
   state.customRows = cloneRows(state.customBaseline);
@@ -211,20 +214,45 @@ export function resetChanges(ctx) {
   syncActionBar(els, state);
   showToast('Perubahan dibatalkan.', 'info', 2800);
 }
+
+/** Restore the state before the last change and rebuild the workspace. */
+export function undoChange(ctx) {
+  const { els, state } = ctx;
+  if (state.processing) return false;
+  if (!undo(state.history)) return false;
+  refreshCoverPreview(state);
+  renderWorkspace(ctx);
+  syncActionBar(els, state);
+  return true;
+}
+
+/** Re-apply the change that was undone last. */
+export function redoChange(ctx) {
+  const { els, state } = ctx;
+  if (state.processing) return false;
+  if (!redo(state.history)) return false;
+  refreshCoverPreview(state);
+  renderWorkspace(ctx);
+  syncActionBar(els, state);
+  return true;
+}
 export function createHandlers(ctx) {
   const { els, state } = ctx;
   return {
     onFieldChange(id, value) {
+      beginChange(state.history, `field:${id}`);
       state.values[id] = value;
       state.removedFields.delete(id);
       syncActionBar(els, state);
     },
     onFieldClear(id) {
+      beginChange(state.history);
       state.values[id] = '';
       state.removedFields.add(id);
       syncActionBar(els, state);
     },
     onAddCustom() {
+      beginChange(state.history);
       state.customRows.push({
         uid: ++state.customUid,
         key: '',
@@ -237,19 +265,23 @@ export function createHandlers(ctx) {
     onCustomChange(uid, part, value) {
       const row = state.customRows.find((item) => item.uid === uid);
       if (!row) return;
+      beginChange(state.history, `custom:${uid}:${part}`);
       row[part] = value;
       syncActionBar(els, state);
     },
     onCustomDelete(uid) {
       const index = state.customRows.findIndex((item) => item.uid === uid);
       if (index < 0) return;
+      beginChange(state.history);
       const [row] = state.customRows.splice(index, 1);
       if (row.originalKey) state.removedCustom.add(row.originalKey);
       syncActionBar(els, state);
     },
     onCoverChooseFile(file) {
+      const readToken = state.readToken;
       (async () => {
         const bytes = await file.arrayBuffer();
+        if (readToken !== state.readToken || state.processing) return;
         const u8 = new Uint8Array(bytes);
         if (file.size > 10 * 1024 * 1024 || bytes.byteLength > 10 * 1024 * 1024) {
           showToast('Gambar terlalu besar. Maksimal 10 MB.', 'error', 6000);
@@ -260,6 +292,9 @@ export function createHandlers(ctx) {
           showToast(`Format gambar tidak didukung. Gunakan ${coverFormatsLabelFor(detectionId)}.`, 'error', 6000);
           return;
         }
+        // Recorded once the image is accepted, right before the cover state
+        // changes, so the snapshot still describes the previous cover.
+        beginChange(state.history);
         state.coverChosen = { data: u8, mimeType: file.type || mimeOf(u8), name: file.name };
         state.coverAction = 'set';
         refreshCoverPreview(state);
@@ -268,6 +303,7 @@ export function createHandlers(ctx) {
       })().catch((error) => showToast(`Gagal membaca gambar: ${error?.message || error}`, 'error', 6000));
     },
     onCoverRemove() {
+      beginChange(state.history);
       state.coverAction = 'remove';
       state.coverChosen = null;
       refreshCoverPreview(state);
@@ -275,6 +311,7 @@ export function createHandlers(ctx) {
       syncActionBar(els, state);
     },
     onCoverUndo() {
+      beginChange(state.history);
       state.coverAction = 'keep';
       state.coverChosen = null;
       refreshCoverPreview(state);

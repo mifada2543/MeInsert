@@ -21,8 +21,7 @@ export class BatchPreview {
   }
   previewSignatureFor(item) {
     const kind = this.previewKindOf(item);
-    const cover = kind === 'audio' && item?.readResult?.coverBytes ? 'cover' : 'nocover';
-    return `${item.id}:${kind}:${cover}`;
+    return `${item.id}:${kind}`;
   }
   releasePreview() {
     const host = this.els.batchPreview;
@@ -36,6 +35,9 @@ export class BatchPreview {
     this.previewCoverUrl = null;
     this.previewNode = null;
     this.previewSignature = '';
+    this.previewFile = null;
+    this.previewCoverBytes = null;
+    this.previewCoverMime = '';
     if (host) clear(host);
   }
   pausePreview() {
@@ -43,15 +45,21 @@ export class BatchPreview {
   }
   ensurePreview(item) {
     const signature = this.previewSignatureFor(item);
-    if (this.previewNode && this.previewItemId === item.id && this.previewSignature === signature) {
+    if (this.previewNode && this.previewItemId === item.id && this.previewSignature === signature && this.previewFile === item.file) {
+      if (this.previewKindOf(item) === 'audio') this.refreshPreviewCover(item);
       return this.previewNode;
     }
     this.releasePreview();
     const kind = this.previewKindOf(item);
     this.previewItemId = item.id;
     this.previewSignature = signature;
+    this.previewFile = item.file;
     this.previewUrl = this.createPreviewUrl(item, kind);
-    if (kind === 'audio') this.previewCoverUrl = this.createCoverUrl(item);
+    if (kind === 'audio') {
+      this.previewCoverUrl = this.createCoverUrl(item);
+      this.previewCoverBytes = item.readResult?.coverBytes;
+      this.previewCoverMime = item.readResult?.cover?.mimeType || 'image/jpeg';
+    }
     this.previewNode = this.buildPreview(item, kind);
     return this.previewNode;
   }
@@ -66,6 +74,40 @@ export class BatchPreview {
     if (!bytes || !(bytes.byteLength || bytes.length)) return null;
     const mime = item.readResult?.cover?.mimeType || 'image/jpeg';
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  }
+  refreshPreviewCover(item) {
+    const bytes = item.readResult?.coverBytes;
+    const mime = item.readResult?.cover?.mimeType || 'image/jpeg';
+    if (bytes === this.previewCoverBytes && mime === this.previewCoverMime) return;
+    const cover = this.previewNode.querySelector('.batch-preview-cover');
+    if (!cover) return;
+    const previousUrl = this.previewCoverUrl;
+    this.previewCoverUrl = this.createCoverUrl(item);
+    this.previewCoverBytes = bytes;
+    this.previewCoverMime = mime;
+    cover.replaceWith(this.buildPreviewCover(item));
+    if (previousUrl) URL.revokeObjectURL(previousUrl);
+  }
+  buildPreviewCover(item) {
+    const cover = el('div', { className: 'batch-preview-cover' });
+    if (!this.previewCoverUrl) {
+      cover.append(icon('audio'), el('span', { textContent: translated(() => t('ui.noCover')) }));
+      return cover;
+    }
+    const coverImg = el('img', { src: this.previewCoverUrl, alt: translated(() => `Cover ${item.file.name}`), decoding: 'async' });
+    coverImg.addEventListener('error', () => cover.replaceChildren(icon('audio'), el('span', { textContent: translated(() => t('ui.noCover')) })));
+    cover.append(el('button', {
+      className: 'batch-preview-cover-zoom',
+      type: 'button',
+      title: translated(() => t('ui.clickToEnlargeCover')),
+      'aria-label': translated(() => t('ui.enlargeCoverOf', { v0: item.file.name })),
+      on: { click: () => openLightbox({
+        src: this.previewCoverUrl,
+        alt: `Cover ${item.file.name}`,
+        caption: `Cover · ${item.file.name}`,
+      }) },
+    }, coverImg, el('span', { className: 'cover-zoom-badge', 'aria-hidden': 'true' }, icon('expand'))));
+    return cover;
   }
   renderPreview(item) {
     const host = this.els.batchPreview;
@@ -117,27 +159,7 @@ export class BatchPreview {
       video.addEventListener('error', () => stage.replaceChildren(this.previewFallback(item, 'Video tidak bisa diputar di browser ini.')));
       stage.append(video);
     } else if (kind === 'audio') {
-      const cover = el('div', { className: 'batch-preview-cover' });
-      if (this.previewCoverUrl) {
-        const coverImg = el('img', { src: this.previewCoverUrl, alt: translated(() => (`Cover ${item.file.name}`)), decoding: 'async' });
-        coverImg.addEventListener('error', () => cover.replaceChildren(icon('audio'), el('span', { textContent: translated(() => (t('ui.noCover'))) })));
-        const coverZoom = el('button', {
-          className: 'batch-preview-cover-zoom',
-          type: 'button',
-          title: translated(() => (t('ui.clickToEnlargeCover'))),
-          'aria-label': translated(() => (t('ui.enlargeCoverOf', { v0: item.file.name }))),
-          on: {
-            click: () => openLightbox({
-              src: this.previewCoverUrl,
-              alt: `Cover ${item.file.name}`,
-              caption: `Cover · ${item.file.name}`,
-            }),
-          },
-        }, coverImg, el('span', { className: 'cover-zoom-badge', 'aria-hidden': 'true' }, icon('expand')));
-        cover.append(coverZoom);
-      } else {
-        cover.append(icon('audio'), el('span', { textContent: translated(() => (t('ui.noCover'))) }));
-      }
+      const cover = this.buildPreviewCover(item);
       const copy = el('div', { className: 'batch-preview-audio-copy' },
         el('p', { textContent: translated(() => (this.previewDetail(item, kind))) }),
         el('audio', {

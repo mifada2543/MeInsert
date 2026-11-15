@@ -4,6 +4,7 @@
 import { detectFile } from '../core/detector.js';
 import { adapterForDetection } from '../core/registry.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
+import { clearHistory } from '../core/history.js';
 import { fileBaseName, safeOutputName } from '../core/tag-utils.js';
 import { showToast } from '../ui/toast.js';
 import { confirmNavigation } from '../ui/confirm.js';
@@ -39,6 +40,9 @@ export async function openFile(ctx, file) {
   cleanupUrls(state);
   state.readToken += 1;
   const token = state.readToken;
+  // A new file starts a fresh undo history: the previous edits belong to
+  // another file and must never be replayed on this one.
+  clearHistory(state.history);
   state.file = file;
   state.detection = detection;
   state.adapter = adapter;
@@ -187,6 +191,7 @@ export async function goHome(ctx) {
   }
   state.readToken += 1;
   cleanupUrls(state);
+  clearHistory(state.history);
   state.file = null;
   state.detection = null;
   state.adapter = null;

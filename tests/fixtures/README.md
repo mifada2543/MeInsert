@@ -2,7 +2,7 @@
 
 All media is purpose-built for MeInsert: synthetic gradients, solid-color frames,
 440 Hz tones, and a one-page test document. No personal metadata or third-party
-media. Keep each fixture below 1 MB (these are all below 20 KB). Generator and
+media. Keep each fixture below 1 MB (the long playback fixture is about 160 KB). Generator and
 harness source use the project's AGPLv3 header.
 
 ## Regenerate
@@ -15,7 +15,9 @@ npm run fixtures:generate
 
 Requires Node 22, ffmpeg (libmp3lame, flac, libopus, libvorbis, libspeex,
 libx264, libvpx, libwebp, AAC), ImageMagick `convert`, and OpenSSL 3.
-`generate.mjs` is the complete auditable recipe. It does not download anything.
+`generate.mjs` is the auditable compatibility-fixture recipe. It does not download anything.
+The two long playback fixtures are generated, when missing, by
+`tests/e2e/single-undo-redo.mjs` using FFmpeg; run `npm run test:undo`.
 Regeneration reproduces the content/metadata and verification properties, not
 identical bytes: codec versions, Ogg serial numbers, PDF IDs, signing time, and
 the freshly generated RSA key/certificate can differ. CI consumes the stored
@@ -50,6 +52,8 @@ outputs in memory, not changes to these source fixtures.
 | `reject-speex.ogg` | 1255 | ffmpeg libspeex, 16 kHz, Ogg | Both read and write must reject with codec/container error |
 | `cover.gif` | 1692 | ImageMagick GIF from synthetic gradient | MP4 picker rejects; MP3/FLAC/Opus/Vorbis/MKV embed/reread exact bytes |
 | `cover.bmp` | 3210 | ImageMagick BMP from synthetic gradient | Same as GIF |
+| `tone-long.mp3` | 161053 | ffmpeg libmp3lame, 20 s 440 Hz tone + embedded MJPEG cover | Browser fixture: long enough to prove the preview keeps playing while the card is rebuilt |
+| `clip-long-cover.mp4` | 16503 | ffmpeg H.264, 20 s solid-color frames + attached MJPEG cover | Same, for the video preview |
 
 ### EXIF construction
 

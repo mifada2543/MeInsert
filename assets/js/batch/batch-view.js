@@ -11,6 +11,7 @@ import { confirmNavigation } from '../ui/confirm.js';
 import { STANDARD_FIELDS } from '../core/format-map.js';
 import { isSelectedItem } from './batch-item.js';
 import { BatchGroupsView } from './batch-groups-view.js';
+import { createGroupHistoryController } from './batch-history.js';
 import { BatchSaveFlow } from './batch-save-flow.js';
 import { BatchDetailView } from './batch-detail-view.js';
 import { BatchPreview } from './batch-preview.js';
@@ -32,6 +33,13 @@ export class BatchController {
     this.previewNode = null;
     this.previewSignature = '';
     this.groupMap = new Map();
+    // Satu stack undo/redo untuk setiap grup format; grup MP3 dan grup PDF
+    // tidak saling memengaruhi.
+    this.groupHistories = new Map();
+    this.groupHistoryController = createGroupHistoryController({
+      getGroup: (key) => this.groupMap.get(key) || null,
+      histories: this.groupHistories,
+    });
     this.updateFrame = 0;
     this.pendingUpdates = new Map();
     this.latestStage = '';
@@ -391,6 +399,7 @@ export class BatchController {
     }
     this.items = [];
     this.groups = [];
+    this.groupHistories.clear();
     this.activeItemId = null;
     this.els.batchFileInput.value = '';
     this.crossEnabled = false;

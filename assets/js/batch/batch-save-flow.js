@@ -139,6 +139,7 @@ export class BatchSaveFlow {
     const noItems = this.items.length === 0;
     this.els.batchReportJsonBtn.disabled = noItems;
     this.els.batchReportCsvBtn.disabled = noItems;
+    for (const group of this.groups) this.updateGroupHistoryButtons(group);
   }
   setApplyingUI(applying) {
     this.els.batchGroups.inert = applying;
@@ -281,6 +282,16 @@ export class BatchSaveFlow {
       showToast(result.messages[0] || 'Batch melebihi batas.', 'error', 7500);
       this.syncApply();
       return;
+    }
+    // Only retire histories whose entire group succeeded in this run. Keep
+    // failed, cancelled, excluded and integrity-flagged groups undoable.
+    const savedItems = new Set((result.processed || []).filter((item) =>
+      item.status === 'done' && item.integrity?.status !== 'failed'
+      && (item.outputFile || item.downloadedPerFile)));
+    for (const group of this.groups) {
+      if (group.items.length && group.items.every((item) => savedItems.has(item))) {
+        this.groupHistoryController.clear(group.key);
+      }
     }
     const done = this.items.filter((item) => item.status === 'done').length;
     const failed = this.items.filter((item) => item.status === 'error').length;

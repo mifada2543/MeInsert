@@ -6,6 +6,7 @@ import { showToast } from '../ui/toast.js';
 import { openReviewDialog } from '../ui/review-dialog.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
 import { buildChangePlan } from '../core/change-plan.js';
+import { clearHistory } from '../core/history.js';
 import { estimateForSingle } from '../core/memory-estimate.js';
 import { verifyIntegrity } from '../core/integrity.js';
 import { asString } from '../core/tag-utils.js';
@@ -86,6 +87,9 @@ export function applyOutput(ctx, result) {
   };
   state.outputName = result.filename || state.outputName;
   if (state.detection) els.outputExt.textContent = `.${state.detection.ext}`;
+  // The saved file is now the baseline, so the undo stack of the previous
+  // state would only replay changes that are already written to the file.
+  clearHistory(state.history);
 }
 export async function saveMetadata(ctx) {
   const { client, els, state } = ctx;

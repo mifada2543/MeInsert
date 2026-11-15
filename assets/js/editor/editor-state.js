@@ -2,13 +2,14 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { asArray, asString, fileBaseName, safeOutputName, toDateInput } from '../core/tag-utils.js';
+import { createHistory } from '../core/history.js';
 export const MAX_FILE_SIZE = 4 * 1024 * 1024 * 1024;
 export const PDF_STANDARD_KEYS = new Set([
   'Title', 'Author', 'Subject', 'Keywords', 'Creator', 'Producer',
   'CreationDate', 'ModDate', 'Trapped', 'Metadata',
 ]);
 export function createEditorState() {
-  return {
+  const state = {
     file: null,
     detection: null,
     adapter: null,
@@ -40,6 +41,31 @@ export function createEditorState() {
     coverAction: 'keep',
     coverChosen: null,
   };
+  // The undo/redo stack only knows about the editable surface. The baselines
+  // (originalValues, customBaseline, coverOriginal, coverOriginalBytes) and
+  // the loaded file (file, readResult, detection, adapter) are never part of a
+  // snapshot, so undoing can never roll the file back to another file.
+  state.history = createHistory({
+    snapshot: () => ({
+      values: { ...state.values },
+      removedFields: [...state.removedFields],
+      customRows: cloneRows(state.customRows),
+      removedCustom: [...state.removedCustom],
+      coverAction: state.coverAction,
+      coverChosen: state.coverChosen ? { ...state.coverChosen } : null,
+      outputBase: state.outputBase,
+    }),
+    restore: (snapshot) => {
+      state.values = { ...snapshot.values };
+      state.removedFields = new Set(snapshot.removedFields);
+      state.customRows = cloneRows(snapshot.customRows);
+      state.removedCustom = new Set(snapshot.removedCustom);
+      state.coverAction = snapshot.coverAction;
+      state.coverChosen = snapshot.coverChosen ? { ...snapshot.coverChosen } : null;
+      state.outputBase = snapshot.outputBase;
+    },
+  });
+  return state;
 }
 export function cloneRows(rows) {
   return rows.map((row) => ({ ...row }));

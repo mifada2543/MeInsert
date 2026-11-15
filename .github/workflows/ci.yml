@@ -37,12 +37,22 @@ jobs:
         node-version: '22'
         cache: npm
     - run: npm ci
+    - name: Independent media tools
+      run: sudo apt-get update && sudo apt-get install -y ffmpeg
     - name: Smoke test (Chrome headless)
       run: npm run test:e2e
       env:
         CHROME_BIN: /usr/bin/google-chrome
     - name: Bilingual UI (Chrome headless)
       run: npm run test:i18n
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Undo/redo and media continuity (Chrome headless)
+      run: npm run test:undo
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Independent batch undo/redo (Chrome headless)
+      run: npm run test:undo:batch
       env:
         CHROME_BIN: /usr/bin/google-chrome
   compat:

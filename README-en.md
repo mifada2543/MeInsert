@@ -126,6 +126,14 @@ Select **Save**, review the changes, and confirm. The output is read again and v
 - **Mobile editing focus** — the Single file/Batch navigation is hidden during editing/processing and returns after results are ready or when returning to file selection. Desktop navigation is unchanged.
 - **Installable PWA** — install from the browser menu. The app shell is precached; vendor libraries and ExifTool WASM are cached on first use.
 - **WASM memory management** — Workers and the ExifTool runtime are released after batch processing, after idle time (about eight minutes), and when the page closes.
+- **Undo/redo history** — undo/redo in the single-file editor, plus a separate undo/redo per format group in batch mode; the history is cleared after a successful save and when a new file is opened
+- **Continuous media preview** — changing the thumbnail, undoing a change, or discarding changes no longer stops or restarts the audio/video preview
+
+### Change History (Undo/Redo)
+
+- **Single file** — the single-file editor records an undo/redo history. The **Undo** and **Redo** buttons sit in the top bar right next to the **Raw tags** tab. Keyboard shortcuts: `Ctrl/Cmd+Z` (undo) and `Ctrl/Cmd+Shift+Z` (redo). The history is cleared after a successful save and when a new file is opened. **Discard changes** can itself be undone.
+- **Batch** — every format group has its own independent undo/redo, shown next to that group's **Select all** checkbox. It covers that group's field values and per-field removals only — **not** the cross-format fields and **not** the per-file raw tag removals.
+- **Media preview stays alive** — changing the thumbnail, undoing a change, or discarding changes no longer stops or restarts the audio/video preview: the same media element is kept, and the playback position and play/pause state are preserved.
 
 ---
 

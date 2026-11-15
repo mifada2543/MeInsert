@@ -207,6 +207,25 @@
   font-size: 13px;
   user-select: none;
 }
+/* Tombol undo/redo per grup format: menempel di kanan header, di sebelah
+   "Pilih semua". Hanya menyentuh state grup itu sendiri. */
+.batch-group-head {
+  flex-wrap: wrap;
+}
+.batch-group-head .batch-group-select {
+  margin-left: auto;
+}
+.batch-group-head [data-group-action="undo"],
+.batch-group-head [data-group-action="redo"] {
+  flex: 0 0 auto;
+  min-width: 34px;
+  padding: 6px 9px;
+}
+.batch-group-head [data-group-action="undo"] .icon,
+.batch-group-head [data-group-action="redo"] .icon {
+  width: 16px;
+  height: 16px;
+}
 .batch-group-body {
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);

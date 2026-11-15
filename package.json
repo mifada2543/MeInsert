@@ -15,6 +15,8 @@
     "serve": "python3 -m http.server 8000",
     "test": "node --test tests/unit/*.test.js",
     "test:e2e": "node tests/e2e/smoke.mjs",
+    "test:undo": "node tests/e2e/single-undo-redo.mjs",
+    "test:undo:batch": "node tests/e2e/batch-undo-redo.mjs",
     "test:i18n": "node tests/e2e/i18n.mjs",
     "test:compat": "node tests/compat/run.mjs",
     "fixtures:generate": "node tests/fixtures/generate.mjs"

@@ -8,6 +8,7 @@ import { showToast } from '../ui/toast.js';
 import { STANDARD_FIELDS, crossFormatPatch } from '../core/format-map.js';
 import { formatDuration } from './batch-limits.js';
 import { durationOf, fileIconName, groupKey, isSelectedItem, statusClass, statusLabel, tagCountOf } from './batch-item.js';
+import { groupFieldChangeKey, groupRemoveChangeKey, groupResetChangeKey } from './batch-history.js';
 export class BatchGroupsView {
   rebuildGroups() {
     const previous = new Map(this.groups.map((group) => [group.key, group]));
@@ -46,6 +47,12 @@ export class BatchGroupsView {
     const order = { image: 0, pdf: 1, mp3: 2, flac: 2, ogg: 2, mp4: 3, mkv: 3 };
     this.groups = [...map.values()].sort((a, b) => (order[a.detection?.id] ?? 9) - (order[b.detection?.id] ?? 9) || a.label.localeCompare(b.label));
     this.groupMap = map;
+    // Grup yang hilang (mis. setelah reset) tidak boleh menyisakan riwayat
+    // basi; grup yang masih ada tetap memakai objek grup yang sama, jadi
+    // riwayatnya tetap konsisten.
+    for (const key of [...(this.groupHistories?.keys() || [])]) {
+      if (!map.has(key)) this.groupHistories.delete(key);
+    }
   }
   renderCrossForm() {
     const hasItems = this.items.length > 0;
@@ -96,7 +103,23 @@ export class BatchGroupsView {
         this.renderLimits();
         this.syncApply();
       });
-      const head = el('div', { className: 'batch-group-head' }, toggle, selectWrap);
+      const undoBtn = el('button', {
+        className: 'button ghost small',
+        type: 'button',
+        dataset: { groupAction: 'undo' },
+        on: { click: () => this.undoGroup(group) },
+      }, icon('undo'));
+      const redoBtn = el('button', {
+        className: 'button ghost small',
+        type: 'button',
+        dataset: { groupAction: 'redo' },
+        on: { click: () => this.redoGroup(group) },
+      }, icon('redo'));
+      bindTranslation(undoBtn, 'aria-label', () => (t('ui.undoGroupChange', { v0: group.label })));
+      bindTranslation(undoBtn, 'title', () => (t('ui.undoGroupChange', { v0: group.label })));
+      bindTranslation(redoBtn, 'aria-label', () => (t('ui.redoGroupChange', { v0: group.label })));
+      bindTranslation(redoBtn, 'title', () => (t('ui.redoGroupChange', { v0: group.label })));
+      const head = el('div', { className: 'batch-group-head' }, toggle, selectWrap, undoBtn, redoBtn);
       const body = el('div', { className: 'batch-group-body', hidden: !group.open });
       const list = el('div', { className: 'batch-file-list' });
       for (const item of group.items) list.append(this.renderRow(item));
@@ -181,10 +204,15 @@ export class BatchGroupsView {
         type: 'button',
         on: {
           click: () => {
+            // Catat state SEBELUM dikosongkan supaya undo bisa mengembalikannya.
+            this.groupHistoryController.end(group.key);
+            this.groupHistoryController.begin(group.key, groupResetChangeKey(group.key));
             for (const field of group.fields) group.values[field.id] = '';
             group.remove.clear();
+            this.groupHistoryController.end(group.key);
             const replacement = this.renderGroupForm(group);
             form.replaceWith(replacement);
+            this.updateGroupHistoryButtons(group);
             this.syncApply();
           },
         },
@@ -196,6 +224,7 @@ export class BatchGroupsView {
     return form;
   }
   renderBatchField(group, field) {
+    const hasHistory = group !== this.cross;
     const wrapper = el('div', { className: `field batch-field ${field.type === 'textarea' || field.type === 'tags' ? 'is-full' : ''}`.trim(), dataset: { fieldId: field.id } });
     const inputId = `batch-${group.key.replace(/[^a-z0-9]/gi, '-')}-${field.id}`;
     const removeToggle = el('button', {
@@ -218,7 +247,15 @@ export class BatchGroupsView {
       spellcheck: 'false',
       value: inputValue,
       placeholder: translated(() => (field.placeholder || '')),
-      on: { input: (event) => { group.values[field.id] = event.target.value; this.syncApply(); } },
+      on: {
+        blur: () => { if (hasHistory) this.groupHistoryController.end(group.key); },
+        input: (event) => {
+          if (hasHistory) this.groupHistoryController.begin(group.key, groupFieldChangeKey(group.key, field.id));
+          group.values[field.id] = event.target.value;
+          this.updateGroupHistoryButtons(group);
+          this.syncApply();
+        },
+      },
     };
     if (field.maxLength) common.maxLength = field.maxLength;
     if (field.min !== undefined) common.min = field.min;
@@ -238,15 +275,69 @@ export class BatchGroupsView {
       wrapper.classList.toggle('is-removing', active);
     };
     removeToggle.addEventListener('click', () => {
+      if (hasHistory) {
+        this.groupHistoryController.end(group.key);
+        this.groupHistoryController.begin(group.key, groupRemoveChangeKey(group.key, field.id));
+      }
       if (group.remove.has(field.id)) group.remove.delete(field.id);
       else group.remove.add(field.id);
+      if (hasHistory) this.groupHistoryController.end(group.key);
       syncDisabled();
+      this.updateGroupHistoryButtons(group);
       this.syncApply();
     });
     if (field.helper) wrapper.append(head, input, el('p', { className: 'field-helper', textContent: translated(() => (field.helper)) }));
     else wrapper.append(head, input);
     syncDisabled();
     return wrapper;
+  }
+  /** Stack undo/redo milik satu grup format (dibuat saat pertama dipakai). */
+  groupHistory(key) {
+    return this.groupHistoryController.history(key);
+  }
+  /** Seksi DOM grup format yang sedang tampil. */
+  groupSection(group) {
+    return this.els.batchGroups?.querySelector(`[data-group-key="${CSS.escape(group.key)}"]`) || null;
+  }
+  /**
+   * Perbarui status nonaktif tombol undo/redo milik satu grup. Dipanggil
+   * setiap kali header grup dibangun ulang maupun setiap ada perubahan.
+   */
+  updateGroupHistoryButtons(group) {
+    const section = this.groupSection(group);
+    if (!section) return;
+    const busy = this.busy();
+    const undoBtn = section.querySelector('[data-group-action="undo"]');
+    const redoBtn = section.querySelector('[data-group-action="redo"]');
+    if (undoBtn) undoBtn.disabled = busy || !this.groupHistoryController.canUndo(group.key);
+    if (redoBtn) redoBtn.disabled = busy || !this.groupHistoryController.canRedo(group.key);
+  }
+  /**
+   * Render ulang HANYA form milik grup ini — daftar grup lain (dan fokus
+   * caret di dalamnya) tidak boleh ikut tersentuh.
+   */
+  refreshGroupForm(group) {
+    const section = this.groupSection(group);
+    const oldForm = section?.querySelector('.batch-group-form');
+    oldForm?.replaceWith(this.renderGroupForm(group));
+  }
+  /** Batalkan perubahan terakhir pada grup ini saja. */
+  undoGroup(group) {
+    if (!group || this.busy()) return false;
+    if (!this.groupHistoryController.undo(group.key)) return false;
+    this.refreshGroupForm(group);
+    this.updateGroupHistoryButtons(group);
+    this.syncApply();
+    return true;
+  }
+  /** Ulangi perubahan yang dibatalkan pada grup ini saja. */
+  redoGroup(group) {
+    if (!group || this.busy()) return false;
+    if (!this.groupHistoryController.redo(group.key)) return false;
+    this.refreshGroupForm(group);
+    this.updateGroupHistoryButtons(group);
+    this.syncApply();
+    return true;
   }
   updateAllRows() {
     for (const item of this.items) this.updateRow(item);
@@ -282,5 +373,6 @@ export class BatchGroupsView {
       checkbox.checked = selectable.length > 0 && checked === selectable.length;
       checkbox.indeterminate = checked > 0 && checked < selectable.length;
     }
+    this.updateGroupHistoryButtons(group);
   }
 }

@@ -27,6 +27,8 @@ export function createShell() {
     resetBtn: qs('#resetBtn'),
     saveBtn: qs('#saveBtn'),
     saveLabel: qs('#saveLabel'),
+    undoBtn: qs('#undoBtn'),
+    redoBtn: qs('#redoBtn'),
     progress: qs('#progress'),
     progressBar: qs('#progressBar'),
     progressLabel: qs('#progressLabel'),
@@ -36,6 +38,18 @@ export function createShell() {
 export function setIcons() {
   qs('#newFileBtn .icon')?.replaceChildren(icon('arrowLeft'));
   qs('#saveBtn .icon')?.replaceChildren(icon('download'));
+  qs('#undoBtn .icon')?.replaceChildren(icon('undo'));
+  qs('#redoBtn .icon')?.replaceChildren(icon('redo'));
+  const undoBtn = qs('#undoBtn');
+  const redoBtn = qs('#redoBtn');
+  if (undoBtn) {
+    bindTranslation(undoBtn, 'aria-label', () => (t('ui.undoLastChange')));
+    bindTranslation(undoBtn, 'title', () => (t('ui.undoLastChange')));
+  }
+  if (redoBtn) {
+    bindTranslation(redoBtn, 'aria-label', () => (t('ui.redoLastChange')));
+    bindTranslation(redoBtn, 'title', () => (t('ui.redoLastChange')));
+  }
   bindTranslation(qs('#year'), 'textContent', () => (String(new Date().getFullYear())));
 }
 export function setStatus(els, text, isError = false) {

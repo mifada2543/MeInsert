@@ -27,6 +27,8 @@ const paths = {
   spark: '<path d="m12 3 1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7Z"/><path d="M19 16v4m-2-2h4"/>',
   minimize: '<path d="m6 15 6-6 6 6"/>',
   expand: '<path d="m6 9 6 6 6-6"/>',
+  undo: '<path d="M4 11h10a5 5 0 0 1 0 10H9"/><path d="m8 7-4 4 4 4"/>',
+  redo: '<path d="M20 11H10a5 5 0 0 0 0 10h5"/><path d="m16 7 4 4-4 4"/>',
 };
 export function icon(name, className = '') {
   const path = paths[name] || paths.file;

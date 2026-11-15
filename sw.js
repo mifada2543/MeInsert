@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v43';
+const CACHE_VERSION = 'meinsert-v44';
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -31,6 +31,7 @@ const SHELL_URLS = [
   './assets/js/core/detector.js',
   './assets/js/core/errors.js',
   './assets/js/core/format-map.js',
+  './assets/js/core/history.js',
   './assets/js/core/image-utils.js',
   './assets/js/core/integrity-rules.js',
   './assets/js/core/integrity.js',
@@ -50,6 +51,7 @@ const SHELL_URLS = [
   './assets/js/ui/form-view.js',
   './assets/js/ui/icons.js',
   './assets/js/ui/lightbox.js',
+  './assets/js/ui/media-session.js',
   './assets/js/ui/raw-view.js',
   './assets/js/ui/result-view.js',
   './assets/js/ui/review-dialog.js',
@@ -65,6 +67,7 @@ const SHELL_URLS = [
   './assets/js/batch/batch-view.js',
   './assets/js/batch/batch-item.js',
   './assets/js/batch/batch-groups-view.js',
+  './assets/js/batch/batch-history.js',
   './assets/js/batch/batch-save-flow.js',
   './assets/js/batch/batch-detail-view.js',
   './assets/js/batch/batch-preview.js',

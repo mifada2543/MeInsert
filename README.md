@@ -121,6 +121,14 @@ Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ula
 - **Fokus edit di HP** — navigasi Satu file/Batch disembunyikan selama sesi edit atau pemrosesan dan muncul lagi setelah hasil selesai atau kembali ke pemilihan file; desktop tidak berubah
 - **PWA Installable** — pasang ke layar utama dari menu browser; precache app shell, library vendor + ExifTool WASM di-cache saat pertama dipakai
 - **Manajemen memori WASM** — worker & ExifTool WASM dilepas otomatis setelah batch, saat idle (~8 menit), dan saat halaman ditutup
+- **Riwayat undo/redo** — undo/redo di editor satu file, plus undo/redo terpisah per grup format pada mode batch; riwayat dibersihkan setelah simpan berhasil dan saat file baru dibuka
+- **Pratinjau media kontinu** — mengganti thumbnail, membatalkan perubahan, atau membuang perubahan tidak lagi menghentikan atau memulai ulang pratinjau audio/video
+
+### Riwayat Perubahan (Undo/Redo)
+
+- **Satu file** — editor satu file mencatat riwayat undo/redo. Tombol **Urungkan** dan **Ulangkan** berada di bilah atas, tepat di sebelah tab **Tag mentah**. Pintasan keyboard: `Ctrl/Cmd+Z` (urungkan) dan `Ctrl/Cmd+Shift+Z` (ulangkan). Riwayat dibersihkan setelah penyimpanan berhasil dan saat file baru dibuka. **Batalkan perubahan** sendiri juga bisa dibatalkan.
+- **Batch** — setiap grup format punya riwayat undo/redo sendiri, ditampilkan di sebelah checkbox **Pilih semua** grup tersebut. Cakupannya hanya nilai field grup itu dan penghapusan tag per field — **bukan** field lintas format dan **bukan** penghapusan raw tag per file.
+- **Pratinjau media tidak terputus** — mengganti thumbnail, membatalkan perubahan, atau membuang perubahan tidak lagi menghentikan atau memulai ulang pratinjau audio/video: elemen media yang sama dipakai kembali, dan posisi playback serta status play/pause dipertahankan.
 
 ---
 

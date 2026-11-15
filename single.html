@@ -133,6 +133,18 @@
               <button class="tab" id="tabRaw" type="button" role="tab" aria-selected="false" aria-controls="panel"
                 data-tab="raw"><span data-i18n="ui.rawTags">Tag mentah</span> <span class="tab-count" id="rawCount">0</span></button>
             </div>
+            <div class="editor-head-tools" role="group">
+              <button class="editor-tool" id="undoBtn" type="button" disabled
+                aria-label="Urungkan perubahan terakhir" title="Urungkan perubahan terakhir"
+                data-i18n-aria-label="ui.undoLastChange" data-i18n-title="ui.undoLastChange">
+                <span class="icon" aria-hidden="true"></span>
+              </button>
+              <button class="editor-tool" id="redoBtn" type="button" disabled
+                aria-label="Ulangkan perubahan yang dibatalkan" title="Ulangkan perubahan yang dibatalkan"
+                data-i18n-aria-label="ui.redoLastChange" data-i18n-title="ui.redoLastChange">
+                <span class="icon" aria-hidden="true"></span>
+              </button>
+            </div>
             <span class="editor-badge" id="editorBadge"><span data-i18n="ui.notReadYet">Belum dibaca</span></span>
           </div>
           <div id="panel" class="panel" role="tabpanel" aria-labelledby="tabMetadata"></div>
