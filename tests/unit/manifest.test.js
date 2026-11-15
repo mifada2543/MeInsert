@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { cssIsUpToDate } from '../../scripts/build-css.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const HTML_PAGES = ['index.html', 'single.html', 'batch.html'];
+const HTML_PAGES = ['index.html', 'single.html', 'batch.html', 'privacy.html', 'Terms.html'];
 
 async function read(relativePath) {
   return readFile(join(root, relativePath), 'utf8');

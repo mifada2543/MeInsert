@@ -26,5 +26,6 @@
 @import "./layout/footer.css";
 @import "./pages/landing.css";
 @import "./pages/batch.css";
+@import "./pages/policy.css";
 @import "./components/lightbox.css";
 @import "./components/language.css";

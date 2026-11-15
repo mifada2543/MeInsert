@@ -118,6 +118,7 @@ Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ula
 - **Perbesar pratinjau** — klik gambar (pratinjau utama, cover audio, pratinjau cover, pratinjau batch) untuk lightbox layar penuh; klik lagi / scroll untuk zoom, geser untuk menggeser, Esc untuk tutup
 - **Tema gelap/terang** — ikut sistem, bisa manual, transisi circular reveal, tanpa flicker (tema diterapkan sebelum paint pertama)
 - **Bahasa Indonesia / Inggris** — pilih **ID / EN** di samping tombol tema; preferensi disimpan di perangkat, tanpa menerjemahkan metadata Anda
+- **Fokus edit di HP** — navigasi Satu file/Batch disembunyikan selama sesi edit atau pemrosesan dan muncul lagi setelah hasil selesai atau kembali ke pemilihan file; desktop tidak berubah
 - **PWA Installable** — pasang ke layar utama dari menu browser; precache app shell, library vendor + ExifTool WASM di-cache saat pertama dipakai
 - **Manajemen memori WASM** — worker & ExifTool WASM dilepas otomatis setelah batch, saat idle (~8 menit), dan saat halaman ditutup
 
@@ -333,6 +334,25 @@ bundelnya basi.
   dengan tombol *Muat ulang* — aset tidak pernah tertukar diam-diam di tengah
   pemakaian.
 
+### Halaman kebijakan
+
+Footer membuka **[Kebijakan Privasi](privacy.html)** dan
+**[Kebijakan Penggunaan](Terms.html)** sebagai halaman HTML ID/EN dengan tema,
+header, daftar bagian, dan navigasi yang sama. Keduanya bisa dibaca offline
+setelah app shell selesai disimpan. Huruf besar pada `Terms.html` disengaja;
+gunakan tautan persis tersebut pada hosting yang membedakan kapitalisasi.
+
+Sumber isi tetap `PRIVACY.md` / `PRIVACY-en.md` dan `TERMS.md` / `TERMS-en.md`.
+Halaman HTML dibuat saat pengembangan, bukan melalui unduhan Markdown saat runtime:
+
+```bash
+npm run build:policies
+npm run check:policies
+```
+
+Regenerasi setelah perubahan kebijakan atau header/footer di `index.html`.
+HTML hasil generator dilacak di repository; test dan CI memeriksa sinkronisasinya.
+
 ### Terjemahan dan pengujian kompatibilitas
 
 Kamus UI berada di `assets/js/i18n/`. Gunakan key semantik dan parameter yang
@@ -406,8 +426,8 @@ MeInsert hanya menyediakan *alat* untuk membaca/menulis tag standar (EXIF, XMP, 
 
 ## Kebijakan Penggunaan dan Privasi
 
-- **Kebijakan Penggunaan:** [Indonesia](TERMS.md) · [English](TERMS-en.md).
-- **Kebijakan Privasi:** [Indonesia](PRIVACY.md) · [English](PRIVACY-en.md).
+- **Kebijakan Penggunaan:** [Halaman ID/EN](Terms.html) · sumber [Indonesia](TERMS.md) / [English](TERMS-en.md).
+- **Kebijakan Privasi:** [Halaman ID/EN](privacy.html) · sumber [Indonesia](PRIVACY.md) / [English](PRIVACY-en.md).
 
 **Isi berkas, metadata yang diedit, sampul, dan hasil pemrosesan tidak dikirim
 atau diunggah ke server oleh aplikasi resmi.** Baca kebijakan privasi untuk alur

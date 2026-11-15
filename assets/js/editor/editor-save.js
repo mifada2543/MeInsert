@@ -31,6 +31,7 @@ export function ensureOutputName(ctx) {
 }
 export function applyOutput(ctx, result) {
   const { els, state } = ctx;
+  state.navigationHasResult = true;
   const file = new File([result.blob], result.filename, {
     type: result.blob.type || state.file.type || state.detection.mime,
   });

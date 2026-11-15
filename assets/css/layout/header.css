@@ -132,6 +132,16 @@ html[data-theme="light"] .theme-icon-moon,html[data-theme="dark"] .theme-icon-su
   }
 }
 @media (max-width: 700px) {
+  body.is-editing {
+    --bottom-nav-h: 0px;
+  }
+  body.is-editing .header-nav {
+    display: none;
+  }
+  body.is-editing .action-bar,
+  body.is-editing .batch-footer {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
   .site-header {
     padding: 12px 0;
   }

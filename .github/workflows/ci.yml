@@ -20,6 +20,8 @@ jobs:
     - run: npm ci
     - name: Bundel CSS harus sinkron dengan sumber
       run: npm run check:css
+    - name: Policy HTML must match sources
+      run: npm run check:policies
     - name: Lint
       run: npm run lint
     - name: Unit test

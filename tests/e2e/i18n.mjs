@@ -46,14 +46,14 @@ try {
     assert.equal(buttonSizes[0], buttonSizes[2]);
     assert.equal(buttonSizes[1], buttonSizes[3]);
     assert.equal((await page.locator('[data-nav="single"]').innerText()).trim(), 'Single file');
-    assert.equal(await page.locator('[data-policy="terms"]').getAttribute('href'), './TERMS-en.md');
-    assert.equal(await page.locator('[data-policy="privacy"]').getAttribute('href'), './PRIVACY-en.md');
+    assert.equal(await page.locator('[data-policy="terms"]').getAttribute('href'), './Terms.html');
+    assert.equal(await page.locator('[data-policy="privacy"]').getAttribute('href'), './privacy.html');
     assert.equal(await page.locator('[data-notice]').getAttribute('href'), './NOTICE-en.md');
     await page.locator('[data-language-toggle]').click();
     assert.equal(await page.locator('[data-language-toggle]').innerText(), 'ID');
     assert.equal(await page.locator('html').getAttribute('lang'), 'id');
-    assert.equal(await page.locator('[data-policy="terms"]').getAttribute('href'), './TERMS.md');
-    assert.equal(await page.locator('[data-policy="privacy"]').getAttribute('href'), './PRIVACY.md');
+    assert.equal(await page.locator('[data-policy="terms"]').getAttribute('href'), './Terms.html');
+    assert.equal(await page.locator('[data-policy="privacy"]').getAttribute('href'), './privacy.html');
     assert.equal(await page.locator('[data-notice]').getAttribute('href'), './NOTICE.md');
     assert.equal(await page.locator('[data-policy="terms"]').innerText(), 'Kebijakan Penggunaan');
     await page.reload();
@@ -61,6 +61,31 @@ try {
     await change('en');
   }
   console.log('PASS: all three pages, accessible selector, titles, storage, navigation and policy links');
+
+  for (const [path, title] of [['privacy.html', 'Privacy Policy'], ['Terms.html', 'Terms of Use']]) {
+    await page.goto(`${base}/${path}`);
+    await page.waitForFunction(() => document.documentElement.lang === 'en');
+    assert.ok((await page.title()).includes(title));
+    assert.equal(await page.locator('[data-policy-language="en"]').isVisible(), true);
+    assert.equal(await page.locator('[data-policy-language="id"]').isVisible(), false);
+    assert.match(await page.locator('[data-policy-language="en"]').innerText(), /forgery|Forgery/);
+    await page.locator('[data-language-toggle]').click();
+    assert.equal(await page.locator('[data-policy-language="id"]').isVisible(), true);
+    assert.equal(await page.locator('[data-policy-language="en"]').isVisible(), false);
+    assert.match(await page.locator('[data-policy-language="id"]').innerText(), /pemalsuan/i);
+    await page.locator('.policy-toc:visible a').first().click();
+    assert.ok(await page.locator(`${new URL(page.url()).hash}`).isVisible());
+    await page.waitForFunction(() => document.querySelector('.policy-document:not([hidden]) .policy-toc a[aria-current="location"]'));
+    await page.locator('[data-policy-language="id"] .policy-section').nth(3).evaluate((section) => section.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await page.waitForFunction(() => document.querySelector('.policy-document:not([hidden]) .policy-toc a[aria-current="location"]')?.hash.endsWith('-id-4'));
+    await change('en');
+    await page.waitForFunction(() => document.querySelectorAll('.policy-toc a[aria-current="location"]').length === 1 && Boolean(document.querySelector('[data-policy-language="en"] .policy-toc a[aria-current="location"]')));
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+    await page.waitForFunction(() => document.querySelector('.policy-document:not([hidden]) .policy-toc a[aria-current="location"]')?.hash.endsWith('-en-7'));
+    await page.locator('.policy-toc:visible a').nth(1).click();
+    await page.waitForFunction(() => document.querySelector('.policy-document:not([hidden]) .policy-toc a[aria-current="location"]')?.hash.endsWith('-en-2'));
+  }
+  console.log('PASS: readable policy HTML, full ID/EN content, titles and section navigation');
 
   await change('id');
   await page.goto(`${base}/single.html`);
@@ -240,7 +265,7 @@ try {
   for (const path of ['/TERMS.md', '/TERMS-en.md', '/PRIVACY.md', '/PRIVACY-en.md']) {
     assert.equal(await offlinePage.evaluate(async (url) => (await fetch(url)).ok, path), true, `offline policy: ${path}`);
   }
-  for (const path of ['/index.html', '/single.html', '/batch.html']) {
+  for (const path of ['/index.html', '/single.html', '/batch.html', '/privacy.html', '/Terms.html']) {
     await offlinePage.goto(`${base}${path}`);
     await offlinePage.locator('[data-language-toggle]').click();
     assert.equal(await offlinePage.locator('html').getAttribute('lang'), 'id');
@@ -248,7 +273,50 @@ try {
     assert.equal(await offlinePage.locator('html').getAttribute('lang'), 'en');
   }
   await offline.close();
-  console.log('PASS: offline policies and ID/EN switching on all three cached pages');
+  console.log('PASS: offline policy navigation and ID/EN switching on all five cached pages');
+
+  const mobile = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  const editor = await mobile.newPage();
+  try {
+    await editor.goto(`${base}/single.html`);
+    assert.equal(await editor.locator('.header-nav').isVisible(), true);
+    await editor.locator('#fileInput').setInputFiles(join(root, 'tests/fixtures/document.pdf'));
+    await editor.locator('#field-title').waitFor();
+    assert.equal(await editor.locator('.header-nav').isVisible(), false);
+    assert.equal(await editor.evaluate(() => getComputedStyle(document.body).getPropertyValue('--bottom-nav-h').trim()), '0px');
+    await editor.setViewportSize({ width: 1280, height: 900 });
+    assert.equal(await editor.locator('.header-nav').isVisible(), true);
+    await editor.setViewportSize({ width: 390, height: 844 });
+    await editor.locator('#field-title').fill('Mobile saved title');
+    await editor.locator('#saveBtn').click();
+    await editor.locator('.review-btn-confirm').click();
+    await editor.locator('.result-card').waitFor();
+    await editor.waitForFunction(() => !document.body.classList.contains('is-editing'));
+    assert.equal(await editor.locator('.header-nav').isVisible(), true);
+    await editor.locator('#field-title').fill('New pending edit');
+    assert.equal(await editor.locator('.header-nav').isVisible(), false);
+    await editor.locator('#resetBtn').click();
+    assert.equal(await editor.locator('.header-nav').isVisible(), true);
+    await editor.goto(`${base}/batch.html`);
+    await editor.locator('#batchBackBtn .icon svg').waitFor({ state: 'attached' });
+    await editor.locator('#batchFileInput').setInputFiles(join(root, 'tests/fixtures/document.pdf'));
+    await editor.waitForFunction(() => document.querySelector('.batch-file.is-ready'));
+    assert.equal(await editor.locator('.header-nav').isVisible(), false);
+    await editor.locator('#batchCrossToggle').check();
+    await editor.locator('#batch-cross-title').fill('Mobile batch title');
+    await editor.locator('#batchApplyBtn').click();
+    await editor.locator('.review-btn-confirm').click();
+    await editor.waitForFunction(() => !document.querySelector('#batchZipBtn').disabled && !document.body.classList.contains('is-editing'));
+    assert.equal(await editor.locator('.header-nav').isVisible(), true);
+    await editor.locator('#batch-cross-title').fill('Another batch edit');
+    assert.equal(await editor.locator('.header-nav').isVisible(), false);
+    for (const path of ['privacy.html', 'Terms.html']) {
+      await editor.goto(`${base}/${path}`);
+      assert.equal(await editor.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      assert.equal(await editor.locator('.header-nav').isVisible(), true);
+    }
+  } finally { await mobile.close(); }
+  console.log('PASS: mobile mode nav hides during editing, returns after save/reset, desktop unaffected; policy layouts fit');
 } catch (error) {
   console.error('Browser errors:', errors);
   console.error('Current UI:', (await page.locator('body').innerText()).slice(-8000));

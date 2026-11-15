@@ -157,6 +157,8 @@ try {
     await mobilePage.waitForTimeout(400);
     const pinned = await mobilePage.evaluate(() => document.querySelector('#previewDock')?.classList.contains('is-pinned'));
     console.log('mobileDockPinned', pinned);
+    if (await mobilePage.locator('.header-nav').isVisible()) throw new Error('Mode nav should be hidden during mobile editing');
+    await mobilePage.locator('#newFileBtn').click();
     await mobilePage.locator('.header-link[data-nav="batch"]').click();
     await mobilePage.waitForLoadState('domcontentloaded');
     console.log('mobileBatchNav', mobilePage.url().endsWith('batch.html'));

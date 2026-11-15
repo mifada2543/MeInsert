@@ -43,6 +43,7 @@ export async function openFile(ctx, file) {
   state.detection = detection;
   state.adapter = adapter;
   state.status = 'loading';
+  state.navigationHasResult = false;
   state.readResult = null;
   state.baselineSnapshot = null;
   state.readError = null;

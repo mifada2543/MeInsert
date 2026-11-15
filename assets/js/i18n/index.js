@@ -96,7 +96,9 @@ export function setLanguage(next, { persist = true } = {}) {
   }
   if (typeof document !== 'undefined') {
     document.documentElement.lang = next;
-    document.title = t(document.body?.dataset.page === 'batch' ? 'page.batchTitle' : 'page.title');
+    const page = document.body?.dataset.page;
+    document.title = t(page === 'batch' ? 'page.batchTitle' : page === 'privacy' ? 'page.privacyTitle' : page === 'terms' ? 'page.termsTitle' : 'page.title');
+    document.querySelectorAll('[data-policy-language]').forEach((article) => { article.hidden = article.dataset.policyLanguage !== next; });
     document.querySelectorAll('[data-language-toggle]').forEach((button) => {
       button.textContent = next.toUpperCase();
       button.dataset.currentLanguage = next;
@@ -105,8 +107,7 @@ export function setLanguage(next, { persist = true } = {}) {
     });
     document.querySelectorAll('a[data-notice]').forEach((link) => link.setAttribute('href', next === 'en' ? './NOTICE-en.md' : './NOTICE.md'));
     document.querySelectorAll('a[data-policy]').forEach((link) => {
-      const name = link.dataset.policy === 'terms' ? 'TERMS' : 'PRIVACY';
-      link.setAttribute('href', `./${name}${next === 'en' ? '-en' : ''}.md`);
+      link.setAttribute('href', link.dataset.policy === 'terms' ? './Terms.html' : './privacy.html');
     });
   }
   for (const reference of nodes) {

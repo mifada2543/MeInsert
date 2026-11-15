@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v39';
+const CACHE_VERSION = 'meinsert-v41';
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -10,10 +10,13 @@ const SHELL_URLS = [
   './index.html',
   './single.html',
   './batch.html',
+  './privacy.html',
+  './Terms.html',
   './manifest.json',
   './assets/css/app.bundle.css',
   './assets/js/theme-init.js',
   './assets/js/home.js',
+  './assets/js/ui/policy-toc.js',
   './assets/js/app.js',
   './assets/js/i18n/index.js',
   './assets/js/i18n/id.js',
@@ -40,6 +43,7 @@ const SHELL_URLS = [
   './assets/js/core/worker-client.js',
   './assets/js/ui/confirm.js',
   './assets/js/ui/dom.js',
+  './assets/js/ui/editing-navigation.js',
   './assets/js/ui/file-card.js',
   './assets/js/ui/form-view.js',
   './assets/js/ui/icons.js',

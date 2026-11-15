@@ -123,6 +123,7 @@ Select **Save**, review the changes, and confirm. The output is read again and v
 - **Fullscreen preview** — open image and cover previews in a lightbox; zoom, pan, and press Escape to close.
 - **Light/dark theme** — follows the system or a manual preference, with a circular-reveal transition and early theme initialization.
 - **Indonesian / English** — select **ID / EN** beside the theme button. The preference stays on your device; metadata values are not translated.
+- **Mobile editing focus** — the Single file/Batch navigation is hidden during editing/processing and returns after results are ready or when returning to file selection. Desktop navigation is unchanged.
 - **Installable PWA** — install from the browser menu. The app shell is precached; vendor libraries and ExifTool WASM are cached on first use.
 - **WASM memory management** — Workers and the ExifTool runtime are released after batch processing, after idle time (about eight minutes), and when the page closes.
 
@@ -322,6 +323,19 @@ The generated bundle is tracked in Git so deployment needs no build step. Regene
 - Navigation uses stale-while-revalidate: cached pages are returned immediately while a network refresh runs in the background.
 - A new-version notification offers **Reload** rather than automatically reloading an active editing session.
 
+### Policy Pages
+
+Footer links open **[Privacy Policy](privacy.html)** and **[Terms of Use](Terms.html)** as ID/EN HTML pages with the same theme, header, section navigation, and footer. Both work offline once the app shell is cached. The capital `T` in `Terms.html` is intentional; preserve this spelling on case-sensitive hosting.
+
+Content sources remain `PRIVACY.md` / `PRIVACY-en.md` and `TERMS.md` / `TERMS-en.md`. HTML is generated during development, with no runtime Markdown downloads:
+
+```bash
+npm run build:policies
+npm run check:policies
+```
+
+Regenerate after changing policies or the shared header/footer in `index.html`. Generated HTML is tracked in the repository, with synchronization checked by tests and CI.
+
 ### Translation and Compatibility Testing
 
 UI dictionaries live in `assets/js/i18n/`. Keep semantic keys and interpolation parameters aligned between Indonesian and English. Do not translate metadata values, technical format identifiers, or machine-report keys. Language changes must not reset forms or running batch jobs. Language modules are precached; CSS changes still require `npm run build:css`.
@@ -373,8 +387,8 @@ MeInsert edits metadata such as EXIF, XMP, IPTC, ID3, Vorbis Comment, Matroska t
 
 ## Usage and Privacy Policies
 
-- **Acceptable Use:** [Indonesian](TERMS.md) · [English](TERMS-en.md).
-- **Privacy Policy:** [Indonesian](PRIVACY.md) · [English](PRIVACY-en.md).
+- **Acceptable Use:** [ID/EN page](Terms.html) · source [Indonesian](TERMS.md) / [English](TERMS-en.md).
+- **Privacy Policy:** [ID/EN page](privacy.html) · source [Indonesian](PRIVACY.md) / [English](PRIVACY-en.md).
 
 **The official application does not send or upload file contents, edited metadata,
 cover art, or processing outputs to a server.** The privacy policy explains the
