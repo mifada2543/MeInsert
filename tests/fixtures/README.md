@@ -19,7 +19,8 @@ libx264, libvpx, libwebp, AAC), ImageMagick `convert`, and OpenSSL 3.
 Regeneration reproduces the content/metadata and verification properties, not
 identical bytes: codec versions, Ogg serial numbers, PDF IDs, signing time, and
 the freshly generated RSA key/certificate can differ. CI consumes the stored
-fixtures; it does not require ffmpeg or ImageMagick.
+fixtures; it also uses FFmpeg/ffprobe for independent output checks and the
+supplemental timing corpus. ImageMagick is required only for full regeneration.
 
 ## Files
 
@@ -85,6 +86,22 @@ Some external players do not display Ogg/Opus covers even when embedded and
 readable. The compatibility harness checks actual embedded image bytes, not
 player UI behavior.
 
-See [`../compat/README.md`](../compat/README.md) for execution, scope, and current
-strict integrity failures. Expected behavior in this table is a requirement,
-not a claim that every current adapter meets it.
+### Supplemental timing / picture corpus
+
+`mkv-generate.mjs` generates an isolated temporary corpus without touching the
+stored fixtures: 0.3s/1.1s reordered B-frame video, no-B-frame video, nonzero
+on-grid and off-grid starts, AAC audio-only/audio+video, and variable timing.
+The off-grid/AAC/variable examples currently require a safe WRITE_FAILED
+rejection when packet timing cannot be preserved by the pinned muxer; these
+are not claimed successful writes. Run `node tests/compat/mkv-duration.mjs`
+or the default compatibility suite (the `mkv-timing` job).
+
+`tests/compat/vorbis-preservation.mjs` synthesizes multiple numeric picture types
+and back covers with Unicode descriptions and deliberately nonzero dimensions,
+depth and color counts. It checks complete picture structures through keep,
+set, and remove and compares audio packet SHA-256 using ffprobe. No external
+artwork is fetched; generated variants are removed after the test.
+
+See [`../compat/README.md`](../compat/README.md) for execution, scope, repairs,
+remaining warnings, and format limitations. The stored fixture matrix passes;
+this is not a guarantee for every possible file.

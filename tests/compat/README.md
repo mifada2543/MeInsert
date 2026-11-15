@@ -5,7 +5,7 @@ npm ci
 CHROME_BIN=/usr/bin/google-chrome npm run test:compat
 ```
 
-Requires Chrome/Chromium and OpenSSL (`openssl cms`) on PATH. Node 22 is used in
+Requires Chrome/Chromium, FFmpeg/ffprobe, and OpenSSL (`openssl cms`) on PATH. Node 22 is used in
 CI. No server-side processing, downloads, uploads, or remote dependencies are
 used by the app: the harness serves static local files on a random loopback
 port, allows only same-origin GET requests, and fails on other browser requests
@@ -14,7 +14,34 @@ command: `npm run fixtures:generate`.
 
 ## Architecture and assertions
 
-`run.mjs` uses playwright-core and real headless Chrome on `single.html`.
+`run.mjs` schedules isolated Node child processes, one per format group. Each
+`worker.mjs` process owns its loopback server, Chrome instance, browser context,
+Workers, and WASM runtime. No mutable browser state is shared between jobs.
+Cover checks run in their corresponding format job. PDF fixtures share one PDF
+job; negative Ogg codecs share a rejection job. Separate ID/EN UI jobs exercise
+the real file picker, review, downloads, and cover rejection. Two additional jobs
+run expanded MKV timing and multi-picture Vorbis regression suites.
+
+Default concurrency is **2** (or 1 on a single-CPU environment), not all formats
+at once. The maximum accepted value is 8; use lower values on memory-limited CI.
+
+```sh
+npm run test:compat -- --concurrency 1       # serial, same isolated jobs/assertions
+npm run test:compat -- --concurrency 2       # bounded parallel (default)
+COMPAT_CONCURRENCY=4 npm run test:compat
+npm run test:compat -- --format tiff,mp4,mov # focused diagnosis
+```
+
+The scheduler retains deterministic aggregate ordering, preserves failed rows,
+reports worker crashes, and imposes a ten-minute job deadline. Changing
+concurrency changes scheduling, not assertions. Logs show per-job elapsed time,
+local asset bytes/requests, and **Node-only** peak RSS (not total Chrome/WASM
+memory). Standalone supplemental suites report unknown local traffic as `-`.
+The traffic is localhost disk-to-browser transfer, not an internet download.
+More processes duplicate WASM heaps/compilation and can be slower if memory or
+CPU is saturated. No fixed speedup is promised.
+
+`worker.mjs` uses playwright-core and real headless Chrome on `single.html`.
 `browser.mjs` imports production detection, registry, snapshots, change-plan,
 integrity and `MetadataClient`. Every adapter read/write/re-read goes through
 the production Web Worker RPC and actual bundled engines, including ExifTool
@@ -61,47 +88,65 @@ Per-case tables and findings go to stdout. Any failed invariant exits nonzero;
 there is no expected-failure allowlist, silent skip, filter, snapshot mutation,
 or weakened integrity policy. Workers/browser/server are closed after testing.
 
-## Current findings (2026-11-15)
+## Repair results (2026-11-15)
 
-The new strict harness is intentionally **not green** on the current production
-code. Title read/write/re-read succeeds for every positive fixture. The following
-eight cases fail the production integrity engine:
+The original baseline was 25/33; bilingual defaults exposed three additional
+locale-sensitive UI timeouts (22/33). These assertions were not skipped. The
+updated matrix has **38 cases across 19 jobs**: the original scenarios, UI in
+both languages, and two expanded regression suites. A passing suite includes
+assertions that unsupported timing is safely rejected, not a claim every input
+is writable.
 
-| Fixture | Finding |
+| Original finding | Repair / evidence |
 | --- | --- |
-| `pattern.tif` | IFD0:StripOffsets changes from 8 to 3166 |
-| `tone.flac` | Vorbis vendor changes from ffmpeg/Lavf to Mediabunny |
-| `tone.opus`, `tone.ogg` | Same vendor change; METADATA_BLOCK_PICTURE's dimensions/depth become zero, triggering custom-tag change (actual PNG cover bytes are preserved) |
-| `clip.mp4`, `tone.m4a` | QuickTime:MediaDataOffset changes when metadata is inserted |
-| `clip.mov` | Same offset change, plus requested title changes UserData:Title, which the verifier classifies as unexpected |
-| `clip.mkv` | Re-read duration changes from 0.3s to 0.2s |
+| TIFF strip / MP4-family media offsets | `MEDIA_RELOCATED` only when bounded-memory SHA-256 payload-region proofs match. Invalid/missing proofs cannot earn this exemption. Independent TIFF decoded-pixel hash and MP4-family ffprobe packet hashes/timing/track properties also checked. |
+| FLAC vendor | Restored in native FLAC comments, without altering audio frame bytes. |
+| Ogg vendor | Still changes to Mediabunny: explicit `ENGINE_VENDOR_CHANGED` warning, only for this exact format/tag/engine signature. Missing vendor, unrelated vendor changes, and ENCODER corruption still fail. |
+| Ogg picture metadata | Preserve complete native picture comments instead of regenerating lossy dimensions/types. FLAC native picture blocks are restored separately. Multiple types, Unicode descriptions, dimensions/depth/colors, back covers, keep/set/remove and audio packet hashes checked. |
+| MOV UserData title | Declared as a title alias; permitted only for an actual planned title operation, not unrelated edits. |
+| MKV duration | Preserve proven constant packet DefaultDuration and original leading timeline. Independently check frame count, compressed SHA-256, PTS and packet duration using ffprobe. No widened duration tolerance. |
+| UI timeouts | Explicit ID/EN contexts and language-independent readiness/error selectors; failures capture status, browser errors and screenshots under ignored `tests/tmp-compat-artifacts/`. |
 
-Offset changes are plausibly necessary container bookkeeping, and vendor/title
-alias findings may need integrity-policy decisions rather than adapter fixes.
-They remain failures here because the harness must use the production policy
-unchanged. The MKV duration result needs investigation; this harness alone does
-not prove encoded frame loss. No production source was modified for this task.
+Mediabunny 1.65's Matroska copy path drops DefaultDuration; with reordered B-frames
+the final decode-order block is not necessarily the highest-PTS block. The
+fixture retains all three frames but loses the highest-PTS frame's duration.
+The fix restores a default only after scanning for constant positive durations
+and grid-aligned timestamps, then verifies packet timing after the copy.
+Output is withheld with WRITE_FAILED if track count or timing cannot be kept.
+The expanded corpus includes short/long B-frame video, no B-frames and positive
+start timestamps. Off-grid, variable-timing and AAC audio-only/audio+video cases
+currently exercise safe rejection; this is a real support limitation, not a
+successful remux. The API uses the pinned engine version; reevaluate on upgrade.
+
+Payload proofs are not full decoders: classic TIFF strips/tiles and top-level
+MP4 `mdat` are covered. BigTIFF/unsupported structures do not earn an exemption.
+Proof generation scans payload ranges in 1 MiB chunks, adding local I/O/CPU to
+reads and post-write verification without buffering the whole payload at once.
+Proofs alone do not establish sample-table correctness; the fixture harness adds
+independent packet/pixel checks. Other metadata remains checked by production
+integrity rules. Real corruption fixtures and unit mutations must still fail.
 
 The original signed PDF verifies cryptographically; its output retains Contents
-but not signed-range bytes. If the requirement is to preserve signature validity
-or original signed-range bytes, that is a separate unmet production requirement,
-not something these tests can claim to fix.
+but not signed-range bytes. The separate signatureValidity table column now
+explicitly reports **INVALIDATED**, independently checked against output CMS
+and ByteRange. A green invariants cell means warning/preservation assertions
+passed, NOT that signature validity was preserved.
 
 ## Wiring
 
-`package.json`: `test:compat` and `fixtures:generate`; no new dependencies.
+`package.json`: `test:compat` and `fixtures:generate`; no new npm dependencies.
 `.github/workflows/ci.yml`: separate `compat` job with setup-node@v4, Node 22,
-npm cache, `npm ci`, and Chrome. Existing unit/e2e jobs are unchanged. Because
-real failures are not suppressed, the compat CI job currently fails until the
-production issues/policy decisions above are resolved.
+npm cache, `npm ci`, Chrome, FFmpeg/ffprobe and OpenSSL. CI uses
+`COMPAT_CONCURRENCY=2`. Existing unit/e2e jobs remain separate.
 
 Last verification on 2026-11-15:
 
-- `npm test`: 63/63 pass (existing tests unchanged).
+- `npm test`: 80/80 pass (including scheduling, proof, duration and picture regressions).
 - `npm run lint`: exit 0, no ESLint diagnostics.
-- `CHROME_BIN=/usr/bin/google-chrome npm run test:compat`: 25/33 pass,
-  exit 1 for the eight strict integrity failures above; all positive fixtures'
-  title read/write/re-read steps pass, and all rejection/cover/UI cases pass.
+- `CHROME_BIN=/usr/bin/google-chrome npm run test:compat -- --concurrency 2`:
+  **38/38 pass**, 28.2 seconds on the development machine.
+- Same complete checks with `--concurrency 1`: **38/38 pass**, 44.6 seconds.
+  These individual local runs are observations, not a cross-machine benchmark.
 - `CHROME_BIN=/usr/bin/google-chrome npm run test:e2e`: exit 0, including offline
   reload and mobile layout checks.
 - `pdfsig tests/fixtures/signed.pdf`: signature valid, entire document signed;

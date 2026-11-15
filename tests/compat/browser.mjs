@@ -20,6 +20,11 @@ function signatureHex(bytes) {
   const text = new TextDecoder('latin1').decode(bytes);
   return /\/Contents\s*<([0-9a-f]+)>/i.exec(text)?.[1]?.toLowerCase();
 }
+function base64(bytes) {
+  const data = new Uint8Array(bytes); let text = '';
+  for (let offset = 0; offset < data.length; offset += 8192) text += String.fromCharCode(...data.subarray(offset, offset + 8192));
+  return btoa(text);
+}
 export async function runFixture(name, { reject = false, cover = false, signed = false } = {}) {
   const row = { fixture: name, format: '', read: '-', write: '-', reread: '-', invariants: '-', error: '' };
   try {
@@ -63,6 +68,7 @@ export async function runFixture(name, { reject = false, cover = false, signed =
     check(actualDetection.id === detection.id && actualDetection.subtype === detection.subtype && actualDetection.ext === detection.ext,
       'Output extension/container differs from detected input format');
     const after = await read(output); row.reread = 'ok';
+    if (signed || detection.id === 'mp4' || detection.subtype === 'tiff') row.outputBase64 = base64(await output.arrayBuffer());
     check(after.fields.title === title, `Title did not persist: ${JSON.stringify(after.fields.title)}`);
     const integrity = verifyIntegrity(plan, createSnapshot({ adapter, detection, readResult: after }));
     if (cover) {
@@ -85,6 +91,7 @@ export async function runFixture(name, { reject = false, cover = false, signed =
         return oldBytes.subarray(start, start + length).every((b, i) => b === newBytes[start + i]);
       });
       row.signedRanges = coveredUnchanged ? 'unchanged' : 'CHANGED (signature invalidated, warned)';
+      row.signatureValidity = coveredUnchanged ? 'NOT VERIFIED' : 'NOT PRESERVED';
       // Rewriting a PDF changes signed bytes. This is NOT a signature-validity assertion.
     }
     check(integrity.status !== 'failed', `Integrity: ${integrity.findings.filter((f) => f.severity === 'error').map((f) => `${f.code} ${f.target} (${String(f.before).slice(0, 70)} → ${String(f.after).slice(0, 70)})`).join('; ')}`);
@@ -97,14 +104,16 @@ export async function runFixture(name, { reject = false, cover = false, signed =
   return row;
 }
 
-export async function coverPolicy() {
+export async function coverPolicy({ names = ['tone.mp3', 'tone.flac', 'tone.opus', 'tone.ogg', 'clip.mkv'], mp4Policy = true } = {}) {
   const rows = [];
   for (const ext of ['gif', 'bmp']) {
     const image = await fixture(`cover.${ext}`);
     const bytes = new Uint8Array(await image.arrayBuffer());
-    check(!isSupportedCover(bytes, 'mp4'), `MP4 covr must reject ${ext}`);
-    rows.push({ fixture: `MP4 ${ext} policy`, invariants: 'ok' });
-    for (const name of ['tone.mp3', 'tone.flac', 'tone.opus', 'tone.ogg', 'clip.mkv']) {
+    if (mp4Policy) {
+      check(!isSupportedCover(bytes, 'mp4'), `MP4 covr must reject ${ext}`);
+      rows.push({ fixture: `MP4 ${ext} policy`, invariants: 'ok' });
+    }
+    for (const name of names) {
       const row = { fixture: `${name} + ${ext}`, invariants: 'FAIL', error: '' };
       try {
         const file = await fixture(name), detection = await detectFile(file);

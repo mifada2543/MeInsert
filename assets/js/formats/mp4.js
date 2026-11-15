@@ -33,7 +33,7 @@ export const fields = [
     section: 'umum',
     label: 'Judul',
     type: 'text',
-    native: 'ItemList:Title + XMP-dc:Title',
+    native: 'ItemList:Title + XMP-dc:Title + UserData:Title',
     placeholder: 'Judul video atau audio',
     maxLength: 256,
   },
@@ -109,7 +109,7 @@ export const fields = [
   },
 ];
 const READ_MAP = {
-  title: ['ItemList:Title', 'XMP-dc:Title'],
+  title: ['ItemList:Title', 'XMP-dc:Title', 'UserData:Title'],
   artist: ['ItemList:Artist', 'XMP-tiff:Artist'],
   album: ['ItemList:Album', 'XMP-xmpDM:Album'],
   genre: ['ItemList:Genre', 'XMP-xmpDM:Genre'],
@@ -193,6 +193,7 @@ export async function read(file, options = {}) {
     fields: mapTags(tags),
     raw,
     info,
+    mediaProof: await (await import('../core/media-proof.js')).mediaProof(file, 'mp4'),
     cover,
     coverBytes,
     warnings: [],
@@ -265,6 +266,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     fields,
     raw: collectRaw(tagsAfter),
     info: infoAfter,
+    mediaProof: await (await import('../core/media-proof.js')).mediaProof(output, 'mp4'),
     cover: coverAfter,
     coverBytes: coverBytesAfter,
     warnings,

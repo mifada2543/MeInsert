@@ -63,6 +63,50 @@ function rawRows(tags) {
 async function mediaLib() {
   return import('../../vendor/mediabunny.mjs');
 }
+async function preserveDefaultDurations(conversion, output, EncodedPacketSink) {
+  for (let i = 0; i < output.tracks.length; i++) {
+    const target = output.tracks[i];
+    const source = conversion.utilizedTracks[i];
+    if (!source || source.type !== target.type) throw new Error('Track mapping cannot be verified.');
+    let duration;
+    let constant = true;
+    for await (const packet of new EncodedPacketSink(source).packets(undefined, undefined, { metadataOnly: true })) {
+      if (!(packet.duration > 0) || !Number.isFinite(packet.duration) || !Number.isFinite(packet.timestamp)) {
+        throw new Error('Packet timing is unavailable; Matroska copy cannot be verified safely.');
+      }
+      duration ??= packet.duration;
+      if (!(duration > 0) || Math.abs(packet.duration - duration) > 1e-9) constant = false;
+      if (duration > 0 && Math.abs(packet.timestamp - Math.round(packet.timestamp / duration) * duration) > 1e-9) constant = false;
+    }
+    if (target.type === 'video' && constant && duration > 0) target.metadata.frameRate = 1 / duration;
+  }
+}
+async function verifyPacketTiming(before, after, EncodedPacketSink) {
+  const tracks = await after.getTracks();
+  if (tracks.length !== before.length) throw new Error('Track count changed during Matroska copy.');
+  const tick = 0.001000001;
+  for (let i = 0; i < before.length; i++) {
+    if (before[i].type !== tracks[i].type) throw new Error('Track type changed during Matroska copy.');
+    const original = new EncodedPacketSink(before[i]).packets(undefined, undefined, { metadataOnly: true });
+    const copied = new EncodedPacketSink(tracks[i]).packets(undefined, undefined, { metadataOnly: true });
+    try {
+      for (;;) {
+        const a = await original.next(), b = await copied.next();
+        if (a.done !== b.done) throw new Error('Packet count changed during Matroska copy.');
+        if (a.done) break;
+        if (!Number.isFinite(a.value.timestamp) || !Number.isFinite(b.value.timestamp)
+          || !Number.isFinite(a.value.duration) || !Number.isFinite(b.value.duration)
+          || Math.abs(a.value.timestamp - b.value.timestamp) > tick
+          || Math.abs(a.value.duration - b.value.duration) > tick) {
+          throw new Error('Packet timing changed during Matroska copy; output withheld.');
+        }
+      }
+    } finally {
+      await original.return();
+      await copied.return();
+    }
+  }
+}
 export async function read(file) {
   const { Input, ALL_FORMATS, BlobSource } = await mediaLib();
   try {
@@ -94,7 +138,7 @@ export async function read(file) {
 export async function write(file, payload, options = {}, report = () => {}) {
   const {
     Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion,
-    MkvOutputFormat, WebMOutputFormat,
+    MkvOutputFormat, WebMOutputFormat, EncodedPacketSink,
   } = await mediaLib();
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
@@ -180,6 +224,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
       input,
       output,
       tags: merged,
+      trim: { start: 0 },
       copy: { mode: 'forced' },
       showWarnings: false,
     });
@@ -194,6 +239,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     report({ stage: `Menulis ulang container… ${Math.round(progress * 100)}%`, pct: 20 + progress * 55 });
   };
   try {
+    await preserveDefaultDurations(conversion, output, EncodedPacketSink);
     await conversion.execute();
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Gagal menulis MKV/WebM.', error.message || String(error));
@@ -203,8 +249,13 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const extension = options.subtype === 'webm' ? 'webm' : 'mkv';
   const blob = new Blob([bytes], { type: mime });
   report({ stage: 'Memverifikasi hasil…', pct: 82 });
+  const check = new Input({ source: new BlobSource(new File([bytes], `output.${extension}`, { type: mime })), formats: ALL_FORMATS });
   try {
-    const check = new Input({ source: new BlobSource(new File([bytes], `output.${extension}`, { type: mime })), formats: ALL_FORMATS });
+    await verifyPacketTiming(await input.getTracks(), check, EncodedPacketSink);
+  } catch (error) {
+    throw new AppError('WRITE_FAILED', 'Timing MKV/WebM tidak bisa dipertahankan tanpa transcode.', error.message || String(error));
+  }
+  try {
     const afterTags = await check.getMetadataTags();
     const fields = toFields(afterTags);
     const warnings = ['Container ditulis ulang; chapter/attachment mungkin tidak dipertahankan.'];

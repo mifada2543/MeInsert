@@ -214,6 +214,7 @@ export async function read(file, options = {}) {
     fields: mapTags(tags, options.subtype),
     raw: collectRaw(tags),
     info: describeFile(tags),
+    mediaProof: options.subtype === 'tiff' ? await (await import('../core/media-proof.js')).mediaProof(file, 'tiff') : undefined,
     warnings: [],
   };
 }
@@ -242,6 +243,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     fields: after,
     raw: collectRaw(tagsAfter),
     info: describeFile(tagsAfter),
+    mediaProof: options.subtype === 'tiff' ? await (await import('../core/media-proof.js')).mediaProof(outputFile, 'tiff') : undefined,
     warnings,
   };
 }

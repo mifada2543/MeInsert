@@ -2,6 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { normalizeCustomKey, normalizeFieldValue, normalizeRawTag, normalizeText } from './metadata-snapshot.js';
+import { sameMediaProof } from './media-proof.js';
 import {
   isCoverRaw,
   isGeneratedRaw,
@@ -277,6 +278,12 @@ export function verifyIntegrity(plan, afterSnapshot) {
   const beforeRaw = new Map((before.raw || []).map((row) => [row.canonicalTag, row]));
   const afterRaw = new Map((after.raw || []).map((row) => [row.canonicalTag, row]));
   const targetRaw = new Set((plan?.operations || []).filter((op) => op.kind === 'raw').map((op) => normalizeRawTag(op.tag)));
+  const relocatedPayload = sameMediaProof(before.mediaProof, after.mediaProof);
+  if (before.mediaProof?.valid && !relocatedPayload) {
+    add({ severity: 'error', code: 'MEDIA_PAYLOAD_CHANGED', target: 'media',
+      message: 'Payload media berubah atau tidak bisa diverifikasi setelah penulisan.',
+      before: before.mediaProof.kind, after: after.mediaProof?.valid ? 'changed' : 'unverified' });
+  }
   const addKnown = (message, code, target, beforeValue, afterValue) => {
     const entry = { code, message, target };
     if (!knownLoss.some((item) => item.code === code && item.target === target)) {
@@ -317,6 +324,20 @@ export function verifyIntegrity(plan, afterSnapshot) {
       continue;
     }
     if (actual.value !== row.value) {
+      const format = plan?.format?.id || before.format?.id;
+      const relocationTag = (format === 'image' && before.format?.subtype === 'tiff' && /^ifd\d+:(stripoffsets|tileoffsets)$/.test(tag))
+        || (format === 'mp4' && tag === 'quicktime:mediadataoffset');
+      if (relocationTag && relocatedPayload) {
+        add({ severity: 'info', code: 'MEDIA_RELOCATED', target: `raw:${row.tag}`,
+          message: 'Offset container berubah; payload media terverifikasi identik.', before: row.value, after: actual.value });
+        continue;
+      }
+      if ((format === 'flac' || format === 'ogg') && tag === 'vendor' && /^Mediabunny v\d+\.\d+\.\d+$/.test(actual.value)) {
+        add({ severity: 'warning', code: 'ENGINE_VENDOR_CHANGED', target: `raw:${row.tag}`,
+          message: 'Identitas vendor container ditulis ulang oleh engine; bukan perubahan tag ENCODER pengguna.',
+          before: row.value, after: actual.value });
+        continue;
+      }
       if (loss) {
         addKnown(loss.message, loss.code, `raw:${row.tag}`, row.value, actual.value);
       } else {
@@ -474,6 +495,14 @@ export function verifyIntegrity(plan, afterSnapshot) {
       'structure:signed',
       'signed',
       'unsigned',
+    );
+  } else if (before.structure?.signed && plan?.operations?.length) {
+    addKnown(
+      'PDF bertanda tangan ditulis ulang; validitas tanda tangan harus diperiksa secara independen.',
+      'SIGNATURE_REQUIRES_VALIDATION',
+      'structure:signed',
+      'signature present (not cryptographically verified)',
+      'signature present (not cryptographically verified)',
     );
   }
   const hasError = findings.some((finding) => finding.severity === 'error');

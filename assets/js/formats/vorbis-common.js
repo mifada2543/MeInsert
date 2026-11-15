@@ -4,6 +4,7 @@
 import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { applyCoverImages, coverFromTags, scrubPrimaryCoverRaw } from '../core/image-utils.js';
+import { commentPictures, editPictures, flacPictures, pictureBase64, repairFlacMetadata } from './vorbis-pictures.js';
 export const KNOWN_RAW = new Set([
   'vendor', 'ENCODER', 'TITLE', 'ARTIST', 'ALBUM', 'ALBUMARTIST', 'DATE',
   'GENRE', 'TRACKNUMBER', 'TRACKTOTAL', 'DISCNUMBER', 'DISCTOTAL',
@@ -189,10 +190,21 @@ export async function writeVorbis(file, payload, options, report, config) {
     assignRaw(normalized.toUpperCase(), '');
   }
   const coverAction = payload?.cover?.action;
+  const isFlac = config.formatClass === 'FlacOutputFormat';
+  let pictures = isFlac ? await flacPictures(file) : commentPictures(raw);
+  let pictureComments = isFlac ? commentPictures(raw) : [];
   if (coverAction === 'set' || coverAction === 'remove') {
     scrubPrimaryCoverRaw(raw, merged.images);
     merged.images = applyCoverImages(merged.images, payload.cover);
   }
+  pictures = editPictures(pictures, payload?.cover, merged.images);
+  if (isFlac && (coverAction === 'set' || coverAction === 'remove')) {
+    pictureComments = editPictures(pictureComments, { action: 'remove' });
+  }
+  delete merged.images;
+  delete raw.METADATA_BLOCK_PICTURE;
+  const rawPictures = isFlac ? pictureComments : pictures;
+  if (rawPictures.length) raw.METADATA_BLOCK_PICTURE = rawPictures.map(pictureBase64);
   const output = new Output({ format, target: new BufferTarget() });
   let conversion;
   try {
@@ -220,7 +232,8 @@ export async function writeVorbis(file, payload, options, report, config) {
   }
   const outExt = options.extension || config.defaultExt;
   const mime = options.mime || config.mime;
-  const bytes = new Uint8Array(output.target.buffer);
+  let bytes = new Uint8Array(output.target.buffer);
+  if (isFlac) bytes = repairFlacMetadata(bytes, pictures, tags.raw?.vendor);
   const blob = new Blob([bytes], { type: mime });
   report({ stage: 'Memverifikasi hasil…', pct: 82 });
   try {
@@ -237,7 +250,7 @@ export async function writeVorbis(file, payload, options, report, config) {
       const img = afterTags.images?.find((i) => i.kind === 'coverFront') || afterTags.images?.[0];
       if (!img) warnings.push('Cover thumbnail tidak ada setelah penulisan.');
     } else if (coverAction === 'remove') {
-      if (afterTags.images?.length) warnings.push('Cover thumbnail belum terhapus.');
+      if (afterTags.images?.some((image) => image.kind !== 'coverBack')) warnings.push('Cover thumbnail belum terhapus.');
     }
     return {
       blob,

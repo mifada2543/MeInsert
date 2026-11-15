@@ -160,6 +160,7 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
     xmp,
     cover: coverSnapshot(readResult),
     structure: structureSnapshot(readResult?.info),
+    mediaProof: readResult?.mediaProof || null,
     warnings: [...(readResult?.warnings || [])],
     counts: {
       fields: Object.values(fields).filter((field) => field.normalized).length,

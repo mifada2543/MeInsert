@@ -258,6 +258,7 @@ MeInsert/
 
 - **MP3:** frame ID3 non-standar (selain yang dipetakan) hilang saat menulis
 - **MKV:** chapter & attachment tidak dipertahankan saat remux
+- **MKV/WebM:** penulisan ditolak bila jumlah track atau timing paket tidak bisa dipertahankan; ini mencakup sebagian input audio, video variable-duration, dan timestamp yang tidak cocok dengan kemampuan muxer saat ini
 - **PDF:** PDF terenkripsi tidak didukung; PDF bertanda tangan digital → tanda tangan invalid; XMP yang rusak/aneh akan ditulis ulang (dengan peringatan), sehingga properti asing bisa hilang pada kasus itu
 - **PNG/WebP:** field kamera ditulis sebagai XMP (`XMP-tiff:Make/Model`, `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), bukan EXIF biner; aplikasi yang hanya membaca EXIF mungkin tidak menampilkannya
 - **Batch:** ZIP di browser memakai File System Access API bila didukung (Chrome/Edge — streaming langsung ke disk); fallback ke memori di browser lain — video maks. 10 file (≤1 jam per file, total ≤2 GB), audio maks. 20 (≤30 menit per file, ≤1 GB), gambar/PDF maks. 50 (≤1 GB); file dengan durasi tak terbaca dikunci
@@ -285,6 +286,10 @@ npm run test:i18n
 
 # Compatibility harness dengan fixture nyata dan worker/adapter produksi
 CHROME_BIN=/usr/bin/google-chrome npm run test:compat
+
+# Satu proses terisolasi per grup format; maks. 2 berjalan bersamaan secara default
+npm run test:compat -- --concurrency 2
+npm run test:compat -- --format mkv,mov
 
 # Regenerasi fixture sintetis (prasyarat: lihat tests/fixtures/README.md)
 npm run fixtures:generate
@@ -340,12 +345,21 @@ perubahan CSS tetap memerlukan `npm run build:css`.
 `MetadataClient`, worker, adapter, dan WASM produksi menggunakan fixture sintetis.
 Fixture dan generatornya didokumentasikan di `tests/fixtures/README.md`.
 
-**Baseline compatibility saat harness diperkenalkan: 25/33 pemeriksaan lolos.**
-Delapan kegagalan mencakup temuan offset TIFF/MP4/M4A/MOV, perubahan vendor
-FLAC/Ogg, dimensi picture-block Ogg, dan perubahan durasi MKV 0,3 → 0,2 detik.
-Temuan ini tidak disembunyikan: `npm run test:compat` dan job CI compatibility
-keluar dengan status gagal selama assertion terkait belum terpenuhi. Jumlah ini
-adalah baseline, bukan jaminan hasil untuk setiap browser atau versi berikutnya.
+**Compatibility setelah perbaikan: 38/38 pemeriksaan lolos dalam 19 job.**
+Baseline awal adalah 25/33, kemudian 22/33 saat tiga test UI bergantung pada
+teks Indonesia. Harness kini menguji UI ID/EN secara eksplisit, memakai proses
+terisolasi per grup format dengan batas paralel default 2. Gunakan
+`--concurrency 1` untuk serial atau `COMPAT_CONCURRENCY=4` untuk mesin yang kuat.
+Beban ekstra utamanya RAM/CPU dan transfer aset localhost, bukan internet.
+
+Relokasi offset diterima hanya dengan bukti hash payload yang identik; fixture
+TIFF dan MP4/MOV/M4A juga diperiksa independen melalui FFmpeg/ffprobe. Cover Ogg
+dipertahankan lengkap, vendor FLAC dipulihkan, dan vendor Ogg yang berubah tetap
+ditampilkan sebagai peringatan. Durasi MKV fixture diperbaiki tanpa memperlebar
+toleransi. Pola timing yang belum dapat dipertahankan (termasuk contoh AAC
+audio-only/audio+video dan timestamp tertentu) **ditolak**, bukan dianggap sukses.
+Jumlah pemeriksaan mencakup assertion penolakan aman ini, bukan jaminan semua
+berkas bisa ditulis. Lihat rincian dan batas bukti di `tests/compat/README.md`.
 
 Fixture PDF bertanda tangan self-signed divalidasi terpisah menggunakan OpenSSL
 dan `pdfsig`: setelah edit, byte Contents tanda tangan masih ada, tetapi byte

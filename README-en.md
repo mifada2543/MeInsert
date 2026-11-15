@@ -261,6 +261,7 @@ MeInsert/
 
 - **MP3:** unsupported/non-standard ID3 frames may be lost when writing.
 - **MKV:** chapters and attachments are not generally preserved during remuxing.
+- **MKV/WebM:** writing is rejected if track count or packet timing cannot be preserved; this includes some audio inputs, variable-duration video, and timestamps beyond the current muxer's preservation capabilities.
 - **PDF:** encrypted files are unsupported. Editing a digitally signed PDF invalidates its signature. Malformed/unusual XMP may be rewritten with a warning, potentially losing foreign properties.
 - **PNG/WebP:** camera fields are written as XMP (`XMP-tiff:Make/Model`, `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), not binary EXIF; EXIF-only readers may not display them.
 - **Batch:** ZIP output streams to disk where the File System Access API is supported, with an in-memory fallback. Limits: 10 videos (≤1 hour each, ≤2 GB total), 20 audio files (≤30 minutes each, ≤1 GB total), or 50 images/PDFs (≤1 GB total). Files with unreadable durations are locked.
@@ -288,6 +289,10 @@ npm run test:i18n
 
 # Real-fixture compatibility checks using production Workers/adapters
 CHROME_BIN=/usr/bin/google-chrome npm run test:compat
+
+# Isolated process per format group; default maximum 2 jobs at once
+npm run test:compat -- --concurrency 2
+npm run test:compat -- --format mkv,mov
 
 # Regenerate synthetic fixtures; see tests/fixtures/README.md for tools
 npm run fixtures:generate
@@ -323,7 +328,9 @@ UI dictionaries live in `assets/js/i18n/`. Keep semantic keys and interpolation 
 
 See [tests/compat/README.md](tests/compat/README.md) for the browser harness using production `MetadataClient`, Workers, adapters, and WASM. Synthetic fixtures and their generator are documented in [tests/fixtures/README.md](tests/fixtures/README.md).
 
-**Initial compatibility baseline: 25/33 checks pass.** Eight failures include TIFF/MP4/M4A/MOV offset findings, FLAC/Ogg vendor changes, Ogg picture-block dimensions, and an MKV duration change from 0.3 to 0.2 seconds. These are not hidden: `test:compat` and the compatibility CI job exit with failure while those assertions remain unmet. This is a baseline, not a promise for every browser or future version.
+**Repaired compatibility matrix: 38/38 checks pass across 19 jobs.** The original baseline was 25/33; three Indonesian-text-dependent UI checks later brought it to 22/33 under English defaults. The harness now explicitly tests both UI languages and runs isolated format-group processes, with default concurrency 2. Use `--concurrency 1` for serial execution or `COMPAT_CONCURRENCY=4` on larger machines. Extra load mainly affects RAM/CPU and localhost asset transfer, not internet bandwidth.
+
+Offset relocation requires matching payload hashes; TIFF and MP4/MOV/M4A fixtures also receive independent FFmpeg/ffprobe checks. Complete Ogg picture structures and FLAC vendor metadata are preserved; changed Ogg vendor identity remains a visible warning. The MKV fixture's duration is fixed without widening tolerances. Timing patterns that cannot yet be preserved (including sampled AAC audio-only/audio+video and certain timestamps) are **rejected**, not treated as successful writes. Passing checks include these safe-rejection assertions, not a guarantee every file can be written. See `tests/compat/README.md` for evidence and limitations.
 
 The self-signed PDF fixture is independently validated with OpenSSL and `pdfsig`. Editing retains signature Contents bytes but changes signed-range bytes and invalidates the signature. **Preserving Contents is not preserving cryptographic validity.**
 
