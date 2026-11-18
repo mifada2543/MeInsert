@@ -1,6 +1,9 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { t } from '../i18n/index.js';
+import { handleEngineProgress, scheduleEnginePrefetch } from '../ui/engine-loading.js';
+
 const WORKER_URLS = {
   exiftool: new URL('../workers/exiftool.worker.js', import.meta.url),
   media: new URL('../workers/media.worker.js', import.meta.url),
@@ -15,9 +18,57 @@ export function retryableReadError(error) {
   const code = error?.code;
   return code === 'WATCHDOG_TIMEOUT' || code === 'WORKER_CRASH';
 }
+
+const MEMORY_MESSAGE = /out of memory|allocation failed|invalid array length|array buffer allocation failed|memory limit|maximum call stack/i;
+const MEMORY_CODES = new Set(['OOM', 'OUT_OF_MEMORY', 'ALLOCATION_FAILED', 'RANGE_ERROR', 'MEMORY_LIMIT']);
+
+/** Kenali kegagalan alokasi tanpa mengubah error lain menjadi error memori. */
+export function isMemoryError(error) {
+  if (!error) return false;
+  if (error instanceof RangeError) return true;
+  if (error.name === 'RangeError') return true;
+  if (MEMORY_CODES.has(String(error.code || '').toUpperCase())) return true;
+  return MEMORY_MESSAGE.test(String(error.message || ''));
+}
+
+/**
+ * Beri pesan ramah pengguna untuk kegagalan memori, tetapi pertahankan kode,
+ * detail, dan pesan asli untuk log serta pengujian. Error lain dikembalikan apa
+ * adanya (referensi yang sama).
+ */
+export function friendlyMemoryError(error) {
+  if (!isMemoryError(error)) return error;
+  const keys = ['ui.memoryLimitFriendly', 'ui.memoryLimitAdvice'];
+  const friendly = new Error(`${t(keys[0])} ${t(keys[1])}`);
+  friendly.name = error.name || 'RangeError';
+  friendly.code = error.code || 'MEMORY_LIMIT';
+  friendly.detail = error.detail || error.message || String(error);
+  friendly.originalMessage = error.message || String(error);
+  friendly.friendlyKeys = keys;
+  friendly.isMemoryLimit = true;
+  return friendly;
+}
+
+const liveClients = new Set();
+if (typeof globalThis.addEventListener === 'function') {
+  globalThis.addEventListener('meinsert:engine-retry', (event) => {
+    const engine = event?.detail?.source;
+    for (const client of liveClients) {
+      const engines = engine ? [engine] : [...client.workers.keys()];
+      for (const name of engines) {
+        if (client.workers.has(name)) client.cancel(name);
+      }
+    }
+  });
+}
+if (typeof document !== 'undefined') {
+  try { scheduleEnginePrefetch(); } catch { /* prefetch bersifat opsional */ }
+}
+
 class EngineWorker {
-  constructor(url) {
+  constructor(url, engine = '') {
     this.url = url;
+    this.engine = engine;
     this.worker = null;
     this.pending = new Map();
     this.sequence = 0;
@@ -29,6 +80,10 @@ class EngineWorker {
     worker.onmessage = (event) => {
       const message = event.data || {};
       this.onActivity();
+      if (message.type === 'engine-progress') {
+        try { handleEngineProgress({ ...message, source: this.engine || 'engine' }); } catch { /* UI terbaik */ }
+        return;
+      }
       const pending = this.pending.get(message.id);
       if (!pending) return;
       if (message.type === 'progress') {
@@ -40,9 +95,10 @@ class EngineWorker {
         pending.resolve(message.result);
       } else if (message.type === 'error') {
         const error = new Error(message.error?.message || 'Terjadi kesalahan di worker.');
+        error.name = message.error?.name || 'Error';
         error.code = message.error?.code || 'WORKER_ERROR';
         error.detail = message.error?.detail || '';
-        pending.reject(error);
+        pending.reject(friendlyMemoryError(error));
       } else {
         pending.reject(new Error('Respons worker tidak dikenali.'));
       }
@@ -51,7 +107,8 @@ class EngineWorker {
       const error = new Error(event.message || 'Worker berhenti secara tidak terduga.');
       error.code = 'WORKER_CRASH';
       error.detail = event.filename ? `${event.filename}:${event.lineno}` : '';
-      for (const pending of [...this.pending.values()]) pending.reject(error);
+      const finalError = friendlyMemoryError(error);
+      for (const pending of [...this.pending.values()]) pending.reject(finalError);
       this.pending.clear();
       this.worker = null;
       this.onActivity();
@@ -122,12 +179,13 @@ export class MetadataClient {
     this.workers = new Map();
     this.idleTimeout = idleTimeout;
     this.idleTimer = null;
+    liveClients.add(this);
   }
   workerFor(engine) {
     const url = WORKER_URLS[engine];
     if (!url) throw new Error(`Mesin ${engine} tidak tersedia.`);
     if (!this.workers.has(engine)) {
-      const worker = new EngineWorker(url);
+      const worker = new EngineWorker(url, engine);
       worker.onActivity = () => this.noteActivity();
       this.workers.set(engine, worker);
     }
@@ -180,12 +238,14 @@ export class MetadataClient {
     this.idleTimer = null;
     const engines = [...this.workers.keys()];
     await Promise.all(engines.map((engine) => this.disposeEngine(engine)));
+    liveClients.delete(this);
   }
   disposeAllSync() {
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.idleTimer = null;
     for (const worker of this.workers.values()) worker.terminate();
     this.workers.clear();
+    liveClients.delete(this);
   }
   dispose() {
     this.disposeAllSync();

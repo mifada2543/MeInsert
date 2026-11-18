@@ -7,6 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'self' blob:; child-src 'self' blob:">
   <meta name="theme-color" content="#f5f4ed" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#14141f" media="(prefers-color-scheme: dark)">
   <meta name="description" content="MeInsert: baca dan tulis metadata file langsung di browser. Satu file atau proses massal. Tanpa upload, tanpa server.">
@@ -106,6 +107,18 @@
             per file, unduh hasil sebagai ZIP + laporan JSON/CSV.</span></p>
           <span class="mode-card-meta"><span data-i18n="ui.video10Audio20ImagesPDF50MaxTotal">Video 10 · Audio 20 · Gambar/PDF 50 · Total maks. 2 GB</span></span>
           <span class="mode-card-cta"><span data-i18n="ui.openBatch">Buka Mode batch</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m0 0-6-6m6 6-6 6"/></svg>
+          </span>
+        </a>
+        <a class="mode-card mode-card-clean" href="./single.html?clean=1">
+          <span class="mode-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.5 2.8 8.2 7 10 4.2-1.8 7-5.5 7-10V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
+          <span class="mode-card-kicker"><span data-i18n="ui.privacy">Privasi</span></span>
+          <h2><span data-i18n="ui.cleanMetadata">Bersihkan metadata</span></h2>
+          <p><span data-i18n="ui.cleanMetadataIntro">Hapus data sensitif dari file tanpa mengubah isi file.</span></p>
+          <span class="mode-card-meta"><span data-i18n="ui.cleanKeptHint">Orientasi gambar, durasi, dan struktur stream tidak pernah dihapus.</span></span>
+          <span class="mode-card-cta"><span data-i18n="ui.cleanMetadata">Bersihkan metadata</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m0 0-6-6m6 6-6 6"/></svg>
           </span>
         </a>

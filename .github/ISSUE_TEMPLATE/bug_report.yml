@@ -1,0 +1,71 @@
+# MeInsert — Edit metadata file tanpa upload, 100% di browser.
+# Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert
+# reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2
+name: Bug report
+description: Report something that does not work as expected.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: MeInsert version
+      description: Version shown in the app / app manifest (e.g. meinsert-v44).
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and OS
+      placeholder: "Chrome 131 on Windows 11"
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: File format involved
+      options:
+        - JPEG / PNG / WebP / TIFF
+        - PDF
+        - MP3
+        - FLAC
+        - OGG Vorbis / Opus
+        - MP4 / M4A / MOV
+        - MKV / WebM
+        - Batch / ZIP
+        - Other / not file-specific
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Exact steps to reproduce
+      description: Numbered steps, expected result, and actual result.
+    validations:
+      required: true
+  - type: dropdown
+    id: offline
+    attributes:
+      label: Does it also happen offline?
+      options:
+        - "Yes, offline too"
+        - "No, only online"
+        - "Not tested"
+    validations:
+      required: true
+  - type: dropdown
+    id: network
+    attributes:
+      label: DevTools Network — any request to a non-same-origin URL?
+      description: MeInsert must make no external requests. Check the Network tab while reproducing.
+      options:
+        - "No external requests seen"
+        - "Yes — an external URL was requested"
+        - "Not checked"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output / notes (optional)
+      render: shell

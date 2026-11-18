@@ -14,12 +14,17 @@ export function createEditorState() {
     detection: null,
     adapter: null,
     status: 'idle',
+    // One-shot marker used to announce "a file finished loading" once per file.
+    fileReadyAnnounced: false,
     readResult: null,
     baselineSnapshot: null,
     readError: null,
     values: {},
     originalValues: {},
     removedFields: new Set(),
+    // Raw tag names queued for removal by the metadata-cleaning panel. They
+    // flow through collectChanges() into buildChangePlan() as payload.rawRemove.
+    rawRemove: new Set(),
     customRows: [],
     customBaseline: [],
     removedCustom: new Set(),
@@ -49,6 +54,7 @@ export function createEditorState() {
     snapshot: () => ({
       values: { ...state.values },
       removedFields: [...state.removedFields],
+      rawRemove: [...state.rawRemove],
       customRows: cloneRows(state.customRows),
       removedCustom: [...state.removedCustom],
       coverAction: state.coverAction,
@@ -58,6 +64,7 @@ export function createEditorState() {
     restore: (snapshot) => {
       state.values = { ...snapshot.values };
       state.removedFields = new Set(snapshot.removedFields);
+      state.rawRemove = new Set(snapshot.rawRemove || []);
       state.customRows = cloneRows(snapshot.customRows);
       state.removedCustom = new Set(snapshot.removedCustom);
       state.coverAction = snapshot.coverAction;

@@ -15,6 +15,8 @@ import { createGroupHistoryController } from './batch-history.js';
 import { BatchSaveFlow } from './batch-save-flow.js';
 import { BatchDetailView } from './batch-detail-view.js';
 import { BatchPreview } from './batch-preview.js';
+import { bindFolderDropCopy, collectDroppedFiles } from './batch-folder-drop.js';
+import { mountBatchCleanAction } from '../ui/batch-clean.js';
 
 export class BatchController {
   constructor(client) {
@@ -117,6 +119,7 @@ export class BatchController {
       els.batchFileInput.value = '';
       if (files.length) this.addFiles(files);
     });
+    bindFolderDropCopy(els.batchDropCard);
     this.bindDrop(els.batchDropCard);
     this.bindDrop(els.batchWorkspace);
     els.batchBackBtn.addEventListener('click', () => { void this.resetBatch({ confirmIfBusy: true }); });
@@ -143,6 +146,10 @@ export class BatchController {
       this.releasePreview();
       this.client.disposeAllSync();
     });
+    this.batchCleanAction = mountBatchCleanAction({
+      controller: this,
+      container: qs('.batch-head-actions'),
+    });
   }
   busy() {
     return this.applying || this.scanning || this.adding;
@@ -167,8 +174,9 @@ export class BatchController {
       event.preventDefault();
       depth = 0;
       card.classList.remove('is-dragging');
-      const files = [...(event.dataTransfer?.files || [])];
-      if (files.length) this.handleDropFiles(files);
+      void collectDroppedFiles(event.dataTransfer).then((files) => {
+        if (files.length) this.handleDropFiles(files);
+      });
     });
   }
   handleDropFiles(files) {
@@ -204,9 +212,26 @@ export class BatchController {
     }
     this.adding = true;
     let rejected = 0;
+    const prepared = [];
     for (const file of files) {
-      const item = await this.processor.prepare(file, this.items.length);
+      const item = await this.processor.prepare(file, this.items.length + prepared.length);
       if (!item) { rejected += 1; continue; }
+      prepared.push(item);
+    }
+    // Validate the prospective batch with the shared limits before any item is
+    // excluded, so an oversized folder drop gets a clear i18n message. The
+    // existing per-item exclusion below still enforces the same limits.
+    if (prepared.length) {
+      const validation = validateSelection([...this.items, ...prepared]);
+      if (!validation.ok) {
+        const total = validation.totals;
+        const totalLimit = total.hasVideo ? BATCH_LIMITS.totalWithVideo : BATCH_LIMITS.totalWithoutVideo;
+        showToast(total.bytes > totalLimit
+          ? t('ui.totalBatchSizeExceeds', { v0: formatLimitBytes(totalLimit) })
+          : t('ui.batchExceedsTheLimits'), 'error', 7000);
+      }
+    }
+    for (const item of prepared) {
       const limitReason = this.initialLimitReason(item);
       if (limitReason) {
         item.excluded = true;
@@ -365,6 +390,7 @@ export class BatchController {
     this.els.batchDetail.hidden = true;
   }
   async resetBatch({ confirmIfBusy = false } = {}) {
+    this.batchCleanAction?.close?.();
     if (this.updateFrame) cancelAnimationFrame(this.updateFrame);
     this.updateFrame = 0;
     this.pendingUpdates.clear();

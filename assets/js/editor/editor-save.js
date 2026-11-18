@@ -10,6 +10,8 @@ import { clearHistory } from '../core/history.js';
 import { estimateForSingle } from '../core/memory-estimate.js';
 import { verifyIntegrity } from '../core/integrity.js';
 import { asString } from '../core/tag-utils.js';
+import { t } from '../i18n/index.js';
+import { isQuickSaveEligible, quickSaveEnabled } from '../ui/quick-save.js';
 import { cloneRows, defaultOutputName, makeRows, sanitizeBasename, valuesFromFields } from './editor-state.js';
 import { setStatus, setProgress, showProgress } from './editor-shell.js';
 import { collectChanges, syncActionBar } from './editor-changes.js';
@@ -145,13 +147,21 @@ export async function saveMetadata(ctx) {
     showToast('Perubahan yang dipilih sama dengan metadata saat ini.', 'info', 4200);
     return;
   }
-  const reviewResult = await openReviewDialog({ plans: [plan], mode: 'single' });
-  const confirmed = typeof reviewResult === 'object' && reviewResult !== null ? Boolean(reviewResult.confirmed) : Boolean(reviewResult);
-  if (!confirmed) {
-    setStatus(els, `${state.detection.label} · perubahan belum disimpan`);
-    return;
+  const wantsQuickSave = quickSaveEnabled();
+  const skipReview = wantsQuickSave && isQuickSaveEligible(plan);
+  let reviewResult = null;
+  // Quick save skips only the confirmation step: the write path and integrity
+  // verification below are identical, and failures are still reported.
+  if (!skipReview) {
+    if (wantsQuickSave) showToast(t('ui.reviewNeededForThisChange'), 'info', 5000);
+    reviewResult = await openReviewDialog({ plans: [plan], mode: 'single' });
+    const confirmed = typeof reviewResult === 'object' && reviewResult !== null ? Boolean(reviewResult.confirmed) : Boolean(reviewResult);
+    if (!confirmed) {
+      setStatus(els, `${state.detection.label} · perubahan belum disimpan`);
+      return;
+    }
   }
-  if (typeof reviewResult === 'object' && reviewResult?.keepOriginalExt && plan.extensionMismatch?.alternativeName) {
+  if (typeof reviewResult === 'object' && reviewResult !== null && reviewResult?.keepOriginalExt && plan.extensionMismatch?.alternativeName) {
     filename = plan.extensionMismatch.alternativeName;
     state.outputName = filename;
     plan.outputName = filename;
@@ -221,7 +231,8 @@ export async function saveMetadata(ctx) {
       state.saveError = error;
       setStatus(els, error?.message || 'Gagal menyimpan metadata.', true);
       renderWorkspace(ctx);
-      showToast(error?.message || 'Gagal menyimpan metadata.', 'error', 8000);
+      const toast = showToast(error?.message || 'Gagal menyimpan metadata.', 'error', 8000);
+      if (error?.isMemoryLimit) toast?.element?.classList.add('is-memory');
     }
     syncActionBar(els, state);
   }

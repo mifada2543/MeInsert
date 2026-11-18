@@ -11,6 +11,7 @@ import { fieldsBySection } from '../core/registry.js';
 import { coverFormatsLabelFor, isSupportedCover, mimeOf } from '../core/image-utils.js';
 import { setEditorBadge, skeletonPanel, errorCard } from './editor-shell.js';
 import { syncActionBar } from './editor-changes.js';
+import { normalizeRawTag } from '../core/metadata-snapshot.js';
 import { cloneRows } from './editor-state.js';
 import { beginChange, redo, undo } from '../core/history.js';
 export function previewUrlFor(file, detection) {
@@ -151,6 +152,15 @@ export function renderReadError(ctx) {
 }
 export function renderWorkspace(ctx) {
   const { els, state } = ctx;
+  // After a save, readResult is re-read from the written file, so raw tags
+  // queued for removal no longer exist. Drop those stale entries so the dirty
+  // indicator settles instead of offering a no-op save.
+  if (state.result && state.rawRemove.size) {
+    const present = new Set((state.readResult?.raw || []).map((row) => normalizeRawTag(row?.tag)));
+    for (const tag of [...state.rawRemove]) {
+      if (!present.has(normalizeRawTag(tag))) state.rawRemove.delete(tag);
+    }
+  }
   renderSide(ctx);
   renderTabs(ctx);
   if (state.status === 'loading') {
@@ -176,13 +186,15 @@ export function renderWorkspace(ctx) {
     els.panel.append(renderResultCard(state.result, { onDownload: ctx.onDownload }));
   }
   if (state.saveError) {
-    els.panel.append(errorCard(state.saveError, {
+    const card = errorCard(state.saveError, {
       title: 'Gagal menyimpan metadata',
       onClose: () => {
         state.saveError = null;
         renderWorkspace(ctx);
       },
-    }));
+    });
+    if (state.saveError?.isMemoryLimit) card.classList.add('is-memory');
+    els.panel.append(card);
   }
   const form = el('div', { className: 'form-root' });
   els.panel.append(form);
@@ -203,6 +215,7 @@ export function resetChanges(ctx) {
   beginChange(state.history);
   state.values = { ...state.originalValues };
   state.removedFields.clear();
+  state.rawRemove.clear();
   state.customRows = cloneRows(state.customBaseline);
   state.removedCustom.clear();
   state.coverAction = 'keep';

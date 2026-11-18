@@ -136,6 +136,7 @@ export class BatchSaveFlow {
       bindTranslation(this.els.batchRetryBtn, 'textContent', () => (t('ui.retryFailedFiles2', { v0: failedCount })));
     }
     this.els.batchZipBtn.disabled = !this.items.some(zipEligible);
+    this.batchCleanAction?.sync?.();
     const noItems = this.items.length === 0;
     this.els.batchReportJsonBtn.disabled = noItems;
     this.els.batchReportCsvBtn.disabled = noItems;

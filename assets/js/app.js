@@ -5,6 +5,7 @@ import { MetadataClient } from './core/worker-client.js';
 import { initLanguage } from './i18n/index.js';
 import { registerServiceWorker } from './core/pwa.js';
 import { initTheme } from './ui/theme.js';
+import { qs } from './ui/dom.js';
 import { createEditorState } from './editor/editor-state.js';
 import { createShell, setIcons, createPreviewDock } from './editor/editor-shell.js';
 import { syncActionBar } from './editor/editor-changes.js';
@@ -18,6 +19,8 @@ import {
 } from './editor/editor-view.js';
 import { openFile, setupDropzone, goHome } from './editor/editor-file.js';
 import { ensureOutputName, saveMetadata, downloadResult } from './editor/editor-save.js';
+import { mountQuickSaveToggle } from './ui/quick-save.js';
+import { mountCleanButton, openCleanPanel } from './ui/clean-metadata.js';
 import { beginChange, endChange } from './core/history.js';
 initLanguage();
 registerServiceWorker();
@@ -25,7 +28,18 @@ const client = new MetadataClient();
 const page = document.body?.dataset.page || 'single';
 if (page === 'batch') {
   import('./batch/batch-view.js')
-    .then(({ BatchController }) => new BatchController(client))
+    .then(({ BatchController }) => {
+      const controller = new BatchController(client);
+      // A drop or picker selection can land before the dynamic module binds
+      // its change listener; do not discard files already on the input.
+      const input = controller.els.batchFileInput;
+      const pending = [...(input?.files || [])];
+      if (pending.length && input) {
+        input.value = '';
+        void controller.addFiles(pending);
+      }
+      return controller;
+    })
     .catch((error) => {
       console.error('MeInsert gagal memuat mode batch:', error);
     });
@@ -71,9 +85,19 @@ function setupShortcuts() {
 }
 
 function setupEvents() {
-  els.tabs.forEach((tab) => {
+  els.tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => {
       state.activeTab = tab.dataset.tab;
+      renderWorkspace(ctx);
+    });
+    // APG tablist: arrow keys move between tabs, Tab leaves the group.
+    tab.addEventListener('keydown', (event) => {
+      const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+      if (!step || !els.tabs.length) return;
+      event.preventDefault();
+      const next = els.tabs[(index + step + els.tabs.length) % els.tabs.length];
+      next.focus();
+      state.activeTab = next.dataset.tab;
       renderWorkspace(ctx);
     });
   });
@@ -100,13 +124,38 @@ function setupEvents() {
   });
   window.addEventListener('pagehide', () => client.disposeAllSync());
 }
+/** Mount the manual button and honour ?clean=1 once a file finishes loading. */
+function setupCleanMetadata() {
+  mountCleanButton({ container: els.actionBar, ctx });
+  const params = new URLSearchParams(location.search);
+  if (params.get('clean') !== '1') return;
+  // Strip the flag before doing any work so a reload never re-opens the panel.
+  params.delete('clean');
+  const query = params.toString();
+  history.replaceState(
+    history.state,
+    '',
+    `${location.pathname}${query ? `?${query}` : ''}${location.hash}`,
+  );
+  let opened = false;
+  window.addEventListener('meinsert:fileReady', () => {
+    if (opened) return;
+    opened = true;
+    void openCleanPanel(ctx);
+  });
+}
+
 function boot() {
   initTheme();
   setIcons();
+  // Make the skip-link target reliably focusable in every browser.
+  qs('#main')?.setAttribute('tabindex', '-1');
   if (page === 'single') {
     setupDropzone(ctx);
     setupEvents();
     setupShortcuts();
+    mountQuickSaveToggle({ container: els.actionBar });
+    setupCleanMetadata();
     dock.attach();
     renderTabs(ctx);
     syncActionBar(els, state);

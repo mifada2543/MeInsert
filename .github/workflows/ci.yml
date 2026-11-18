@@ -55,6 +55,22 @@ jobs:
       run: npm run test:undo:batch
       env:
         CHROME_BIN: /usr/bin/google-chrome
+    - name: CSP and local-only network claim (Chrome headless)
+      run: npm run test:security
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Engine loading (Chrome headless)
+      run: npm run test:engine
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Quick save (Chrome headless)
+      run: npm run test:quick-save
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Clean metadata, single and batch (Chrome headless)
+      run: npm run test:clean && npm run test:clean:batch
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
   compat:
     name: Real fixture compatibility (Chrome)
     runs-on: ubuntu-latest

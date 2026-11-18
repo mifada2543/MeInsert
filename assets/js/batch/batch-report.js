@@ -15,6 +15,20 @@ function operationsOf(item) {
     custom: ops.custom || 0,
   };
 }
+/**
+ * Ringkasan aksi "Bersihkan metadata" yang ditempelkan saat Membersihkan.
+ * Sengaja hanya berisi nama kategori dan jumlah — bukan nilai tag mentah atau
+ * isi file — supaya laporan tetap aman dibagikan.
+ */
+function cleaningOf(item) {
+  const clean = item?.cleanSummary || {};
+  return {
+    removedCategories: Array.isArray(clean.removedCategories)
+      ? clean.removedCategories.filter((category) => typeof category === 'string')
+      : [],
+    removedTagCount: Number(clean.removedTagCount) || 0,
+  };
+}
 export function makeReport(items) {
   const safeItems = items || [];
   const summary = {
@@ -34,6 +48,7 @@ export function makeReport(items) {
   const files = safeItems.map((item) => {
     const raw = item.readResult?.raw || [];
     const operation = operationsOf(item);
+    const cleaning = cleaningOf(item);
     return {
       name: item.file?.name || '',
       size: Number(item.file?.size) || 0,
@@ -63,6 +78,9 @@ export function makeReport(items) {
       warnings: item.warnings || [],
       error: item.error?.message || item.error || '',
       outputName: item.outputName || '',
+      // Kolom baru diletakkan di akhir agar laporan lama tetap kompatibel.
+      removedCategories: cleaning.removedCategories,
+      removedTagCount: cleaning.removedTagCount,
     };
   });
   return { ...summary, files };
@@ -72,7 +90,7 @@ export function makeJsonReport(items) {
 }
 export function makeCsvReport(items) {
   const rows = [
-    ['Nama file', 'Kategori', 'Format', 'Subtype', 'Ukuran (byte)', 'Durasi (detik)', 'Status', 'Status integritas', 'Temuan integritas', 'Masuk ZIP', 'Alasan dilewati', 'Jumlah tag', 'Ubah', 'Hapus', 'Hapus tag mentah', 'Warning', 'Error', 'Nama hasil'],
+    ['Nama file', 'Kategori', 'Format', 'Subtype', 'Ukuran (byte)', 'Durasi (detik)', 'Status', 'Status integritas', 'Temuan integritas', 'Masuk ZIP', 'Alasan dilewati', 'Jumlah tag', 'Ubah', 'Hapus', 'Hapus tag mentah', 'Warning', 'Error', 'Nama hasil', 'Kategori dibersihkan', 'Jumlah tag dihapus'],
   ];
   for (const item of makeReport(items).files) {
     rows.push([
@@ -94,6 +112,8 @@ export function makeCsvReport(items) {
       item.warnings.join(' | '),
       item.error,
       item.outputName,
+      item.removedCategories.join(' | '),
+      item.removedTagCount,
     ]);
   }
   return rows.map((row) => row.map(csvEscape).join(',')).join('\r\n');

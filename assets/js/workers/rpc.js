@@ -14,7 +14,7 @@ export function runWorker(adapters) {
         )));
         post({ type: 'result', result: { ok: true } });
       } catch (error) {
-        post({ type: 'error', error: serializeError(error) });
+        post({ type: 'error', error: { ...serializeError(error), name: error?.name || 'Error' } });
       }
       return;
     }
@@ -36,7 +36,7 @@ export function runWorker(adapters) {
         post({ type: 'error', error: { code: 'BAD_ACTION', message: 'Aksi tidak dikenali.' } });
       }
     } catch (error) {
-      post({ type: 'error', error: serializeError(error) });
+      post({ type: 'error', error: { ...serializeError(error), name: error?.name || 'Error' } });
     }
   };
 }

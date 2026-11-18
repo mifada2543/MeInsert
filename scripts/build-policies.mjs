@@ -90,6 +90,7 @@ export async function buildPolicies({ check = false } = {}) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'self' blob:; child-src 'self' blob:">
   <meta name="description" content="${title} MeInsert — pemrosesan metadata lokal, batas penggunaan, dan tanggung jawab pengguna.">
   <title>MeInsert | ${title}</title>
   <link rel="canonical" href="https://meinsert.my.id/${path}">

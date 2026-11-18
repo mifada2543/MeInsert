@@ -32,6 +32,7 @@ outputs in memory, not changes to these source fixtures.
 | File | Bytes | Generation / purpose | Expected behavior |
 | --- | ---: | --- | --- |
 | `pattern.jpg` | 765 | ImageMagick gradient JPEG; handmade EXIF APP1/TIFF | Read EXIF, edit title, preserve untouched tags |
+| `clean-gps.jpg` | 707 | Standalone Node JPEG with a real EXIF GPS IFD + Artist/Software/Owner/Orientation | Fase 3 clean-metadata E2E: detect and remove GPS/identity/software, keep orientation |
 | `pattern.png` | 2061 | Node zlib/CRC PNG with handmade `eXIf` TIFF chunk | Read EXIF, edit XMP title, preserve original EXIF |
 | `pattern.webp` | 144 | ffmpeg libwebp from gradient PNG | Add/read back title |
 | `pattern.tif` | 394 | ImageMagick TIFF from gradient | Add/read back title; strict integrity must pass |
@@ -64,6 +65,18 @@ directly in an `eXIf` chunk with CRC32. Title/keywords use genuine EXIF XP tags;
 the app's editable title uses XMP-dc:Title, so its title edit adds XMP rather than
 pretending XPTitle is that field. The harness also asserts the original real
 EXIF artist/software/date/title/keyword inventory was read.
+
+`clean-gps.jpg` is built by `tests/fixtures/clean-gps.generate.mjs`, a standalone
+generator that needs only Node (no ffmpeg, ImageMagick, or network access). It
+emits a deterministic 707-byte 8×8 baseline JPEG whose APP1 holds a real
+little-endian TIFF: IFD0 contains Artist, Software, OwnerName and a handmade
+Orientation=6 tag; a proper ExifIFD holds ImageUniqueID and BodySerialNumber;
+and a genuine GPS IFD carries GPSVersionID, GPSLatitudeRef/GPSLatitude,
+GPSLongitudeRef/GPSLongitude, GPSAltitudeRef and GPSAltitude. Run
+`node tests/fixtures/clean-gps.generate.mjs` from the repository
+root to regenerate it byte-for-byte. The Fase 3 clean-metadata E2E tests use it
+to verify that location/identity/software tags are removed while orientation is
+kept, and that no data is fetched from the network.
 
 ### Signature provenance and limitations
 

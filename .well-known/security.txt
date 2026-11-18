@@ -1,0 +1,5 @@
+# MeInsert — https://meinsert.my.id/
+Contact: https://github.com/mifada2543/meinsert/security/advisories/new
+Expires: 2027-12-31T00:00:00Z
+Preferred-Languages: id, en
+Canonical: https://meinsert.my.id/.well-known/security.txt

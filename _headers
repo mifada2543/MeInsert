@@ -1,0 +1,38 @@
+# MeInsert — Edit metadata file tanpa upload, 100% di browser.
+# Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert
+# reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2
+#
+# Netlify / Cloudflare Pages header rules.
+# GitHub Pages IGNORES _headers. On Apache/XAMPP use .htaccess instead.
+# The CSP is delivered as a meta tag on each HTML page, so it works on every host.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Cache-Control: public, max-age=3600
+/*.html
+  Cache-Control: no-cache, must-revalidate
+/*.js
+  Content-Type: text/javascript; charset=utf-8
+  Cache-Control: public, max-age=3600
+/*.mjs
+  Content-Type: text/javascript; charset=utf-8
+  Cache-Control: public, max-age=3600
+/*.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=3600
+/*.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  Cache-Control: public, max-age=3600
+/*.wasm
+  Content-Type: application/wasm
+  Cache-Control: public, max-age=31536000, immutable
+/*.woff2
+  Content-Type: font/woff2
+  Cache-Control: public, max-age=31536000, immutable
+# The service worker must never be pinned by the edge or the browser.
+# The current host serves it with a long max-age + edge cache, which caused
+# stale-worker issues; this rule is the mitigation on Netlify/Cloudflare Pages.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Type: text/javascript; charset=utf-8

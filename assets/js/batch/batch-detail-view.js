@@ -17,11 +17,17 @@ const RAW_LOCKED = [
 ];
 export class BatchDetailView {
   openDetail(itemId, tab = 'summary') {
+    // The workspace is hidden below, so remember where keyboard focus was and
+    // give the detail view a starting point before the user tabs around.
+    this.detailFocusBefore = typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
     this.activeItemId = itemId;
     this.detailTab = tab;
     this.els.batchWorkspace.hidden = true;
     this.els.batchDetail.hidden = false;
     this.renderDetail();
+    this.els.batchDetailBackBtn?.focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   closeDetail() {
@@ -31,6 +37,11 @@ export class BatchDetailView {
     this.els.batchWorkspace.hidden = false;
     this.updateAllRows();
     this.syncApply();
+    const restore = this.detailFocusBefore;
+    this.detailFocusBefore = null;
+    if (restore?.isConnected && typeof restore.focus === 'function') {
+      try { restore.focus(); } catch { /* noop */ }
+    }
   }
   setDetailTab(tab) {
     this.detailTab = tab;

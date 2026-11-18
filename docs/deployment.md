@@ -1,0 +1,94 @@
+<!-- MeInsert — Edit metadata file tanpa upload, 100% di browser. -->
+<!-- Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
+<!-- reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 -->
+
+# Deployment / Hosting
+
+MeInsert adalah sekumpulan file statis: tidak ada server aplikasi, database,
+atau langkah build saat deploy. Namun aturan header berbeda-beda tiap host.
+
+MeInsert is a set of static files: no application server, no database, and no
+build step at deploy time. Header rules, however, differ per host.
+
+## Mana yang berlaku di host Anda / Which file applies where
+
+| Host | File header yang dipakai | Catatan |
+|---|---|---|
+| Apache / XAMPP / cPanel | `.htaccess` | SATU-SATUNYA yang dibaca Apache. `_headers` diabaikan. |
+| Netlify | `_headers` | `.htaccess` diabaikan. |
+| Cloudflare Pages | `_headers` | `.htaccess` diabaikan. |
+| GitHub Pages | **tidak ada keduanya** | GitHub Pages mengabaikan `_headers` dan tidak menjalankan `.htaccess`. |
+
+- **`.htaccess` hanya berlaku untuk Apache/XAMPP, BUKAN GitHub Pages.**
+  Isinya mengatur MIME type `.wasm`, `.mjs`, font, dan cache.
+- **`_headers` hanya berlaku untuk Netlify/Cloudflare Pages.** Ini berisi
+  `nosniff`, `no-referrer`, `X-Frame-Options: DENY`, MIME type, dan aturan
+  cache konservatif.
+- **GitHub Pages mengabaikan `_headers`**. Karena itu, Content-Security-Policy
+  dikirim sebagai tag `<meta http-equiv="Content-Security-Policy">` di kelima
+  halaman HTML. Meta CSP bekerja di semua host, termasuk GitHub Pages.
+- **`CNAME` berisi `meinsert.my.id`** dan hanya dipakai GitHub Pages untuk
+  custom domain. Jangan mengubahnya saat deploy ke host lain.
+
+- **`.htaccess` applies only to Apache/XAMPP, NOT GitHub Pages.** It sets MIME
+  types for `.wasm`, `.mjs`, fonts, and cache rules.
+- **`_headers` applies only to Netlify/Cloudflare Pages**, with `nosniff`,
+  `no-referrer`, `X-Frame-Options: DENY`, MIME types, and conservative caching.
+- **GitHub Pages ignores `_headers`**, so the CSP is delivered as a
+  `<meta http-equiv="Content-Security-Policy">` tag on all five HTML pages.
+  Meta CSP works on every host, including GitHub Pages.
+- **`CNAME` contains `meinsert.my.id`** and is used only by GitHub Pages for
+  the custom domain. Do not change it when deploying elsewhere.
+
+**Tidak ada perubahan DNS atau hosting yang menjadi bagian dari pekerjaan
+ini.** Tidak ada nama domain baru, tidak ada pemindahan host, tidak ada
+perubahan konfigurasi Cloudflare yang disyaratkan oleh perubahan keamanan ini
+(kecuali tindakan opsional untuk cache `/sw.js` di bawah).
+
+**No DNS or hosting changes are part of this work.** No new domain, no host
+migration, and no required Cloudflare configuration change comes from the
+security work described here (apart from the optional `/sw.js` cache action
+below).
+
+## Cache service worker di Cloudflare / Service worker caching on Cloudflare
+
+Host saat ini menyajikan `/sw.js` dengan `max-age` panjang **dan** cache edge
+Cloudflare. Kombinasi itu menyebabkan masalah worker basi: browser mempertahankan
+service worker lama selama beberapa jam, sementara halaman sudah diperbarui.
+
+The current host serves `/sw.js` with a long `max-age` **and** Cloudflare edge
+caching. That combination caused stale-worker problems: browsers kept an old
+service worker for hours while the pages had already been updated.
+
+Mitigasi:
+
+- `_headers` memuat aturan eksplisit untuk `/sw.js`:
+  `Cache-Control: no-cache, no-store, must-revalidate`. Ini berlaku di
+  Netlify/Cloudflare Pages.
+- Di GitHub Pages, `_headers` diabaikan. Siapkan **Cloudflare Cache Rule** agar
+  `/sw.js` tidak di-cache di edge, atau lakukan purge cache setelah setiap
+  deploy. `.htaccess` sudah melakukan hal yang setara pada Apache/XAMPP.
+- Halaman juga memiliki deteksi worker basi: bila build worker lebih tua dari
+  build halaman, halaman memaksa pembaruan lalu menyegarkan diri.
+
+Mitigation:
+
+- `_headers` has an explicit `/sw.js` rule:
+  `Cache-Control: no-cache, no-store, must-revalidate`. This applies on
+  Netlify/Cloudflare Pages.
+- On GitHub Pages `_headers` is ignored: set a **Cloudflare Cache Rule** so
+  `/sw.js` is not cached at the edge, or purge the cache after each deploy.
+  `.htaccess` already does the equivalent on Apache/XAMPP.
+- The pages also detect a stale worker: when the worker build is older than
+  the page build, the page forces an update and then refreshes itself.
+
+## Verifikasi / Verification
+
+```bash
+npm run check:policies   # policy HTML masih sinkron
+node tests/e2e/security.mjs   # CSP + tidak ada permintaan eksternal
+node --test tests/unit/site-url.test.js
+```
+
+See [docs/security.md](security.md) for the manual DevTools and airplane-mode
+checks, and [SECURITY.md](../SECURITY.md) for reporting security issues.

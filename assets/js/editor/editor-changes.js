@@ -81,15 +81,27 @@ export function collectChanges(state, { validate = false } = {}) {
         kind: 'coverFront',
       };
   const coverCount = cover ? 1 : 0;
-  const count = Object.keys(set).length + new Set(remove).size + custom.length + customRemove.size + coverCount;
+  const rawRemove = [...state.rawRemove];
+  const count = Object.keys(set).length + new Set(remove).size + custom.length + customRemove.size + rawRemove.length + coverCount;
   return {
-    payload: { set, remove: [...new Set(remove)], custom, customRemove: [...customRemove], ...(cover ? { cover } : {}) },
+    payload: { set, remove: [...new Set(remove)], custom, customRemove: [...customRemove], rawRemove, ...(cover ? { cover } : {}) },
     errors,
     count,
   };
 }
 export function syncActionBar(els, state) {
   const ready = state.status === 'ready';
+  // Announce the ready transition once per loaded file. This is a generic,
+  // UI-only hook (opt-in features such as "?clean=1" listen for it); it never
+  // changes the write path or the editor state.
+  if (ready && !state.fileReadyAnnounced) {
+    state.fileReadyAnnounced = true;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('meinsert:fileReady'));
+    }
+  } else if (!ready && state.fileReadyAnnounced) {
+    state.fileReadyAnnounced = false;
+  }
   const changes = ready ? collectChanges(state) : { count: 0 };
   const count = changes.count;
   state.dirtyCount = count;

@@ -1,0 +1,51 @@
+# MeInsert — Edit metadata file tanpa upload, 100% di browser.
+# Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert
+# reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2
+name: Feature request
+description: Suggest an improvement or a new capability.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: MeInsert version
+      placeholder: "meinsert-v44"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New file format
+        - Metadata fields
+        - Batch processing
+        - UI / accessibility
+        - Offline / PWA
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: dropdown
+    id: offline
+    attributes:
+      label: Must the feature work fully offline?
+      description: All user-file processing must stay in the browser with no upload.
+      options:
+        - "Yes, must work offline"
+        - "Online-only behavior is acceptable"
+        - "Not sure"
+    validations:
+      required: true

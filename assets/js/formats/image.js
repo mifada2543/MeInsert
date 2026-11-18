@@ -124,7 +124,7 @@ export function describeFile(tags) {
     kind: 'image',
   };
 }
-const RAW_GROUPS = /^(XMP|EXIF|IFD0|ExifIFD|IPTC|ICC_Profile|PNG|RIFF|Photoshop)/i;
+const RAW_GROUPS = /^(XMP|EXIF|GPS|IFD0|ExifIFD|IPTC|ICC_Profile|PNG|RIFF|Photoshop)/i;
 export function collectRaw(tags) {
   const rows = [];
   for (const [key, value] of Object.entries(tags)) {

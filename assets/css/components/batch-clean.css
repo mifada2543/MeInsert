@@ -1,0 +1,295 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+/* Fase 3 — aksi bersihkan metadata pada mode batch + ringkasan per file. */
+
+.batch-clean-btn {
+  white-space: nowrap;
+}
+.batch-clean-btn .icon {
+  width: 16px;
+  height: 16px;
+}
+.batch-clean-btn[disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.batch-clean-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(11, 11, 16, 0.62);
+}
+.batch-clean-card {
+  width: min(560px, 100%);
+  max-height: min(86vh, 780px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  animation: batch-clean-in 180ms ease both;
+}
+@keyframes batch-clean-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.batch-clean-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.batch-clean-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.batch-clean-icon .icon {
+  width: 20px;
+  height: 20px;
+}
+.batch-clean-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.batch-clean-intro,
+.batch-clean-scope {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.batch-clean-scope {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+}
+
+.batch-clean-profiles {
+  display: grid;
+  gap: 8px;
+}
+.batch-clean-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+.batch-clean-profile:hover {
+  border-color: var(--line-strong);
+}
+.batch-clean-profile:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.batch-clean-profile:focus-within {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.batch-clean-profile-input,
+.batch-clean-category-input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+.batch-clean-profile-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.batch-clean-profile-copy strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.batch-clean-profile-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.batch-clean-custom {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.batch-clean-category {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.batch-clean-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+}
+.batch-clean-section-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+}
+.batch-clean-rows {
+  display: grid;
+  gap: 6px;
+}
+.batch-clean-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 12px;
+}
+.batch-clean-row-label {
+  flex: 1 1 auto;
+  color: var(--ink-soft);
+}
+.batch-clean-arrow {
+  color: var(--muted);
+}
+.batch-clean-row-count {
+  color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.batch-clean-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.batch-clean-samples {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.batch-clean-samples strong {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.batch-clean-kept {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+.batch-clean-kept strong {
+  color: var(--ink-soft);
+}
+.batch-clean-kept span {
+  color: var(--muted);
+}
+.batch-clean-kept .batch-clean-kept-count {
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.batch-clean-note {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.batch-clean-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+.batch-clean-actions .button {
+  min-height: 40px;
+}
+.batch-clean-actions .batch-clean-confirm {
+  min-width: 180px;
+}
+.batch-clean-actions .batch-clean-confirm[disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 700px) {
+  .batch-clean-backdrop {
+    padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    align-items: end;
+  }
+  .batch-clean-card {
+    width: 100%;
+    max-height: 90vh;
+    padding: 20px 16px 16px;
+  }
+  .batch-clean-custom {
+    grid-template-columns: 1fr;
+  }
+  .batch-clean-actions {
+    flex-direction: column-reverse;
+  }
+  .batch-clean-actions .button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .batch-clean-card,
+  .batch-clean-profile {
+    animation: none;
+    transition: none;
+  }
+}

@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v44';
+const CACHE_VERSION = 'meinsert-v45';
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -38,20 +38,25 @@ const SHELL_URLS = [
   './assets/js/core/media-proof.js',
   './assets/js/core/memory-estimate.js',
   './assets/js/core/metadata-snapshot.js',
+  './assets/js/core/privacy-categories.js',
   './assets/js/core/pwa.js',
   './assets/js/core/build.js',
   './assets/js/core/reload-guard.js',
   './assets/js/core/registry.js',
   './assets/js/core/tag-utils.js',
   './assets/js/core/worker-client.js',
+  './assets/js/ui/batch-clean.js',
+  './assets/js/ui/clean-metadata.js',
   './assets/js/ui/confirm.js',
   './assets/js/ui/dom.js',
   './assets/js/ui/editing-navigation.js',
+  './assets/js/ui/engine-loading.js',
   './assets/js/ui/file-card.js',
   './assets/js/ui/form-view.js',
   './assets/js/ui/icons.js',
   './assets/js/ui/lightbox.js',
   './assets/js/ui/media-session.js',
+  './assets/js/ui/quick-save.js',
   './assets/js/ui/raw-view.js',
   './assets/js/ui/result-view.js',
   './assets/js/ui/review-dialog.js',
@@ -61,6 +66,7 @@ const SHELL_URLS = [
   './assets/js/workers/media.worker.js',
   './assets/js/workers/pdf.worker.js',
   './assets/js/workers/rpc.js',
+  './assets/js/batch/batch-folder-drop.js',
   './assets/js/batch/batch-limits.js',
   './assets/js/batch/batch-processor.js',
   './assets/js/batch/batch-report.js',
