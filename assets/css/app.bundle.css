@@ -4793,7 +4793,6 @@ h1 {
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-
 /* Indikator ringan saat mesin metadata (WASM) pertama kali dimuat. */
 .engine-loading {
   position: fixed;
@@ -4812,13 +4811,11 @@ h1 {
   color: var(--ink-soft);
   font: 500 13px/1.35 var(--sans);
 }
-
 .engine-loading__text {
   flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: anywhere;
 }
-
 .engine-loading__bar {
   flex: 0 0 56px;
   height: 4px;
