@@ -15,7 +15,7 @@ test('isolated format jobs cover every original fixture once and keep cover/UI w
   assert.equal(new Set(jobs.map((job) => job.id)).size, jobs.length);
   const fixtures = jobs.flatMap((job) => job.fixtures);
   assert.equal(new Set(fixtures).size, fixtures.length);
-  assert.equal(fixtures.length, 18);
+  assert.equal(fixtures.length, 27); // 18 original + 9 Office fixtures
   for (const job of jobs) for (const name of job.covers || []) assert.ok(job.fixtures.includes(name));
   assert.deepEqual(jobs.filter((job) => job.locale).map((job) => job.locale), ['id-ID', 'en-US']);
   assert.equal(jobs.filter((job) => job.mp4Policy).length, 1);

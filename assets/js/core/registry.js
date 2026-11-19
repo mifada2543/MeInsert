@@ -9,6 +9,7 @@ const ADAPTER_LOADERS = {
   ogg: () => import('../formats/ogg.js'),
   mkv: () => import('../formats/mkv.js'),
   mp4: () => import('../formats/mp4.js'),
+  office: () => import('../formats/office.js'),
 };
 const ADAPTER_IDS = Object.keys(ADAPTER_LOADERS);
 const adapterCache = new Map();

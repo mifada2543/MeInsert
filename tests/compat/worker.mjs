@@ -96,6 +96,7 @@ function independentlyCheck(row, name) {
 try {
   if (job.suite) {
     if (job.id === 'mkv-timing') await (await import('./mkv-duration.mjs')).runMkvDurationChecks();
+    else if (job.id === 'office-preservation') await (await import('./office-preservation.mjs')).runOfficePreservationChecks();
     else await import('./vorbis-preservation.mjs');
     rows.push({ fixture: job.id, invariants: 'ok' });
   } else {

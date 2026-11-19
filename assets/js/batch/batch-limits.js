@@ -14,6 +14,7 @@ export function categoryForDetection(detection) {
   if (detection.id === 'mp4' && detection.subtype === 'm4a') return 'audio';
   if (detection.id === 'mp3' || detection.id === 'flac' || detection.id === 'ogg') return 'audio';
   if (detection.id === 'mkv' || detection.id === 'mp4') return 'video';
+  if (detection.id === 'office') return 'light';
   return 'light';
 }
 export function categoryLabel(category) {

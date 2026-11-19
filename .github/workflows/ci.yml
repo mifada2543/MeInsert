@@ -75,6 +75,10 @@ jobs:
       run: npm run test:policy
       env:
         CHROME_BIN: /usr/bin/google-chrome
+    - name: Office formats (Chrome headless)
+      run: npm run test:office
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
   compat:
     name: Real fixture compatibility (Chrome)
     runs-on: ubuntu-latest

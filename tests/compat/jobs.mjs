@@ -16,11 +16,13 @@ export const jobs = [
   { id: 'mov', fixtures: ['clip.mov'] },
   { id: 'm4a', fixtures: ['tone.m4a'] },
   { id: 'pdf', fixtures: ['document.pdf', 'signed.pdf'] },
+  { id: 'office', fixtures: ['sample.docx', 'sample.xlsx', 'sample.pptx', 'sample.docm', 'sample.xlsm', 'sample.pptm', 'sample.odt', 'sample.ods', 'sample.odp'] },
   { id: 'unsupported-ogg', fixtures: ['reject-flac.ogg', 'reject-speex.ogg'] },
   { id: 'ui-id', fixtures: [], locale: 'id-ID' },
   { id: 'ui-en', fixtures: [], locale: 'en-US' },
   { id: 'mkv-timing', fixtures: [], suite: 'mkv-duration.mjs' },
   { id: 'vorbis-pictures', fixtures: [], suite: 'vorbis-preservation.mjs' },
+  { id: 'office-preservation', fixtures: [], suite: 'office-preservation.mjs' },
 ];
 export function concurrency(value = '2') {
   if (!/^[1-8]$/.test(String(value))) throw new Error('Compatibility concurrency must be an integer from 1 to 8');

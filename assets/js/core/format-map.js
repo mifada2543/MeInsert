@@ -82,6 +82,15 @@ const FORMAT_FIELDS = {
     copyright: 'copyright',
     software: 'software',
   },
+  office: {
+    title: 'title',
+    artist: 'creator',
+    date: 'date',
+    subject: 'subject',
+    keywords: 'keywords',
+    comment: 'description',
+    software: 'software',
+  },
 };
 export function crossTarget(detectionId, fieldId) {
   return FORMAT_FIELDS[detectionId]?.[fieldId] || '';

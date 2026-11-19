@@ -127,6 +127,29 @@ const CATEGORY_PATTERNS = {
 /** Prioritas: kategori yang lebih spesifik diuji lebih dulu. */
 const CATEGORY_PRIORITY = ['thumbnail', 'history', 'location', 'device', 'software', 'identity'];
 
+/**
+ * Pola khusus Office (doc/xls/ppt + ODF). Teks sudah dinormalisasi, misalnya
+ * `core.xml:cp:lastModifiedBy` -> `core xml cp lastmodifiedby`.
+ * Ditempatkan terpisah agar pencocokan format lain tidak berubah.
+ */
+const OFFICE_CATEGORY_PATTERNS = {
+  identity: [
+    /(?:^| )cp lastmodifiedby$/,
+    /(?:^| )app xml (?:company|manager)$/,
+    /^(?:company|manager)$/,
+  ],
+  software: [
+    /(?:^| )app xml application$/,
+    /^application$/,
+    /(?:^| )meta generator$/,
+  ],
+  history: [
+    /(?:^| )meta editing (?:cycles|duration)$/,
+    /(?:^| )cp revision$/,
+    /(?:^| )dcterms modified$/,
+  ],
+};
+
 /** Hanya field standar yang jelas-jelas identitas atau perangkat lunak yang dibersihkan. */
 const FIELD_CATEGORIES = ['identity', 'software'];
 
@@ -138,16 +161,18 @@ function normalizeTagText(tag) {
     .trim();
 }
 
-function preservedTagReason(norm) {
+function preservedTagReason(norm, formatId) {
   if (THUMBNAIL_FILE_EXCEPTION.test(norm)) return '';
+  // `meta:editing-duration` Office adalah riwayat sunting, bukan durasi media.
+  if (formatId === 'office' && OFFICE_CATEGORY_PATTERNS.history.some((pattern) => pattern.test(norm))) return '';
   if (GENERATED_PREFIX.test(norm)) return PRESERVE_REASON.generated;
   if (ORIENTATION_PATTERN.test(norm)) return PRESERVE_REASON.orientation;
   if (STRUCTURE_PATTERNS.some((pattern) => pattern.test(norm))) return PRESERVE_REASON.structure;
   return '';
 }
 
-function isPreserved(norm) {
-  return Boolean(preservedTagReason(norm));
+function isPreserved(norm, formatId) {
+  return Boolean(preservedTagReason(norm, formatId));
 }
 
 /**
@@ -158,7 +183,12 @@ function isPreserved(norm) {
  */
 export function categorizeRawTag(formatId, tag) {
   const norm = normalizeTagText(tag);
-  if (!norm || isPreserved(norm)) return null;
+  if (!norm || isPreserved(norm, formatId)) return null;
+  if (formatId === 'office') {
+    for (const category of CATEGORY_PRIORITY) {
+      if (OFFICE_CATEGORY_PATTERNS[category]?.some((pattern) => pattern.test(norm))) return category;
+    }
+  }
   // PDF Info `/Creator` adalah aplikasi pembuat (perangkat lunak), sedangkan
   // `dc:creator` adalah orang (identitas). Keduanya berbeda setelah normalisasi.
   if (formatId === 'pdf' && norm === 'creator') return 'software';
@@ -219,9 +249,9 @@ export function summarizeCleaning(snapshot) {
   for (const field of Object.values(snapshot?.fields || {})) {
     if (!field?.id) continue;
     const normalized = normalizeTagText(field.id);
-    const nativeReason = preservedTagReason(normalizeTagText(field.native));
-    if (normalized && isPreserved(normalized)) {
-      keep(field.id, preservedTagReason(normalized));
+    const nativeReason = preservedTagReason(normalizeTagText(field.native), formatId);
+    if (normalized && isPreserved(normalized, formatId)) {
+      keep(field.id, preservedTagReason(normalized, formatId));
       continue;
     }
     if (nativeReason) {
@@ -238,8 +268,8 @@ export function summarizeCleaning(snapshot) {
   for (const row of snapshot?.raw || []) {
     if (!row?.tag) continue;
     const norm = normalizeTagText(row.tag);
-    if (norm && isPreserved(norm)) {
-      keep(row.tag, preservedTagReason(norm));
+    if (norm && isPreserved(norm, formatId)) {
+      keep(row.tag, preservedTagReason(norm, formatId));
       continue;
     }
     if (!row.value || !norm || seenRaw.has(norm)) continue;
@@ -337,6 +367,6 @@ export function buildCleanPayload(snapshot, selectedCategories) {
  */
 export function isCleanableField(formatId, fieldId) {
   const norm = normalizeTagText(fieldId);
-  if (!norm || isPreserved(norm)) return false;
+  if (!norm || isPreserved(norm, formatId)) return false;
   return FIELD_CATEGORIES.includes(categorizeRawTag(formatId, fieldId));
 }

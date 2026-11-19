@@ -8,6 +8,7 @@ const WORKER_URLS = {
   exiftool: new URL('../workers/exiftool.worker.js', import.meta.url),
   media: new URL('../workers/media.worker.js', import.meta.url),
   pdf: new URL('../workers/pdf.worker.js', import.meta.url),
+  office: new URL('../workers/office.worker.js', import.meta.url),
 };
 export function timeoutForAction(action) {
   if (action === 'write') return 300_000;

@@ -21,6 +21,15 @@ const EXTENSIONS = {
   m4v: { id: 'mp4', subtype: 'mp4', label: 'M4V', mime: 'video/mp4' },
   m4a: { id: 'mp4', subtype: 'm4a', label: 'M4A', mime: 'audio/mp4' },
   mov: { id: 'mp4', subtype: 'mov', label: 'MOV', mime: 'video/quicktime' },
+  docx: { id: 'office', subtype: 'docx', label: 'DOCX', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+  docm: { id: 'office', subtype: 'docm', label: 'DOCM', mime: 'application/vnd.ms-word.document.macroEnabled.12' },
+  xlsx: { id: 'office', subtype: 'xlsx', label: 'XLSX', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+  xlsm: { id: 'office', subtype: 'xlsm', label: 'XLSM', mime: 'application/vnd.ms-excel.sheet.macroEnabled.12' },
+  pptx: { id: 'office', subtype: 'pptx', label: 'PPTX', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
+  pptm: { id: 'office', subtype: 'pptm', label: 'PPTM', mime: 'application/vnd.ms-powerpoint.presentation.macroEnabled.12' },
+  odt: { id: 'office', subtype: 'odt', label: 'ODT', mime: 'application/vnd.oasis.opendocument.text' },
+  ods: { id: 'office', subtype: 'ods', label: 'ODS', mime: 'application/vnd.oasis.opendocument.spreadsheet' },
+  odp: { id: 'office', subtype: 'odp', label: 'ODP', mime: 'application/vnd.oasis.opendocument.presentation' },
 };
 function ascii(bytes, start, length) {
   return String.fromCharCode(...bytes.slice(start, start + length));
@@ -46,6 +55,76 @@ function sniffOgg(bytes) {
   if (text.includes('\u0001vorbis')) return { id: 'ogg', subtype: 'vorbis', label: 'Ogg Vorbis', mime: 'audio/ogg' };
   if (text.includes('\u007fFLAC')) return { id: 'ogg', subtype: 'flac', label: 'FLAC in Ogg', mime: 'audio/ogg' };
   return { id: 'ogg', subtype: 'unknown', label: 'Ogg', mime: 'audio/ogg' };
+}
+// ZIP (OOXML/ODF) deteksi: baca local header tanpa dekompresi. Sengaja mandiri
+// agar detector tetap Node-safe dan tidak bergantung pada modul zip adapter.
+const ZIP_SNIFF_BYTES = 8192;
+function isZipLocalHeader(bytes, offset) {
+  return bytes[offset] === 0x50 && bytes[offset + 1] === 0x4b
+    && bytes[offset + 2] === 0x03 && bytes[offset + 3] === 0x04;
+}
+function zipU16(bytes, offset) {
+  if (offset + 2 > bytes.length) return 0;
+  return bytes[offset] | (bytes[offset + 1] << 8);
+}
+function zipU32(bytes, offset) {
+  if (offset + 4 > bytes.length) return 0;
+  return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+}
+function scanZipHead(bytes) {
+  const names = [];
+  let mimetype = '';
+  for (let offset = 0; offset + 30 <= bytes.length; offset += 1) {
+    if (!isZipLocalHeader(bytes, offset)) continue;
+    const nameLen = zipU16(bytes, offset + 26);
+    if (nameLen < 1 || nameLen > 256 || offset + 30 + nameLen > bytes.length) continue;
+    const name = ascii(bytes, offset + 30, nameLen);
+    if (!/^[\x20-\x7e]+$/.test(name)) continue;
+    names.push(name);
+    if (name === 'mimetype') {
+      const method = zipU16(bytes, offset + 8);
+      const extraLen = zipU16(bytes, offset + 28);
+      const size = zipU32(bytes, offset + 18);
+      const start = offset + 30 + nameLen + extraLen;
+      // Entri `mimetype` ODF wajib stored (tanpa kompresi) dan pertama.
+      if (method === 0 && size > 0 && size < 512 && start + size <= bytes.length) {
+        mimetype = ascii(bytes, start, size).trim();
+      }
+    }
+    if (names.length >= 64) break;
+  }
+  return { names, mimetype };
+}
+function sniffZip(bytes) {
+  if (!isZipLocalHeader(bytes, 0)) return null;
+  const { names, mimetype } = scanZipHead(bytes);
+  const has = (name) => names.includes(name);
+  if (has('mimetype')) {
+    const odf = {
+      'application/vnd.oasis.opendocument.text': { id: 'office', subtype: 'odt', label: 'ODT', mime: 'application/vnd.oasis.opendocument.text' },
+      'application/vnd.oasis.opendocument.spreadsheet': { id: 'office', subtype: 'ods', label: 'ODS', mime: 'application/vnd.oasis.opendocument.spreadsheet' },
+      'application/vnd.oasis.opendocument.presentation': { id: 'office', subtype: 'odp', label: 'ODP', mime: 'application/vnd.oasis.opendocument.presentation' },
+    };
+    if (odf[mimetype]) return odf[mimetype];
+  }
+  if (!has('[Content_Types].xml')) return null;
+  const macro = names.some((name) => /(^|\/)vbaProject\.bin$/i.test(name));
+  const parts = [
+    { main: 'word/document.xml', plain: 'docx', macro: 'docm', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', macroMime: 'application/vnd.ms-word.document.macroEnabled.12' },
+    { main: 'xl/workbook.xml', plain: 'xlsx', macro: 'xlsm', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', macroMime: 'application/vnd.ms-excel.sheet.macroEnabled.12' },
+    { main: 'ppt/presentation.xml', plain: 'pptx', macro: 'pptm', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', macroMime: 'application/vnd.ms-powerpoint.presentation.macroEnabled.12' },
+  ];
+  for (const part of parts) {
+    if (!has(part.main)) continue;
+    const subtype = macro ? part.macro : part.plain;
+    return {
+      id: 'office',
+      subtype,
+      label: subtype.toUpperCase(),
+      mime: macro ? part.macroMime : part.mime,
+    };
+  }
+  return null;
 }
 function sniff(bytes) {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
@@ -78,11 +157,16 @@ function sniff(bytes) {
   if (mp4) return mp4;
   const ogg = sniffOgg(bytes);
   if (ogg) return ogg;
+  const zip = sniffZip(bytes);
+  if (zip) return zip;
   return null;
 }
 function extensionMatches(ext, byExt, byMagic) {
   if (byExt.id !== byMagic.id) return false;
   if (byExt.subtype === byMagic.subtype) return true;
+  // Subtipe Office adalah jenis dokumen berbeda; ketidaksesuaian jadi warning,
+  // bukan kegagalan. Tidak ada toleransi lintas subtipe seperti Ogg/MP4.
+  if (byExt.id === 'office') return false;
   if ((ext === 'ogg' || ext === 'oga') && byMagic.id === 'ogg') return true;
   if ((ext === 'mp4' || ext === 'm4v') && byMagic.id === 'mp4') return true;
   return false;
@@ -102,9 +186,25 @@ const EXT_BY_SUBTYPE = {
   mp4: 'mp4',
   m4a: 'm4a',
   mov: 'mov',
+  docx: 'docx',
+  docm: 'docm',
+  xlsx: 'xlsx',
+  xlsm: 'xlsm',
+  pptx: 'pptx',
+  pptm: 'pptm',
+  odt: 'odt',
+  ods: 'ods',
+  odp: 'odp',
 };
 export async function detectFile(file) {
-  const head = new Uint8Array(await file.slice(0, 128).arrayBuffer());
+  let head = new Uint8Array(await file.slice(0, 128).arrayBuffer());
+  // ZIP Office menyimpan nama entri di local header; 128 byte sering tidak cukup
+  // untuk melihat `word/document.xml` dan sejenisnya. Hanya ZIP yang dibaca lebih
+  // jauh — deteksi format lain tetap identik.
+  if (head.length >= 4 && isZipLocalHeader(head, 0)) {
+    const wider = new Uint8Array(await file.slice(0, ZIP_SNIFF_BYTES).arrayBuffer());
+    if (wider.length > head.length) head = wider;
+  }
   const byMagic = sniff(head);
   const ext = fileExtension(file.name);
   const byExt = EXTENSIONS[ext];

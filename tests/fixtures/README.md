@@ -55,6 +55,32 @@ outputs in memory, not changes to these source fixtures.
 | `cover.bmp` | 3210 | ImageMagick BMP from synthetic gradient | Same as GIF |
 | `tone-long.mp3` | 161053 | ffmpeg libmp3lame, 20 s 440 Hz tone + embedded MJPEG cover | Browser fixture: long enough to prove the preview keeps playing while the card is rebuilt |
 | `clip-long-cover.mp4` | 16503 | ffmpeg H.264, 20 s solid-color frames + attached MJPEG cover | Same, for the video preview |
+| `sample.docx` | 1883 | Node + vendored fflate OOXML ZIP with core/app metadata | Read/edit Word metadata; preserve package parts |
+| `sample.xlsx` | 2465 | Same, Excel package (+ worksheet) | Read/edit Excel metadata |
+| `sample.pptx` | 2551 | Same, PowerPoint package (+ slide) | Read/edit PowerPoint metadata |
+| `sample.docm` | 2277 | Word macro-enabled OOXML + dummy `word/vbaProject.bin` | Detect macro-bearing OOXML; warn before editing |
+| `sample.xlsm` | 2868 | Excel macro-enabled OOXML + dummy `xl/vbaProject.bin` | Same, for Excel |
+| `sample.pptm` | 2958 | PowerPoint macro-enabled OOXML + dummy `ppt/vbaProject.bin` | Same, for PowerPoint |
+| `sample.odt` | 1219 | Node + vendored fflate ODF text with full meta.xml | Read/edit OpenDocument Text metadata |
+| `sample.ods` | 1282 | Same, ODF spreadsheet | Read/edit OpenDocument Spreadsheet metadata |
+| `sample.odp` | 1303 | Same, ODF presentation | Read/edit OpenDocument Presentation metadata |
+| `signed.docx` | 2161 | `sample.docx` plus a mock `_xmlsignatures/origin.sigs` part | Warn on signed-package detection; marker only, NOT a real signature |
+| `encrypted.docx` | 512 | Mock OLE2-like header (`D0 CF 11 E0 A1 B1 1A E1`) + synthetic bytes | Exercise the unsupported/encrypted error path; NOT a real encrypted document |
+
+### Office fixtures (OOXML + ODF)
+
+Run `node tests/fixtures/office-generate.mjs` from the repository root to
+regenerate all eleven Office fixtures. This generator uses only Node built-ins
+and the already-vendored `assets/vendor/fflate.mjs` (`zipSync`, `strToU8`) — no
+ffmpeg, ImageMagick, network, or third-party data. Every file is deterministic
+(fixed ZIP entry date, no timestamps), so rerunning reproduces byte-identical
+output, and all content is synthetic and clearly test-only. The core/app
+metadata uses Indonesian test values (`Contoh Judul`, `Penguji Sintetis`,
+`uji, meinsert`, `Perusahaan Uji`, `MeInsert Test`). For ODF, `mimetype` is the
+first ZIP entry, STORED (uncompressed, method 0), with no extra field so its
+content starts at byte 38; the generator verifies this. `signed.docx` is a
+marker-only mock (folder presence triggers the adapter warning) and
+`encrypted.docx` is a mock header, not a genuine signed or encrypted document.
 
 ### EXIF construction
 

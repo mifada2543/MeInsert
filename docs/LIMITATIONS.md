@@ -45,6 +45,19 @@ per-file result.
   green invariants cell means the warning/preservation assertions passed, not
   that validity was kept. Malformed or unusual XMP is rewritten with a warning
   and foreign properties may be lost in that case.
+- **Office (OOXML / ODF)** — supported subtypes: `docx`, `xlsx`, `pptx`, `docm`,
+  `xlsm`, `pptm` (OOXML) and `odt`, `ods`, `odp` (ODF). For ODF the `mimetype`
+  entry must remain the **first** ZIP entry and **uncompressed (stored)**; this
+  is asserted by the preservation suite. **Editing a digitally signed Office
+  document invalidates its signature** — a warning is shown in review, but the
+  user may still write deliberately. Macro-enabled files (`.docm`, `.xlsm`,
+  `.pptm`) keep their macro parts best-effort; running macros is the reader's
+  responsibility and is never executed by MeInsert. **Encrypted Office files
+  are rejected**, as are legacy binary formats (`.doc`, `.xls`, `.ppt`); only
+  the ZIP-based OOXML/ODF subtypes above are supported. Writes rewrite only the
+  metadata parts (`docProps/core.xml`, `docProps/app.xml`, `meta.xml`); a
+  SHA-256 ZIP-entry check verifies that every other entry is byte-identical,
+  and a failed check is surfaced as a `failed` integrity result.
 - **PNG / WebP** — camera fields are written as XMP (`XMP-tiff:Make/Model`,
   `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), not binary EXIF; EXIF-only
   readers may not show them.

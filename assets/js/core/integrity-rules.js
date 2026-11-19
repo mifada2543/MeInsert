@@ -79,6 +79,28 @@ export const FORMAT_RULES = {
       },
     ],
   },
+  office: {
+    // Hanya statistik isi turunan yang diabaikan; aplikasi menghitung ulang saat
+    // berkas dibuka/disimpan. Semua field hasil tulis tetap diverifikasi.
+    ignoredRaw: [/^(?:docprops\/)?(?:app\.xml:)?(?:pages|words|characters|paragraphs|lines|totaltime)$/i],
+    volatileRaw: [
+      /^(?:docprops\/)?(?:core\.xml:)?cp:lastmodifiedby$/i,
+      /^(?:docprops\/)?(?:core\.xml:)?dcterms:modified$/i,
+      /^(?:meta\.xml:)?dc:date$/i,
+      /^(?:meta\.xml:)?meta:editing-cycles$/i,
+      /^(?:meta\.xml:)?meta:editing-duration$/i,
+    ],
+    generatedRaw: [
+      /^(?:docprops\/)?(?:core\.xml:)?cp:lastmodifiedby$/i,
+      /^(?:docprops\/)?(?:core\.xml:)?dcterms:modified$/i,
+      /^(?:meta\.xml:)?dc:date$/i,
+      /^(?:meta\.xml:)?meta:editing-cycles$/i,
+      /^(?:meta\.xml:)?meta:editing-duration$/i,
+      /^(?:docprops\/)?(?:app\.xml:)?(?:pages|words|characters|paragraphs|lines|totaltime)$/i,
+    ],
+    coverRaw: [],
+    knownLoss: [],
+  },
 };
 export function rulesFor(formatId) {
   return FORMAT_RULES[formatId] || {};
@@ -129,6 +151,18 @@ export function nativeTagsForField(field) {
   }
   for (const match of native.matchAll(/\b[A-Z][A-Za-z0-9_-]*:[A-Za-z0-9_]+\b/g)) {
     tags.add(match[0].toLowerCase());
+  }
+  // OOXML/ODF use lowercase namespaces (dc:, cp:, dcterms:, meta:). The
+  // uppercase-only pattern above cannot see them, so a requested field edit
+  // would otherwise look like an unexplained change to the raw tag.
+  for (const match of native.matchAll(/\b(?:dc|cp|dcterms|meta|xmp|iptc|tiff|exif):[A-Za-z][A-Za-z0-9_-]*/g)) {
+    tags.add(match[0].toLowerCase());
+  }
+  // The raw inventory keys app.xml entries by their bare name (Company,
+  // Application), i.e. the last colon-separated segment of `native`.
+  const lastSegment = native.split(':').pop();
+  if (lastSegment && /^[A-Za-z][A-Za-z0-9_-]*$/.test(lastSegment)) {
+    tags.add(lastSegment.toLowerCase());
   }
   for (const match of native.matchAll(/\b[A-Z0-9]{4}\b/g)) {
     tags.add(match[0].toLowerCase());

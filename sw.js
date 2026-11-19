@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v46';
+const CACHE_VERSION = 'meinsert-v47';
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -38,6 +38,7 @@ const SHELL_URLS = [
   './assets/js/core/media-proof.js',
   './assets/js/core/memory-estimate.js',
   './assets/js/core/metadata-snapshot.js',
+  './assets/js/core/office-zip.js',
   './assets/js/core/privacy-categories.js',
   './assets/js/core/pwa.js',
   './assets/js/core/build.js',
@@ -63,8 +64,10 @@ const SHELL_URLS = [
   './assets/js/ui/review-dialog.js',
   './assets/js/ui/theme.js',
   './assets/js/ui/toast.js',
+  './assets/js/formats/office.js',
   './assets/js/workers/exiftool.worker.js',
   './assets/js/workers/media.worker.js',
+  './assets/js/workers/office.worker.js',
   './assets/js/workers/pdf.worker.js',
   './assets/js/workers/rpc.js',
   './assets/js/batch/batch-folder-drop.js',
