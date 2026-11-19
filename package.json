@@ -22,6 +22,7 @@
     "test:quick-save": "node tests/e2e/quick-save.mjs",
     "test:clean": "node tests/e2e/clean-metadata.mjs",
     "test:clean:batch": "node tests/e2e/batch-clean.mjs",
+    "test:policy": "node tests/e2e/policy-notice.mjs",
     "test:i18n": "node tests/e2e/i18n.mjs",
     "test:compat": "node tests/compat/run.mjs",
     "fixtures:generate": "node tests/fixtures/generate.mjs"

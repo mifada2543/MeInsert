@@ -52,6 +52,10 @@ receiving service's policies.
 
 - `localStorage` stores preferences including theme and language
   (`meinsert-theme`, `meinsert-language`), not metadata-file contents.
+- `localStorage` also stores a single timestamp under the `meinsert.policyAck`
+  key to remember that the policy notice was acknowledged, valid for 30 days.
+  It is **only a local acknowledgment timestamp** — not analytics, not
+  tracking, not uploaded, and it is removed when you clear browser storage.
 - Service workers/Cache Storage retain **application assets**, fonts, libraries,
   and WASM for offline use, not an upload archive or your file collection.
 - Files, previews/object URLs, edits, and outputs may remain in memory during

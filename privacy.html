@@ -73,6 +73,7 @@
 <section class="policy-section" aria-labelledby="privacy-id-4"><h2 id="privacy-id-4">4. Penyimpanan browser dan salinan lokal</h2>
 <ul>
 <li><code>localStorage</code> menyimpan preferensi, termasuk tema dan bahasa (<code>meinsert-theme</code>, <code>meinsert-language</code>); bukan isi berkas metadata.</li>
+<li><code>localStorage</code> juga menyimpan satu cap waktu (timestamp) pada kunci <code>meinsert.policyAck</code> untuk mengingat bahwa pemberitahuan kebijakan telah diakui, berlaku selama 30 hari. Ini <strong>hanyalah cap waktu pengakuan lokal</strong> — bukan analitik, bukan pelacakan, tidak diunggah, dan akan terhapus jika Anda membersihkan data penyimpanan browser.</li>
 <li>Service worker/Cache Storage menyimpan <strong>aset aplikasi</strong>, font, pustaka, dan WASM untuk penggunaan offline; bukan arsip unggahan atau koleksi berkas Anda.</li>
 <li>Berkas, pratinjau/object URL, perubahan, dan output dapat berada di memori selama sesi. Aplikasi berupaya melepaskan resource, tetapi tidak menjamin penghapusan forensik dari RAM, swap, cache sistem, atau pemulihan sesi browser.</li>
 <li>Unduhan dan laporan JSON/CSV dapat berisi nama berkas dan metadata Anda. Berkas tersebut tetap tersimpan sampai Anda sendiri menghapusnya dan dapat ikut sinkronisasi cloud/backup perangkat yang diatur di luar MeInsert.</li>
@@ -119,6 +120,7 @@
 <section class="policy-section" aria-labelledby="privacy-en-4"><h2 id="privacy-en-4">4. Browser storage and local copies</h2>
 <ul>
 <li><code>localStorage</code> stores preferences including theme and language (<code>meinsert-theme</code>, <code>meinsert-language</code>), not metadata-file contents.</li>
+<li><code>localStorage</code> also stores a single timestamp under the <code>meinsert.policyAck</code> key to remember that the policy notice was acknowledged, valid for 30 days. It is <strong>only a local acknowledgment timestamp</strong> — not analytics, not tracking, not uploaded, and it is removed when you clear browser storage.</li>
 <li>Service workers/Cache Storage retain <strong>application assets</strong>, fonts, libraries, and WASM for offline use, not an upload archive or your file collection.</li>
 <li>Files, previews/object URLs, edits, and outputs may remain in memory during the session. Resource cleanup is attempted but does not guarantee forensic erasure from RAM, swap, system caches, or browser session recovery.</li>
 <li>Downloads and JSON/CSV reports may contain filenames and your metadata. They remain until you delete them and may be included in device cloud sync or backups configured outside MeInsert.</li>

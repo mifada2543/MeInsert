@@ -71,6 +71,10 @@ jobs:
       run: npm run test:clean && npm run test:clean:batch
       env:
         CHROME_BIN: /usr/bin/google-chrome
+    - name: Policy acknowledgment notice (Chrome headless)
+      run: npm run test:policy
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
   compat:
     name: Real fixture compatibility (Chrome)
     runs-on: ubuntu-latest

@@ -22,6 +22,7 @@ import { ensureOutputName, saveMetadata, downloadResult } from './editor/editor-
 import { mountQuickSaveToggle } from './ui/quick-save.js';
 import { mountCleanButton, openCleanPanel } from './ui/clean-metadata.js';
 import { beginChange, endChange } from './core/history.js';
+import { initPolicyNotice } from './ui/policy-notice.js';
 initLanguage();
 registerServiceWorker();
 const client = new MetadataClient();
@@ -147,6 +148,7 @@ function setupCleanMetadata() {
 
 function boot() {
   initTheme();
+  initPolicyNotice();
   setIcons();
   // Make the skip-link target reliably focusable in every browser.
   qs('#main')?.setAttribute('tabindex', '-1');

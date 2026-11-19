@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v45';
+const CACHE_VERSION = 'meinsert-v46';
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -57,6 +57,7 @@ const SHELL_URLS = [
   './assets/js/ui/lightbox.js',
   './assets/js/ui/media-session.js',
   './assets/js/ui/quick-save.js',
+  './assets/js/ui/policy-notice.js',
   './assets/js/ui/raw-view.js',
   './assets/js/ui/result-view.js',
   './assets/js/ui/review-dialog.js',

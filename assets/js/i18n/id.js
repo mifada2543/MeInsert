@@ -658,6 +658,9 @@ export default {
   "ui.switchLanguage": "Ganti bahasa ke English",
   "ui.termsOfUse": "Kebijakan Penggunaan",
   "ui.privacy": "Privasi",
+  "ui.policyNoticeTitle": "Kebijakan MeInsert",
+  "ui.policyNoticeBody": "Sebelum menggunakan MeInsert, silakan baca Kebijakan Privasi dan Ketentuan Penggunaan.",
+  "ui.policyNoticeAck": "Mengerti",
   "count.files": {
     "other": "{count} file"
   },

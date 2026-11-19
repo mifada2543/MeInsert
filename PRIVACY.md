@@ -52,6 +52,11 @@ dari perangkat dan tunduk pada layanan penerimanya.
 
 - `localStorage` menyimpan preferensi, termasuk tema dan bahasa
   (`meinsert-theme`, `meinsert-language`); bukan isi berkas metadata.
+- `localStorage` juga menyimpan satu cap waktu (timestamp) pada kunci
+  `meinsert.policyAck` untuk mengingat bahwa pemberitahuan kebijakan telah
+  diakui, berlaku selama 30 hari. Ini **hanyalah cap waktu pengakuan lokal** —
+  bukan analitik, bukan pelacakan, tidak diunggah, dan akan terhapus jika Anda
+  membersihkan data penyimpanan browser.
 - Service worker/Cache Storage menyimpan **aset aplikasi**, font, pustaka,
   dan WASM untuk penggunaan offline; bukan arsip unggahan atau koleksi berkas Anda.
 - Berkas, pratinjau/object URL, perubahan, dan output dapat berada di memori

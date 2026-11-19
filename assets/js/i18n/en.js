@@ -736,6 +736,9 @@ export default {
   "ui.switchLanguage": "Switch language to Bahasa Indonesia",
   "ui.termsOfUse": "Terms of Use",
   "ui.privacy": "Privacy",
+  "ui.policyNoticeTitle": "MeInsert policies",
+  "ui.policyNoticeBody": "Before using MeInsert, please read the Privacy Policy and Terms of Use.",
+  "ui.policyNoticeAck": "Got it",
   "count.files": {
     "one": "{count} file",
     "other": "{count} files"

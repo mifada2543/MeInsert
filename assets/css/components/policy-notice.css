@@ -1,0 +1,108 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+/* Kartu pemberitahuan kebijakan sekali pakai (non-modal) di index/single/batch. */
+
+.policy-notice {
+  /* Angka ini mengangkat kartu di atas action-bar/batch-footer saat is-editing. */
+  --policy-notice-edit-lift: 240px;
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 70;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.4;
+  animation: policy-notice-in 220ms ease both;
+}
+
+.policy-notice__title {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.policy-notice__body {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.policy-notice__body a {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.policy-notice__body a:hover {
+  color: var(--brand-hover);
+}
+
+.policy-notice__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.policy-notice__ack {
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 600 11.5px/1.2 var(--sans);
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.policy-notice__ack:hover {
+  background: var(--surface-3);
+  border-color: var(--brand);
+}
+
+.policy-notice__ack:focus-visible,
+.policy-notice__body a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@keyframes policy-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 700px) {
+  .policy-notice {
+    left: 12px;
+    right: 12px;
+    width: calc(100vw - 24px);
+    max-width: none;
+    bottom: calc(var(--bottom-nav-h, 0px) + env(safe-area-inset-bottom, 0px) + 12px);
+  }
+  body.is-editing .policy-notice {
+    /* action-bar/batch-footer menempel di calc(12px + env(safe-area-inset-bottom)); angkat kartu di atasnya. */
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--policy-notice-edit-lift));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .policy-notice {
+    animation: none;
+  }
+  .policy-notice__ack {
+    transition: none;
+  }
+}
