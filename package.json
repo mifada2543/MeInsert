@@ -28,6 +28,9 @@
     "test:offline": "node tests/e2e/offline-settings.mjs",
     "test:reveal": "node tests/e2e/scroll-reveal.mjs",
     "test:preview": "node tests/e2e/preview-animation.mjs",
+    "test:action-bar": "node tests/e2e/action-bar.mjs",
+    "test:e2e:all": "node tests/e2e/run-all.mjs",
+    "test:fast": "npm run test && npm run lint && npm run check:css && npm run check:policies",
     "test:i18n": "node tests/e2e/i18n.mjs",
     "test:compat": "node tests/compat/run.mjs",
     "fixtures:generate": "node tests/fixtures/generate.mjs"

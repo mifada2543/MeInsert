@@ -1,8 +1,8 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-import { chromium } from "playwright-core";
 import { createServer } from "node:http";
+import { getBrowser } from './harness.mjs';
 import { createReadStream, existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
@@ -69,7 +69,7 @@ if (!address || typeof address === "string") {
   throw new Error("Could not start local server.");
 }
 const base = `http://127.0.0.1:${address.port}`;
-const browser = await chromium.launch({
+const browser = await getBrowser({
   executablePath: findChrome(),
   headless: true,
   args: ["--disable-dev-shm-usage"],

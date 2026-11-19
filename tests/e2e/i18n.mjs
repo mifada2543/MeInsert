@@ -2,11 +2,11 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import assert from 'node:assert/strict';
+import { getBrowser } from './harness.mjs';
 import { createServer } from 'node:http';
 import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.pdf': 'application/pdf', '.md': 'text/plain' };
 const server = createServer((request, response) => {
@@ -19,7 +19,7 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}`;
 const executablePath = [process.env.CHROME_BIN, process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].filter(Boolean).find(existsSync);
-const browser = await chromium.launch({ executablePath, headless: true, args: ['--disable-dev-shm-usage'] });
+const browser = await getBrowser({ executablePath, headless: true, args: ['--disable-dev-shm-usage'] });
 const errors = [];
 const context = await browser.newContext({ locale: 'en-US', serviceWorkers: 'block', acceptDownloads: true });
 context.on('page', (page) => {

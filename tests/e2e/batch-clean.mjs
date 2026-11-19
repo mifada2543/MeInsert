@@ -2,12 +2,12 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import assert from 'node:assert/strict';
+import { getBrowser } from './harness.mjs';
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const gpsFixture = join(root, 'tests/fixtures/clean-gps.jpg');
 const gpsGenerator = join(root, 'tests/fixtures/clean-gps.generate.mjs');
@@ -75,7 +75,7 @@ let page;
 try {
   const address = server.address();
   assert.ok(address && typeof address !== 'string', 'local server started');
-  browser = await chromium.launch({
+  browser = await getBrowser({
     executablePath: findChrome(),
     headless: true,
     args: ['--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'],

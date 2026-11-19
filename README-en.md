@@ -201,8 +201,12 @@ Technical depth was moved out of this README to keep it short:
 
 ```bash
 npm run serve            # local server http://localhost:8000
+npm run test:fast        # fast gate: unit + lint + CSS + policy (~3s, no browser)
 npm test                 # unit tests
 npm run test:e2e         # browser smoke test
+npm run test:e2e:all     # all 16 E2E suites in one shared Chrome process (CDP)
+npm run test:preview     # preview open/close animation
+npm run test:action-bar  # action bar & Options panel
 npm run test:i18n        # bilingual UI and offline
 npm run test:undo        # single-file undo/redo
 npm run test:undo:batch  # batch undo/redo

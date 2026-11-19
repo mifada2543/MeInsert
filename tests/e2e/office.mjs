@@ -2,12 +2,12 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import assert from 'node:assert/strict';
+import { getBrowser } from './harness.mjs';
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const fixturesDir = join(root, 'tests/fixtures');
 const fixture = (name) => join(fixturesDir, name);
@@ -129,7 +129,7 @@ if (!address || typeof address === 'string') {
   throw new Error('Could not start local server.');
 }
 const base = `http://127.0.0.1:${address.port}`;
-const browser = await chromium.launch({
+const browser = await getBrowser({
   executablePath: findChrome(),
   headless: true,
   args: ['--disable-dev-shm-usage'],

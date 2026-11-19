@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import assert from 'node:assert/strict';
-import { chromium } from 'playwright-core';
+import { getBrowser } from './harness.mjs';
 import { createServer } from 'node:http';
 import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
@@ -26,7 +26,7 @@ await new Promise((resolve, reject) => { server.once('error', reject); server.li
 const base = `http://127.0.0.1:${server.address().port}`;
 const chrome = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/chromium'].filter(Boolean).find(existsSync);
 if (!chrome) throw new Error('Set CHROME_BIN to Chrome/Chromium executable');
-const browser = await chromium.launch({ executablePath: chrome, headless: true, args: ['--disable-dev-shm-usage'] });
+const browser = await getBrowser({ executablePath: chrome, headless: true, args: ['--disable-dev-shm-usage'] });
 const errors = [];
 async function frameState(page) {
   return page.evaluate(() => {

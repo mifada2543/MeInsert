@@ -2,11 +2,11 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import assert from 'node:assert/strict';
+import { getBrowser } from './harness.mjs';
 import { createServer } from 'node:http';
 import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const pages = ['index.html', 'single.html', 'batch.html', 'privacy.html', 'Terms.html'];
@@ -103,7 +103,7 @@ if (!address || typeof address === 'string') {
 }
 const base = `http://127.0.0.1:${address.port}`;
 const baseOrigin = new URL(base).origin;
-const browser = await chromium.launch({
+const browser = await getBrowser({
   executablePath: findChrome(),
   headless: true,
   args: ['--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'],

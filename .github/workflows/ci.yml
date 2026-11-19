@@ -39,60 +39,8 @@ jobs:
     - run: npm ci
     - name: Independent media tools
       run: sudo apt-get update && sudo apt-get install -y ffmpeg
-    - name: Smoke test (Chrome headless)
-      run: npm run test:e2e
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Bilingual UI (Chrome headless)
-      run: npm run test:i18n
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Undo/redo and media continuity (Chrome headless)
-      run: npm run test:undo
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Independent batch undo/redo (Chrome headless)
-      run: npm run test:undo:batch
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: CSP and local-only network claim (Chrome headless)
-      run: npm run test:security
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Engine loading (Chrome headless)
-      run: npm run test:engine
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Quick save (Chrome headless)
-      run: npm run test:quick-save
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Clean metadata, single and batch (Chrome headless)
-      run: npm run test:clean && npm run test:clean:batch
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Policy acknowledgment notice (Chrome headless)
-      run: npm run test:policy
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Office formats (Chrome headless)
-      run: npm run test:office
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: About page and mobile menu (Chrome headless)
-      run: npm run test:about
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Offline settings (Chrome headless)
-      run: npm run test:offline
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Scroll reveal (Chrome headless)
-      run: npm run test:reveal
-      env:
-        CHROME_BIN: /usr/bin/google-chrome
-    - name: Preview open/close animation (Chrome headless)
-      run: npm run test:preview
+    - name: All browser suites (one shared Chrome via CDP)
+      run: npm run test:e2e:all
       env:
         CHROME_BIN: /usr/bin/google-chrome
   compat:
