@@ -50,6 +50,7 @@
         <a class="header-link" data-nav="batch" href="./batch.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 4.9-9 4.9-9-4.9Z"/><path d="m3 12 9 4.9 9-4.9"/><path d="m3 17 9 4.9 9-4.9"/></svg><span><span data-i18n="ui.batch">Banyak file</span></span></a>
       </nav>
       <div class="header-actions">
+        <button class="icon-button menu-toggle" id="menuToggle" type="button" aria-label="Buka menu" title="Buka menu" aria-expanded="false" aria-controls="mobileMenu" data-i18n-aria-label="ui.openMenu" data-i18n-title="ui.openMenu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <span class="privacy-pill" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer">
           <span class="privacy-dot"></span>
           <span data-i18n="ui.100OnDevice">100% di perangkat</span>
@@ -59,6 +60,7 @@
           <span class="theme-icon theme-icon-sun" id="themeIconSun" aria-hidden="true"></span>
           <span class="theme-icon theme-icon-moon" id="themeIconMoon" aria-hidden="true"></span>
         </button>
+        <a class="text-link about-link" id="aboutLink" href="./about.html" aria-label="Tentang" title="Tentang" data-i18n-aria-label="ui.aboutShort" data-i18n-title="ui.aboutShort"><span data-i18n="ui.aboutShort">Tentang</span></a>
       </div>
     </div>
   </header>
@@ -70,18 +72,7 @@
             upload.</span></span></h1>
         <p class="lede"><span data-i18n="ui.twoWorkflowsOnePrincipleFilesStayOnYourDevice">Dua cara kerja, satu prinsip: file tetap di perangkat Anda. Pilih editor satu file untuk pekerjaan
           satuan, atau mode batch untuk banyak file sekaligus.</span></p>
-        <div class="format-chips" aria-label="Format yang didukung" data-i18n-aria-label="ui.supportedFormats">
-          <span class="chip"><span class="chip-dot image"></span>JPG</span>
-          <span class="chip"><span class="chip-dot image"></span>PNG</span>
-          <span class="chip"><span class="chip-dot image"></span>WebP</span>
-          <span class="chip"><span class="chip-dot image"></span>TIFF</span>
-          <span class="chip"><span class="chip-dot pdf"></span>PDF</span>
-          <span class="chip"><span class="chip-dot audio"></span>MP3</span>
-          <span class="chip"><span class="chip-dot audio"></span>FLAC</span>
-          <span class="chip"><span class="chip-dot audio"></span>OGG</span>
-          <span class="chip"><span class="chip-dot video"></span>MP4</span>
-          <span class="chip"><span class="chip-dot video"></span>MKV</span>
-        </div>
+        <div class="format-chips" id="formatChips" aria-label="Format yang didukung" data-i18n-aria-label="ui.supportedFormats"></div>
       </div>
       <div class="mode-cards" aria-label="Pilih cara kerja" data-i18n-aria-label="ui.chooseAWorkflow">
         <a class="mode-card" href="./single.html">

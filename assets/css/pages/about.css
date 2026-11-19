@@ -1,0 +1,154 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+/* Halaman Tentang — memakai bahasa visual yang sama dengan beranda:hero + kartu pilihan mode. */
+.landing-about {
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  align-items: start;
+  gap: clamp(32px, 4vw, 56px);
+}
+.landing-about .hero-copy {
+  max-width: 620px;
+}
+.about-note {
+  margin: 22px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.about-cards {
+  gap: 12px;
+  align-items: start;
+}
+.about-card > :not(.mode-card-icon) {
+  grid-column: 2;
+  min-width: 0;
+}
+.about-card p {
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.about-card h2 {
+  margin: 3px 0 7px;
+}
+.about-card-formats p {
+  margin-bottom: 0;
+}
+.about-format-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.about-format-list li {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.about-format-list strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.about-format-list code {
+  display: block;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.about-format-note {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.about-caveats {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--warning);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--warning-soft);
+}
+.about-caveats ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.about-caveats li {
+  margin: 4px 0;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.about-caveats li:first-child { margin-top: 0; }
+.about-caveats li:last-child { margin-bottom: 0; }
+.about-fact-list {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.about-fact-list li {
+  position: relative;
+  padding-left: 17px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.about-fact-list li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+.about-card .mode-card-cta {
+  text-decoration: none;
+}
+.about-link[aria-current="page"] {
+  border-color: color-mix(in srgb, var(--brand) 42%, var(--line));
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+@media (max-width: 900px) {
+  .landing-about {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    padding-top: 34px;
+  }
+  .landing-about .hero-copy {
+    max-width: none;
+  }
+}
+@media (max-width: 700px) {
+  .about-format-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .about-card .mode-card-cta {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-card .mode-card-cta {
+    transition: none;
+  }
+}

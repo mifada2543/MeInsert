@@ -3,27 +3,14 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { bindText, t, translated } from '../i18n/index.js';
 import { clear, el, formatBytes } from './dom.js';
-
-// Lokasi modul vendor. Dipakai untuk menyusun URL WASM yang sama dengan yang
-// diminta runtime saat `options.fetch` tidak diberikan. File aslinya adalah
-// assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm (nama diskop dari
-// scripts/vendor.mjs). Jika sebuah muatan nyata sudah pernah berjalan, URL yang
-// benar-benar dipakai runtime disimpan dan diprioritaskan.
+import { getProfile } from '../core/offline-manifest.js';
 const VENDOR_DIR = new URL('../../vendor/exiftool-wasm/', import.meta.url);
 const FALLBACK_WASM_URL = new URL('zeroperl-twnm61dk.wasm', VENDOR_DIR).href;
-
 let observedWasmUrl = null;
 let activeLoads = 0;
 let prefetchPromise = null;
 let scheduledPromise = null;
 let prefetchController = null;
-
-/**
- * Runtime vendor memanggil fetch dengan URL relatif './zeroperl-....wasm'.
- * Di dalam worker, URL relatif tersebut akan salah arah (relatif terhadap skrip
- * worker), jadi kita hanya menyelesaikannya terhadap direktori vendor. URL
- * absolut dibiarkan apa adanya: tidak pernah mengarahkan ke origin lain.
- */
 function resolveEngineUrl(url) {
   if (url instanceof URL) return url.href;
   const text = String(url);
@@ -34,8 +21,6 @@ function resolveEngineUrl(url) {
     return text;
   }
 }
-
-/** Catat URL yang benar-benar diminta runtime agar prefetch memakai URL yang sama. */
 export function noteEngineUrl(url) {
   if (!url) return;
   try {
@@ -44,12 +29,9 @@ export function noteEngineUrl(url) {
     if (!observedWasmUrl) observedWasmUrl = resolved.href;
   } catch { /* biarkan fetch memakai nilai asli */ }
 }
-
-/** URL WASM yang dipakai prefetch (tanpa pernah mengarah ke origin lain). */
 export function engineWasmUrl() {
   return observedWasmUrl || FALLBACK_WASM_URL;
 }
-
 function joinChunks(chunks, length) {
   const bytes = new Uint8Array(length);
   let offset = 0;
@@ -59,24 +41,10 @@ function joinChunks(chunks, length) {
   }
   return bytes;
 }
-
-/**
- * Bungkus `fetch` dengan pelaporan progres.
- *
- * Fungsi yang dikembalikan menerima argumen yang sama seperti `fetch` dan
- * selalu mengembalikan `Response`. Untuk respons bertubuh, setiap potongan
- * dilaporkan melalui `onProgress({ loaded, total })` lalu digabung menjadi
- * `Response` baru. Tanpa `content-length`, `total` bernilai `null`.
- *
- * Opsi `buffer: false` dipakai prefetch: potongan tetap dibaca (cache HTTP
- * terisi) tetapi tidak ditumpuk di memori.
- */
 export function createProgressFetch({ onProgress, onError, buffer = true } = {}) {
   return async function progressFetch(url, init) {
     const target = resolveEngineUrl(url);
     noteEngineUrl(target);
-    // Muatan nyata menang: hentikan prefetch yang sedang berjalan agar tidak
-    // tumpang tindih dengan unduhan yang dipakai pengguna.
     if (onProgress && prefetchController) {
       try { prefetchController.abort(); } catch { /* best effort */ }
       prefetchController = null;
@@ -119,11 +87,6 @@ export function createProgressFetch({ onProgress, onError, buffer = true } = {})
     }
   };
 }
-
-/**
- * Prefetch sekali, silent, dan tidak pernah menimpa muatan yang sedang jalan.
- * Kegagalan hanya menghasilkan `false`; tidak ada toast atau pelemparan error.
- */
 export function prefetchEngine() {
   if (prefetchPromise) return prefetchPromise;
   if (typeof fetch !== 'function' || activeLoads > 0) return Promise.resolve(false);
@@ -139,8 +102,6 @@ export function prefetchEngine() {
     });
   return prefetchPromise;
 }
-
-/** Menjadwalkan prefetch saat idle, kecuali Save-Data / jaringan lambat. */
 export function scheduleEnginePrefetch() {
   if (scheduledPromise) return scheduledPromise;
   scheduledPromise = new Promise((resolve) => {
@@ -153,6 +114,13 @@ export function scheduleEnginePrefetch() {
       resolve(false);
       return;
     }
+    const profile = getProfile(globalThis.localStorage);
+    const wantsImageOffline = profile.mode === 'all'
+      || (profile.mode === 'selected' && profile.features.includes('image'));
+    if (!wantsImageOffline) {
+      resolve(false);
+      return;
+    }
     const run = () => { resolve(prefetchEngine()); };
     if (typeof globalThis.requestIdleCallback === 'function') {
       globalThis.requestIdleCallback(run, { timeout: 5000 });
@@ -162,15 +130,9 @@ export function scheduleEnginePrefetch() {
   });
   return scheduledPromise;
 }
-
-// ---- Status region (main thread) ------------------------------------------------
-// Worker mengirim pesan `engine-progress`; beberapa worker bisa parallel, jadi
-// statusnya digabung di satu peta dan hanya satu elemen UI yang dibuat.
-
 const loads = new Map();
 let container = null;
 let uiState = null;
-
 function ensureContainer() {
   if (typeof document === 'undefined') return null;
   if (container?.isConnected) return container;
@@ -182,7 +144,6 @@ function ensureContainer() {
   document.body.append(container);
   return container;
 }
-
 function removeContainer() {
   loads.clear();
   if (container) {
@@ -191,7 +152,6 @@ function removeContainer() {
   }
   uiState = null;
 }
-
 function renderProgress(root, progress) {
   if (uiState?.mode !== 'progress') {
     clear(root);
@@ -215,7 +175,6 @@ function renderProgress(root, progress) {
     : 0;
   uiState.fill.style.width = `${pct}%`;
 }
-
 function renderError(root) {
   if (uiState?.mode === 'error') return;
   clear(root);
@@ -245,7 +204,6 @@ function renderError(root) {
   );
   uiState = { mode: 'error' };
 }
-
 function render() {
   if (typeof document === 'undefined') return;
   if (loads.size === 0) {
@@ -264,8 +222,6 @@ function render() {
   const total = totals.length === entries.length ? totals.reduce((sum, value) => sum + value, 0) : null;
   renderProgress(root, { loaded, total });
 }
-
-/** Terima laporan dari worker dan perbarui satu status region bersama. */
 export function handleEngineProgress(message = {}) {
   const source = message.source || 'engine';
   const phase = message.phase;

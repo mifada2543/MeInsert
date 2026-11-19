@@ -15,7 +15,6 @@ import {
 import { beginChange } from '../core/history.js';
 import { refreshCoverPreview, renderWorkspace } from '../editor/editor-view.js';
 import { syncActionBar } from '../editor/editor-changes.js';
-
 const CATEGORY_LABELS = {
   location: 'ui.cleanCategoryLocation',
   device: 'ui.cleanCategoryDevice',
@@ -29,11 +28,9 @@ const PROFILES = [
   { id: 'all', label: 'ui.cleanProfileAll', hint: 'ui.cleanProfileAllHint' },
   { id: 'custom', label: 'ui.cleanProfileCustom', hint: 'ui.cleanProfileCustomHint' },
 ];
-
 let current = null;
 let currentCleanup = null;
 let pendingResolve = null;
-
 function categoryLabel(category) {
   const key = CATEGORY_LABELS[category];
   return key ? t(key) : category;
@@ -41,8 +38,6 @@ function categoryLabel(category) {
 function displayValue(value) {
   return String(value ?? '').trim() || '—';
 }
-
-/** The "before" and "after" columns for every category. */
 function summaryColumns(summary, selected) {
   const chosen = new Set(selected);
   const before = el('div', { className: 'clean-summary-col is-before' },
@@ -82,7 +77,6 @@ function summaryColumns(summary, selected) {
     after,
   );
 }
-
 function sensitiveBlock(summary) {
   const sensitive = Array.isArray(summary.sensitive) ? summary.sensitive : [];
   if (!sensitive.length) {
@@ -103,7 +97,6 @@ function sensitiveBlock(summary) {
     ))),
   );
 }
-
 function keptBlock(summary) {
   const kept = Array.isArray(summary.kept) ? summary.kept : [];
   if (!kept.length) return null;
@@ -116,11 +109,10 @@ function keptBlock(summary) {
     ))),
   );
 }
-
-/** Build and mount the single-editor button (no HTML edits) that opens the panel. */
 export function mountCleanButton({ container, ctx } = {}) {
   if (typeof document === 'undefined') return null;
-  const host = container || qs('.action-bar');
+  const target = document.getElementById('actionOptions') || container;
+  const host = target || qs('.action-bar');
   if (!host) return null;
   const existing = qs('.clean-metadata-btn', host);
   if (existing) return existing;
@@ -135,8 +127,6 @@ export function mountCleanButton({ container, ctx } = {}) {
   host.insertBefore(button, qs('.action-buttons', host) || null);
   return button;
 }
-
-/** Open the cleaning panel. Resolves true only when "apply" was confirmed. */
 export function openCleanPanel(ctx) {
   if (typeof document === 'undefined') return Promise.resolve(false);
   const { state } = ctx || {};
@@ -155,11 +145,9 @@ export function openCleanPanel(ctx) {
   const prevOverflow = document.body.style.overflow;
   document.body.style.overflow = 'hidden';
   const promise = new Promise((resolve) => { pendingResolve = resolve; });
-
   let profile = 'privacy';
   let currentCount = 0;
   let selected = [];
-
   const profileInputs = new Map();
   const categoryInputs = new Map();
   const profiles = el('div', { className: 'clean-profiles', role: 'radiogroup' });
@@ -180,7 +168,6 @@ export function openCleanPanel(ctx) {
       ),
     ));
   }
-
   const customList = el('div', { className: 'clean-custom-list' });
   for (const category of CLEAN_CATEGORIES) {
     const input = el('input', {
@@ -198,13 +185,11 @@ export function openCleanPanel(ctx) {
     el('h3', { className: 'clean-section-title', textContent: translated(() => t('ui.cleanProfileCustomHint')) }),
     customList,
   );
-
   const summaryHost = el('div', { className: 'clean-summary' },
     el('h3', { className: 'clean-section-title', textContent: translated(() => t('ui.cleanSummary')) }),
   );
   const summaryBody = el('div', { className: 'clean-summary-body' });
   summaryHost.append(summaryBody);
-
   const cancelButton = el('button', {
     className: 'button ghost clean-btn-cancel',
     type: 'button',
@@ -214,7 +199,6 @@ export function openCleanPanel(ctx) {
     className: 'button primary clean-btn-apply',
     type: 'button',
   });
-
   const card = el('div', {
     className: 'clean-card',
     role: 'dialog',
@@ -238,14 +222,12 @@ export function openCleanPanel(ctx) {
   );
   const backdrop = el('div', { className: 'clean-backdrop' }, card);
   document.body.append(backdrop);
-
   function readSelection() {
     if (profile === 'custom') {
       return CLEAN_CATEGORIES.filter((category) => categoryInputs.get(category)?.checked);
     }
     return [...(CLEAN_PROFILE_CATEGORIES[profile] || [])];
   }
-
   function update() {
     selected = readSelection();
     const payload = buildCleanPayload(snapshot, selected);
@@ -256,7 +238,6 @@ export function openCleanPanel(ctx) {
     summaryBody.append(summaryColumns(summary, selected), sensitiveBlock(summary), keptBlock(summary));
     applyButton.disabled = currentCount === 0;
   }
-
   for (const [id, input] of profileInputs) {
     input.addEventListener('change', () => {
       if (!input.checked) return;
@@ -274,7 +255,6 @@ export function openCleanPanel(ctx) {
     });
   }
   update();
-
   const cleanup = () => {
     document.removeEventListener('keydown', onKeydown, true);
     document.body.style.overflow = prevOverflow || '';
@@ -334,8 +314,6 @@ export function openCleanPanel(ctx) {
   cancelButton.focus();
   return promise;
 }
-
-/** Translate the standard clean payload into the ordinary editor state. */
 function applyCleaning(ctx, payload) {
   const { els, state } = ctx;
   beginChange(state.history, 'clean-metadata');
@@ -374,7 +352,6 @@ function applyCleaning(ctx, payload) {
   syncActionBar(els, state);
   showToast(t('ui.cleanAddedToReview'), 'info', 6000);
 }
-
 export function closeCleanPanel(value = false) {
   if (!current) {
     if (pendingResolve) {
@@ -395,7 +372,6 @@ export function closeCleanPanel(value = false) {
     try { resolve(value); } catch { /* noop */ }
   }
 }
-
 export function isCleanPanelOpen() {
   return Boolean(current);
 }

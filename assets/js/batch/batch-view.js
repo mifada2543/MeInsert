@@ -17,7 +17,7 @@ import { BatchDetailView } from './batch-detail-view.js';
 import { BatchPreview } from './batch-preview.js';
 import { bindFolderDropCopy, collectDroppedFiles } from './batch-folder-drop.js';
 import { mountBatchCleanAction } from '../ui/batch-clean.js';
-
+import { initBatchActionBar } from '../ui/batch-action-bar.js';
 export class BatchController {
   constructor(client) {
     this.client = client;
@@ -35,8 +35,6 @@ export class BatchController {
     this.previewNode = null;
     this.previewSignature = '';
     this.groupMap = new Map();
-    // Satu stack undo/redo untuk setiap grup format; grup MP3 dan grup PDF
-    // tidak saling memengaruhi.
     this.groupHistories = new Map();
     this.groupHistoryController = createGroupHistoryController({
       getGroup: (key) => this.groupMap.get(key) || null,
@@ -95,6 +93,7 @@ export class BatchController {
     };
     this.bind();
     this.setMode('single');
+    initBatchActionBar();
   }
   bind() {
     const { els } = this;
@@ -218,9 +217,6 @@ export class BatchController {
       if (!item) { rejected += 1; continue; }
       prepared.push(item);
     }
-    // Validate the prospective batch with the shared limits before any item is
-    // excluded, so an oversized folder drop gets a clear i18n message. The
-    // existing per-item exclusion below still enforces the same limits.
     if (prepared.length) {
       const validation = validateSelection([...this.items, ...prepared]);
       if (!validation.ok) {

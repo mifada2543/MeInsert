@@ -21,8 +21,13 @@ import { openFile, setupDropzone, goHome } from './editor/editor-file.js';
 import { ensureOutputName, saveMetadata, downloadResult } from './editor/editor-save.js';
 import { mountQuickSaveToggle } from './ui/quick-save.js';
 import { mountCleanButton, openCleanPanel } from './ui/clean-metadata.js';
+import { initActionBar } from './ui/action-bar.js';
 import { beginChange, endChange } from './core/history.js';
 import { initPolicyNotice } from './ui/policy-notice.js';
+import { initFormatChips } from './ui/format-chips.js';
+import { initScrollReveal } from './ui/scroll-reveal.js';
+import { initMobileMenu } from './ui/mobile-menu.js';
+import './ui/offline-settings.js';
 initLanguage();
 registerServiceWorker();
 const client = new MetadataClient();
@@ -31,8 +36,6 @@ if (page === 'batch') {
   import('./batch/batch-view.js')
     .then(({ BatchController }) => {
       const controller = new BatchController(client);
-      // A drop or picker selection can land before the dynamic module binds
-      // its change listener; do not discard files already on the input.
       const input = controller.els.batchFileInput;
       const pending = [...(input?.files || [])];
       if (pending.length && input) {
@@ -60,23 +63,18 @@ const ctx = {
 ctx.handlers = createHandlers(ctx);
 ctx.onRetry = () => openFile(ctx, ctx.state.file);
 ctx.onDownload = () => downloadResult(ctx);
-
-/** True when the event target accepts text, so the browser handles undo itself. */
 function isEditableTarget(target) {
   if (!target || target.nodeType !== 1) return false;
   if (target.isContentEditable) return true;
   const tag = (target.tagName || '').toLowerCase();
   return tag === 'input' || tag === 'textarea' || tag === 'select';
 }
-
 function setupShortcuts() {
   window.addEventListener('keydown', (event) => {
     if (!event.ctrlKey && !event.metaKey) return;
     if (event.altKey) return;
     const key = String(event.key || '').toLowerCase();
     if (key !== 'z' && key !== 'y') return;
-    // Inside a field the native text undo applies; it still fires input
-    // events, so the editor history stays in sync with the text.
     if (isEditableTarget(event.target)) return;
     if (state.processing) return;
     const isRedo = key === 'y' || event.shiftKey;
@@ -84,14 +82,12 @@ function setupShortcuts() {
     if (handled) event.preventDefault();
   });
 }
-
 function setupEvents() {
   els.tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => {
       state.activeTab = tab.dataset.tab;
       renderWorkspace(ctx);
     });
-    // APG tablist: arrow keys move between tabs, Tab leaves the group.
     tab.addEventListener('keydown', (event) => {
       const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
       if (!step || !els.tabs.length) return;
@@ -125,12 +121,10 @@ function setupEvents() {
   });
   window.addEventListener('pagehide', () => client.disposeAllSync());
 }
-/** Mount the manual button and honour ?clean=1 once a file finishes loading. */
 function setupCleanMetadata() {
   mountCleanButton({ container: els.actionBar, ctx });
   const params = new URLSearchParams(location.search);
   if (params.get('clean') !== '1') return;
-  // Strip the flag before doing any work so a reload never re-opens the panel.
   params.delete('clean');
   const query = params.toString();
   history.replaceState(
@@ -145,12 +139,13 @@ function setupCleanMetadata() {
     void openCleanPanel(ctx);
   });
 }
-
 function boot() {
   initTheme();
   initPolicyNotice();
+  initFormatChips();
+  initScrollReveal();
+  initMobileMenu();
   setIcons();
-  // Make the skip-link target reliably focusable in every browser.
   qs('#main')?.setAttribute('tabindex', '-1');
   if (page === 'single') {
     setupDropzone(ctx);
@@ -158,6 +153,7 @@ function boot() {
     setupShortcuts();
     mountQuickSaveToggle({ container: els.actionBar });
     setupCleanMetadata();
+    initActionBar();
     dock.attach();
     renderTabs(ctx);
     syncActionBar(els, state);

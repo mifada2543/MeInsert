@@ -68,10 +68,18 @@ body[data-page="single"] {
   }
 }
 @media (max-width: 700px) {
+  .workspace {
+    animation: workspace-fade-in 380ms ease both;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
   .side-column {
     grid-template-columns: 1fr;
   }
   .workspace-status {
     font-size: 9.5px;
   }
+}
+@keyframes workspace-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v47';
+const CACHE_VERSION = 'meinsert-v50';
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -10,6 +10,7 @@ const SHELL_URLS = [
   './index.html',
   './single.html',
   './batch.html',
+  './about.html',
   './privacy.html',
   './Terms.html',
   './manifest.json',
@@ -31,6 +32,7 @@ const SHELL_URLS = [
   './assets/js/core/detector.js',
   './assets/js/core/errors.js',
   './assets/js/core/format-map.js',
+  './assets/js/core/format-capabilities.js',
   './assets/js/core/history.js',
   './assets/js/core/image-utils.js',
   './assets/js/core/integrity-rules.js',
@@ -38,6 +40,7 @@ const SHELL_URLS = [
   './assets/js/core/media-proof.js',
   './assets/js/core/memory-estimate.js',
   './assets/js/core/metadata-snapshot.js',
+  './assets/js/core/offline-manifest.js',
   './assets/js/core/office-zip.js',
   './assets/js/core/privacy-categories.js',
   './assets/js/core/pwa.js',
@@ -50,18 +53,24 @@ const SHELL_URLS = [
   './assets/js/ui/clean-metadata.js',
   './assets/js/ui/confirm.js',
   './assets/js/ui/dom.js',
+  './assets/js/ui/mobile-menu.js',
   './assets/js/ui/editing-navigation.js',
+  './assets/js/ui/action-bar.js',
+  './assets/js/ui/batch-action-bar.js',
   './assets/js/ui/engine-loading.js',
   './assets/js/ui/file-card.js',
+  './assets/js/ui/format-chips.js',
   './assets/js/ui/form-view.js',
   './assets/js/ui/icons.js',
   './assets/js/ui/lightbox.js',
   './assets/js/ui/media-session.js',
   './assets/js/ui/quick-save.js',
   './assets/js/ui/policy-notice.js',
+  './assets/js/ui/offline-settings.js',
   './assets/js/ui/raw-view.js',
   './assets/js/ui/result-view.js',
   './assets/js/ui/review-dialog.js',
+  './assets/js/ui/scroll-reveal.js',
   './assets/js/ui/theme.js',
   './assets/js/ui/toast.js',
   './assets/js/formats/office.js',
@@ -121,32 +130,27 @@ self.addEventListener('activate', (event) => {
 function isCacheableAsset(pathname) {
   return /\.(css|js|mjs|wasm|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
 }
-function staleWhileRevalidate(event) {
+async function networkFirst(event) {
   const { request } = event;
   const cachePromise = caches.open(CACHE_VERSION);
-  const network = fetch(request)
-    .then(async (response) => {
-      if (response && response.ok) {
-        const cache = await cachePromise;
-        await cache.put(request, response.clone());
-      }
-      return response;
-    })
-    .catch(() => null);
-  event.waitUntil(network);
-  return (async () => {
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      const cache = await cachePromise;
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
     const cache = await cachePromise;
     const cached = await cache.match(request, { ignoreSearch: true })
       || await cache.match('./index.html')
       || await cache.match('./');
     if (cached) return cached;
-    const response = await network;
-    if (response) return response;
     return new Response('MeInsert tidak tersedia offline / MeInsert is unavailable offline.', {
       status: 503,
       headers: { 'content-type': 'text/plain; charset=utf-8' },
     });
-  })();
+  }
 }
 async function cacheFirst(request) {
   const cache = await caches.open(CACHE_VERSION);
@@ -170,13 +174,79 @@ self.addEventListener('fetch', (event) => {
   }
   if (/\.md$/i.test(url.pathname)) return;
   if (request.mode === 'navigate') {
-    event.respondWith(staleWhileRevalidate(event));
+    event.respondWith(networkFirst(event));
     return;
   }
   if (isCacheableAsset(url.pathname)) {
     event.respondWith(cacheFirst(request));
   }
 });
+function scopeUrl(path) {
+  try { return new URL(path, self.registration.scope).href; } catch { return null; }
+}
+function shellUrlSet() {
+  return new Set(SHELL_URLS.map(scopeUrl).filter(Boolean));
+}
+function replyTo(event, message) {
+  if (event.ports?.[0]) event.ports[0].postMessage(message);
+  else event.source?.postMessage(message);
+}
+async function cacheOptional(event) {
+  const requested = Array.isArray(event.data?.urls) ? event.data.urls : [];
+  const total = requested.length;
+  if (event.data?.version && event.data.version !== CACHE_VERSION) {
+    replyTo(event, { type: 'OPTIONAL_DONE', cached: 0, failed: total, total, version: CACHE_VERSION, error: 'version' });
+    return;
+  }
+  replyTo(event, { type: 'OPTIONAL_START', cached: 0, failed: 0, total, version: CACHE_VERSION });
+  const cache = await caches.open(CACHE_VERSION);
+  let cached = 0;
+  let failed = 0;
+  for (const raw of requested) {
+    let absolute = null;
+    try {
+      const url = new URL(raw, self.registration.scope);
+      if (url.origin === self.location.origin) absolute = url.href;
+    } catch { /* invalid URL — treat as a failure */ }
+    let ok = false;
+    if (absolute) {
+      try {
+        const response = await fetch(absolute, { cache: 'reload', credentials: 'same-origin' });
+        if (response && response.ok) {
+          await cache.put(absolute, response);
+          ok = true;
+        }
+      } catch { /* network error or quota exceeded */ }
+    }
+    if (ok) cached += 1;
+    else failed += 1;
+    replyTo(event, { type: 'OPTIONAL_PROGRESS', url: raw, ok, cached, failed, total, version: CACHE_VERSION });
+  }
+  replyTo(event, { type: 'OPTIONAL_DONE', cached, failed, total, version: CACHE_VERSION });
+}
+async function clearOptional(event) {
+  const cache = await caches.open(CACHE_VERSION);
+  const shell = shellUrlSet();
+  const optional = (await cache.keys()).filter((request) => {
+    try {
+      return new URL(request.url).origin === self.location.origin && !shell.has(request.url);
+    } catch { return false; }
+  });
+  await Promise.all(optional.map((request) => cache.delete(request)));
+  replyTo(event, {
+    type: 'OPTIONAL_CLEARED', cached: optional.length, failed: 0, deleted: optional.length, version: CACHE_VERSION,
+  });
+}
+async function optionalStatus(event) {
+  const cache = await caches.open(CACHE_VERSION);
+  const shell = shellUrlSet();
+  const urls = (await cache.keys())
+    .map((request) => request.url)
+    .filter((href) => {
+      try { return new URL(href).origin === self.location.origin && !shell.has(href); } catch { return false; }
+    });
+  replyTo(event, { type: 'OPTIONAL_STATUS_RESULT', urls, cached: urls.length, failed: 0, version: CACHE_VERSION });
+}
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
   if (event.data?.type === 'GET_VERSION') {
@@ -184,4 +254,7 @@ self.addEventListener('message', (event) => {
     if (event.ports?.[0]) event.ports[0].postMessage(reply);
     else event.source?.postMessage(reply);
   }
+  if (event.data?.type === 'CACHE_OPTIONAL') event.waitUntil(cacheOptional(event));
+  else if (event.data?.type === 'CLEAR_OPTIONAL') event.waitUntil(clearOptional(event));
+  else if (event.data?.type === 'OPTIONAL_STATUS') event.waitUntil(optionalStatus(event));
 });

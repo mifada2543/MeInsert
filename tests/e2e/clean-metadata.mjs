@@ -8,11 +8,9 @@ import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const fixture = join(root, 'tests/fixtures/clean-gps.jpg');
 const generator = join(root, 'tests/fixtures/clean-gps.generate.mjs');
-
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -29,7 +27,6 @@ const contentTypes = {
   '.pdf': 'application/pdf',
   '.woff2': 'font/woff2',
 };
-
 function serve() {
   const server = createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);
@@ -46,7 +43,6 @@ function serve() {
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -59,8 +55,14 @@ function findChrome() {
   if (!found) throw new Error('Chrome/Chromium not found. Set CHROME_BIN to the browser executable path.');
   return found;
 }
-
-/** The fixture belongs to the classifier agent; generate it when possible. */
+async function openActionOptions(page) {
+  const toggle = page.locator('#actionOptionsToggle');
+  if (await toggle.count() && await toggle.isVisible()
+      && !(await page.locator('#actionOptions').isVisible())
+      && (await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+}
 function prepareFixture() {
   if (existsSync(fixture)) return true;
   if (existsSync(generator)) {
@@ -70,12 +72,10 @@ function prepareFixture() {
   }
   return existsSync(fixture);
 }
-
 if (!prepareFixture()) {
   console.log('SKIP: tests/fixtures/clean-gps.jpg is not present and no clean-gps.generate.mjs generator is available; the clean-metadata E2E flow did not run.');
   process.exit(0);
 }
-
 const server = await serve();
 const address = server.address();
 if (!address || typeof address === 'string') {
@@ -93,24 +93,19 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
-
 try {
-  // ?clean=1 auto-opens the panel once a file finishes loading.
   await page.goto(`${base}/single.html?clean=1`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   assert.equal(new URL(page.url()).searchParams.get('clean'), null, '?clean=1 is stripped from the URL');
   await page.locator('#fileInput').setInputFiles(fixture);
   await page.locator('.clean-card').waitFor({ timeout: 60000 });
   assert.equal(await page.locator('.clean-card').getAttribute('role'), 'dialog', 'the panel exposes the dialog role');
   console.log('PASS: ?clean=1 opens the clean panel after a file loads and strips the flag');
-
-  // Esc closes the dialog; the JS-built manual button reopens it later.
   await page.keyboard.press('Escape');
   await page.locator('.clean-card').waitFor({ state: 'detached', timeout: 15000 });
+  await openActionOptions(page);
   await page.locator('#cleanMetadataBtn').click();
   await page.locator('.clean-card').waitFor({ timeout: 15000 });
   console.log('PASS: Esc closes the dialog and the manual button reopens it');
-
-  // The live summary must list sensitive tags with their actual values.
   const sensitive = await page.locator('.clean-sensitive-item').allTextContents();
   const values = await page.locator('.clean-sensitive-value').allTextContents();
   assert.ok(sensitive.length > 0, 'the summary lists sensitive tags');
@@ -122,16 +117,12 @@ try {
   } else {
     console.log('SKIP: this fixture\'s GPS IFD was not surfaced by the ExifTool reader; coordinate display could not be asserted, the rest of the flow still ran.');
   }
-
-  // Privacy is the default profile; select it explicitly and apply.
   await page.locator('#cleanProfile-privacy').check();
   const applyLabel = await page.locator('.clean-btn-apply').innerText();
   assert.ok(/(?:Hapus|Remove)\s+[1-9]/.test(applyLabel), `the apply button counts the findings (${applyLabel})`);
   await page.locator('.clean-btn-apply').click();
   await page.locator('.clean-card').waitFor({ state: 'detached', timeout: 15000 });
   console.log('PASS: applying Privacy adds the changes to the normal review flow');
-
-  // The ordinary save path must show the review dialog with raw removals.
   await page.locator('#saveBtn').click();
   await page.locator('.review-card').waitFor({ timeout: 30000 });
   const reviewText = (await page.locator('.review-card').innerText()).toLowerCase();
@@ -141,11 +132,8 @@ try {
   );
   assert.ok(await page.locator('.review-operation').count() > 0, 'the review dialog lists operations');
   console.log('PASS: the review dialog appears and lists the removals');
-
   await page.locator('.review-btn-confirm').click();
   await page.locator('.result-card').waitFor({ timeout: 120000 });
-
-  // The output image must still render and its GPS tags must be gone.
   const preview = await page.evaluate(() => {
     const image = document.querySelector('#fileCard img');
     return image ? { complete: image.complete, width: image.naturalWidth } : null;
@@ -156,7 +144,6 @@ try {
   assert.ok(!rawText.includes('serialnumber') && !rawText.includes('artist'), 'the removed sensitive tags are absent from the re-read output');
   assert.ok(!rawText.includes('gpslatitude') && !rawText.includes('gpslongitude'), 'GPS tags are absent from the re-read output');
   console.log('PASS: saved output renders and the sensitive tags are gone');
-
   assert.deepEqual(errors, []);
   console.log('PASS: clean metadata end-to-end flow (summary → privacy → review → save → verify)');
 } catch (error) {

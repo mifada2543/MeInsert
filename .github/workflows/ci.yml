@@ -79,6 +79,22 @@ jobs:
       run: npm run test:office
       env:
         CHROME_BIN: /usr/bin/google-chrome
+    - name: About page and mobile menu (Chrome headless)
+      run: npm run test:about
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Offline settings (Chrome headless)
+      run: npm run test:offline
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Scroll reveal (Chrome headless)
+      run: npm run test:reveal
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
+    - name: Preview open/close animation (Chrome headless)
+      run: npm run test:preview
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
   compat:
     name: Real fixture compatibility (Chrome)
     runs-on: ubuntu-latest

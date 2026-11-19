@@ -3,10 +3,8 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { t, translated } from '../i18n/index.js';
 import { el, qs } from './dom.js';
-
 export const QUICK_SAVE_STORAGE_KEY = 'meinsert.quickSave';
 const DANGER = 'danger';
-
 export function readQuickSavePreference() {
   try {
     return globalThis.localStorage?.getItem(QUICK_SAVE_STORAGE_KEY) === 'true';
@@ -14,7 +12,6 @@ export function readQuickSavePreference() {
     return false;
   }
 }
-
 export function setQuickSavePreference(enabled) {
   const value = Boolean(enabled);
   try {
@@ -22,17 +19,9 @@ export function setQuickSavePreference(enabled) {
   } catch { /* storage is optional */ }
   return value;
 }
-
 export function quickSaveEnabled() {
   return readQuickSavePreference();
 }
-
-/**
- * Conservative gate for skipping the review dialog. Only ordinary field
- * operations qualify: covers, custom tags, raw tags, extension mismatches and
- * any danger-level risk (signed PDF, blocked memory) always require review.
- * The write path and integrity verification are unchanged for quick saves.
- */
 export function isQuickSaveEligible(plan) {
   if (!plan || !plan.hasOperations) return false;
   if (plan.extensionMismatch?.found) return false;
@@ -50,11 +39,10 @@ export function isQuickSaveEligible(plan) {
   }
   return true;
 }
-
-/** Build and mount the single-editor toggle without changing the HTML. */
 export function mountQuickSaveToggle({ container, onChange } = {}) {
   if (typeof document === 'undefined') return null;
-  const host = container || qs('.action-bar') || qs('.editor-head');
+  const target = document.getElementById('actionOptions') || container;
+  const host = target || qs('.action-bar') || qs('.editor-head');
   if (!host) return null;
   const existing = qs('.quick-save-toggle', host);
   if (existing) return existing;

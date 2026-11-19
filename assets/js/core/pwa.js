@@ -9,7 +9,7 @@ let promptShown = false;
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   hadController = Boolean(navigator.serviceWorker.controller);
-  navigator.serviceWorker.register('./sw.js').then((registration) => {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((registration) => {
     watchForUpdate(registration);
   }).catch((error) => {
     console.warn('MeInsert gagal mendaftarkan service worker:', error);

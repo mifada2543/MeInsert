@@ -1,0 +1,87 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+/* Scroll-driven reveal + progress line (progressive enhancement). */
+.js-reveal-ready [data-reveal] {
+  opacity: 0;
+}
+.js-reveal-ready [data-reveal]:not(.mode-card) {
+  transform: translateY(16px);
+}
+.js-reveal-ready [data-reveal]:not(.mode-card) {
+  transition:
+    opacity 520ms cubic-bezier(.2, .7, .2, 1) var(--reveal-delay, 0ms),
+    transform 520ms cubic-bezier(.2, .7, .2, 1) var(--reveal-delay, 0ms);
+}
+.js-reveal-ready .mode-card[data-reveal] {
+  transition:
+    opacity 520ms cubic-bezier(.2, .7, .2, 1) var(--reveal-delay, 0ms),
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.js-reveal-ready [data-reveal].is-visible {
+  opacity: 1;
+}
+.js-reveal-ready [data-reveal]:not(.mode-card).is-visible {
+  transform: translateY(0);
+}
+@keyframes meinsert-reveal-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes meinsert-reveal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@supports (animation-timeline: view()) {
+  .js-reveal-ready [data-reveal] {
+    animation: meinsert-reveal-fade 620ms cubic-bezier(.2, .7, .2, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 36%;
+    animation-delay: var(--reveal-delay, 0ms);
+  }
+  .js-reveal-ready [data-reveal]:not(.mode-card) {
+    animation-name: meinsert-reveal-rise;
+  }
+}
+.mode-card:hover,
+.mode-card:focus-visible {
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 1px color-mix(in srgb, var(--brand) 34%, transparent),
+    0 14px 44px -20px color-mix(in srgb, var(--brand) 48%, transparent);
+}
+.scroll-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 30;
+  height: 2px;
+  pointer-events: none;
+  background: var(--brand);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+@keyframes meinsert-progress-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-progress {
+    animation: meinsert-progress-grow linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js-reveal-ready [data-reveal],
+  .js-reveal-ready [data-reveal].is-visible {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+  .scroll-progress {
+    display: none !important;
+    animation: none !important;
+  }
+}

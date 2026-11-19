@@ -1,0 +1,437 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+// Settings panel for the optional engine cache. The shell precache stays small;
+import { bindText, bindTranslation, t } from '../i18n/index.js';
+import { clear, el, formatBytes } from './dom.js';
+import { showToast } from './toast.js';
+import { CURRENT_VERSION } from '../core/build.js';
+import { featureFor, features } from '../core/format-capabilities.js';
+import {
+  OFFLINE_PROFILE_KEY,
+  estimatedBytes,
+  getProfile,
+  optionalUrls,
+  setProfile,
+} from '../core/offline-manifest.js';
+const PAGES = new Set(['home', 'single', 'batch']);
+const MODE_KEYS = { frugal: 'Habit', selected: 'Selected', all: 'All' };
+const EXIT_MS = 160;
+const EXIT_SAFETY_MS = EXIT_MS + 100;
+let trigger = null;
+let dialog = null;
+let refs = null;
+let draft = null;
+let listening = false;
+let lastFocused = null;
+let download = { active: false, cached: 0, failed: 0, total: 0 };
+let closeTimer = 0;
+let closeFinish = null;
+let closeAnimationEnd = null;
+const cachedUrls = new Set();
+function storage() {
+  try { return globalThis.localStorage ?? null; } catch { return null; }
+}
+function saveDataEnabled() {
+  return Boolean(globalThis.navigator?.connection?.saveData);
+}
+function absoluteUrl(value) {
+  try {
+    return new URL(value, globalThis.document?.baseURI || globalThis.location?.href).href;
+  } catch {
+    return String(value);
+  }
+}
+function rememberCached(url) {
+  if (url) cachedUrls.add(absoluteUrl(url));
+}
+function cachedFeature(feature) {
+  return Boolean(feature?.urls?.length) && feature.urls.every((url) => cachedUrls.has(absoluteUrl(url)));
+}
+function reduceMotion() {
+  try { return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches); } catch { return false; }
+}
+function cancelClose() {
+  clearTimeout(closeTimer);
+  closeTimer = 0;
+  if (dialog && closeAnimationEnd) dialog.removeEventListener('animationend', closeAnimationEnd);
+  closeAnimationEnd = null;
+  closeFinish = null;
+  dialog?.classList.remove('is-closing');
+}
+function requestClose() {
+  if (!dialog?.open || dialog.classList.contains('is-closing')) return;
+  if (reduceMotion()) {
+    dialog.close();
+    return;
+  }
+  const instance = dialog;
+  instance.classList.add('is-closing');
+  const finish = () => {
+    if (!closeFinish) return;
+    cancelClose();
+    if (instance.open) instance.close();
+  };
+  const onEnd = (event) => {
+    if (event.target === instance && event.animationName === 'offline-settings-out') finish();
+  };
+  closeAnimationEnd = onEnd;
+  closeFinish = finish;
+  instance.addEventListener('animationend', onEnd);
+  closeTimer = setTimeout(finish, EXIT_SAFETY_MS);
+}
+function gearIcon() {
+  const span = document.createElement('span');
+  span.className = 'icon offline-settings__icon';
+  span.setAttribute('aria-hidden', 'true');
+  span.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'
+    + '<circle cx="12" cy="12" r="3"/>'
+    + '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>'
+    + '</svg>';
+  return span;
+}
+function swController() {
+  try { return globalThis.navigator?.serviceWorker?.controller || null; } catch { return null; }
+}
+function postToSw(message) {
+  const controller = swController();
+  if (!controller) return false;
+  try {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (event) => handleSwMessage(event.data);
+    controller.postMessage(message, [channel.port2]);
+    return true;
+  } catch {
+    try { controller.postMessage(message); return true; } catch { return false; }
+  }
+}
+function askOptionalStatus() {
+  postToSw({ type: 'OPTIONAL_STATUS', version: CURRENT_VERSION });
+}
+function setStatus(message, kind = 'info') {
+  if (!refs) return;
+  clear(refs.status);
+  refs.status.textContent = message;
+  refs.status.dataset.kind = kind;
+}
+function renderProgress() {
+  if (!refs) return;
+  const done = download.cached + download.failed;
+  const text = download.total > 0
+    ? t('ui.engineDownloadProgress', { v0: String(done), v1: String(download.total) })
+    : t('ui.engineLoadingMetadata');
+  refs.progressText.textContent = text;
+  refs.fill.style.width = download.total > 0 ? `${Math.min(100, (done / download.total) * 100)}%` : '0%';
+  refs.progress.classList.toggle('is-indeterminate', download.total === 0);
+}
+function finishDownload(data) {
+  download = { active: false, cached: data.cached || 0, failed: data.failed || 0, total: data.total || 0 };
+  if (refs) refs.progress.hidden = true;
+  askOptionalStatus();
+  const partial = download.failed > 0;
+  setStatus(t(partial ? 'ui.offlinePartial' : 'ui.offlineSaved'), partial ? 'warn' : 'ok');
+  showToast(t(partial ? 'ui.offlinePartial' : 'ui.offlineSaved'), partial ? 'error' : 'success');
+  render();
+}
+function handleSwMessage(data) {
+  if (!data || typeof data !== 'object') return;
+  if (data.type === 'OPTIONAL_START') {
+    download = { active: true, cached: 0, failed: 0, total: data.total || 0 };
+    if (refs) refs.progress.hidden = false;
+    renderProgress();
+    setStatus(t('ui.engineLoadingMetadata'));
+    render();
+  } else if (data.type === 'OPTIONAL_PROGRESS') {
+    download.cached = data.cached || 0;
+    download.failed = data.failed || 0;
+    download.total = data.total || download.total;
+    if (data.ok) rememberCached(data.url);
+    renderProgress();
+  } else if (data.type === 'OPTIONAL_DONE') {
+    finishDownload(data);
+  } else if (data.type === 'OPTIONAL_CLEARED') {
+    cachedUrls.clear();
+    setStatus(t('ui.offlineSaved'), 'ok');
+    showToast(t('ui.offlineSaved'), 'success');
+    render();
+  } else if (data.type === 'OPTIONAL_STATUS_RESULT') {
+    for (const url of data.urls || []) rememberCached(url);
+  }
+}
+globalThis.addEventListener?.('message', (event) => {
+  if (event.source === swController()) handleSwMessage(event.data);
+});
+function setStatusFromPersistence(ok) {
+  setStatus(t(ok ? 'ui.offlineSaved' : 'ui.offlinePartial'), ok ? 'ok' : 'warn');
+}
+function saveDraft(next) {
+  draft = next;
+  setStatusFromPersistence(setProfile(storage(), draft));
+  render();
+}
+function onModeChange(mode) {
+  if (saveDataEnabled() && mode !== 'frugal') return;
+  const selected = mode === 'all' ? features().map((feature) => feature.id)
+    : mode === 'selected' ? [...draft.features] : [];
+  saveDraft({ ...draft, mode, features: selected, updatedAt: Date.now() });
+}
+function onFeatureChange(id, checked) {
+  if (saveDataEnabled()) return;
+  const selected = new Set(draft.features);
+  if (checked) selected.add(id);
+  else selected.delete(id);
+  saveDraft({ ...draft, mode: 'selected', features: [...selected], updatedAt: Date.now() });
+}
+function startDownload(all) {
+  if (download.active || saveDataEnabled()) return;
+  const next = all
+    ? { ...draft, mode: 'all', features: features().map((feature) => feature.id), updatedAt: Date.now() }
+    : draft;
+  const urls = optionalUrls(next);
+  if (!urls.length) {
+    setStatus(t('ui.offlinePartial'), 'warn');
+    return;
+  }
+  draft = next;
+  render();
+  if (!setProfile(storage(), draft) || !postToSw({ type: 'CACHE_OPTIONAL', urls, version: CURRENT_VERSION })) {
+    setStatus(t('ui.offlinePartial'), 'warn');
+    showToast(t('ui.offlinePartial'), 'error');
+    render();
+    return;
+  }
+  download = { active: true, cached: 0, failed: 0, total: urls.length };
+  if (refs) refs.progress.hidden = false;
+  renderProgress();
+  setStatus(t('ui.engineLoadingMetadata'));
+  render();
+  setTimeout(() => {
+    if (download.active) finishDownload({ cached: download.cached, failed: Math.max(1, download.failed), total: download.total });
+  }, 30_000);
+}
+function clearOptional() {
+  if (download.active) return;
+  if (!postToSw({ type: 'CLEAR_OPTIONAL', version: CURRENT_VERSION })) {
+    setStatus(t('ui.offlinePartial'), 'warn');
+    showToast(t('ui.offlinePartial'), 'error');
+    return;
+  }
+  setStatus(t('ui.engineLoadingMetadata'));
+}
+function buildDialog() {
+  if (dialog) return dialog;
+  const title = el('h2', { id: 'offlineSettingsTitle', className: 'offline-settings__title' });
+  bindText(title, () => t('ui.storageOffline'));
+  const closeBtn = el('button', {
+    className: 'offline-settings__close icon-button',
+    type: 'button',
+    on: { click: () => requestClose() },
+  }, '\u00d7');
+  bindTranslation(closeBtn, 'aria-label', () => t('ui.close'));
+  const note = el('p', { className: 'offline-settings__note', hidden: true });
+  bindText(note, () => t('ui.offlineSaveDataNote'));
+  const modeInputs = {};
+  const modes = el('fieldset', { className: 'offline-settings__modes' });
+  for (const mode of Object.keys(MODE_KEYS)) {
+    const input = el('input', {
+      type: 'radio',
+      name: 'offlineMode',
+      value: mode,
+      id: `offlineMode-${mode}`,
+      on: { change: () => onModeChange(mode) },
+    });
+    modeInputs[mode] = input;
+    const name = el('strong');
+    bindText(name, () => t(`ui.offline${MODE_KEYS[mode]}`));
+    const hint = el('small');
+    bindText(hint, () => t(`ui.offline${MODE_KEYS[mode]}Hint`));
+    modes.append(el('label', {
+      className: `offline-settings__option is-${mode}`,
+      for: input.id,
+    }, input, el('span', { className: 'offline-settings__option-text' }, name, hint)));
+  }
+  const featureInputs = new Map();
+  const featureHeading = el('h3', { className: 'offline-settings__features-title' });
+  const featureHeadingLabel = el('span');
+  bindText(featureHeadingLabel, () => t('ui.offlineSelected'));
+  const estimate = el('span', { className: 'offline-settings__estimate' });
+  featureHeading.append(featureHeadingLabel, document.createTextNode(' · '), estimate);
+  const featureList = el('div', { className: 'offline-settings__features', hidden: true }, featureHeading);
+  for (const feature of features()) {
+    const input = el('input', {
+      type: 'checkbox',
+      value: feature.id,
+      id: `offlineFeature-${feature.id}`,
+      on: { change: () => onFeatureChange(feature.id, input.checked) },
+    });
+    featureInputs.set(feature.id, input);
+    const name = el('span', { className: 'offline-settings__feature-name' });
+    bindText(name, () => t(feature.labelKey));
+    featureList.append(el('label', {
+      className: 'offline-settings__feature',
+      for: input.id,
+    }, input, name, el('span', {
+      className: 'offline-settings__feature-size',
+      textContent: formatBytes(feature.bytes),
+    })));
+  }
+  const status = el('p', { className: 'offline-settings__status', role: 'status', 'aria-live': 'polite' });
+  const progressText = el('span', { className: 'offline-settings__progress-text', role: 'status', 'aria-live': 'polite' });
+  const fill = el('span', { className: 'offline-settings__fill' });
+  const progress = el('div', { className: 'offline-settings__progress', hidden: true },
+    progressText,
+    el('span', { className: 'offline-settings__bar', 'aria-hidden': 'true' }, fill),
+  );
+  const clearBtn = el('button', {
+    className: 'button ghost offline-settings__clear',
+    type: 'button',
+    on: { click: clearOptional },
+  });
+  bindText(clearBtn, () => t('ui.offlineClearOptional'));
+  const downloadBtn = el('button', {
+    className: 'button primary offline-settings__download',
+    type: 'button',
+    on: { click: () => startDownload(false) },
+  });
+  bindText(downloadBtn, () => t('ui.offlineDownload'));
+  const downloadAllBtn = el('button', {
+    className: 'button offline-settings__download-all',
+    type: 'button',
+    on: { click: () => startDownload(true) },
+  });
+  bindText(downloadAllBtn, () => t('ui.offlineDownloadAll'));
+  dialog = el('dialog', {
+    id: 'offlineSettingsDialog',
+    className: 'offline-settings',
+    role: 'dialog',
+    'aria-labelledby': 'offlineSettingsTitle',
+    'aria-modal': 'false',
+  }, el('div', { className: 'offline-settings__panel' },
+    el('header', { className: 'offline-settings__head' }, title, closeBtn),
+    el('div', { className: 'offline-settings__body' }, note, modes, featureList, status, progress),
+    el('footer', { className: 'offline-settings__actions' }, clearBtn, downloadBtn, downloadAllBtn),
+  ));
+  dialog.addEventListener('close', () => {
+    cancelClose();
+    trigger?.setAttribute('aria-expanded', 'false');
+    lastFocused?.focus?.();
+  });
+  document.body.append(dialog);
+  refs = { closeBtn, note, modeInputs, featureInputs, featureList, estimate, status, progress, progressText, fill, clearBtn, downloadBtn, downloadAllBtn };
+  return dialog;
+}
+function render() {
+  if (!refs || !draft) return;
+  const saveData = saveDataEnabled();
+  if (saveData && draft.mode !== 'frugal') {
+    draft = { mode: 'frugal', features: [], updatedAt: Date.now() };
+    setProfile(storage(), draft);
+  }
+  refs.note.hidden = !saveData;
+  for (const [mode, input] of Object.entries(refs.modeInputs)) {
+    input.checked = draft.mode === mode;
+    input.disabled = saveData && mode !== 'frugal';
+  }
+  refs.featureList.hidden = draft.mode !== 'selected';
+  refs.estimate.textContent = formatBytes(estimatedBytes(draft));
+  for (const [id, input] of refs.featureInputs) {
+    input.checked = draft.features.includes(id);
+    input.disabled = saveData;
+  }
+  refs.clearBtn.disabled = download.active;
+  refs.downloadBtn.disabled = saveData || download.active || optionalUrls(draft).length === 0;
+  refs.downloadAllBtn.disabled = saveData || download.active;
+  renderProgress();
+}
+function trapFocus(event) {
+  const focusable = [...dialog.querySelectorAll('button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])')]
+    .filter((node) => node.getClientRects().length > 0);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+function onGlobalKeydown(event) {
+  if (!dialog?.open) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    requestClose();
+  } else if (event.key === 'Tab') {
+    trapFocus(event);
+  }
+}
+export function initOfflineSettings() {
+  if (typeof document === 'undefined' || typeof globalThis.addEventListener !== 'function') return;
+  if (!listening) {
+    listening = true;
+    globalThis.addEventListener('meinsert:open-settings', () => openOfflineSettings());
+    globalThis.addEventListener('storage', (event) => {
+      if (event.key !== OFFLINE_PROFILE_KEY || download.active) return;
+      draft = getProfile(storage());
+      if (dialog?.open) render();
+    });
+    document.addEventListener('keydown', onGlobalKeydown);
+  }
+  const page = document.body?.dataset?.page;
+  if (page && !PAGES.has(page)) return;
+  const actions = document.querySelector('.header-actions');
+  if (!actions || document.getElementById('settingsBtn')) return;
+  trigger = el('button', {
+    id: 'settingsBtn',
+    className: 'icon-button offline-settings__trigger',
+    type: 'button',
+    'aria-haspopup': 'dialog',
+    'aria-expanded': 'false',
+    on: { click: () => openOfflineSettings() },
+  });
+  bindTranslation(trigger, 'aria-label', () => t('ui.settings'));
+  bindTranslation(trigger, 'title', () => t('ui.settings'));
+  trigger.append(gearIcon());
+  const about = document.getElementById('aboutLink');
+  if (about && about.parentNode === actions) actions.insertBefore(trigger, about);
+  else actions.append(trigger);
+}
+export function openOfflineSettings() {
+  initOfflineSettings();
+  if (typeof document === 'undefined') return;
+  cancelClose();
+  const instance = buildDialog();
+  if (!instance.isConnected) document.body.append(instance);
+  lastFocused = document.activeElement;
+  draft = getProfile(storage());
+  render();
+  if (instance.open) {
+    instance.focus();
+    return;
+  }
+  instance.show();
+  trigger?.setAttribute('aria-expanded', 'true');
+  const first = refs.modeInputs[saveDataEnabled() ? 'frugal' : draft.mode] || refs.closeBtn;
+  first.focus();
+  askOptionalStatus();
+}
+export function ensureFeatureOffline(featureId) {
+  try {
+    const feature = featureFor(featureId);
+    if (!feature) return false;
+    if (globalThis.navigator?.onLine !== false) return true;
+    if (cachedFeature(feature)) return true;
+    showToast(t('ui.offlineMissingEngine'), 'error');
+    return false;
+  } catch {
+    return false;
+  }
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => initOfflineSettings(), { once: true });
+  } else {
+    initOfflineSettings();
+  }
+}

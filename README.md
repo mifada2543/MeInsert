@@ -79,10 +79,19 @@ Deteksi otomatis dari **magic bytes** (bukan hanya ekstensi), lalu hanya field y
 | 📄 **PDF** | PDF | Info Dictionary + XMP stream |
 | 🎵 **Audio** | MP3, FLAC, OGG Vorbis / Opus | ID3v2.3, Vorbis Comment (remux lossless) |
 | 🎬 **Video** | MP4 / M4A / MOV, MKV / WebM | ItemList + XMP (ExifTool), Matroska SimpleTag (remux lossless) |
+| 📑 **Office** | DOCX, XLSX, PPTX, ODT, ODS, ODP | Hanya menambal bagian XML metadata; semua entri ZIP lain diverifikasi byte-for-byte |
 
 ### Sampul / thumbnail
 
 Embed cover image (JPEG/PNG/WebP ≤ 10 MB; GIF/BMP juga untuk MP3, FLAC, OGG/Opus, dan MKV) secara native per format — `APIC` untuk MP3, `METADATA_BLOCK_PICTURE` untuk FLAC/OGG/Opus, `covr` untuk MP4/M4A (JPEG/PNG/WebP saja), Matroska attachment untuk MKV/WebM. Bisa diganti/dihapus. Rincian dan batasnya ada di [dokumentasi keterbatasan](docs/LIMITATIONS.md).
+
+### Dokumen Office
+
+- **Didukung penuh:** DOCX, XLSX, PPTX, serta ODT, ODS, ODP.
+- **Best-effort:** varian makro `.docm`, `.xlsm`, `.pptm`. Makro dipertahankan apa adanya (byte-identik), tetapi periksa hasilnya setelah disimpan.
+- **Tanda tangan:** mengubah metadata pada dokumen Office bertanda tangan akan membuat tanda tangannya tidak valid.
+- **Tidak didukung:** Office terenkripsi dan format lama `.doc`, `.xls`, `.ppt`.
+- Setiap penulisan Office hanya menambal bagian XML metadata dan memverifikasi semua entri ZIP lainnya byte-for-byte.
 
 ---
 

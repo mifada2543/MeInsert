@@ -7,7 +7,6 @@ import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -20,7 +19,6 @@ const contentTypes = {
   '.pdf': 'application/pdf',
   '.woff2': 'font/woff2',
 };
-
 function serve() {
   const server = createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);
@@ -37,7 +35,6 @@ function serve() {
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -50,7 +47,14 @@ function findChrome() {
   if (!found) throw new Error('Chrome/Chromium not found. Set CHROME_BIN to the browser executable path.');
   return found;
 }
-
+async function openBatchOptions(page) {
+  const toggle = page.locator('#batchOptionsToggle');
+  if (await toggle.count() && await toggle.isVisible()
+      && !(await page.locator('#batchOptions').isVisible())
+      && (await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+}
 const server = await serve();
 let browser;
 let page;
@@ -75,7 +79,6 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.batch-group').length === 2
     && document.querySelectorAll('.batch-file.is-ready').length === 2
     && [...document.querySelectorAll('.batch-add-tile')].every((tile) => !tile.disabled), null, { timeout: 60000 });
-
   const png = page.locator('.batch-group[data-group-key^="image:"]');
   const pdf = page.locator('.batch-group[data-group-key^="pdf:"]');
   const title = (group) => group.locator('[data-field-id="title"] .field-input');
@@ -86,7 +89,6 @@ try {
     assert.equal(await undo(group).isDisabled(), true, 'undo starts disabled');
     assert.equal(await redo(group).isDisabled(), true, 'redo starts disabled');
   }
-
   await title(png).fill('PNG edit');
   await title(pdf).fill('PDF edit');
   await title(pdf).evaluate((input) => { window.__pdfTitle = input; });
@@ -101,7 +103,6 @@ try {
   assert.equal(await title(png).inputValue(), 'PNG edit', 'PDF undo leaves PNG value untouched');
   await redo(pdf).click();
   console.log('PASS: PNG and PDF undo/redo stacks are independent');
-
   await remove.click();
   await remove.click();
   assert.equal(await remove.getAttribute('aria-pressed'), 'false');
@@ -113,7 +114,6 @@ try {
   assert.equal(await title(png).isEnabled(), true);
   assert.equal(await title(png).inputValue(), 'PNG edit');
   console.log('PASS: repeated remove clicks are separate history entries');
-
   await title(png).fill('First typing session');
   await title(png).fill('First typing session complete');
   await title(png).blur();
@@ -125,7 +125,6 @@ try {
   assert.equal(await title(png).inputValue(), 'PNG edit', 'typing within a session stays coalesced');
   assert.equal(await title(pdf).inputValue(), 'PDF edit');
   console.log('PASS: blur closes typing coalescing');
-
   const clear = png.locator('.batch-form-head button');
   await clear.click();
   assert.equal(await title(png).inputValue(), '');
@@ -138,8 +137,6 @@ try {
   await undo(png).click();
   assert.equal(await title(png).inputValue(), 'PNG edit');
   console.log('PASS: clear actions remain discrete and undoable');
-
-  // Observe the actual syncApply busy transition, including a fast writer.
   await page.evaluate(() => {
     window.__busyHistoryStates = [];
     const groups = document.querySelector('#batchGroups');
@@ -164,10 +161,7 @@ try {
   assert.equal(await undo(png).isEnabled(), true, 'history re-enables after busy state');
   assert.equal(await undo(pdf).isDisabled(), true);
   console.log('PASS: successful saves clear histories and busy transitions refresh buttons');
-
   await title(pdf).fill('PDF retry edit');
-  // Inject a deterministic writer failure, not a page error, to exercise the
-  // real partial-success flow and preserve the failing format's undo history.
   await page.evaluate(async () => {
     const { BatchProcessor } = await import('/assets/js/batch/batch-processor.js');
     const writeItem = BatchProcessor.prototype.writeItem;
@@ -186,6 +180,7 @@ try {
   await undo(pdf).click();
   assert.equal(await title(pdf).inputValue(), 'PDF edit', 'failed edit remains undoable');
   assert.equal(await pdf.locator('.batch-file.is-error').count(), 1, 'undo does not hide file failure');
+  await openBatchOptions(page);
   assert.equal(await page.locator('#batchRetryBtn').isVisible(), true, 'failure remains available for retry');
   assert.deepEqual(errors, [], 'no page errors');
   console.log('PASS: partial failures retain affected histories and visible errors; no page errors');

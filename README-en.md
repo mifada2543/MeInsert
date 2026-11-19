@@ -79,10 +79,19 @@ Automatic detection uses **magic bytes**, not just filename extensions. Only the
 | 📄 **PDF** | PDF | Info Dictionary + XMP stream |
 | 🎵 **Audio** | MP3, FLAC, OGG Vorbis / Opus | ID3v2.3, Vorbis Comment; stream-copy remuxing |
 | 🎬 **Video** | MP4 / M4A / MOV, MKV / WebM | ItemList + XMP through ExifTool; Matroska SimpleTag with stream-copy remuxing |
+| 📑 **Office** | DOCX, XLSX, PPTX, ODT, ODS, ODP | Patches only the metadata XML parts; all other ZIP entries are verified byte-for-byte |
 
 ### Cover art / thumbnails
 
 Embed JPEG/PNG/WebP covers up to 10 MB. GIF/BMP covers are also supported for MP3, FLAC, OGG/Opus, and MKV. Covers use native structures: MP3 `APIC`, FLAC/OGG/Opus `METADATA_BLOCK_PICTURE`, MP4/M4A `covr` (JPEG/PNG/WebP only), and Matroska attachments for MKV/WebM. Covers can be replaced or removed. Details and limits are in the [limitations documentation](docs/LIMITATIONS.md).
+
+### Office documents
+
+- **Fully supported:** DOCX, XLSX, PPTX, as well as ODT, ODS, ODP.
+- **Best-effort:** macro-enabled variants `.docm`, `.xlsm`, `.pptm`. Macros are preserved byte-for-byte, but verify the output after saving.
+- **Signatures:** editing metadata in a signed Office document invalidates its signature.
+- **Unsupported:** encrypted Office files and legacy `.doc`, `.xls`, `.ppt` formats.
+- Every Office write patches only the metadata XML parts and verifies all other ZIP entries byte-for-byte.
 
 ---
 

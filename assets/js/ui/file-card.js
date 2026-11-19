@@ -211,6 +211,10 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
 }
 export function setCardMinimized(container, minimized) {
   container.classList.toggle('is-minimized', minimized);
+  // Keep collapsed controls out of the tab order without visibility:hidden,
+  // which would stop the expand transition from running.
+  const frame = container.querySelector('.preview-frame');
+  if (frame) frame.inert = minimized;
   const button = container.querySelector('.preview-toggle');
   if (!button) return;
   const label = () => t(minimized ? 'common.show' : 'common.minimize');
@@ -348,7 +352,8 @@ export function renderFileCard(container, {
       el('span', { textContent: translated(() => (warnings.map(translateSource).join(' '))) }),
     ));
   }
-  container.append(frame, infoBlock);
+  const frameWrap = el('div', { className: 'preview-frame-wrap' }, frame);
+  container.append(frameWrap, infoBlock);
   // The element is back in the document, so the play state can be restored.
   // A changed source is a different file: that element is discarded and a
   // new one was created above, so nothing is resumed here.

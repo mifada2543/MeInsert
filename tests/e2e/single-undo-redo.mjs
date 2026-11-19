@@ -8,14 +8,12 @@ import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const fixtures = join(root, 'tests/fixtures');
 const audioFixture = join(fixtures, 'tone-long.mp3');
 const videoFixture = join(fixtures, 'clip-long-cover.mp4');
 const coverFixture = join(fixtures, 'pattern.png');
 const pdfFixture = join(fixtures, 'document.pdf');
-
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -33,7 +31,6 @@ const contentTypes = {
   '.pdf': 'application/pdf',
   '.woff2': 'font/woff2',
 };
-
 function serve() {
   const server = createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);
@@ -50,7 +47,6 @@ function serve() {
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -63,7 +59,6 @@ function findChrome() {
   if (!found) throw new Error('Chrome/Chromium not found. Set CHROME_BIN to the browser executable path.');
   return found;
 }
-
 function hasFfmpeg() {
   try {
     execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-version'], { stdio: 'ignore' });
@@ -72,8 +67,6 @@ function hasFfmpeg() {
     return false;
   }
 }
-
-/** Long fixtures with an embedded cover, so the preview card is really rebuilt. */
 function prepareFixtures() {
   const ffmpeg = hasFfmpeg();
   if (!existsSync(audioFixture) && ffmpeg) {
@@ -99,7 +92,14 @@ function prepareFixtures() {
     ffmpeg,
   };
 }
-
+async function openActionOptions(page) {
+  const toggle = page.locator('#actionOptionsToggle');
+  if (await toggle.count() && await toggle.isVisible()
+      && !(await page.locator('#actionOptions').isVisible())
+      && (await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+}
 const server = await serve();
 const address = server.address();
 if (!address || typeof address === 'string') {
@@ -116,13 +116,9 @@ const context = await browser.newContext({ locale: 'id-ID', serviceWorkers: 'blo
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-// The editor guards unsaved work with beforeunload; accept the prompt so a
-// reload between the scenarios is possible.
 page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
-
 async function openFixture(file) {
-  // Discard pending edits first: the editor guards unsaved work with a
-  // beforeunload prompt, which would abort the reload.
+  await openActionOptions(page);
   const resetBtn = page.locator('#resetBtn');
   if (await resetBtn.count() && await resetBtn.isEnabled()) {
     await resetBtn.click();
@@ -132,7 +128,6 @@ async function openFixture(file) {
   await page.locator('#fileInput').setInputFiles(file);
   await page.locator('#field-title').waitFor({ timeout: 60000 });
 }
-
 async function startMedia(selector) {
   const result = await page.evaluate(async (target) => {
     const media = document.querySelector(target);
@@ -152,7 +147,6 @@ async function startMedia(selector) {
     return media && !media.paused && media.currentTime > 0.2;
   }, selector, { timeout: 30000 });
 }
-
 async function mediaState(selector) {
   return page.evaluate((target) => {
     const media = document.querySelector(target);
@@ -164,13 +158,10 @@ async function mediaState(selector) {
     };
   }, selector);
 }
-
 try {
   const ready = prepareFixtures();
   const canPlayAudio = await page.evaluate(() => document.createElement('audio').canPlayType('audio/mpeg'));
   const canPlayVideo = await page.evaluate(() => document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"'));
-
-  // --- Undo / redo of a metadata field -------------------------------------
   await openFixture(pdfFixture);
   assert.equal(await page.locator('#undoBtn').isDisabled(), true, 'undo starts disabled');
   assert.equal(await page.locator('#redoBtn').isDisabled(), true, 'redo starts disabled');
@@ -181,8 +172,6 @@ try {
   await page.locator('#redoBtn').click();
   assert.equal(await page.locator('#field-title').inputValue(), 'Judul hasil undo', 'redo re-applies the change');
   console.log('PASS: undo/redo buttons restore and re-apply a metadata field');
-
-  // The undo stack follows the field edits of the current file only.
   await page.locator('#newFileBtn').click();
   await page.locator('.confirm-btn-confirm').waitFor({ timeout: 15000 });
   await page.locator('.confirm-btn-confirm').click();
@@ -190,8 +179,6 @@ try {
   await page.locator('#field-title').waitFor({ timeout: 60000 });
   assert.equal(await page.locator('#undoBtn').isDisabled(), true, 'a new file starts with an empty history');
   console.log('PASS: a new file starts with an empty undo history');
-
-  // --- Keyboard shortcuts ---------------------------------------------------
   const base = await page.locator('#field-title').inputValue();
   await page.locator('#field-title').fill('Judul keyboard');
   await page.locator('#field-title').blur();
@@ -206,8 +193,6 @@ try {
   await page.keyboard.press('Control+y');
   assert.equal(await page.locator('#field-title').inputValue(), 'Judul kedua', 'Ctrl+Y redoes the undone change');
   console.log('PASS: Ctrl/Cmd+Z, Ctrl+Shift+Z and Ctrl+Y drive the undo stack');
-
-  // Inside a field the browser keeps its own text undo.
   await page.locator('#field-title').fill('Teks lain');
   await page.locator('#field-title').focus();
   await page.evaluate(() => { window.__fieldNode = document.querySelector('#field-title'); });
@@ -218,9 +203,8 @@ try {
     'Ctrl+Z inside a field is left to the browser',
   );
   console.log('PASS: Ctrl+Z inside a field is not intercepted by the editor');
-
-  // Filename-only edits must enable Undo without waiting for another field.
   await openFixture(pdfFixture);
+  await openActionOptions(page);
   const originalName = await page.locator('#outputBase').inputValue();
   await page.locator('#outputBase').fill('renamed-output');
   assert.equal(await page.locator('#undoBtn').isEnabled(), true);
@@ -228,8 +212,6 @@ try {
   assert.equal(await page.locator('#outputBase').inputValue(), originalName);
   await page.locator('#redoBtn').click();
   assert.equal(await page.locator('#outputBase').inputValue(), 'renamed-output');
-
-  // Each click is an action, unlike a continuous run of typing.
   const originalRows = await page.locator('.custom-row').count();
   await page.locator('.custom-head button').click();
   await page.locator('.custom-head button').click();
@@ -239,8 +221,6 @@ try {
   await page.locator('#undoBtn').click();
   assert.equal(await page.locator('.custom-row').count(), originalRows);
   console.log('PASS: filename-only edits enable Undo and repeated add-tag clicks undo independently');
-
-  // --- Audio keeps playing while the card is rebuilt -----------------------
   if (!ready.audio) {
     console.log('SKIP: no playable audio fixture (ffmpeg is unavailable and tests/fixtures/tone-long.mp3 is missing); the media playback checks did not run.');
   } else if (!canPlayAudio) {
@@ -251,6 +231,7 @@ try {
     await startMedia('#fileCard audio');
     const before = await mediaState('#fileCard audio');
     await page.locator('#field-title').fill('Uji playback');
+    await openActionOptions(page);
     await page.locator('#resetBtn').click();
     await page.waitForTimeout(400);
     const after = await mediaState('#fileCard audio');
@@ -259,8 +240,6 @@ try {
     assert.equal(after.paused, false, 'the audio keeps playing after the discard');
     assert.ok(after.time >= before.time - 0.05, `the position did not jump backwards (${before.time} -> ${after.time})`);
     console.log('PASS: the audio element survives "Batalkan perubahan" and keeps playing');
-
-    // Changing the thumbnail rebuilds the card too, playback must continue.
     await page.locator('.audio-stage input[type=file]').setInputFiles(coverFixture);
     await page.waitForTimeout(400);
     const afterCover = await mediaState('#fileCard audio');
@@ -268,8 +247,6 @@ try {
     assert.equal(afterCover.paused, false, 'the audio keeps playing after the thumbnail change');
     assert.ok(afterCover.time >= after.time - 0.05, 'the position did not jump backwards after the thumbnail change');
     console.log('PASS: changing the thumbnail does not stop the playback');
-
-    // A different file must not inherit the playback of the previous one.
     await page.locator('#fileInput').setInputFiles(videoFixture);
     await page.locator('#fileCard video').waitFor({ timeout: 60000 });
     await page.waitForFunction(() => /terbaca/.test(document.querySelector('#readStatus')?.textContent || ''), null, { timeout: 60000 });
@@ -282,8 +259,6 @@ try {
     assert.equal(switched.time, 0, 'the new media element starts at the beginning');
     console.log('PASS: opening another file creates a fresh media element');
   }
-
-  // --- Video keeps playing while the card is rebuilt -----------------------
   if (!ready.video) {
     console.log('SKIP: no playable video fixture (ffmpeg is unavailable and tests/fixtures/clip-long-cover.mp4 is missing); the video playback check did not run.');
   } else if (!canPlayVideo) {
@@ -293,6 +268,7 @@ try {
     await startMedia('#fileCard video');
     const before = await mediaState('#fileCard video');
     await page.locator('#field-title').fill('Uji video');
+    await openActionOptions(page);
     await page.locator('#resetBtn').click();
     await page.waitForTimeout(400);
     const after = await mediaState('#fileCard video');
@@ -302,7 +278,6 @@ try {
     assert.ok(after.time >= before.time - 0.05, `the position did not jump backwards (${before.time} -> ${after.time})`);
     console.log('PASS: the video element survives "Batalkan perubahan" and keeps playing');
   }
-
   assert.deepEqual(errors, []);
   console.log('PASS: single-file undo/redo and media continuity');
 } catch (error) {

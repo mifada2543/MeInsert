@@ -52,7 +52,14 @@ function findChrome() {
   if (!found) throw new Error('Chrome/Chromium not found. Set CHROME_BIN to the browser executable path.');
   return found;
 }
-
+async function openActionOptions(page) {
+  const toggle = page.locator('#actionOptionsToggle');
+  if (await toggle.count() && await toggle.isVisible()
+      && !(await page.locator('#actionOptions').isVisible())
+      && (await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+}
 const server = await serve();
 const address = server.address();
 if (!address || typeof address === 'string') {
@@ -65,9 +72,9 @@ const context = await browser.newContext({ locale: 'id-ID' });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-
 try {
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await openActionOptions(page);
   const toggle = page.locator('.quick-save-toggle');
   await toggle.waitFor({ state: 'attached', timeout: 15000 });
   const checkbox = page.locator('#quickSaveToggle');
@@ -76,13 +83,13 @@ try {
   assert.equal(await checkbox.getAttribute('aria-describedby'), 'quickSaveHint');
   assert.equal(await page.locator('#main').getAttribute('tabindex'), '-1', 'skip link target is focusable');
   assert.equal(await page.locator('.drop-folder-hint').count(), 0, 'folder hint is batch-only');
-
   const sample = join(root, 'assets/img/icon-512.png');
   await page.locator('#fileInput').setInputFiles(sample);
   await page.locator('#field-title').waitFor({ timeout: 60000 });
   await checkbox.check();
   assert.equal(await page.evaluate(() => localStorage.getItem('meinsert.quickSave')), 'true');
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+  await openActionOptions(page);
   await page.locator('#quickSaveToggle').waitFor({ state: 'attached', timeout: 15000 });
   assert.equal(await page.locator('#quickSaveToggle').isChecked(), true, 'preference survives a reload');
   await page.locator('#fileInput').setInputFiles(sample);
@@ -90,8 +97,6 @@ try {
   await page.locator('#field-title').fill('Judul simpan cepat');
   await page.locator('#field-title').blur();
   await page.locator('#saveBtn').click();
-
-  // A field-only plan with quick save enabled must not open the review dialog.
   await page.waitForFunction(() => /diperbarui|diperiksa/.test(document.querySelector('#readStatus')?.textContent || ''), null, { timeout: 90000 });
   assert.equal(await page.locator('.review-backdrop').count(), 0, 'quick save skips the review dialog');
   assert.equal(await page.locator('#progress').isVisible(), false, 'processing finished');

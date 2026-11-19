@@ -158,12 +158,24 @@
 .file-card--top {
   display: block;
 }
-
 .file-card--top .preview-frame {
   min-height: 0;
-  max-height: none;
+  /* A finite cap keeps max-height interpolatable when the card collapses. */
+  max-height: 720px;
   margin: 0;
   border-radius: 0;
+  transition: width 240ms ease;
+}
+.preview-frame-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  min-height: 0;
+  overflow: hidden;
+  transition: grid-template-rows 300ms cubic-bezier(.2, .7, .2, 1);
+}
+.preview-frame-wrap > .preview-frame {
+  min-height: 0;
+  transition: opacity 200ms ease, transform 260ms cubic-bezier(.2, .7, .2, 1);
 }
 .file-card--top .preview-frame--video,.file-card--top .preview-frame--image {
   --preview-cap: min(60vh, 720px);
@@ -353,13 +365,15 @@
   height: 13px;
 }
 .file-card.is-minimized {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   padding: 10px 12px;
 }
 .file-card.is-minimized .preview-frame {
-  display: none;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+.file-card.is-minimized .preview-frame-wrap {
+  grid-template-rows: 0fr;
 }
 .file-card.is-minimized .file-info {
   display: flex;
@@ -441,5 +455,12 @@
   .preview-dock.is-pinned .file-card:not(.is-minimized) .file-info {
     padding-top: 10px;
     padding-bottom: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-card--top .preview-frame,
+  .file-card.is-minimized .preview-frame {
+    transition: none;
   }
 }

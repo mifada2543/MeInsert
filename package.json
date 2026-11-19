@@ -24,6 +24,10 @@
     "test:clean:batch": "node tests/e2e/batch-clean.mjs",
     "test:policy": "node tests/e2e/policy-notice.mjs",
     "test:office": "node tests/e2e/office.mjs",
+    "test:about": "node tests/e2e/about.mjs",
+    "test:offline": "node tests/e2e/offline-settings.mjs",
+    "test:reveal": "node tests/e2e/scroll-reveal.mjs",
+    "test:preview": "node tests/e2e/preview-animation.mjs",
     "test:i18n": "node tests/e2e/i18n.mjs",
     "test:compat": "node tests/compat/run.mjs",
     "fixtures:generate": "node tests/fixtures/generate.mjs"

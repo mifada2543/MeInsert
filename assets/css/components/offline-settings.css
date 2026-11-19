@@ -1,0 +1,306 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+/* Storage & Offline settings dialog. Non-modal, theme-aware, tokens only. */
+.offline-settings__trigger {
+  position: relative;
+}
+.offline-settings__icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+.offline-settings {
+  position: fixed;
+  inset: 0;
+  z-index: 79;
+  width: min(560px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(760px, calc(100vh - 32px));
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--ink);
+}
+.offline-settings[open] {
+  animation: offline-settings-in 240ms cubic-bezier(.2, .7, .2, 1) both;
+}
+.offline-settings.is-closing {
+  animation: offline-settings-out 160ms cubic-bezier(.2, .7, .2, 1) forwards;
+  pointer-events: none;
+}
+@keyframes offline-settings-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes offline-settings-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(.98);
+  }
+}
+.offline-settings__panel {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-drop);
+}
+.offline-settings__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.offline-settings__title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.offline-settings__close {
+  flex: 0 0 auto;
+  font-size: 22px;
+  line-height: 1;
+}
+.offline-settings__body {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+.offline-settings__note {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.offline-settings__modes {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.offline-settings__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+.offline-settings__option:hover:not(:has(input:disabled)) {
+  border-color: var(--brand);
+  background: var(--surface-2);
+}
+.offline-settings__option:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.offline-settings__option:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.offline-settings__option input,
+.offline-settings__feature input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--brand);
+}
+.offline-settings__option-text {
+  display: grid;
+  gap: 3px;
+}
+.offline-settings__option-text strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+.offline-settings__option-text small {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.offline-settings__features {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.offline-settings__features-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 4px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 650;
+}
+.offline-settings__estimate {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+}
+.offline-settings__feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  cursor: pointer;
+}
+.offline-settings__feature:hover {
+  background: var(--surface-3);
+}
+.offline-settings__feature-name {
+  flex: 1 1 auto;
+}
+.offline-settings__feature-size {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.offline-settings__feature input:disabled + .offline-settings__feature-name {
+  opacity: 0.6;
+}
+.offline-settings__status {
+  min-height: 17px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.offline-settings__status[data-kind="ok"] {
+  color: var(--accent-text);
+}
+.offline-settings__status[data-kind="warn"] {
+  color: var(--warning);
+}
+.offline-settings__progress {
+  display: grid;
+  gap: 6px;
+}
+.offline-settings__progress-text {
+  color: var(--ink-soft);
+  font-size: 11.5px;
+}
+.offline-settings__bar {
+  position: relative;
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.offline-settings__fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+  transition: width 180ms ease;
+}
+.offline-settings__progress.is-indeterminate .offline-settings__fill {
+  width: 35%;
+  animation: offline-settings-slide 1.1s ease-in-out infinite;
+}
+@keyframes offline-settings-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+.offline-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--line);
+}
+.offline-settings__clear {
+  margin-right: auto;
+}
+.offline-settings__actions .button {
+  min-height: 38px;
+  font-size: 12px;
+}
+.offline-settings__actions .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.offline-settings :focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  .offline-settings {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+  .offline-settings__head,
+  .offline-settings__body,
+  .offline-settings__actions {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .offline-settings__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .offline-settings__clear {
+    margin-right: 0;
+  }
+  .offline-settings__actions .button {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .offline-settings[open],
+  .offline-settings.is-closing {
+    animation: none;
+  }
+  .offline-settings__option,
+  .offline-settings__fill {
+    transition: none;
+  }
+  .offline-settings__progress.is-indeterminate .offline-settings__fill {
+    animation: none;
+  }
+}

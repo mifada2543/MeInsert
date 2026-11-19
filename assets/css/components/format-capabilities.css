@@ -1,0 +1,52 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnSlnnQ6bWlmYWRhMjU0MzoyMDI2 */
+/* Landing capability chips and honest support-status strip. */
+.chip-dot.office { background: var(--brand); }
+.format-chips__note {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.format-status {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  min-width: 0;
+  margin-top: 2px;
+}
+.format-status__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.format-status__dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 2px;
+  transition: background-color 140ms ease;
+}
+.format-status__dot--full { background: var(--success-strong); }
+.format-status__dot--bestEffort { background: var(--warning); }
+.format-status__dot--unsupported { background: var(--danger); }
+.format-status__label { color: var(--ink-soft); }
+.format-status__count {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+@media (max-width: 360px) {
+  .format-status { gap: 6px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .format-status__dot { transition: none; }
+}

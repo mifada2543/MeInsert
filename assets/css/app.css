@@ -33,4 +33,9 @@
 @import "./components/quick-save.css";
 @import "./components/clean-metadata.css";
 @import "./components/batch-clean.css";
+@import "./components/format-capabilities.css";
+@import "./components/scroll-reveal.css";
+@import "./components/offline-settings.css";
+@import "./components/mobile-menu.css";
+@import "./pages/about.css";
 @import "./components/policy-notice.css";

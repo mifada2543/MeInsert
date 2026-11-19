@@ -1,0 +1,122 @@
+<!doctype html>
+<!-- MeInsert — Edit metadata file tanpa upload, 100% di browser. -->
+<!-- Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
+<!-- reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 -->
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'self' blob:; child-src 'self' blob:">
+  <meta name="description" content="Tentang MeInsert — editor metadata lokal yang berjalan seluruhnya di browser, tanpa server dan tanpa upload.">
+  <title>MeInsert | Tentang MeInsert</title>
+  <link rel="canonical" href="https://meinsert.my.id/about.html">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/img/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/img/icon-512.png">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+  <script src="assets/js/theme-init.js"></script>
+  <link rel="preload" href="assets/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/app.bundle.css">
+</head>
+<body data-page="about">
+  <a class="skip-link" href="#main"><span data-i18n="ui.skipToContent">Lewati ke konten</span></a>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="./" aria-label="MeInsert Metadata lokal, kembali ke awal" data-i18n-aria-label="ui.meinsertLocalMetadataBackToHome">
+        <img class="brand-logo" src="assets/img/logo-96.png" width="42" height="42" alt="">
+        <span class="brand-text">MeInsert<small><span data-i18n="ui.localMetadata">metadata lokal</span></small></span>
+      </a>
+      <nav class="header-nav" aria-label="Mode MeInsert" data-i18n-aria-label="ui.meinsertModes">
+        <a class="header-link" data-nav="single" href="./single.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg><span><span data-i18n="ui.singleFile">Satu file</span></span></a>
+        <a class="header-link" data-nav="batch" href="./batch.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 4.9-9 4.9-9-4.9Z"/><path d="m3 12 9 4.9 9 4.9"/><path d="m3 17 9 4.9 9 4.9"/></svg><span><span data-i18n="ui.batch">Banyak file</span></span></a>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-button menu-toggle" id="menuToggle" type="button" aria-label="Buka menu" title="Buka menu" aria-expanded="false" aria-controls="mobileMenu" data-i18n-aria-label="ui.openMenu" data-i18n-title="ui.openMenu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <span class="privacy-pill" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer">
+          <span class="privacy-dot"></span>
+          <span data-i18n="ui.100OnDevice">100% di perangkat</span>
+        </span>
+        <button class="icon-button language-toggle" type="button" data-language-toggle aria-label="Ganti bahasa ke English" title="Ganti bahasa ke English">ID</button>
+        <button class="icon-button" id="themeToggle" type="button" aria-label="Ganti tema" data-i18n-aria-label="ui.changeTheme" title="Ganti tema" data-i18n-title="ui.changeTheme">
+          <span class="theme-icon theme-icon-sun" id="themeIconSun" aria-hidden="true"></span>
+          <span class="theme-icon theme-icon-moon" id="themeIconMoon" aria-hidden="true"></span>
+        </button>
+        <a class="text-link about-link" id="aboutLink" href="./about.html" aria-current="page" aria-label="Tentang" title="Tentang" data-i18n-aria-label="ui.aboutShort" data-i18n-title="ui.aboutShort"><span data-i18n="ui.aboutShort">Tentang</span></a>
+      </div>
+    </div>
+  </header>
+  <main class="shell" id="main">
+    <section class="landing landing-about" id="landing">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="ui.about">Tentang MeInsert</span></p>
+        <h1><span data-i18n="ui.about">Tentang MeInsert</span><br><span class="accent-text" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer"><span data-i18n="ui.noUploads">Tanpa upload.</span></span></h1>
+        <p class="lede" id="aboutIntro" data-i18n="ui.aboutIntro">MeInsert adalah editor metadata lokal: berkas Anda dibaca, diubah, diverifikasi, dan diunduh kembali seluruhnya di browser. Tidak ada server, tidak ada upload, tidak ada akun.</p>
+        <p class="about-note"><span data-i18n="ui.aboutFooterNote">Penjelasan singkat ini bukan pengganti dokumen resmi. Baca kebijakan lengkap sebelum menggunakan MeInsert.</span></p>
+      </div>
+      <div class="mode-cards about-cards">
+        <section class="mode-card about-card about-card-intro" aria-labelledby="about-principles-title">
+          <span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5c0 4.5 2.8 8.2 7 10 4.2-1.8 7-5.5 7-10V6Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <span class="mode-card-kicker" data-i18n="ui.100OnDevice">100% di perangkat</span>
+          <h2 id="about-principles-title" data-i18n="ui.aboutPrinciplesTitle">Prinsip kami</h2>
+          <p data-i18n="ui.aboutPrinciples">Prinsipnya sederhana: berkas Anda tidak pernah meninggalkan perangkat, hasil selalu ditinjau dan diverifikasi sebelum diunduh, dan kode MeInsert terbuka di bawah AGPLv3.</p>
+        </section>
+        <section class="mode-card about-card about-card-formats" aria-labelledby="about-formats-title">
+          <span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg></span>
+          <span class="mode-card-kicker" data-i18n="ui.supportedFormats">Format yang didukung</span>
+          <h2 id="about-formats-title" data-i18n="ui.supportedFormats">Format yang didukung</h2>
+          <p data-i18n="ui.aboutFormatsIntro">MeInsert mendukung gambar (JPG, PNG, WebP, TIFF), PDF, audio (MP3, FLAC, OGG), video (MP4, MKV), dan dokumen Office (DOCX, XLSX, PPTX, ODT, ODS, ODP, termasuk varian makro). Beberapa kasus seperti PDF bertanda tangan dan makro bersifat best-effort; format lama dan dokumen terenkripsi tidak didukung.</p>
+          <ul class="about-format-list">
+            <li><strong data-i18n="ui.images">Gambar</strong><code>JPG · PNG · WebP · TIFF</code></li>
+            <li><strong data-i18n="ui.offlineFeaturePdf">PDF</strong><code>PDF</code></li>
+            <li><strong data-i18n="ui.offlineFeatureAudio">Audio</strong><code>MP3 · FLAC · OGG</code></li>
+            <li><strong>MP4 / MKV</strong><code>Video</code></li>
+            <li><strong data-i18n="ui.offlineFeatureOffice">Office</strong><code>DOCX · XLSX · PPTX · ODT · ODS · ODP</code><span class="about-format-note" data-i18n="ui.officeFormatsNote">ODT/ODS/ODP dan dokumen makro juga didukung</span></li>
+          </ul>
+          <div class="about-caveats" role="note">
+            <ul>
+              <li data-i18n="ui.thisPDFHasADigitalSignatureWritingMetadataWill">PDF ini memiliki tanda tangan digital. Menulis metadata akan membuat tanda tangan tidak valid.</li>
+              <li data-i18n="ui.officeSignedWarning">Dokumen Office ini bertanda tangan; mengubah metadata akan membuat tanda tangan tidak valid.</li>
+              <li data-i18n="ui.officeMacroWarning">Dokumen mengandung makro. Makro dipertahankan apa adanya, tetapi hasil sebaiknya diperiksa.</li>
+              <li data-i18n="ui.officeEncrypted">Dokumen Office terenkripsi tidak didukung.</li>
+              <li data-i18n="ui.officeUnsupported">Format Office lama (.doc/.xls/.ppt) belum didukung.</li>
+            </ul>
+          </div>
+        </section>
+        <section class="mode-card about-card" aria-labelledby="about-policy-title">
+          <span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+          <span class="mode-card-kicker" data-i18n="ui.privacy">Privasi</span>
+          <h2 id="about-policy-title" data-i18n="ui.privacy">Privasi</h2>
+          <p data-i18n="ui.aboutPrivacyShort">MeInsert tidak mengunggah berkas, tidak memakai analytics, dan tidak membuat akun. Satu cap waktu lokal disimpan untuk mengingat bahwa Anda telah membaca pemberitahuan kebijakan.</p>
+          <ul class="about-fact-list">
+            <li><span data-i18n="ui.100OnDevice">100% di perangkat</span></li>
+            <li><span data-i18n="ui.dataStaysLocal">Data tetap lokal</span></li>
+            <li><span data-i18n="ui.noUploadsAllProcessingIsLocal">Tidak ada upload; semua proses lokal.</span></li>
+          </ul>
+          <a class="mode-card-cta" href="./privacy.html"><span data-i18n="ui.privacy">Baca Kebijakan Privasi</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m0 0-6-6m6 6-6 6"/></svg></a>
+        </section>
+        <section class="mode-card about-card" aria-labelledby="about-terms-title">
+          <span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7Z"/><path d="M14 3v5h5M10 13h6M10 17h4"/></svg></span>
+          <span class="mode-card-kicker" data-i18n="ui.termsOfUse">Kebijakan Penggunaan</span>
+          <h2 id="about-terms-title" data-i18n="ui.termsOfUse">Kebijakan Penggunaan</h2>
+          <p data-i18n="ui.aboutTermsShort">Gunakan MeInsert hanya pada berkas yang Anda miliki atau berhak edit. Pemalsuan untuk menipu dan penyalahgunaan dilarang; hasil edit bukan bukti keaslian.</p>
+          <ul class="about-fact-list">
+            <li><span data-i18n="ui.keepTheOriginalUntilYouHaveCheckedTheResult">Simpan file asli sampai hasilnya sudah diperiksa. Beberapa format ditulis ulang untuk memperbarui metadata.</span></li>
+            <li><span data-i18n="ui.metadataIntegrityNeedsReview">Integritas metadata perlu diperiksa</span></li>
+            <li><span data-i18n="ui.reviewAllChangesTheOriginalIsNotOverwrittenDownload">Periksa seluruh perubahan. File asli tidak ditimpa; hasil dapat diunduh setelah verifikasi.</span></li>
+          </ul>
+          <a class="mode-card-cta" href="./Terms.html"><span data-i18n="ui.termsOfUse">Baca Kebijakan Penggunaan</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m0 0-6-6m6 6-6 6"/></svg></a>
+        </section>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <p><strong>MeInsert</strong> <span data-i18n="ui.aStaticMetadataEditorMadeForFilesYouWant">— editor metadata statis. Dibuat untuk file yang ingin tetap privat.</span></p>
+      <p class="footer-meta"><span data-i18n="ui.noBackendNoUploads">Tidak ada backend · Tidak ada upload ·</span> <a href="https://github.com/mifada2543/meinsert" rel="noopener noreferrer">Source</a> · <a href="./LICENSE">AGPLv3</a> · <a href="./assets/THIRD_PARTY_LICENSES.md"><span data-i18n="ui.attributions">Atribusi</span></a> · <a href="./NOTICE.md" data-notice>NOTICE</a> · <a href="./Terms.html" data-policy="terms"><span data-i18n="ui.termsOfUse">Kebijakan Penggunaan</span></a> · <a href="./privacy.html" data-policy="privacy"><span data-i18n="ui.privacy">Privasi</span></a> · <span id="year"></span></p>
+    </div>
+  </footer>
+  <div class="toast-region" id="toastRegion" role="status" aria-live="polite" aria-atomic="false"></div>
+  <script type="module" src="assets/js/home.js"></script>
+</body>
+</html>

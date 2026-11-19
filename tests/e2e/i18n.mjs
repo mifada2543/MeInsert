@@ -7,7 +7,6 @@ import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.wasm': 'application/wasm', '.woff2': 'font/woff2', '.png': 'image/png', '.pdf': 'application/pdf', '.md': 'text/plain' };
 const server = createServer((request, response) => {
@@ -29,7 +28,14 @@ context.on('page', (page) => {
 });
 const page = await context.newPage();
 const change = async (locale, target = page) => target.evaluate(async (value) => (await import('/assets/js/i18n/index.js')).setLanguage(value), locale);
-
+async function openActionOptions(page) {
+  const toggle = page.locator('#actionOptionsToggle');
+  if (await toggle.count() && await toggle.isVisible()
+      && !(await page.locator('#actionOptions').isVisible())
+      && (await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+}
 try {
   for (const name of ['index.html', 'single.html', 'batch.html']) {
     await page.goto(`${base}/${name}`);
@@ -61,7 +67,6 @@ try {
     await change('en');
   }
   console.log('PASS: all three pages, accessible selector, titles, storage, navigation and policy links');
-
   for (const [path, title] of [['privacy.html', 'Privacy Policy'], ['Terms.html', 'Terms of Use']]) {
     await page.goto(`${base}/${path}`);
     await page.waitForFunction(() => document.documentElement.lang === 'en');
@@ -86,7 +91,6 @@ try {
     await page.waitForFunction(() => document.querySelector('.policy-document:not([hidden]) .policy-toc a[aria-current="location"]')?.hash.endsWith('-en-2'));
   }
   console.log('PASS: readable policy HTML, full ID/EN content, titles and section navigation');
-
   await change('id');
   await page.goto(`${base}/single.html`);
   await page.locator('#fileInput').setInputFiles(join(root, 'tests/fixtures/document.pdf'));
@@ -122,7 +126,6 @@ try {
   assert.equal(await page.locator('#field-title').inputValue(), value);
   await other.close();
   console.log('PASS: editor node/caret/value preserved, review and confirm live-update through storage, user HTML stays plain text');
-
   await page.evaluate(async () => {
     const { createShell, setProgress, setStatus } = await import('/assets/js/editor/editor-shell.js');
     const shell = createShell(); setProgress(shell, 47, 'Membaca metadata…'); setStatus(shell, 'Membaca Judul…');
@@ -134,7 +137,6 @@ try {
   assert.equal(await page.locator('#progressBar').evaluate((node) => node.style.width), '47%');
   assert.equal(await page.locator('#readStatus').innerText(), 'Reading Judul…');
   console.log('PASS: ongoing progress and status translate without resetting progress');
-
   await page.evaluate(async () => {
     const { openLightbox } = await import('/assets/js/ui/lightbox.js');
     openLightbox({ src: '/tests/fixtures/pattern.png', alt: 'Pratinjau Judul', caption: 'Judul' });
@@ -164,7 +166,6 @@ try {
   await change('id');
   assert.equal(await page.locator('#landing').isVisible(), true);
   console.log('PASS: live lightbox preserves zoom and raw caption; save, verified result, download and reset survive language changes');
-
   await page.evaluate(async () => {
     const { openReviewDialog } = await import('/assets/js/ui/review-dialog.js');
     void openReviewDialog({ mode: 'batch', plans: [{
@@ -211,7 +212,6 @@ try {
   assert.equal(await page.evaluate(() => window.i18nUpdateClicked), true);
   await page.locator('#i18nSpecial').evaluate((node) => node.remove());
   console.log('PASS: memory/extension review options, integrity/error wrappers, immutable report values and update notification');
-
   await page.goto(`${base}/batch.html`);
   await page.locator('#batchBackBtn .icon svg').waitFor({ state: 'attached' });
   await page.locator('#batchFileInput').setInputFiles([join(root, 'tests/fixtures/document.pdf'), join(root, 'tests/fixtures/pattern.png')]);
@@ -237,21 +237,20 @@ try {
   await change('id');
   assert.equal(await page.locator('.batch-raw-search').inputValue(), 'Title');
   console.log('PASS: batch edits, caret, selection, low-memory review option, active detail and raw search preserved');
-
   for (const width of [360, 390]) {
     await page.setViewportSize({ width, height: 800 });
     for (const name of ['index.html', 'single.html', 'batch.html']) {
       await page.goto(`${base}/${name}`);
       await change('id');
-      await page.locator('[data-language-toggle]').click();
+      await page.locator('#menuToggle').click();
+      await page.locator('#mobileLanguage').click();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `mobile overflow: ${width} ${name}`);
-      assert.equal(await page.locator('[data-language-toggle]').isVisible(), true);
-      assert.equal(await page.locator('[data-language-toggle]').innerText(), 'EN');
+      assert.equal(await page.locator('[data-language-toggle]').isVisible(), false);
+      assert.equal(await page.locator('[data-language-toggle]').evaluate((el) => el.textContent), 'EN');
     }
   }
   assert.deepEqual(errors, []);
   console.log('PASS: 360px/390px layouts on all three pages; no browser errors');
-
   const offline = await browser.newContext({ locale: 'en-US', serviceWorkers: 'allow' });
   const offlinePage = await offline.newPage();
   await offlinePage.goto(`${base}/index.html`);
@@ -274,7 +273,6 @@ try {
   }
   await offline.close();
   console.log('PASS: offline policy navigation and ID/EN switching on all five cached pages');
-
   const mobile = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const editor = await mobile.newPage();
   try {
@@ -295,6 +293,10 @@ try {
     assert.equal(await editor.locator('.header-nav').isVisible(), true);
     await editor.locator('#field-title').fill('New pending edit');
     assert.equal(await editor.locator('.header-nav').isVisible(), false);
+    if (await editor.locator('.policy-notice:visible .policy-notice__ack').count()) {
+      await editor.locator('.policy-notice__ack').click();
+    }
+    await openActionOptions(editor);
     await editor.locator('#resetBtn').click();
     assert.equal(await editor.locator('.header-nav').isVisible(), true);
     await editor.goto(`${base}/batch.html`);

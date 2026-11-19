@@ -8,12 +8,10 @@ import { extname, join, normalize } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const fixturesDir = join(root, 'tests/fixtures');
 const fixture = (name) => join(fixturesDir, name);
 const has = (name) => existsSync(fixture(name));
-
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -37,7 +35,6 @@ const contentTypes = {
   '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
   '.odp': 'application/vnd.oasis.opendocument.presentation',
 };
-
 function serve() {
   const server = createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);
@@ -54,7 +51,6 @@ function serve() {
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -67,17 +63,21 @@ function findChrome() {
   if (!found) throw new Error('Chrome/Chromium not found. Set CHROME_BIN to the browser executable path.');
   return found;
 }
-
+async function openBatchOptions(page) {
+  const toggle = page.locator('#batchOptionsToggle');
+  if (await toggle.count() && await toggle.isVisible()
+      && !(await page.locator('#batchOptions').isVisible())
+      && (await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+}
 function skip(name, reason) {
   console.log(`SKIP: ${name} — ${reason}`);
 }
-
 async function openSingle(page, base, file) {
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.locator('#fileInput').setInputFiles(file);
 }
-
-/** Wait for a loaded editor form, but fail fast if the read itself errored. */
 async function waitForRead(page, label) {
   await page.waitForFunction(() => Boolean(document.querySelector('#field-title'))
     || Boolean(document.querySelector('.error-card, #readStatus.is-error, .toast.is-error')), null, { timeout: 60000 });
@@ -86,26 +86,21 @@ async function waitForRead(page, label) {
     throw new Error(`${label}: the editor could not read the Office file: ${detail}`);
   }
 }
-
-/** Edit the title, save through review, and verify the download + re-read result. */
 async function editSaveAndReread(page, base, file, sourceName, label) {
   await openSingle(page, base, file);
   await waitForRead(page, label);
   assert.equal(await page.locator('#field-title').inputValue(), 'Contoh Judul', `${label}: the source title was read`);
-
   await page.locator('#field-title').fill('Judul Diubah');
   await page.locator('#field-title').blur();
   await page.locator('#saveBtn').click();
   await page.locator('.review-card').waitFor({ timeout: 30000 });
   await page.locator('.review-btn-confirm').click();
   await page.locator('.result-card').waitFor({ timeout: 120000 });
-
   const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
   await page.locator('.result-download').first().click();
   const download = await downloadPromise;
   const name = download.suggestedFilename();
   assert.ok(name.toLowerCase().endsWith(`.${sourceName.split('.').pop()}`), `${label}: download keeps the ${sourceName} extension (got ${name})`);
-
   const saved = join(tempDir, `reread-${label}.${sourceName.split('.').pop()}`);
   await download.saveAs(saved);
   await openSingle(page, base, saved);
@@ -113,7 +108,6 @@ async function editSaveAndReread(page, base, file, sourceName, label) {
   assert.equal(await page.locator('#field-title').inputValue(), 'Judul Diubah', `${label}: the re-read output reflects the saved title`);
   console.log(`PASS: ${label} edits, writes and re-reads a .${sourceName.split('.').pop()} download`);
 }
-
 const officeFixtures = [
   'sample.docx', 'sample.xlsx', 'sample.pptx', 'sample.docm',
   'sample.xlsm', 'sample.pptm', 'sample.odt', 'sample.ods', 'sample.odp',
@@ -126,7 +120,6 @@ if (!existsSync(join(root, 'assets/js/formats/office.js'))) {
   console.log('SKIP: assets/js/formats/office.js is not wired yet; the Office E2E suite did not run.');
   process.exit(0);
 }
-
 const tempDir = mkdtempSync(join(tmpdir(), 'meinsert-office-e2e-'));
 const server = await serve();
 const address = server.address();
@@ -146,9 +139,7 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
-
 try {
-  // --- 1. Single editor, one fixture per family -----------------------------
   for (const [name, family] of [['sample.docx', 'OOXML'], ['sample.odt', 'ODF'], ['sample.docm', 'macro']]) {
     if (!has(name)) {
       skip(`single-editor ${family}`, `tests/fixtures/${name} is missing`);
@@ -156,8 +147,6 @@ try {
     }
     await editSaveAndReread(page, base, fixture(name), name, family);
     if (name === 'sample.docm') {
-      // The macro notice is not yet wired to a fixed element/text; do not fail
-      // the suite on it, but report what the UI actually surfaced.
       const macroNotice = await page.evaluate(() => {
         const text = document.body.innerText;
         return /makro|macro/i.test(text)
@@ -168,8 +157,6 @@ try {
         : `WARN: ${family} fixture did not surface a macro warning/notice yet (not wired); report only`);
     }
   }
-
-  // --- 2. Signed document warning -------------------------------------------
   if (!has('signed.docx')) {
     skip('signed document warning', 'tests/fixtures/signed.docx is missing');
   } else {
@@ -183,14 +170,11 @@ try {
     const hasIndicator = await page.locator('.review-risk.is-danger, .review-risk.is-warning, .review-btn-confirm.is-danger').count() > 0;
     assert.ok(hasIndicator || /tanda tangan|signature|invalid|ttd/i.test(reviewText), 'the signed document shows a danger/warning in review');
     assert.ok(/tanda tangan|signature|invalid|ttd|ditandatangani/i.test(reviewText), 'the review step keeps the signature warning text');
-    // The warning must not block a deliberate write.
     assert.equal(await page.locator('.review-btn-confirm').isEnabled(), true, 'the signed write is still allowed');
     await page.locator('.review-btn-confirm').click();
     await page.locator('.result-card').waitFor({ timeout: 120000 });
     console.log('PASS: signed document warns in review and still allows a deliberate write');
   }
-
-  // --- 3. Encrypted document rejection -------------------------------------
   if (!has('encrypted.docx')) {
     skip('encrypted document rejection', 'tests/fixtures/encrypted.docx is missing');
   } else {
@@ -211,8 +195,6 @@ try {
     assert.equal(await page.locator('#saveBtn').isDisabled(), true, 'an encrypted file cannot be saved');
     console.log(`PASS: encrypted document is rejected with a clear error and no silent success (${errorText.slice(0, 120)})`);
   }
-
-  // --- 4. Batch cross-format ------------------------------------------------
   if (!has('sample.docx') || !has('sample.odt')) {
     skip('batch cross-format', 'tests/fixtures/sample.docx and sample.odt are both required');
   } else {
@@ -231,7 +213,6 @@ try {
     assert.ok(groups.length === 1 || groups.length === 2,
       `either one office group with two files or two groups with one file (${JSON.stringify(groups)})`);
     console.log(`PASS: batch produced ${groups.length === 1 ? 'one office group with two files' : 'two office groups with one file each'}`);
-
     const groupCount = await page.locator('.batch-group').count();
     for (let index = 0; index < groupCount; index++) {
       const title = page.locator('.batch-group').nth(index).locator('[data-field-id="title"] .field-input');
@@ -244,7 +225,6 @@ try {
     const status = await page.locator('#batchStatus').innerText();
     assert.match(status, /2 selesai/, `both office files succeeded (${status})`);
     assert.doesNotMatch(status, /[1-9]\d*\s+gagal/, `no batch failures (${status})`);
-
     await page.evaluate(() => {
       window.__reportBlobs = [];
       const original = URL.createObjectURL;
@@ -253,6 +233,7 @@ try {
         return original.call(this, blob);
       };
     });
+    await openBatchOptions(page);
     await page.locator('#batchReportJsonBtn').click();
     const reportText = await page.evaluate(async () => {
       const blob = window.__reportBlobs.at(-1);
@@ -265,8 +246,6 @@ try {
       `the report covers both files (${JSON.stringify(names)})`);
     console.log('PASS: cross-format batch saved both office files and the report lists both');
   }
-
-  // --- 5. Clean metadata on a document -------------------------------------
   if (!has('sample.docx')) {
     skip('clean metadata', 'tests/fixtures/sample.docx is missing');
   } else {
@@ -291,8 +270,6 @@ try {
     await page.locator('.result-card').waitFor({ timeout: 120000 });
     console.log('PASS: clean panel removes office identity fields and completes without page errors');
   }
-
-  // --- 6. No page errors overall -------------------------------------------
   assert.deepEqual(errors, [], `no page errors (${errors.join(' | ')})`);
   console.log('PASS: Office E2E suite finished with no page errors');
 } catch (error) {

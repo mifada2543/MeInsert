@@ -65,6 +65,13 @@ receiving service's policies.
   They remain until you delete them and may be included in device cloud sync
   or backups configured outside MeInsert.
 
+Optional engines for audio, images/video, PDF, and Office are downloaded only
+when you request them from **Settings → Storage & Offline**. They are stored in
+your device's browser cache, are local only, are not analytics, and are never
+uploaded to a server. You can clear them at any time from Settings. When
+Save-Data is enabled, MeInsert forces frugal mode and does not download
+optional engines.
+
 Close the session and clear site data in browser settings to remove application
 preferences/caches. Delete downloaded files/reports separately. There is no
 MeInsert server copy of your files for which deletion needs to be requested.

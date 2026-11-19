@@ -66,6 +66,13 @@ dari perangkat dan tunduk pada layanan penerimanya.
   Berkas tersebut tetap tersimpan sampai Anda sendiri menghapusnya dan dapat
   ikut sinkronisasi cloud/backup perangkat yang diatur di luar MeInsert.
 
+Engine opsional untuk audio, gambar/video, PDF, dan Office diunduh hanya saat
+Anda memintanya dari **Pengaturan → Penyimpanan & Offline**. Unduhan ini
+disimpan di cache browser perangkat Anda, bersifat lokal, bukan analitik, dan
+tidak pernah diunggah ke server. Anda dapat menghapusnya kapan saja dari
+Pengaturan. Jika Save-Data aktif, MeInsert memaksa mode hemat dan tidak
+mengunduh engine opsional.
+
 Tutup sesi dan hapus data situs melalui pengaturan browser untuk menghapus
 preferensi/cache aplikasi. Hapus unduhan/laporan secara terpisah. Tidak ada
 salinan berkas server MeInsert yang perlu diminta untuk dihapus.
