@@ -205,6 +205,7 @@ npm run test:fast        # gate cepat: unit + lint + CSS + policy (~3det, tanpa 
 npm test                 # unit test
 npm run test:e2e         # smoke test browser
 npm run test:e2e:all     # semua 16 suite E2E dalam satu proses Chrome (CDP)
+# CI membagi suite ke 4 runner: MEINSERT_E2E_SHARD=1/4 npm run test:e2e:all
 npm run test:preview     # animasi buka/tutup pratinjau
 npm run test:action-bar  # action bar & panel Opsi
 npm run test:i18n        # UI bilingual & offline

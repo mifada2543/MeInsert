@@ -205,6 +205,7 @@ npm run test:fast        # fast gate: unit + lint + CSS + policy (~3s, no browse
 npm test                 # unit tests
 npm run test:e2e         # browser smoke test
 npm run test:e2e:all     # all 16 E2E suites in one shared Chrome process (CDP)
+# CI shards suites across 4 runners: MEINSERT_E2E_SHARD=1/4 npm run test:e2e:all
 npm run test:preview     # preview open/close animation
 npm run test:action-bar  # action bar & Options panel
 npm run test:i18n        # bilingual UI and offline

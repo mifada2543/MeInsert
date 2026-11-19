@@ -12,7 +12,7 @@ import { chromium } from 'playwright-core';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
-const suites = [
+const allSuites = [
   'smoke',
   'i18n',
   'single-undo-redo',
@@ -31,6 +31,30 @@ const suites = [
   'preview-animation',
 ];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function option(name) {
+  const flag = process.argv.slice(2).find((argument) => argument.startsWith(`--${name}=`));
+  return flag ? flag.slice(name.length + 3) : undefined;
+}
+
+/** A full run locally; a deterministic slice in CI via `--shard=N/T` or env. */
+function selectSuites() {
+  const explicit = option('suites') || process.env.MEINSERT_SUITES;
+  if (explicit) {
+    const chosen = explicit.split(',').map((name) => name.trim()).filter(Boolean);
+    assert.ok(chosen.length, 'MEINSERT_SUITES is empty');
+    for (const name of chosen) assert.ok(allSuites.includes(name), `Unknown E2E suite: ${name}`);
+    return chosen;
+  }
+  const shard = option('shard') || process.env.MEINSERT_E2E_SHARD;
+  if (!shard) return allSuites;
+  const [number, total] = shard.split('/').map(Number);
+  assert.ok(Number.isInteger(number) && Number.isInteger(total) && total > 0 && number > 0 && number <= total,
+    `Invalid shard "${shard}" (expected N/T)`);
+  return allSuites.filter((_, index) => index % total === number - 1);
+}
+
+const suites = selectSuites();
 
 function findChrome() {
   const candidates = [
