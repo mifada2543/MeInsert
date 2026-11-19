@@ -7,12 +7,6 @@ import { icon } from './icons.js';
 import { coverAcceptFor } from '../core/image-utils.js';
 import { openLightbox } from './lightbox.js';
 import { captureMediaSession, canReuseMedia, restoreMediaSession } from './media-session.js';
-
-// The preview card is rebuilt on every relevant state change. The live
-// <video>/<audio> element survives that rebuild, so the frame that owns it
-// changes while the element does not. This map keeps the current frame for
-// every media element so the loadedmetadata listener always targets the
-// frame that is really on screen.
 const mediaFrames = new WeakMap();
 const mediaRatioBound = new WeakSet();
 
@@ -185,8 +179,6 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
         }, translated(() => (t('ui.cancel2'))))
       : null,
   );
-  // The same source keeps the same <audio> node, so the playback survives
-  // the rebuild of the card. A different file gets a fresh element.
   const audio = canReuseMedia(session, previewUrl)
     ? session.element
     : el('audio', { src: previewUrl, controls: true, preload: 'metadata' });
@@ -209,10 +201,18 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
   stage.append(input);
   return stage;
 }
+const COLLAPSE_MS = 320;
+
 export function setCardMinimized(container, minimized) {
-  container.classList.toggle('is-minimized', minimized);
-  // Keep collapsed controls out of the tab order without visibility:hidden,
-  // which would stop the expand transition from running.
+  clearTimeout(container._previewCollapseTimer);
+  if (minimized) {
+     container.classList.add('is-collapsing');
+    container._previewCollapseTimer = setTimeout(() => {
+      if (container.classList.contains('is-collapsing')) container.classList.add('is-minimized');
+    }, COLLAPSE_MS);
+  } else {
+    container.classList.remove('is-minimized', 'is-collapsing');
+  }
   const frame = container.querySelector('.preview-frame');
   if (frame) frame.inert = minimized;
   const button = container.querySelector('.preview-toggle');
@@ -240,12 +240,11 @@ export function renderFileCard(container, {
   onCoverRemove,
   onCoverUndo,
 }) {
-  // Capture the live media element before the card is rebuilt, so the same
-  // node (and its playback state) can be moved into the new card.
   const session = captureMediaSession(container);
   const reuseMedia = canReuseMedia(session, previewUrl);
   clear(container);
   container.classList.toggle('is-minimized', minimized);
+  container.classList.toggle('is-collapsing', minimized);
   const kind = previewKind(detection);
   const frame = el('div', { className: `preview-frame preview-frame--${kind}`, id: 'previewFrame' });
   const info = readResult?.info || {};
@@ -354,8 +353,5 @@ export function renderFileCard(container, {
   }
   const frameWrap = el('div', { className: 'preview-frame-wrap' }, frame);
   container.append(frameWrap, infoBlock);
-  // The element is back in the document, so the play state can be restored.
-  // A changed source is a different file: that element is discarded and a
-  // new one was created above, so nothing is resumed here.
   if (reuseMedia) restoreMediaSession(session, { src: previewUrl });
 }

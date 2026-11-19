@@ -1711,7 +1711,13 @@ body[data-page="single"] {
 }
 .preview-frame-wrap > .preview-frame {
   min-height: 0;
-  transition: opacity 200ms ease, transform 260ms cubic-bezier(.2, .7, .2, 1);
+  transition:
+    height 300ms cubic-bezier(.2, .7, .2, 1),
+    min-height 300ms cubic-bezier(.2, .7, .2, 1),
+    padding 300ms ease,
+    margin 300ms ease,
+    opacity 200ms ease,
+    transform 260ms cubic-bezier(.2, .7, .2, 1);
 }
 .file-card--top .preview-frame--video,.file-card--top .preview-frame--image {
   --preview-cap: min(60vh, 720px);
@@ -1862,13 +1868,13 @@ body[data-page="single"] {
 .preview-dock.is-pinned .file-card {
   box-shadow: 0 28px 64px -36px rgba(12, 16, 28, 0.55), var(--shadow-card);
 }
-.preview-dock.is-pinned .file-card:not(.is-minimized) .preview-frame--video,.preview-dock.is-pinned .file-card:not(.is-minimized) .preview-frame--image {
+.preview-dock.is-pinned .file-card:not(:is(.is-minimized, .is-collapsing)) .preview-frame--video,.preview-dock.is-pinned .file-card:not(:is(.is-minimized, .is-collapsing)) .preview-frame--image {
   --preview-cap: min(26vh, 260px);
   width: min(100%, calc(var(--preview-cap) * var(--media-ratio-num, 1.7778)));
   max-height: none;
   margin-inline: auto;
 }
-.preview-dock.is-pinned .file-card:not(.is-minimized) .file-info {
+.preview-dock.is-pinned .file-card:not(:is(.is-minimized, .is-collapsing)) .file-info {
   padding-top: 14px;
   padding-bottom: 16px;
 }
@@ -1900,18 +1906,44 @@ body[data-page="single"] {
   width: 13px;
   height: 13px;
 }
-.file-card.is-minimized {
+.file-card:is(.is-minimized, .is-collapsing) {
   padding: 10px 12px;
 }
-.file-card.is-minimized .preview-frame {
+.file-card.is-collapsing .preview-frame {
   opacity: 0;
   transform: translateY(-8px);
   pointer-events: none;
 }
-.file-card.is-minimized .preview-frame-wrap {
+/* Media with a fixed intrinsic size must shrink in step with the grid row;
+   otherwise the 0fr track is pinned by min-content and the collapse stalls. */
+.file-card.is-collapsing .preview-frame--pdf {
+  height: 0;
+  min-height: 0;
+}
+.file-card.is-collapsing .preview-frame--audio {
+  padding: 0;
+}
+.file-card.is-minimized .preview-frame {
+  height: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border-width: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition:
+    height 300ms cubic-bezier(.2, .7, .2, 1),
+    min-height 300ms cubic-bezier(.2, .7, .2, 1),
+    padding 300ms ease,
+    margin 300ms ease,
+    opacity 200ms ease,
+    transform 260ms cubic-bezier(.2, .7, .2, 1);
+}
+.file-card:is(.is-minimized, .is-collapsing) .preview-frame-wrap {
   grid-template-rows: 0fr;
 }
-.file-card.is-minimized .file-info {
+.file-card:is(.is-minimized, .is-collapsing) .file-info {
   display: flex;
   flex: 1 1 auto;
   align-items: center;
@@ -1920,7 +1952,7 @@ body[data-page="single"] {
   padding: 0;
   border-top: 0;
 }
-.file-card.is-minimized .file-name {
+.file-card:is(.is-minimized, .is-collapsing) .file-name {
   order: -1;
   flex: 1 1 auto;
   min-width: 0;
@@ -1930,17 +1962,17 @@ body[data-page="single"] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.file-card.is-minimized .file-kind {
+.file-card:is(.is-minimized, .is-collapsing) .file-kind {
   margin: 0 0 0 auto;
   flex: 0 0 auto;
 }
-.file-card.is-minimized .file-local {
+.file-card:is(.is-minimized, .is-collapsing) .file-local {
   display: none;
 }
-.file-card.is-minimized .preview-toggle {
+.file-card:is(.is-minimized, .is-collapsing) .preview-toggle {
   flex: 0 0 auto;
 }
-.file-card.is-minimized .file-sub,.file-card.is-minimized .meta-list,.file-card.is-minimized .file-warning {
+.file-card:is(.is-minimized, .is-collapsing) .file-sub,.file-card:is(.is-minimized, .is-collapsing) .meta-list,.file-card:is(.is-minimized, .is-collapsing) .file-warning {
   display: none;
 }
 @media (max-width: 1024px) {
@@ -1982,13 +2014,13 @@ body[data-page="single"] {
   .preview-dock {
     top: 8px;
   }
-  .preview-dock.is-pinned .file-card:not(.is-minimized) .preview-frame--video,.preview-dock.is-pinned .file-card:not(.is-minimized) .preview-frame--image {
+  .preview-dock.is-pinned .file-card:not(:is(.is-minimized, .is-collapsing)) .preview-frame--video,.preview-dock.is-pinned .file-card:not(:is(.is-minimized, .is-collapsing)) .preview-frame--image {
     --preview-cap: min(20vh, 180px);
   }
-  .preview-dock.is-pinned .file-card:not(.is-minimized) .meta-list,.preview-dock.is-pinned .file-card:not(.is-minimized) .audio-cover-head {
+  .preview-dock.is-pinned .file-card:not(:is(.is-minimized, .is-collapsing)) .meta-list,.preview-dock.is-pinned .file-card:not(:is(.is-minimized, .is-collapsing)) .audio-cover-head {
     display: none;
   }
-  .preview-dock.is-pinned .file-card:not(.is-minimized) .file-info {
+  .preview-dock.is-pinned .file-card:not(:is(.is-minimized, .is-collapsing)) .file-info {
     padding-top: 10px;
     padding-bottom: 12px;
   }
@@ -1996,7 +2028,8 @@ body[data-page="single"] {
 
 @media (prefers-reduced-motion: reduce) {
   .file-card--top .preview-frame,
-  .file-card.is-minimized .preview-frame {
+  .file-card.is-minimized .preview-frame,
+  .file-card.is-collapsing .preview-frame {
     transition: none;
   }
 }
