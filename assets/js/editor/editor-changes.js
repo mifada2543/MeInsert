@@ -4,7 +4,7 @@
 import { bindTranslation, t } from '../i18n/index.js';
 import { asArray, asString, validateCustomKey } from '../core/tag-utils.js';
 import { canRedo, canUndo } from '../core/history.js';
-import { PDF_STANDARD_KEYS } from './editor-state.js';
+import { PDF_STANDARD_KEYS, cloneSidecar } from './editor-state.js';
 import { setEditingNavigation, singleEditing } from '../ui/editing-navigation.js';
 import { setReloadUnsafe } from '../core/reload-guard.js';
 export function inputSame(a, b, field) {
@@ -82,18 +82,17 @@ export function collectChanges(state, { validate = false } = {}) {
       };
   const coverCount = cover ? 1 : 0;
   const rawRemove = [...state.rawRemove];
-  const count = Object.keys(set).length + new Set(remove).size + custom.length + customRemove.size + rawRemove.length + coverCount;
+  const sidecar = cloneSidecar(state.sidecar);
+  const sidecarCount = sidecar ? 1 : 0;
+  const count = Object.keys(set).length + new Set(remove).size + custom.length + customRemove.size + rawRemove.length + coverCount + sidecarCount;
   return {
-    payload: { set, remove: [...new Set(remove)], custom, customRemove: [...customRemove], rawRemove, ...(cover ? { cover } : {}) },
+    payload: { set, remove: [...new Set(remove)], custom, customRemove: [...customRemove], rawRemove, ...(cover ? { cover } : {}), sidecar },
     errors,
     count,
   };
 }
 export function syncActionBar(els, state) {
   const ready = state.status === 'ready';
-  // Announce the ready transition once per loaded file. This is a generic,
-  // UI-only hook (opt-in features such as "?clean=1" listen for it); it never
-  // changes the write path or the editor state.
   if (ready && !state.fileReadyAnnounced) {
     state.fileReadyAnnounced = true;
     if (typeof window !== 'undefined') {

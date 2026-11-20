@@ -40,6 +40,9 @@ export function createEditorState() {
     previewMinimized: false,
     detectionWarning: '',
     sideSignature: '',
+    // First-class timed-text payload (synchronized lyrics + subtitle cues).
+    // Owned by the lyrics/subtitle panels; flows through collectChanges().
+    sidecar: null,
     coverOriginal: null,
     coverOriginalBytes: null,
     coverPreviewUrl: null,
@@ -59,6 +62,7 @@ export function createEditorState() {
       removedCustom: [...state.removedCustom],
       coverAction: state.coverAction,
       coverChosen: state.coverChosen ? { ...state.coverChosen } : null,
+      sidecar: cloneSidecar(state.sidecar),
       outputBase: state.outputBase,
     }),
     restore: (snapshot) => {
@@ -69,6 +73,7 @@ export function createEditorState() {
       state.removedCustom = new Set(snapshot.removedCustom);
       state.coverAction = snapshot.coverAction;
       state.coverChosen = snapshot.coverChosen ? { ...snapshot.coverChosen } : null;
+      state.sidecar = cloneSidecar(snapshot.sidecar);
       state.outputBase = snapshot.outputBase;
     },
   });
@@ -76,6 +81,23 @@ export function createEditorState() {
 }
 export function cloneRows(rows) {
   return rows.map((row) => ({ ...row }));
+}
+function cloneValue(value) {
+  if (Array.isArray(value)) return value.map(cloneValue);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [key, item] of Object.entries(value)) out[key] = cloneValue(item);
+    return out;
+  }
+  return value;
+}
+export function cloneSidecar(sidecar) {
+  return sidecar && typeof sidecar === 'object' ? cloneValue(sidecar) : null;
+}
+/** Set (or clear with null) the editor's timed-text sidecar payload. */
+export function setSidecar(state, sidecar) {
+  state.sidecar = cloneSidecar(sidecar);
+  return state.sidecar;
 }
 export function valuesFromFields(adapter, fields = {}) {
   const values = {};

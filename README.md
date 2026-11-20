@@ -85,6 +85,10 @@ Format dikenali dari **isi file**, bukan hanya ekstensi — jadi file yang salah
 
 Embed cover image (JPEG/PNG/WebP ≤ 10 MB; GIF/BMP juga untuk MP3, FLAC, OGG/Opus, dan MKV) secara native per format — `APIC` untuk MP3, `METADATA_BLOCK_PICTURE` untuk FLAC/OGG/Opus, `covr` untuk MP4/M4A (JPEG/PNG/WebP saja), Matroska attachment untuk MKV/WebM. Bisa diganti/dihapus. Rincian dan batasnya ada di [dokumentasi keterbatasan](docs/LIMITATIONS.md).
 
+### Lirik & subtitle tersinkron
+
+Tombol **Lirik & Subtitle** di editor membuka panel untuk mengetik, menandai waktu, mengimpor (`.lrc`, `.srt`, `.vtt`), dan mengekspor teks berirama. Pratinjau memakai media lokal Anda (`blob:`), tanpa upload. Saat menyimpan, teks disisipkan ke dalam kontainer: `SYLT` untuk MP3, komentar `LYRICS` untuk FLAC/OGG/Opus, `©lyr` + track WebVTT untuk MP4/M4A, dan track WebVTT untuk MKV/WebM. Lirik juga bisa menjadi track berlabel "Lirik" yang tampil di pemutar yang mendukungnya. File asli tidak pernah ditimpa; ekspor `.vtt` tetap disediakan untuk kompatibilitas. Detail dan batasnya ada di [dokumentasi keterbatasan](docs/LIMITATIONS.md).
+
 ### Dokumen Office
 
 - **Didukung penuh:** DOCX, XLSX, PPTX, serta ODT, ODS, ODP.

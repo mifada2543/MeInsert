@@ -28,6 +28,7 @@ import { initFormatChips } from './ui/format-chips.js';
 import { initScrollReveal } from './ui/scroll-reveal.js';
 import { initMobileMenu } from './ui/mobile-menu.js';
 import './ui/offline-settings.js';
+import { mountTimedTextButton } from './ui/timed-text-editor.js';
 initLanguage();
 registerServiceWorker();
 const client = new MetadataClient();
@@ -152,6 +153,7 @@ function boot() {
     setupEvents();
     setupShortcuts();
     mountQuickSaveToggle({ container: els.actionBar });
+    mountTimedTextButton({ container: els.actionBar, ctx });
     setupCleanMetadata();
     initActionBar();
     dock.attach();

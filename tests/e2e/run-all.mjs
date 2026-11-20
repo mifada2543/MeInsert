@@ -19,6 +19,7 @@ const allSuites = [
   'security',
   'engine-loading',
   'wasm-integrity',
+  'timed-text',
   'quick-save',
   'clean-metadata',
   'batch-clean',

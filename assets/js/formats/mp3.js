@@ -5,6 +5,8 @@ import { asString, rawValue, sameValue, toYear } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags } from '../core/image-utils.js';
 import { KNOWN_ID3 } from '../core/integrity-rules.js';
+import { toSyltPairs } from '../core/timed-text.js';
+import { readSylt, toWriterSylt } from '../core/id3-sylt.js';
 export const meta = {
   id: 'mp3',
   engine: 'media',
@@ -109,12 +111,23 @@ export async function read(file) {
       hasCover: Boolean(tags.images?.length),
       unknownFrames: Object.keys(tags.raw || {}).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_ID3.has(id)),
     };
+    const sylt = await readSylt(file);
+    const sidecar = sylt
+      ? {
+        lyrics: {
+          lang: (typeof sylt.language === 'string' && sylt.language.slice(0, 2)) || 'id',
+          lines: sylt.pairs.map((pair) => ({ time: pair.time, text: pair.text })),
+        },
+        subtitles: null,
+      }
+      : null;
     return {
       fields: tagsToFields(tags),
       custom: customTags(tags),
       raw: rawRows(tags),
       info,
       ...coverFromTags(tags),
+      sidecar,
       warnings: warningsFor(tags),
     };
   } catch (error) {
@@ -170,6 +183,9 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     if (id in values) values[id] = '';
   }
   report({ stage: 'Menulis ulang tag ID3…', pct: 45 });
+  // SYLT is dropped by a normal ID3 rewrite, so capture it up front and put it
+  // back below — either from the editor sidecar or verbatim from the source.
+  const existingSylt = await readSylt(file);
   const buffer = await file.arrayBuffer();
   const writer = new ID3Writer(buffer);
   writer.padding = 0;
@@ -199,6 +215,19 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   }
   str('copyright', 'TCOP');
   str('software', 'TSSE');
+  const syltLines = payload?.sidecar?.lyrics?.lines;
+  if (Array.isArray(syltLines) && syltLines.length) {
+    writer.setFrame('SYLT', {
+      type: 2,
+      timestampFormat: 2,
+      language: 'ind',
+      description: '',
+      text: toSyltPairs(syltLines),
+    });
+  } else if (existingSylt) {
+    const sylt = toWriterSylt(existingSylt);
+    if (sylt) writer.setFrame('SYLT', sylt);
+  }
   const coverAction = removeCover ? 'remove' : (payload?.cover?.action || 'keep');
   const writeCover = (imgData, name, kind) => {
     writer.setFrame('APIC', {

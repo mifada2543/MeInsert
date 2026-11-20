@@ -12,7 +12,7 @@ import { verifyIntegrity } from '../core/integrity.js';
 import { asString } from '../core/tag-utils.js';
 import { t } from '../i18n/index.js';
 import { isQuickSaveEligible, quickSaveEnabled } from '../ui/quick-save.js';
-import { cloneRows, defaultOutputName, makeRows, sanitizeBasename, valuesFromFields } from './editor-state.js';
+import { cloneRows, cloneSidecar, defaultOutputName, makeRows, sanitizeBasename, valuesFromFields } from './editor-state.js';
 import { setStatus, setProgress, showProgress } from './editor-shell.js';
 import { collectChanges, syncActionBar } from './editor-changes.js';
 import {
@@ -73,6 +73,9 @@ export function applyOutput(ctx, result) {
   })));
   state.customBaseline = cloneRows(state.customRows);
   state.removedCustom.clear();
+  if (result?.sidecar !== undefined) {
+    state.sidecar = cloneSidecar(result.sidecar);
+  }
   const warnings = [...new Set([state.detection?.warning, ...(result.warnings || [])].filter(Boolean))];
   state.readResult = {
     ...(state.readResult || {}),

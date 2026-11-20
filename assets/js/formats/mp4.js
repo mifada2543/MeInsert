@@ -11,6 +11,61 @@ import {
 } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags } from '../core/image-utils.js';
+import { parseLrc, serializeLrc, serializeVtt } from '../core/timed-text.js';
+import { mediaProof, mediaPacketProof, sameMediaProof } from '../core/media-proof.js';
+const LRC_LIKE_RE = /\[\d{1,3}:\d{2}[.,:]\d{1,3}\]/;
+const WVTT_MARKER = new TextEncoder().encode('wvtt');
+function containsMarker(bytes, marker) {
+  outer: for (let i = 0; i <= bytes.length - marker.length; i++) {
+    for (let j = 0; j < marker.length; j++) if (bytes[i + j] !== marker[j]) continue outer;
+    return true;
+  }
+  return false;
+}
+// Bounded scan so a large video never has to be materialized in memory twice.
+async function hasBytes(file, marker) {
+  const CHUNK = 1024 * 1024;
+  let carry = new Uint8Array(0);
+  for (let offset = 0; offset < file.size; offset += CHUNK) {
+    const slice = new Uint8Array(await file.slice(offset, Math.min(file.size, offset + CHUNK)).arrayBuffer());
+    const window = carry.length ? new Uint8Array(carry.length + slice.length) : slice;
+    if (carry.length) {
+      window.set(carry);
+      window.set(slice, carry.length);
+    }
+    if (containsMarker(window, marker)) return true;
+    carry = window.subarray(Math.max(0, window.length - (marker.length - 1)));
+  }
+  return false;
+}
+// LRC lines carry only a start time; give each line the next line's timestamp
+// as its end so WebVTT gets a non-zero duration.
+function lyricCues(lines) {
+  const sorted = (Array.isArray(lines) ? lines : [])
+    .filter((line) => line && typeof line === 'object')
+    .slice()
+    .sort((a, b) => Number(a.time) - Number(b.time));
+  return sorted.map((line, index) => {
+    const start = Number(line.time) || 0;
+    const next = sorted[index + 1];
+    let end = next ? Number(next.time) : start + 1000;
+    if (!(end > start)) end = start + 1000;
+    return { id: String(index + 1), start, end, text: asString(line.text), settings: '' };
+  });
+}
+function mediabunnyFields(tags) {
+  return {
+    title: asString(tags.title),
+    artist: asString(tags.artist),
+    album: asString(tags.album),
+    genre: asString(tags.genre),
+    date: toDateInput(tags.date ?? tags.releaseDate),
+    description: asString(tags.description),
+    comment: asString(tags.comment),
+    copyright: asString(tags.copyright),
+    software: asString(tags.encoder ?? tags.software),
+  };
+}
 export const meta = {
   id: 'mp4',
   engine: 'exiftool',
@@ -166,21 +221,42 @@ export async function read(file, options = {}) {
   const tags = await readTags(safeName(file, options.extension));
   const raw = collectRaw(tags);
   let duration = tags['QuickTime:Duration'] || tags['Composite:Duration'] || '';
+  let mediaTags = null;
   try {
     const { Input, ALL_FORMATS, BlobSource } = await import('../../vendor/mediabunny.mjs');
     const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
-    const seconds = await input.computeDuration();
-    if (Number.isFinite(seconds) && seconds > 0) duration = seconds;
+    try {
+      mediaTags = await input.getMetadataTags();
+      const seconds = await input.computeDuration();
+      if (Number.isFinite(seconds) && seconds > 0) duration = seconds;
+    } finally {
+      input.dispose?.();
+    }
   } catch {
+  }
+  const warnings = [];
+  let sidecar = null;
+  if (typeof mediaTags?.lyrics === 'string' && LRC_LIKE_RE.test(mediaTags.lyrics)) {
+    const parsed = parseLrc(mediaTags.lyrics);
+    if (parsed.lines.length) sidecar = { lyrics: { lang: 'id', lines: parsed.lines }, subtitles: null };
+  }
+  if (await hasBytes(file, WVTT_MARKER)) {
+    warnings.push('Trek subtitle tersemat tidak bisa dibaca ulang sebagai teks oleh engine, tetapi tetap dipertahankan di container hasil salinan.');
   }
   const hasCoverArt = raw.some((row) => /CoverArt/i.test(row.tag)) || Boolean(tags['ItemList:CoverArt']);
   let cover = null;
   let coverBytes = null;
-  if (hasCoverArt) {
+  if (hasCoverArt || mediaTags?.images?.length) {
     try {
-      const { Input, ALL_FORMATS, BlobSource } = await import('../../vendor/mediabunny.mjs');
-      const probe = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
-      const coverTags = await probe.getMetadataTags();
+      const coverTags = mediaTags || await (async () => {
+        const { Input, ALL_FORMATS, BlobSource } = await import('../../vendor/mediabunny.mjs');
+        const probe = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+        try {
+          return await probe.getMetadataTags();
+        } finally {
+          probe.dispose?.();
+        }
+      })();
       ({ cover, coverBytes } = coverFromTags(coverTags));
     } catch {
       cover = { mimeType: 'image/jpeg', kind: 'coverFront', name: 'cover', size: 0 };
@@ -193,14 +269,85 @@ export async function read(file, options = {}) {
     fields: mapTags(tags),
     raw,
     info,
-    mediaProof: await (await import('../core/media-proof.js')).mediaProof(file, 'mp4'),
+    mediaProof: await mediaProof(file, 'mp4'),
+    packetProof: await mediaPacketProof(file),
     cover,
     coverBytes,
-    warnings: [],
+    sidecar,
+    warnings,
   };
 }
+// Composable mediabunny pass: copy A/V verbatim, write the ©lyr tag and add
+// WebVTT subtitle tracks. The text sources must be filled only after start().
+async function embedSidecar(baseFile, payload, report) {
+  const {
+    Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion,
+    Mp4OutputFormat, TextSubtitleSource,
+  } = await import('../../vendor/mediabunny.mjs');
+  const input = new Input({ source: new BlobSource(baseFile), formats: ALL_FORMATS });
+  const output = new Output({ format: new Mp4OutputFormat(), target: new BufferTarget() });
+  let mediaTags = {};
+  try {
+    mediaTags = await input.getMetadataTags();
+  } catch {
+    mediaTags = {};
+  }
+  const lyricLines = payload?.sidecar?.lyrics?.lines;
+  const timedLyrics = Array.isArray(lyricLines) ? lyricLines : [];
+  const cues = Array.isArray(payload?.sidecar?.subtitles?.cues) ? payload.sidecar.subtitles.cues : [];
+  let lyricsValue;
+  if (Array.isArray(lyricLines)) lyricsValue = serializeLrc(lyricLines);
+  else if (payload?.set?.lyrics != null) lyricsValue = asString(payload.set.lyrics);
+  if (lyricsValue !== undefined) output.setMetadataTags({ ...mediaTags, lyrics: lyricsValue });
+  else output.setMetadataTags(mediaTags);
+  const tracks = [];
+  if (timedLyrics.length) {
+    tracks.push({ name: 'Lirik', vtt: serializeVtt(lyricCues(timedLyrics)), primary: !cues.length });
+  }
+  if (cues.length) {
+    tracks.push({ name: 'Subtitle', vtt: serializeVtt(cues), primary: true });
+  }
+  for (const track of tracks) {
+    const source = new TextSubtitleSource('webvtt');
+    output.addSubtitleTrack(source, {
+      languageCode: 'ind',
+      name: track.name,
+      disposition: { default: track.primary },
+    });
+    track.source = source;
+  }
+  let conversion;
+  try {
+    conversion = await Conversion.init({
+      input, output,
+      copy: { mode: 'forced' },
+      composable: true,
+      showWarnings: false,
+    });
+    if (conversion.isValid === false) throw new Error('Track A/V tidak bisa disalin tanpa transcode.');
+  } catch (error) {
+    input.dispose?.();
+    throw new AppError('WRITE_FAILED', 'Gagal menyiapkan penulisan lirik/subtitle MP4.', error.message || String(error));
+  }
+  conversion.onProgress = (progress) => {
+    report({ stage: `Menyalin container… ${Math.round(progress * 100)}%`, pct: 50 + progress * 25 });
+  };
+  try {
+    await output.start();
+    for (const track of tracks) {
+      await track.source.add(track.vtt);
+      await track.source.close();
+    }
+    await conversion.execute();
+    await output.finalize();
+  } catch (error) {
+    throw new AppError('WRITE_FAILED', 'Gagal menyematkan lirik/subtitle MP4.', error.message || String(error));
+  } finally {
+    input.dispose?.();
+  }
+  return new Uint8Array(output.target.buffer);
+}
 export async function write(file, payload, options = {}, report = () => {}) {
-  const { writeTags, readTags } = await import('../engines/exiftool.js');
   const tags = {};
   for (const [id, tag] of Object.entries(WRITE_MAP)) {
     if ((payload?.remove || []).includes(id)) {
@@ -213,7 +360,8 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
   for (const item of payload?.custom || []) {
     const key = asString(item?.key).trim();
-    if (key) tags[key] = asString(item?.value);
+    if (!key || /^(?:[\w-]+:)?(?:lyrics|©lyr)$/i.test(key)) continue; // ©lyr is written by the mediabunny pass
+    tags[key] = asString(item?.value);
   }
   for (const key of payload?.customRemove || []) {
     if (key) tags[key] = '';
@@ -227,35 +375,86 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } else if (cover?.action === 'remove') {
     tags['CoverArt'] = '';
   }
-  if (!Object.keys(tags).length) {
+  const hasExifTags = Object.keys(tags).length > 0;
+  const sidecar = payload?.sidecar;
+  const needsSidecarPass = payload?.set?.lyrics != null || Boolean(sidecar?.lyrics || sidecar?.subtitles);
+  if (!hasExifTags && !needsSidecarPass) {
     throw new AppError('NO_CHANGES', 'Tidak ada metadata yang perlu ditulis.');
   }
-  report({ stage: 'Menulis metadata ke media…', pct: 35 });
   let bytes;
-  try {
-    bytes = await writeTags(safeName(file, options.extension), tags);
-  } catch (error) {
-    throw new AppError('WRITE_FAILED', 'Gagal menulis metadata MP4.', error.message || String(error));
+  if (hasExifTags) {
+    report({ stage: 'Menulis metadata ke media…', pct: 35 });
+    const { writeTags } = await import('../engines/exiftool.js');
+    try {
+      bytes = await writeTags(safeName(file, options.extension), tags);
+    } catch (error) {
+      throw new AppError('WRITE_FAILED', 'Gagal menulis metadata MP4.', error.message || String(error));
+    }
+  } else {
+    bytes = new Uint8Array(await file.arrayBuffer());
+  }
+  if (needsSidecarPass) {
+    report({ stage: 'Menyematkan lirik/subtitle…', pct: 55 });
+    const baseFile = new File([bytes], `input.${options.extension || 'mp4'}`, { type: file.type || 'video/mp4' });
+    bytes = await embedSidecar(baseFile, payload, report);
   }
   report({ stage: 'Memverifikasi hasil…', pct: 78 });
-  const blob = new Blob([bytes], { type: options.mime || file.type || 'video/mp4' });
-  const output = new File([bytes], `output.${options.extension || 'mp4'}`, { type: blob.type });
-  const tagsAfter = await readTags(output);
-  const fields = mapTags(tagsAfter);
-  const infoAfter = describeFile(tagsAfter);
+  const mime = options.mime || file.type || 'video/mp4';
+  const blob = new Blob([bytes], { type: mime });
+  const output = new File([bytes], `output.${options.extension || 'mp4'}`, { type: mime });
+  const warnings = [];
+  const finalPacketProof = await mediaPacketProof(output);
+  let fields;
+  let infoAfter;
+  let raw = [];
   let coverAfter = null;
   let coverBytesAfter = null;
-  if (infoAfter.hasCover) {
+  if (needsSidecarPass) {
+    const originalProof = await mediaPacketProof(file);
+    if (!sameMediaProof(originalProof, finalPacketProof)) {
+      throw new AppError('WRITE_FAILED', 'Payload A/V berubah saat menyematkan lirik/subtitle MP4.');
+    }
+    const hasSubtitleTracks = (Array.isArray(sidecar?.lyrics?.lines) && sidecar.lyrics.lines.length > 0)
+      || (Array.isArray(sidecar?.subtitles?.cues) && sidecar.subtitles.cues.length > 0);
+    if (hasSubtitleTracks && !await hasBytes(output, WVTT_MARKER)) {
+      throw new AppError('WRITE_FAILED', 'Trek subtitle tidak ditemukan pada container MP4 hasil.');
+    }
+    warnings.push('Container MP4 ditulis ulang untuk menyematkan lirik/subtitle; payload A/V diverifikasi identik.');
+    let finalTags = {};
     try {
       const { Input, ALL_FORMATS, BlobSource } = await import('../../vendor/mediabunny.mjs');
       const probe = new Input({ source: new BlobSource(output), formats: ALL_FORMATS });
-      const coverTags = await probe.getMetadataTags();
-      ({ cover: coverAfter, coverBytes: coverBytesAfter } = coverFromTags(coverTags));
+      try {
+        finalTags = await probe.getMetadataTags();
+      } finally {
+        probe.dispose?.();
+      }
     } catch {
-      coverAfter = { mimeType: 'image/jpeg', kind: 'coverFront', name: 'cover', size: 0 };
+      finalTags = {};
+    }
+    fields = mediabunnyFields(finalTags);
+    infoAfter = { kind: 'video' };
+    ({ cover: coverAfter, coverBytes: coverBytesAfter } = coverFromTags(finalTags));
+  } else {
+    const { readTags } = await import('../engines/exiftool.js');
+    const tagsAfter = await readTags(output);
+    fields = mapTags(tagsAfter);
+    infoAfter = describeFile(tagsAfter);
+    raw = collectRaw(tagsAfter);
+    if (infoAfter.hasCover) {
+      try {
+        const { Input, ALL_FORMATS, BlobSource } = await import('../../vendor/mediabunny.mjs');
+        const probe = new Input({ source: new BlobSource(output), formats: ALL_FORMATS });
+        try {
+          ({ cover: coverAfter, coverBytes: coverBytesAfter } = coverFromTags(await probe.getMetadataTags()));
+        } finally {
+          probe.dispose?.();
+        }
+      } catch {
+        coverAfter = { mimeType: 'image/jpeg', kind: 'coverFront', name: 'cover', size: 0 };
+      }
     }
   }
-  const warnings = [];
   for (const [id, value] of Object.entries(payload?.set || {})) {
     if (id in fields && !sameValue(value, fields[id])) {
       warnings.push(`Field "${id}" tidak terbaca kembali persis seperti yang diminta.`);
@@ -264,9 +463,10 @@ export async function write(file, payload, options = {}, report = () => {}) {
   return {
     blob,
     fields,
-    raw: collectRaw(tagsAfter),
+    raw,
     info: infoAfter,
-    mediaProof: await (await import('../core/media-proof.js')).mediaProof(output, 'mp4'),
+    mediaProof: await mediaProof(output, 'mp4'),
+    packetProof: finalPacketProof,
     cover: coverAfter,
     coverBytes: coverBytesAfter,
     warnings,

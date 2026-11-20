@@ -158,11 +158,14 @@ The path a file takes from selection to download (all in the browser):
    adapter for `detection.id`.
 4. **Read** — `core/worker-client.js#MetadataClient.read` posts the file to the
    engine Worker; the adapter's `read()` returns fields, raw/custom tags, info,
-   cover, and warnings. A baseline snapshot is created
+   cover, and warnings. Audio/video adapters may also return a `sidecar`
+   (synchronized lyrics/subtitle cues). A baseline snapshot is created
    (`core/metadata-snapshot.js#createSnapshot`) and the form is rendered.
-5. **Edit & plan** — the user changes fields; `editor/editor-changes.js#collectChanges`
-   gathers the payload; `core/change-plan.js#buildChangePlan` produces the
-   minimal operation list and write payload, attaching risk warnings.
+5. **Edit & plan** — the user changes fields or opens the timed-text editor
+   (`ui/timed-text-editor.js`, ported from MEeL — see third-party attributions);
+   `editor/editor-changes.js#collectChanges` gathers the payload including the
+   `sidecar`, and `core/change-plan.js#buildChangePlan` produces the minimal
+   operation list and write payload, attaching risk warnings.
 6. **Review** — `ui/review-dialog.js#openReviewDialog` shows exactly what will
    change (and what will not) and asks for confirmation. Nothing is written
    until the user confirms.

@@ -278,7 +278,9 @@ export function verifyIntegrity(plan, afterSnapshot) {
   const beforeRaw = new Map((before.raw || []).map((row) => [row.canonicalTag, row]));
   const afterRaw = new Map((after.raw || []).map((row) => [row.canonicalTag, row]));
   const targetRaw = new Set((plan?.operations || []).filter((op) => op.kind === 'raw').map((op) => normalizeRawTag(op.tag)));
-  const relocatedPayload = sameMediaProof(before.mediaProof, after.mediaProof);
+  const byteProofRelocated = sameMediaProof(before.mediaProof, after.mediaProof);
+  const packetProofRelocated = sameMediaProof(before.packetProof, after.packetProof);
+  const relocatedPayload = byteProofRelocated || packetProofRelocated;
   if (before.mediaProof?.valid && !relocatedPayload) {
     add({ severity: 'error', code: 'MEDIA_PAYLOAD_CHANGED', target: 'media',
       message: 'Payload media berubah atau tidak bisa diverifikasi setelah penulisan.',
@@ -299,6 +301,15 @@ export function verifyIntegrity(plan, afterSnapshot) {
       after: afterValue ?? '',
     });
   };
+  if (!byteProofRelocated && packetProofRelocated) {
+    addKnown(
+      'Payload audio/video terverifikasi identik setelah penulisan; container ditulis ulang untuk menyematkan trek lirik/subtitle.',
+      'MEDIA_RELOCATED_BY_SIDECAR',
+      'media',
+      before.mediaProof?.kind || 'media',
+      after.mediaProof?.valid ? 'relocated' : 'rewritten',
+    );
+  }
   for (const [tag, row] of beforeRaw) {
     if (targetRaw.has(tag) || targets.has(tag)) {
       summary.checked += 1;

@@ -4,6 +4,44 @@
 import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js';
 import { AppError } from '../core/errors.js';
 import { coverFromTags, applyCoverImages, scrubPrimaryCoverRaw } from '../core/image-utils.js';
+import { parseLrc, serializeLrc, serializeVtt } from '../core/timed-text.js';
+const LRC_LIKE_RE = /\[\d{1,3}:\d{2}[.,:]\d{1,3}\]/;
+const WEBVTT_MARKER = new TextEncoder().encode('S_TEXT/WEBVTT');
+function containsMarker(bytes, marker) {
+  outer: for (let i = 0; i <= bytes.length - marker.length; i++) {
+    for (let j = 0; j < marker.length; j++) if (bytes[i + j] !== marker[j]) continue outer;
+    return true;
+  }
+  return false;
+}
+async function hasBytes(file, marker) {
+  const CHUNK = 1024 * 1024;
+  let carry = new Uint8Array(0);
+  for (let offset = 0; offset < file.size; offset += CHUNK) {
+    const slice = new Uint8Array(await file.slice(offset, Math.min(file.size, offset + CHUNK)).arrayBuffer());
+    const window = carry.length ? new Uint8Array(carry.length + slice.length) : slice;
+    if (carry.length) {
+      window.set(carry);
+      window.set(slice, carry.length);
+    }
+    if (containsMarker(window, marker)) return true;
+    carry = window.subarray(Math.max(0, window.length - (marker.length - 1)));
+  }
+  return false;
+}
+function lyricCues(lines) {
+  const sorted = (Array.isArray(lines) ? lines : [])
+    .filter((line) => line && typeof line === 'object')
+    .slice()
+    .sort((a, b) => Number(a.time) - Number(b.time));
+  return sorted.map((line, index) => {
+    const start = Number(line.time) || 0;
+    const next = sorted[index + 1];
+    let end = next ? Number(next.time) : start + 1000;
+    if (!(end > start)) end = start + 1000;
+    return { id: String(index + 1), start, end, text: asString(line.text), settings: '' };
+  });
+}
 export const meta = {
   id: 'mkv',
   engine: 'media',
@@ -33,7 +71,7 @@ export const fields = [
 ];
 const KNOWN_RAW = new Set([
   'TITLE', 'ARTIST', 'ALBUM', 'DATE_RELEASED', 'DATE', 'GENRE', 'DESCRIPTION',
-  'COMMENT', 'COPYRIGHT', 'ENCODER', 'ENCODER_SETTINGS', 'BPS', 'DURATION',
+  'COMMENT', 'COPYRIGHT', 'ENCODER', 'ENCODER_SETTINGS', 'BPS', 'DURATION', 'LYRICS',
 ]);
 function toFields(tags) {
   const raw = tags.raw || {};
@@ -64,9 +102,15 @@ async function mediaLib() {
   return import('../../vendor/mediabunny.mjs');
 }
 async function preserveDefaultDurations(conversion, output, EncodedPacketSink) {
-  for (let i = 0; i < output.tracks.length; i++) {
-    const target = output.tracks[i];
-    const source = conversion.utilizedTracks[i];
+  // Pre-added subtitle tracks live in output.tracks but have no counterpart in
+  // utilizedTracks; map only A/V tracks, in their original order.
+  const isAv = (track) => track.type === 'video' || track.type === 'audio';
+  const targets = output.tracks.filter(isAv);
+  const sources = (conversion.utilizedTracks || []).filter(isAv);
+  if (targets.length !== sources.length) throw new Error('Track mapping cannot be verified.');
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i];
+    const source = sources[i];
     if (!source || source.type !== target.type) throw new Error('Track mapping cannot be verified.');
     let duration;
     let constant = true;
@@ -82,13 +126,17 @@ async function preserveDefaultDurations(conversion, output, EncodedPacketSink) {
   }
 }
 async function verifyPacketTiming(before, after, EncodedPacketSink) {
-  const tracks = await after.getTracks();
-  if (tracks.length !== before.length) throw new Error('Track count changed during Matroska copy.');
+  // The output also carries the embedded WebVTT track, which mediabunny's
+  // demuxer does not expose; compare only copied A/V tracks.
+  const isAv = (track) => track.type === 'video' || track.type === 'audio';
+  const sourceTracks = (before || []).filter(isAv);
+  const copiedTracks = (await after.getTracks()).filter(isAv);
+  if (copiedTracks.length !== sourceTracks.length) throw new Error('Track count changed during Matroska copy.');
   const tick = 0.001000001;
-  for (let i = 0; i < before.length; i++) {
-    if (before[i].type !== tracks[i].type) throw new Error('Track type changed during Matroska copy.');
-    const original = new EncodedPacketSink(before[i]).packets(undefined, undefined, { metadataOnly: true });
-    const copied = new EncodedPacketSink(tracks[i]).packets(undefined, undefined, { metadataOnly: true });
+  for (let i = 0; i < sourceTracks.length; i++) {
+    if (sourceTracks[i].type !== copiedTracks[i].type) throw new Error('Track type changed during Matroska copy.');
+    const original = new EncodedPacketSink(sourceTracks[i]).packets(undefined, undefined, { metadataOnly: true });
+    const copied = new EncodedPacketSink(copiedTracks[i]).packets(undefined, undefined, { metadataOnly: true });
     try {
       for (;;) {
         const a = await original.next(), b = await copied.next();
@@ -130,7 +178,19 @@ export async function read(file) {
       hasCover: Boolean(tags.images?.length),
       rewrite: true,
     };
-    return { fields: toFields(tags), custom: customFrom(tags), raw: rawRows(tags), info, ...coverFromTags(tags), warnings: [] };
+    let sidecar = null;
+    if (typeof tags.lyrics === 'string' && LRC_LIKE_RE.test(tags.lyrics)) {
+      const parsed = parseLrc(tags.lyrics);
+      if (parsed.lines.length) sidecar = { lyrics: { lang: 'id', lines: parsed.lines }, subtitles: null };
+    }
+    const warnings = [];
+    if (await hasBytes(file, WEBVTT_MARKER)) {
+      warnings.push('Trek subtitle tersemat tidak bisa dibaca ulang sebagai teks oleh engine, tetapi tetap dipertahankan di container hasil salinan.');
+    }
+    return {
+      fields: toFields(tags), custom: customFrom(tags), raw: rawRows(tags), info,
+      ...coverFromTags(tags), sidecar, warnings,
+    };
   } catch (error) {
     throw new AppError('READ_FAILED', 'File MKV/WebM tidak bisa dibaca.', error.message || String(error));
   }
@@ -138,7 +198,7 @@ export async function read(file) {
 export async function write(file, payload, options = {}, report = () => {}) {
   const {
     Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion,
-    MkvOutputFormat, WebMOutputFormat, EncodedPacketSink,
+    MkvOutputFormat, WebMOutputFormat, EncodedPacketSink, TextSubtitleSource,
   } = await mediaLib();
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
@@ -216,16 +276,49 @@ export async function write(file, payload, options = {}, report = () => {}) {
     scrubPrimaryCoverRaw(merged.raw, merged.images);
     merged.images = applyCoverImages(merged.images, payload.cover);
   }
+  const sidecar = payload?.sidecar;
+  const lyricLines = sidecar?.lyrics?.lines;
+  const timedLyrics = Array.isArray(lyricLines) ? lyricLines : [];
+  const cues = Array.isArray(sidecar?.subtitles?.cues) ? sidecar.subtitles.cues : [];
+  if (Array.isArray(lyricLines)) {
+    const value = serializeLrc(lyricLines);
+    if (value) {
+      merged.lyrics = value;
+      raw.LYRICS = value;
+    } else {
+      delete merged.lyrics;
+      delete raw.LYRICS;
+    }
+  }
   const format = options.subtype === 'webm' ? new WebMOutputFormat() : new MkvOutputFormat();
   const output = new Output({ format, target: new BufferTarget() });
+  // Composable mode: metadata is set on the output, and pre-added subtitle
+  // tracks are accepted (non-composable Conversion.init rejects them).
+  output.setMetadataTags(merged);
+  const textTracks = [];
+  if (timedLyrics.length) {
+    textTracks.push({ name: 'Lirik', vtt: serializeVtt(lyricCues(timedLyrics)), primary: !cues.length });
+  }
+  if (cues.length) {
+    textTracks.push({ name: 'Subtitle', vtt: serializeVtt(cues), primary: true });
+  }
+  for (const track of textTracks) {
+    const source = new TextSubtitleSource('webvtt');
+    output.addSubtitleTrack(source, {
+      languageCode: 'ind',
+      name: track.name,
+      disposition: { default: track.primary },
+    });
+    track.source = source;
+  }
   let conversion;
   try {
     conversion = await Conversion.init({
       input,
       output,
-      tags: merged,
-      trim: { start: 0 },
       copy: { mode: 'forced' },
+      trim: { start: 0 },
+      composable: true,
       showWarnings: false,
     });
   } catch (error) {
@@ -240,7 +333,13 @@ export async function write(file, payload, options = {}, report = () => {}) {
   };
   try {
     await preserveDefaultDurations(conversion, output, EncodedPacketSink);
+    await output.start();
+    for (const track of textTracks) {
+      await track.source.add(track.vtt);
+      await track.source.close();
+    }
     await conversion.execute();
+    await output.finalize();
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Gagal menulis MKV/WebM.', error.message || String(error));
   }
@@ -248,8 +347,11 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const mime = options.mime || (options.subtype === 'webm' ? 'video/webm' : 'video/x-matroska');
   const extension = options.subtype === 'webm' ? 'webm' : 'mkv';
   const blob = new Blob([bytes], { type: mime });
-  report({ stage: 'Memverifikasi hasil…', pct: 82 });
   const outputFile = new File([bytes], `output.${extension}`, { type: mime });
+  if (textTracks.length && !await hasBytes(outputFile, WEBVTT_MARKER)) {
+    throw new AppError('WRITE_FAILED', 'Trek subtitle tidak ditemukan pada container MKV/WebM hasil.');
+  }
+  report({ stage: 'Memverifikasi hasil…', pct: 82 });
   const check = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
   try {
     await verifyPacketTiming(await input.getTracks(), check, EncodedPacketSink);
@@ -260,6 +362,9 @@ export async function write(file, payload, options = {}, report = () => {}) {
     const afterTags = await check.getMetadataTags();
     const fields = toFields(afterTags);
     const warnings = ['Container ditulis ulang; chapter/attachment mungkin tidak dipertahankan.'];
+    if (textTracks.length) {
+      warnings.push('Trek lirik/subtitle tersemat tidak bisa dibaca ulang sebagai teks oleh engine, tetapi dipertahankan di container hasil salinan.');
+    }
     for (const [id, value] of Object.entries(set)) {
       if (id in fields && !sameValue(value, fields[id])) {
         warnings.push(`Field "${id}" tidak terbaca kembali persis seperti yang diminta.`);

@@ -91,10 +91,50 @@ export async function mediaProof(file, kind) {
     return { valid: false, kind, error: String(error.message || error) };
   }
 }
+// Container rewrites (for example, embedding a subtitle track) change the
+// bytes of mdat while leaving the compressed A/V samples untouched. This
+// proof hashes each encoded packet's payload together with its duration, so
+// packet reordering/absolute timestamps and track ids do not matter.
+export async function mediaPacketProof(file) {
+  try {
+    const {
+      Input, ALL_FORMATS, BlobSource, EncodedPacketSink,
+    } = await import('../../vendor/mediabunny.mjs');
+    const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+    const encoder = new TextEncoder();
+    const regions = [];
+    try {
+      const tracks = (await input.getTracks())
+        .filter((track) => track.isVideoTrack?.() || track.isAudioTrack?.());
+      if (!tracks.length) throw new Error('No audio/video tracks for packet proof');
+      for (const track of tracks) {
+        const digests = [];
+        for await (const packet of new EncodedPacketSink(track).packets()) {
+          const data = packet.data instanceof Uint8Array ? packet.data : new Uint8Array(packet.data || []);
+          const duration = encoder.encode(String(packet.duration));
+          const sample = new Uint8Array(data.byteLength + duration.byteLength);
+          sample.set(data);
+          sample.set(duration, data.byteLength);
+          digests.push(hex(await crypto.subtle.digest('SHA-256', sample)));
+        }
+        regions.push({
+          length: digests.length,
+          hash: hex(await crypto.subtle.digest('SHA-256', encoder.encode(digests.join(':')))),
+        });
+      }
+    } finally {
+      input.dispose?.();
+    }
+    return { valid: true, kind: 'mp4', algorithm: 'av-packets-v1', regions };
+  } catch (error) {
+    return { valid: false, kind: 'mp4', algorithm: 'av-packets-v1', error: String(error.message || error) };
+  }
+}
 export function sameMediaProof(before, after) {
-  return before?.valid === true && after?.valid === true
-    && before.kind === after.kind && before.algorithm === 'sha256-chunks-v1' && after.algorithm === before.algorithm
-    && before.regions?.length > 0 && before.regions.length === after.regions?.length
-    && before.regions.every((region, index) => region.length > 0 && region.length === after.regions[index].length
-      && /^[a-f0-9]{64}$/.test(region.hash) && region.hash === after.regions[index].hash);
+  if (before?.valid !== true || after?.valid !== true || before.kind !== after.kind
+    || before.algorithm !== after.algorithm
+    || (before.algorithm !== 'sha256-chunks-v1' && before.algorithm !== 'av-packets-v1')
+    || before.regions?.length <= 0 || before.regions.length !== after.regions?.length) return false;
+  return before.regions.every((region, index) => region.length > 0 && region.length === after.regions[index].length
+    && /^[a-f0-9]{64}$/.test(region.hash) && region.hash === after.regions[index].hash);
 }

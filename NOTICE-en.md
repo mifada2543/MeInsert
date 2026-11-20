@@ -34,6 +34,8 @@ MeInsert bundles the following independent software in `assets/vendor/` and
 * browser-id3-writer v6.4.0 — https://github.com/egoroof/browser-id3-writer (MIT)
 * IBM Plex fonts (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
   (SIL Open Font License 1.1)
+* MEeL — LRC editor & timed-text helpers (adapted source) — © 2026 Mifada
+  (mifada2543) — https://github.com/mifada2543/MEeL-HUB (AGPL-3.0-or-later)
 
 **`assets/THIRD_PARTY_LICENSES.md` is the authoritative attribution index**
 for the bundle, and `assets/vendor/licenses/` holds the verbatim license texts.

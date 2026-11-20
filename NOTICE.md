@@ -35,6 +35,8 @@ MeInsert membundel perangkat lunak independen berikut di `assets/vendor/` dan
 * browser-id3-writer v6.4.0 — https://github.com/egoroof/browser-id3-writer (MIT)
 * Font IBM Plex (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
   (SIL Open Font License 1.1)
+* MEeL — editor LRC & helper teks berirama (kode yang diadaptasi) — © 2026 Mifada
+  (mifada2543) — https://github.com/mifada2543/MEeL-HUB (AGPL-3.0-or-later)
 
 **`assets/THIRD_PARTY_LICENSES.md` adalah indeks atribusi otoritatif** untuk
 bundel ini, dan `assets/vendor/licenses/` memuat teks lisensi aslinya. Jika

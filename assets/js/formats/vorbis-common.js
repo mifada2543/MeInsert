@@ -6,6 +6,18 @@ import { AppError } from '../core/errors.js';
 import { applyCoverImages, coverFromTags, scrubPrimaryCoverRaw } from '../core/image-utils.js';
 import { commentPictures, editPictures, flacPictures, pictureBase64, repairFlacMetadata } from './vorbis-pictures.js';
 import { rewriteOggComment } from '../core/ogg-comment.js';
+import { parseLrc, serializeLrc } from '../core/timed-text.js';
+
+// A single LRC timestamp such as [00:12.34] or [01:02:03.004]. The plain
+// LYRICS field stays the raw text; the sidecar only carries parsed lines.
+const LRC_STAMP_RE = /\[\d{1,3}:\d{2}(?::\d{2})?[.,:]\d{1,3}\]/;
+
+function sidecarFromLyrics(text) {
+  const raw = asString(text);
+  if (!LRC_STAMP_RE.test(raw)) return null;
+  const lines = parseLrc(raw).lines;
+  return lines.length ? { lyrics: { lang: 'id', lines }, subtitles: null } : null;
+}
 export const KNOWN_RAW = new Set([
   'vendor', 'ENCODER', 'TITLE', 'ARTIST', 'ALBUM', 'ALBUMARTIST', 'DATE',
   'GENRE', 'TRACKNUMBER', 'TRACKTOTAL', 'DISCNUMBER', 'DISCTOTAL',
@@ -89,12 +101,14 @@ export async function readVorbis(file) {
       codec: audio ? await audio.getCodec().catch(() => '') : '',
       hasCover: Boolean(tags.images?.length),
     };
+    const fields = toFields(tags);
     return {
-      fields: toFields(tags),
+      fields,
       custom: customFrom(tags),
       raw: rawRows(tags),
       info,
       ...coverFromTags(tags),
+      sidecar: sidecarFromLyrics(fields.lyrics),
       warnings: [],
     };
   } catch (error) {
@@ -110,6 +124,12 @@ export async function writeVorbis(file, payload, options, report, config) {
   const format = new FormatClass();
   const { Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion } = lib;
   const set = payload?.set || {};
+  const sidecarLines = payload?.sidecar?.lyrics?.lines;
+  const hasSidecarLyrics = Array.isArray(sidecarLines) && sidecarLines.length > 0;
+  // When the editor sends timed lyrics, the plain LYRICS comment and the
+  // structured sidecar must agree. Both the write and the post-write check
+  // therefore use the same LRC serialization of the sidecar lines.
+  const effectiveSet = hasSidecarLyrics ? { ...set, lyrics: serializeLrc(sidecarLines) } : set;
   const remove = new Set(payload?.remove || []);
   report({ stage: 'Membaca tag lama…', pct: 12 });
   let input;
@@ -130,7 +150,7 @@ export async function writeVorbis(file, payload, options, report, config) {
     if (value === '' || value === undefined || value === null) delete raw[key];
     else raw[key] = value;
   };
-  for (const [id, value] of Object.entries(set)) {
+  for (const [id, value] of Object.entries(effectiveSet)) {
     switch (id) {
       case 'title': merged.title = asString(value); assignRaw('TITLE', asString(value)); break;
       case 'artist': merged.artist = asString(value); assignRaw('ARTIST', asString(value)); break;
@@ -217,7 +237,7 @@ export async function writeVorbis(file, payload, options, report, config) {
       const afterTags = await check.getMetadataTags();
       const checkFields = toFields(afterTags);
       const warnings = [...initialWarnings];
-      for (const [id, value] of Object.entries(set)) {
+      for (const [id, value] of Object.entries(effectiveSet)) {
         if (id in checkFields && !sameValue(value, checkFields[id])) {
           warnings.push(`Field "${id}" tidak terbaca kembali persis seperti yang diminta.`);
         }

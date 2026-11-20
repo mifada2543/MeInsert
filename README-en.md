@@ -85,6 +85,10 @@ Formats are detected from the **file contents**, not just the extension — a wr
 
 Embed JPEG/PNG/WebP covers up to 10 MB. GIF/BMP covers are also supported for MP3, FLAC, OGG/Opus, and MKV. Covers use native structures: MP3 `APIC`, FLAC/OGG/Opus `METADATA_BLOCK_PICTURE`, MP4/M4A `covr` (JPEG/PNG/WebP only), and Matroska attachments for MKV/WebM. Covers can be replaced or removed. Details and limits are in the [limitations documentation](docs/LIMITATIONS.md).
 
+### Synchronized lyrics & subtitles
+
+The **Lyrics & subtitles** button in the editor opens a panel to type, timestamp, import (`.lrc`, `.srt`, `.vtt`) and export timed text. The preview uses your local media (`blob:`) with no upload. On save, the text is embedded inside the container: `SYLT` for MP3, a `LYRICS` comment for FLAC/OGG/Opus, `©lyr` plus a WebVTT track for MP4/M4A, and a WebVTT track for MKV/WebM. Lyrics can also become a track labelled "Lirik" that appears in players that support it. The original file is never overwritten; `.vtt` export remains available for compatibility. Details and limits are in the [limitations documentation](docs/LIMITATIONS.md).
+
 ### Office documents
 
 - **Fully supported:** DOCX, XLSX, PPTX, as well as ODT, ODS, ODP.
