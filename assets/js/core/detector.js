@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { fileExtension } from './tag-utils.js';
-import { readZipDirectory } from './zip-directory.js';
+import { readZipDirectoryFromBlob } from './zip-directory.js';
 const EXTENSIONS = {
   jpg: { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' },
   jpeg: { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' },
@@ -58,7 +58,6 @@ function sniffOgg(bytes) {
   return { id: 'ogg', subtype: 'unknown', label: 'Ogg', mime: 'audio/ogg' };
 }
 const ZIP_SNIFF_BYTES = 65536;
-const ZIP_FULL_READ_LIMIT = 128 * 1024 * 1024;
 function isZipLocalHeader(bytes, offset) {
   return bytes[offset] === 0x50 && bytes[offset + 1] === 0x4b
     && bytes[offset + 2] === 0x03 && bytes[offset + 3] === 0x04;
@@ -86,7 +85,6 @@ function scanZipHead(bytes) {
       const extraLen = zipU16(bytes, offset + 28);
       const size = zipU32(bytes, offset + 18);
       const start = offset + 30 + nameLen + extraLen;
-      // Entri `mimetype` ODF wajib stored (tanpa kompresi) dan pertama.
       if (method === 0 && size > 0 && size < 512 && start + size <= bytes.length) {
         mimetype = ascii(bytes, start, size).trim();
       }
@@ -95,20 +93,18 @@ function scanZipHead(bytes) {
   }
   return { names, mimetype };
 }
-function sniffZip(bytes, zipBytes = null) {
+function sniffZip(head, zipInfo = null) {
   let names = null;
   let mimetype = '';
-  try {
-    const zip = readZipDirectory(zipBytes || bytes);
-    names = zip.entries.map((entry) => entry.name);
-    const odfEntry = zip.entries.find((entry) => entry.name === 'mimetype');
-    if (odfEntry && odfEntry.method === 0 && odfEntry.compressedData.length
-        && odfEntry.compressedData.length < 512) {
-      mimetype = ascii(odfEntry.compressedData, 0, odfEntry.compressedData.length).trim();
+  if (zipInfo?.entries) {
+    names = zipInfo.entries.map((entry) => entry.name);
+    const odfEntry = zipInfo.entries.find((entry) => entry.name === 'mimetype');
+    if (odfEntry && odfEntry.method === 0 && odfEntry.data?.length && odfEntry.data.length < 512) {
+      mimetype = ascii(odfEntry.data, 0, odfEntry.data.length).trim();
     }
-  } catch { /* fall back to a bounded local-header scan */ }
+  }
   if (!names) {
-    const found = scanZipHead(bytes);
+    const found = scanZipHead(head);
     if (!found.names.length) return null;
     ({ names, mimetype } = found);
   }
@@ -140,7 +136,7 @@ function sniffZip(bytes, zipBytes = null) {
   }
   return null;
 }
-function sniff(bytes, zipBytes = null) {
+function sniff(bytes, zipInfo = null) {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' };
   }
@@ -171,7 +167,7 @@ function sniff(bytes, zipBytes = null) {
   if (mp4) return mp4;
   const ogg = sniffOgg(bytes);
   if (ogg) return ogg;
-  const zip = sniffZip(bytes, zipBytes);
+  const zip = sniffZip(bytes, zipInfo);
   if (zip) return zip;
   return null;
 }
@@ -212,17 +208,21 @@ export async function detectFile(file) {
   let head = new Uint8Array(await file.slice(0, 128).arrayBuffer());
   const ext = fileExtension(file.name);
   const candidateZip = (head.length >= 4 && isZipLocalHeader(head, 0)) || EXTENSIONS[ext]?.id === 'office';
-  let zipBytes = null;
-  if (candidateZip && file.size <= ZIP_FULL_READ_LIMIT) {
+  let zipInfo = null;
+  let zipRejected = false;
+  if (candidateZip) {
     try {
-      zipBytes = new Uint8Array(await file.arrayBuffer());
-    } catch { /* keep the bounded head */ }
+      zipInfo = await readZipDirectoryFromBlob(file);
+    } catch (error) {
+      if (error?.code === 'ZIP64_UNSUPPORTED') zipRejected = true;
+    }
   }
-  if (candidateZip && !zipBytes) {
+  if (zipRejected) return null;
+  if (candidateZip && !zipInfo) {
     const wider = new Uint8Array(await file.slice(0, ZIP_SNIFF_BYTES).arrayBuffer());
     if (wider.length > head.length) head = wider;
   }
-  const byMagic = sniff(head, zipBytes);
+  const byMagic = sniff(head, zipInfo);
   const byExt = EXTENSIONS[ext];
   if (byMagic) {
     const actualExt = EXT_BY_SUBTYPE[byMagic.subtype] || ext || 'bin';
@@ -242,7 +242,7 @@ export async function detectFile(file) {
     }
     return { ...byMagic, ext: actualExt };
   }
-  if (byExt) {
+  if (byExt && !(candidateZip && !zipInfo)) {
     return { ...byExt, ext, warning: 'Jenis file dikenali dari ekstensi; isi file tidak dikenali.' };
   }
   return null;

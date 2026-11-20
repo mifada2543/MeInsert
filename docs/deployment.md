@@ -101,6 +101,16 @@ aktif selalu dipertahankan. Pesan `CACHE_OPTIONAL`, `OPTIONAL_STATUS`, dan
 `CLEAR_OPTIONAL` memakai **versi engine**, sedangkan probe `GET_VERSION`
 memakai versi shell (dan menyertakan `engineVersion`).
 
+Menambah URL baru ke `SHELL_URLS` tidak selalu membutuhkan bump versi: perubahan
+pada `sw.js` sudah memicu `install`, yang meng-precache ulang seluruh
+`SHELL_URLS` ke cache dengan nama yang sama. Bump `CACHE_VERSION` **dan**
+`CURRENT_VERSION` secara bersamaan saat *isi* aset yang sudah di-cache berubah.
+Daftar `KNOWN_OPTIONAL_URLS` di `sw.js` harus sama persis dengan gabungan
+`OFFLINE_FEATURES[*].urls`; tes `offline-manifest` memeriksanya. Sebelum
+mengunduh, worker memakai ulang entri engine yang memiliki header
+`X-MeInsert-Engine-Version` sesuai versi, menduplikasi fetch konkuren, dan
+mendukung pembatalan per `jobId`.
+
 Since `meinsert-v52`, the service worker uses two separate caches:
 
 - `CACHE_VERSION` (`sw.js`, equal to `CURRENT_VERSION` in
@@ -117,6 +127,15 @@ Only stale `meinsert-*` caches are removed; both active caches are preserved.
 `CACHE_OPTIONAL`, `OPTIONAL_STATUS`, and `CLEAR_OPTIONAL` messages use the
 **engine version**, while the `GET_VERSION` probe uses the shell version (and
 also reports `engineVersion`).
+
+Adding a new URL to `SHELL_URLS` does not always require a version bump: editing
+`sw.js` already triggers `install`, which re-precaches every `SHELL_URLS` entry
+into the same cache name. Bump `CACHE_VERSION` **and** `CURRENT_VERSION` together
+when the *content* of an already cached asset changes. `KNOWN_OPTIONAL_URLS` in
+`sw.js` must equal the union of `OFFLINE_FEATURES[*].urls` exactly; the
+`offline-manifest` test enforces it. Before fetching, the worker reuses an
+engine entry carrying `X-MeInsert-Engine-Version` equal to the version,
+deduplicates concurrent fetches, and supports cancellation by `jobId`.
 
 ## Verifikasi / Verification
 

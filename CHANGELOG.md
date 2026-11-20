@@ -34,6 +34,22 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - `write` pada adapter audio/video mengembalikan `info` hasil baca ulang blob output, menghilangkan `STRUCTURE_LOST` palsu untuk sample rate/channel.
 - Offline: dependency engine diverifikasi dengan test closure statis; E2E Service Worker nyata mengukur request/cache (frugal, MP3, selektif, penuh, offline, update, uninstall) dan security test memeriksa method/body/query selain origin.
 
+### Hardening fase II (root cause)
+- XML Office diproses oleh parser namespace-aware mandiri (`core/office-xml.js`) yang bekerja di Worker tanpa `DOMParser`: resolusi URI + local name, prefix alternatif/default, shadowing, entitas numerik, Unicode, DTD/entitas eksternal ditolak. Edit bersifat bedah sehingga atribut (`xsi:type`), komentar, dan elemen asing tetap utuh.
+- Validasi paket semantik (`core/office-package.js`): `[Content_Types].xml`, `_rels/.rels`, part dokumen utama dari relationship, content type, akar XML, dan namespace harus konsisten; ODF memvalidasi manifest, mimetype, dan `content.xml`. Ini adalah validasi **struktural/XML**, bukan klaim konformitas skema Office penuh.
+- Deteksi ZIP kini hanya membaca tail EOCD, central directory, dan `mimetype` lewat `Blob.slice()` (tidak `file.arrayBuffer()`); dekompresi hanya untuk part metadata/preview dengan batas aktual memakai buffer `out` fflate, bukan hanya ukuran yang dideklarasikan.
+- Nama duplikat/path traversal/overlap rentang dan ZIP64 ditolak; media tidak pernah di-inflate saat inspeksi.
+- Bagian metadata yang dibuat ulang kini mendaftarkan content type + relationship (OOXML) atau entri manifest (ODF); custom property mempertahankan tipe `vt:*` yang ada.
+- `rawRemove` kini memuat semua metadata part sebelum mencocokkan tag; penghapusan field dan `rawRemove` yang menyasar elemen sama tidak lagi menghasilkan edit XML yang tumpang tindih (menutup kegagalan alur "Bersihkan Metadata").
+- Test portabilitas: Ogg proof memakai `os.tmpdir()` + `mkdtemp()` dan dibersihkan, bukan `/tmp/opencode/` hardcode. Semua harness verifikasi independen dipindahkan ke `tests/independent/` dan memakai path relatif repositori; artefak dibuat di direktori sementara OS lalu dihapus. Didaftarkan sebagai `npm run test:audit`, `test:independent:office`, dan `test:independent:audio`.
+- Ogg: edge case comment panjang/Unicode/kunci duplikat, CRC korup, stream terpotong, dan chained stream diuji; decoded audio diverifikasi dengan FFmpeg.
+- Offline: closure dependency kini memindai import statis **dan dinamis** (`browser-id3-writer.mjs`, `engines/exiftool.js`, `office-xml.js`, `office-package.js` termasuk); `cacheOptional` memakai cache yang sudah valid, dedup konkuren, job id, dan timeout inactivity 60 detik yang di-reset oleh progress (bukan timeout total 30 detik). Pesan SW divalidasi terhadap allowlist 26 URL; URL arbitrari/blob/data ditolak.
+
+### Verifikasi hardening fase II
+- 292 unit test (termasuk fuzz namespace/ZIP deterministik), lint, `check:css`, `check:policies`.
+- 9 dokumen Office hasil edit: **53/53 bagian XML lolos `xmllint --noout`**; **9/9 dikonversi LibreOffice headless** tanpa error.
+- Compat **48/48**; deteksi ZIP hanya **131.420 byte** dari file 2.101.785 byte (~6,25%), `file.arrayBuffer()` = 0.
+
 ### Verifikasi hardening
 - 250 unit test, lint, `check:css`, `check:policies`.
 - Audit mandiri 24/24: 16 roundtrip format, prefix namespace, padded ZIP, generic ZIP rejection, ODF signature, integritas Ogg/Opus/MP3/MKV.

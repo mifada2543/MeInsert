@@ -113,7 +113,11 @@ Skenarionya: (a) kunjungan pertama frugal hanya meng-precache shell, tanpa
 WASM/vendor berat; (b) edit MP3 hanya mengunduh engine audio; (c) pasang satu
 engine lewat panel Penyimpanan & Offline; (d) instal penuh; (e) reload dan edit
 saat offline sungguhan; (f) pembaruan aplikasi tanpa mengunduh ulang WASM yang
-tidak berubah; (g) hapus engine opsional. Skrip juga memastikan tidak pernah
+tidak berubah; (g) hapus engine opsional; (h) instal ulang aset yang tidak
+berubah harus transfer **0 byte**; (i) unduhan dibatalkan berhenti langsung;
+(j) pesan SW ditolak untuk tipe tak dikenal, URL `blob:`/`file:`, dan `jobId`
+yang salah. `Content-Length` dari server tes dipakai untuk mengukur byte transfer
+sungguhan lewat event `response` Playwright. Skrip juga memastikan tidak pernah
 ada URL `blob:`/`data:` atau berkas pengguna di Cache Storage. Skenario yang
 tidak dapat dijalankan tanpa memanipulasi SW secara merusak isolasi dicetak
 sebagai `SKIP:` dengan alasan — bukan `PASS`.
@@ -126,7 +130,10 @@ names. `offline-real.mjs` runs Chrome with real service workers against a local
 server and measures downloads through Playwright request events **and** Cache
 Storage inspection, not UI status text. It covers first frugal visit, MP3 edit,
 selective engine install, full install, genuinely offline reload/edit, an app
-update that must not re-download unchanged WASM, and optional-engine removal.
+update that must not re-download unchanged WASM, optional-engine removal, a
+second identical install that must transfer zero bytes, a cancelled download,
+and rejection of unknown message types, `blob:`/`file:` URLs and malformed job
+ids. Real transferred bytes are measured from response `Content-Length` headers.
 No blob/object URL or user file is ever written to Cache Storage; any
 infeasible scenario is reported as `SKIP:` with an explicit reason.
 

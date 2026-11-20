@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { getBrowser } from './harness.mjs';
 import { createServer } from 'node:http';
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CURRENT_VERSION, ENGINE_VERSION } from '../../assets/js/core/build.js';
@@ -49,7 +49,10 @@ function serve() {
         response.writeHead(404).end('Not found');
         return;
       }
-      response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
+      response.writeHead(200, {
+        'content-type': 'text/javascript; charset=utf-8',
+        'content-length': String(Buffer.byteLength(body)),
+      });
       response.end(body);
       return;
     }
@@ -58,7 +61,10 @@ function serve() {
       response.writeHead(404).end('Not found');
       return;
     }
-    response.writeHead(200, { 'content-type': contentTypes.get(extname(filePath)) || 'application/octet-stream' });
+    response.writeHead(200, {
+      'content-type': contentTypes.get(extname(filePath)) || 'application/octet-stream',
+      'content-length': String(statSync(filePath).size),
+    });
     createReadStream(filePath).pipe(response);
   });
   return new Promise((resolve, reject) => {
@@ -85,6 +91,7 @@ const pathOf = (url) => {
 const isHeavy = (url) => /\/assets\/vendor\/|\.wasm(?:\?|$)/i.test(pathOf(url));
 const isWasm = (url) => /\.wasm(?:\?|$)/i.test(pathOf(url));
 const isOtherEngine = (url) => /exiftool|\.wasm|pdf-lib|fflate|office\.worker|\/assets\/js\/formats\/(?:image|pdf|office|mp4)\.js/i.test(pathOf(url));
+const optionalResponses = [];
 const skipped = [];
 function skip(name, reason) {
   console.log(`SKIP: ${name} — ${reason}`);
@@ -92,6 +99,14 @@ function skip(name, reason) {
 }
 function requestedPaths(requests) {
   return new Set(requests.map((request) => pathOf(request.url())));
+}
+async function transferredBytes(responses) {
+  let total = 0;
+  for (const response of responses) {
+    const length = Number(response.headers()['content-length'] || 0);
+    if (Number.isFinite(length) && length > 0) total += length;
+  }
+  return total;
 }
 function assertSameOriginOnly(requests, baseOrigin, label) {
   const offenders = [...new Set(requests.map((request) => request.url()))].filter((url) => {
@@ -183,6 +198,7 @@ if (!address || typeof address === 'string') {
 }
 const base = `http://127.0.0.1:${address.port}`;
 const baseOrigin = new URL(base).origin;
+const OPTIONAL_PATH_SET = new Set(ALL_OPTIONAL_URLS.map(pathOf));
 const browser = await getBrowser({
   executablePath: findChrome(),
   headless: true,
@@ -197,6 +213,9 @@ try {
   });
   const requests = [];
   context.on('request', (request) => requests.push(request));
+  context.on('response', (response) => {
+    if (OPTIONAL_PATH_SET.has(pathOf(response.url()))) optionalResponses.push(response);
+  });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -234,6 +253,7 @@ try {
     await page.locator('#offlineMode-selected').click();
     await page.locator('#offlineFeature-pdf').check();
     requests.length = 0;
+    optionalResponses.length = 0;
     await page.locator('.offline-settings__download').click();
     const snapshot = await cacheHas(page, ENGINE_VERSION, FEATURE_URLS.pdf, 'PDF engine in cache');
     const wanted = new Set(FEATURE_URLS.pdf.map(pathOf));
@@ -249,6 +269,7 @@ try {
   {
     await page.locator('#offlineMode-all').click();
     requests.length = 0;
+    optionalResponses.length = 0;
     await page.locator('.offline-settings__download-all').click();
     await cacheHas(page, ENGINE_VERSION, ALL_OPTIONAL_URLS, 'all optional engines in cache');
     const wanted = new Set(ALL_OPTIONAL_URLS.map(pathOf));
@@ -257,7 +278,22 @@ try {
     assert.ok(downloaded.some((path) => /\.wasm(?:\?|$)/i.test(path)), 'full install did not fetch the ExifTool WASM');
     assertSameOriginOnly(requests, baseOrigin, 'full engine install');
     await assertNoUserFilesCached(page, 'full engine install');
-    console.log(`PASS: (d) full install fetched and cached ${downloaded.length} optional URLs including WASM`);
+    const firstBytes = await transferredBytes(optionalResponses);
+    console.log(`PASS: (d) full install fetched and cached ${downloaded.length} optional URLs including WASM (${firstBytes} transferred bytes)`);
+  }
+  {
+    requests.length = 0;
+    optionalResponses.length = 0;
+    await page.locator('.offline-settings__download-all').click();
+    await waitFor(async () => (await page.locator('.offline-settings__progress').isHidden()) ? true : null,
+      'second install to finish');
+    const wanted = new Set(ALL_OPTIONAL_URLS.map(pathOf));
+    const refetched = [...requestedPaths(requests)].filter((path) => wanted.has(path));
+    assert.deepEqual(refetched, [], `second install re-fetched unchanged assets: ${refetched.join(', ')}`);
+    const secondBytes = await transferredBytes(optionalResponses);
+    assert.equal(secondBytes, 0, `second install transferred ${secondBytes} bytes; expected 0`);
+    await cacheHas(page, ENGINE_VERSION, ALL_OPTIONAL_URLS, 'engine cache intact after second install');
+    console.log(`PASS: (h) second install reused the engine cache — 0 requests, ${secondBytes} transferred bytes`);
   }
   {
     await page.keyboard.press('Escape');
@@ -278,6 +314,7 @@ try {
     serveUpdated = true;
     try {
       requests.length = 0;
+      optionalResponses.length = 0;
       await page.evaluate(async () => {
         const registration = await navigator.serviceWorker.getRegistration();
         if (!registration) throw new Error('No service worker registration to update');
@@ -298,11 +335,13 @@ try {
       }, 'updated worker controlling the page');
       const paths = requestedPaths(requests);
       assert.deepEqual([...paths].filter(isWasm), [], 'app update re-downloaded unchanged WASM files');
+      const wasmBytes = await transferredBytes(optionalResponses.filter((response) => isWasm(response.url())));
+      assert.equal(wasmBytes, 0, `app update transferred ${wasmBytes} WASM bytes; expected 0`);
       assertSameOriginOnly(requests, baseOrigin, 'app update');
       const snapshot = await assertNoUserFilesCached(page, 'app update');
       assert.deepEqual(Object.keys(snapshot).filter((key) => key.startsWith('meinsert-')).sort(),
         [ENGINE_VERSION, UPDATED_SHELL_VERSION].sort(), 'old shell cache must be removed, engine cache kept');
-      console.log('PASS: (f) app update rebuilt shell only — engine cache and WASM survived untouched');
+      console.log(`PASS: (f) app update rebuilt shell only — engine cache intact, ${wasmBytes} WASM bytes transferred`);
     } catch (error) {
       if (/Timed out waiting for updated/.test(String(error))) {
         skip('(f) app update without re-downloading WASM',
@@ -326,6 +365,58 @@ try {
     const snapshot = await assertNoUserFilesCached(page, 'engine uninstall');
     assert.ok(UPDATED_SHELL_VERSION in snapshot || CURRENT_VERSION in snapshot, 'shell cache must survive uninstall');
     console.log('PASS: (g) uninstall cleared the optional engine cache without touching the shell or refetching WASM');
+  }
+  {
+    await openSettings(page);
+    requests.length = 0;
+    optionalResponses.length = 0;
+    await page.locator('.offline-settings__download-all').click();
+    await waitFor(async () => (await page.locator('.offline-settings__cancel').isHidden()) ? null : true,
+      'cancel button to appear');
+    await page.locator('.offline-settings__cancel').click();
+    const atCancel = requests.length;
+    await sleep(1500);
+    const afterCancel = requests.length;
+    assert.ok(afterCancel - atCancel <= 1,
+      `download kept fetching after cancel: ${afterCancel - atCancel} new requests`);
+    const snapshot = await cacheSnapshot(page);
+    const cachedCount = (snapshot[ENGINE_VERSION] || []).length;
+    assert.ok(cachedCount < ALL_OPTIONAL_URLS.length,
+      `cancelled install cached ${cachedCount}/${ALL_OPTIONAL_URLS.length} URLs; expected fewer`);
+    await page.waitForFunction(() => document.getElementById('offlineSettingsDialog')
+      ?.querySelector('.offline-settings__cancel')?.hidden === true, null, { timeout: 15_000 });
+    console.log(`PASS: (i) cancelled install stopped fetching — ${afterCancel - atCancel} requests after cancel, ${cachedCount}/${ALL_OPTIONAL_URLS.length} URLs cached`);
+  }
+  {
+    const probe = await page.evaluate(async (engineVersion) => {
+      function send(message) {
+        return new Promise((resolve) => {
+          const channel = new MessageChannel();
+          const timer = setTimeout(() => resolve({ type: 'TIMEOUT' }), 5000);
+          channel.port1.onmessage = (event) => { clearTimeout(timer); resolve(event.data); };
+          navigator.serviceWorker.controller.postMessage(message, [channel.port2]);
+        });
+      }
+      const urls = ['./assets/vendor/fflate.mjs'];
+      return {
+        unknown: await send({ type: 'NOT_A_REAL_TYPE' }),
+        blob: await send({ type: 'CACHE_OPTIONAL', jobId: 'probe-blob', version: engineVersion, urls: ['blob:https://example.com/id'] }),
+        file: await send({ type: 'CACHE_OPTIONAL', jobId: 'probe-file', version: engineVersion, urls: ['file:///etc/passwd'] }),
+        badJob: await send({ type: 'CACHE_OPTIONAL', jobId: 'bad job!', version: engineVersion, urls }),
+        badCancel: await send({ type: 'CANCEL_OPTIONAL', jobId: 'bad job!' }),
+      };
+    }, ENGINE_VERSION);
+    assert.equal(probe.unknown.type, 'OPTIONAL_ERROR');
+    assert.equal(probe.unknown.error, 'unknown_type');
+    assert.equal(probe.blob.type, 'OPTIONAL_ERROR');
+    assert.equal(probe.blob.error, 'invalid_urls');
+    assert.equal(probe.file.type, 'OPTIONAL_ERROR');
+    assert.equal(probe.file.error, 'invalid_urls');
+    assert.equal(probe.badJob.type, 'OPTIONAL_ERROR');
+    assert.equal(probe.badJob.error, 'invalid_job');
+    assert.equal(probe.badCancel.type, 'OPTIONAL_ERROR');
+    assert.equal(probe.badCancel.error, 'invalid_job');
+    console.log('PASS: (j) worker rejected unknown types, blob:/file: URLs and malformed job ids');
   }
   assert.deepEqual(errors, [], `unexpected page errors: ${errors.join('; ')}`);
   console.log('PASS: no page errors during any offline scenario');

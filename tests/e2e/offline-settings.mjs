@@ -175,7 +175,15 @@ try {
   await openDialog();
   await page.locator('.offline-settings__download').click();
   await page.evaluate(() => {
-    window.__swPort.postMessage({ type: 'OPTIONAL_DONE', cached: 1, failed: 0, total: 1 });
+    const start = window.__swMessages.find((message) => message.type === 'CACHE_OPTIONAL');
+    window.__swPort.postMessage({
+      type: 'OPTIONAL_DONE',
+      jobId: start?.jobId,
+      version: start?.version,
+      cached: 1,
+      failed: 0,
+      total: 1,
+    });
   });
   await page.locator('.offline-settings__clear').click();
   const messages = await page.evaluate(() => window.__swMessages);

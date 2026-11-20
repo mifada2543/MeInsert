@@ -7,8 +7,13 @@ import { strFromU8, strToU8, unzipSync, zipSync } from '../../assets/vendor/ffla
 import office, { fieldsFor, OFFICE_SUBTYPES, read, sectionsFor, write } from '../../assets/js/formats/office.js';
 import { verifyZipPreserved } from '../../assets/js/core/office-zip.js';
 const CONTENT_TYPES = '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+  + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+  + '<Default Extension="xml" ContentType="application/xml"/>'
   + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
   + '</Types>';
+const ROOT_RELS = '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+  + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+  + '</Relationships>';
 const CORE_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"'
   + ' xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/"'
@@ -43,8 +48,8 @@ const META_XML = '<?xml version="1.0" encoding="UTF-8"?>'
 function ooxmlZip(extra = {}) {
   return zipSync({
     '[Content_Types].xml': strToU8(CONTENT_TYPES),
-    '_rels/.rels': strToU8('<Relationships/>'),
-    'word/document.xml': strToU8('<w:document><w:body/></w:document>'),
+    '_rels/.rels': strToU8(ROOT_RELS),
+    'word/document.xml': strToU8('<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body/></w:document>'),
     'docProps/core.xml': strToU8(CORE_XML),
     'docProps/app.xml': strToU8(APP_XML),
     ...extra,
@@ -53,8 +58,12 @@ function ooxmlZip(extra = {}) {
 function odfZip(extra = {}) {
   return zipSync({
     mimetype: [strToU8('application/vnd.oasis.opendocument.text'), { level: 0 }],
-    'META-INF/manifest.xml': strToU8('<manifest:manifest/>'),
-    'content.xml': strToU8('<office:document-content/>'),
+    'META-INF/manifest.xml': strToU8('<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">'
+      + '<manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/>'
+      + '<manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>'
+      + '<manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>'
+      + '</manifest:manifest>'),
+    'content.xml': strToU8('<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"/>'),
     'meta.xml': strToU8(META_XML),
     ...extra,
   });
@@ -271,7 +280,7 @@ test('custom properties use native OOXML custom.xml with content type and relati
 });
 test('read exposes a bounded content preview for identification', async () => {
   const source = ooxmlZip({
-    'word/document.xml': strToU8('<w:document><w:body><w:p><w:r><w:t>Halo dokumen</w:t></w:r></w:p></w:body></w:document>'),
+    'word/document.xml': strToU8('<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Halo dokumen</w:t></w:r></w:p></w:body></w:document>'),
   });
   const result = await read(officeFile(source, 'preview.docx'), { subtype: 'docx' });
   assert.equal(result.info.contentPreview[0].key, 'paragraphs');

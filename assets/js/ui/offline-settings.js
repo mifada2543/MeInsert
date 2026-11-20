@@ -18,13 +18,19 @@ const PAGES = new Set(['home', 'single', 'batch']);
 const MODE_KEYS = { frugal: 'Habit', selected: 'Selected', all: 'All' };
 const EXIT_MS = 160;
 const EXIT_SAFETY_MS = EXIT_MS + 100;
+const INACTIVITY_MS = 60_000;
+const TERMINAL_STATES = new Set(['cached', 'failed', 'cancelled']);
 let trigger = null;
 let dialog = null;
 let refs = null;
 let draft = null;
 let listening = false;
 let lastFocused = null;
-let download = { active: false, cached: 0, failed: 0, total: 0 };
+let download = {
+  active: false, jobId: '', state: 'idle', cached: 0, failed: 0, total: 0, bytes: 0, totalBytes: 0,
+};
+let inactivityTimer = 0;
+let jobCounter = 0;
 let closeTimer = 0;
 let closeFinish = null;
 let closeAnimationEnd = null;
@@ -47,6 +53,30 @@ function rememberCached(url) {
 }
 function cachedFeature(feature) {
   return Boolean(feature?.urls?.length) && feature.urls.every((url) => cachedUrls.has(absoluteUrl(url)));
+}
+function newJobId() {
+  jobCounter += 1;
+  const random = globalThis.crypto?.randomUUID?.().replace(/-/g, '')
+    || Math.random().toString(36).slice(2);
+  return `job${Date.now().toString(36)}${jobCounter}${random}`;
+}
+function matchesJob(data) {
+  return Boolean(download.jobId) && data?.jobId === download.jobId;
+}
+function clearInactivity() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = 0;
+}
+function resetInactivity() {
+  clearInactivity();
+  if (!download.active) return;
+  const jobId = download.jobId;
+  inactivityTimer = setTimeout(() => {
+    inactivityTimer = 0;
+    if (!download.active || download.jobId !== jobId) return;
+    postToSw({ type: 'CANCEL_OPTIONAL', jobId, version: ENGINE_VERSION });
+    endDownload('failed', t('ui.engineDownloadStalled'), 'warn');
+  }, INACTIVITY_MS);
 }
 function reduceMotion() {
   try { return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches); } catch { return false; }
@@ -117,27 +147,65 @@ function setStatus(message, kind = 'info') {
 function renderProgress() {
   if (!refs) return;
   const done = download.cached + download.failed;
-  const text = download.total > 0
-    ? t('ui.engineDownloadProgress', { v0: String(done), v1: String(download.total) })
-    : t('ui.engineLoadingMetadata');
+  let text = t('ui.engineLoadingMetadata');
+  if (download.state === 'queued') {
+    text = t('ui.engineDownloadQueued');
+  } else if (download.total > 0) {
+    const args = { v0: String(done), v1: String(download.total) };
+    text = download.bytes > 0
+      ? t('ui.engineDownloadProgressBytes', { ...args, v2: formatBytes(download.bytes) })
+      : t('ui.engineDownloadProgress', args);
+  }
   refs.progressText.textContent = text;
   refs.fill.style.width = download.total > 0 ? `${Math.min(100, (done / download.total) * 100)}%` : '0%';
   refs.progress.classList.toggle('is-indeterminate', download.total === 0);
 }
-function finishDownload(data) {
-  download = { active: false, cached: data.cached || 0, failed: data.failed || 0, total: data.total || 0 };
+function endDownload(state, message, kind) {
+  clearInactivity();
+  download.active = false;
+  download.state = state;
+  download.jobId = '';
   if (refs) refs.progress.hidden = true;
+  setStatus(message, kind);
+  showToast(message, state === 'cached' ? 'success' : 'error');
   askOptionalStatus();
-  const partial = download.failed > 0;
-  setStatus(t(partial ? 'ui.offlinePartial' : 'ui.offlineSaved'), partial ? 'warn' : 'ok');
-  showToast(t(partial ? 'ui.offlinePartial' : 'ui.offlineSaved'), partial ? 'error' : 'success');
   render();
 }
+function finishDownload(data) {
+  if (!matchesJob(data)) return;
+  download.cached = data.cached || 0;
+  download.failed = data.failed || 0;
+  download.total = data.total || download.total;
+  download.totalBytes = data.bytes || data.totalBytes || 0;
+  if (data.cancelled) endDownload('cancelled', t('ui.engineDownloadCancelled'), 'info');
+  else if (download.failed > 0 && download.cached > 0) endDownload('failed', t('ui.offlinePartial'), 'warn');
+  else if (download.failed > 0) endDownload('failed', t('ui.engineDownloadFailed'), 'warn');
+  else endDownload('cached', t('ui.engineDownloadCached'), 'ok');
+}
 function handleSwMessage(data) {
-  if (!data || typeof data !== 'object') return;
+  if (!data || typeof data !== 'object' || typeof data.type !== 'string') return;
+  if (data.type === 'OPTIONAL_CLEARED') {
+    if (download.active) return;
+    cachedUrls.clear();
+    setStatus(t('ui.offlineSaved'), 'ok');
+    showToast(t('ui.offlineSaved'), 'success');
+    render();
+    return;
+  }
+  if (data.type === 'OPTIONAL_STATUS_RESULT') {
+    if (download.active) return;
+    for (const url of data.urls || []) rememberCached(url);
+    return;
+  }
+  if (!matchesJob(data)) return;
   if (data.type === 'OPTIONAL_START') {
-    download = { active: true, cached: 0, failed: 0, total: data.total || 0 };
+    download.cached = 0;
+    download.failed = 0;
+    download.total = data.total || 0;
+    download.bytes = 0;
+    download.state = 'downloading';
     if (refs) refs.progress.hidden = false;
+    resetInactivity();
     renderProgress();
     setStatus(t('ui.engineLoadingMetadata'));
     render();
@@ -145,17 +213,17 @@ function handleSwMessage(data) {
     download.cached = data.cached || 0;
     download.failed = data.failed || 0;
     download.total = data.total || download.total;
+    download.bytes += data.bytes || 0;
+    download.totalBytes = data.totalBytes || download.totalBytes;
     if (data.ok) rememberCached(data.url);
+    resetInactivity();
     renderProgress();
+  } else if (data.type === 'OPTIONAL_CANCELLED') {
+    endDownload('cancelled', t('ui.engineDownloadCancelled'), 'info');
+  } else if (data.type === 'OPTIONAL_ERROR') {
+    endDownload('failed', t('ui.engineDownloadInvalid'), 'warn');
   } else if (data.type === 'OPTIONAL_DONE') {
     finishDownload(data);
-  } else if (data.type === 'OPTIONAL_CLEARED') {
-    cachedUrls.clear();
-    setStatus(t('ui.offlineSaved'), 'ok');
-    showToast(t('ui.offlineSaved'), 'success');
-    render();
-  } else if (data.type === 'OPTIONAL_STATUS_RESULT') {
-    for (const url of data.urls || []) rememberCached(url);
   }
 }
 globalThis.addEventListener?.('message', (event) => {
@@ -194,20 +262,32 @@ function startDownload(all) {
   }
   draft = next;
   render();
-  if (!setProfile(storage(), draft) || !postToSw({ type: 'CACHE_OPTIONAL', urls, version: ENGINE_VERSION })) {
+  const jobId = newJobId();
+  if (!setProfile(storage(), draft)
+    || !postToSw({ type: 'CACHE_OPTIONAL', jobId, urls, version: ENGINE_VERSION })) {
     setStatus(t('ui.offlinePartial'), 'warn');
     showToast(t('ui.offlinePartial'), 'error');
     render();
     return;
   }
-  download = { active: true, cached: 0, failed: 0, total: urls.length };
+  download = {
+    active: true, jobId, state: 'queued', cached: 0, failed: 0, total: urls.length, bytes: 0, totalBytes: 0,
+  };
   if (refs) refs.progress.hidden = false;
   renderProgress();
-  setStatus(t('ui.engineLoadingMetadata'));
+  setStatus(t('ui.engineDownloadQueued'));
   render();
-  setTimeout(() => {
-    if (download.active) finishDownload({ cached: download.cached, failed: Math.max(1, download.failed), total: download.total });
-  }, 30_000);
+  resetInactivity();
+}
+function retryDownload() {
+  if (download.active || !TERMINAL_STATES.has(download.state)) return;
+  startDownload(false);
+}
+function cancelDownload() {
+  if (!download.active || !download.jobId) return;
+  const jobId = download.jobId;
+  postToSw({ type: 'CANCEL_OPTIONAL', jobId, version: ENGINE_VERSION });
+  endDownload('cancelled', t('ui.engineDownloadCancelled'), 'info');
 }
 function clearOptional() {
   if (download.active) return;
@@ -288,6 +368,20 @@ function buildDialog() {
     on: { click: clearOptional },
   });
   bindText(clearBtn, () => t('ui.offlineClearOptional'));
+  const cancelBtn = el('button', {
+    className: 'button ghost offline-settings__cancel',
+    type: 'button',
+    hidden: true,
+    on: { click: cancelDownload },
+  });
+  bindText(cancelBtn, () => t('ui.cancel'));
+  const retryBtn = el('button', {
+    className: 'button ghost offline-settings__retry',
+    type: 'button',
+    hidden: true,
+    on: { click: retryDownload },
+  });
+  bindText(retryBtn, () => t('ui.retry'));
   const downloadBtn = el('button', {
     className: 'button primary offline-settings__download',
     type: 'button',
@@ -309,15 +403,25 @@ function buildDialog() {
   }, el('div', { className: 'offline-settings__panel' },
     el('header', { className: 'offline-settings__head' }, title, closeBtn),
     el('div', { className: 'offline-settings__body' }, note, modes, featureList, status, progress),
-    el('footer', { className: 'offline-settings__actions' }, clearBtn, downloadBtn, downloadAllBtn),
+    el('footer', { className: 'offline-settings__actions' }, clearBtn, cancelBtn, retryBtn, downloadBtn, downloadAllBtn),
   ));
   dialog.addEventListener('close', () => {
     cancelClose();
+    if (download.active && download.jobId) {
+      postToSw({ type: 'CANCEL_OPTIONAL', jobId: download.jobId, version: ENGINE_VERSION });
+    }
+    clearInactivity();
+    download.active = false;
+    download.jobId = '';
+    download.state = 'idle';
     trigger?.setAttribute('aria-expanded', 'false');
     lastFocused?.focus?.();
   });
   document.body.append(dialog);
-  refs = { closeBtn, note, modeInputs, featureInputs, featureList, estimate, status, progress, progressText, fill, clearBtn, downloadBtn, downloadAllBtn };
+  refs = {
+    closeBtn, note, modeInputs, featureInputs, featureList, estimate, status, progress,
+    progressText, fill, clearBtn, cancelBtn, retryBtn, downloadBtn, downloadAllBtn,
+  };
   return dialog;
 }
 function render() {
@@ -339,6 +443,8 @@ function render() {
     input.disabled = saveData;
   }
   refs.clearBtn.disabled = download.active;
+  refs.cancelBtn.hidden = !download.active;
+  refs.retryBtn.hidden = download.active || !TERMINAL_STATES.has(download.state);
   refs.downloadBtn.disabled = saveData || download.active || optionalUrls(draft).length === 0;
   refs.downloadAllBtn.disabled = saveData || download.active;
   renderProgress();
@@ -375,6 +481,14 @@ export function initOfflineSettings() {
       if (event.key !== OFFLINE_PROFILE_KEY || download.active) return;
       draft = getProfile(storage());
       if (dialog?.open) render();
+    });
+    globalThis.addEventListener('pagehide', () => {
+      if (download.active && download.jobId) {
+        postToSw({ type: 'CANCEL_OPTIONAL', jobId: download.jobId, version: ENGINE_VERSION });
+      }
+      clearInactivity();
+      download.active = false;
+      download.jobId = '';
     });
     document.addEventListener('keydown', onGlobalKeydown);
   }

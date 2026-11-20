@@ -72,6 +72,18 @@ One module per format: `image.js`, `pdf.js`, `mp3.js`, `flac.js`, `ogg.js`,
 optional `dispose`). See [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-new-format)
 for the exact exported shape.
 
+Office metadata uses two worker-safe helpers: `core/office-xml.js` is a small
+namespace-aware parser/writer (URI + local name resolution, arbitrary prefixes,
+default namespaces, prefix shadowing, entity decoding, DTD/external entity
+rejection) that edits XML by surgical byte ranges so untouched attributes,
+comments and elements remain identical; `core/office-package.js` performs
+bounded semantic validation of OOXML content types, root relationships and the
+main document part, and of ODF manifest/mimetype/content parts. This is
+structural/XML validation, **not** full Office schema conformance. Detection
+and inspection use `core/zip-directory.js` (bounded central-directory reads
+through `Blob.slice()`) and `core/office-zip.js` (selective inflation of only
+metadata/preview parts with actual-byte decompression budgets).
+
 ### `assets/js/engines/**` — WASM / library bridges
 
 `exiftool.js` wraps the vendored ExifTool WASM runtime (`readTags`,
@@ -190,11 +202,30 @@ caches**:
   try the network, then serve the cached shell (falling back to `index.html` /
   `./`), with a 503 offline response if nothing is cached. This avoids a blank
   page on Ctrl+R when the network is slow or unavailable.
-- **Optional cache protocol** — `CACHE_OPTIONAL`, `OPTIONAL_STATUS` and
-  `CLEAR_OPTIONAL` messages validate and report `ENGINE_VERSION`, and operate
-  only on the engine cache. `assets/js/ui/offline-settings.js` sends that same
-  engine version, so a shell update in the middle of a download cannot cancel
-  it with a version mismatch.
+- **Optional cache protocol** — only six message types are accepted:
+  `SKIP_WAITING`, `GET_VERSION`, `CACHE_OPTIONAL`, `CLEAR_OPTIONAL`,
+  `OPTIONAL_STATUS` and `CANCEL_OPTIONAL`. Anything else gets an `OPTIONAL_ERROR`
+  reply. `CACHE_OPTIONAL` validates a unique `jobId`, an `ENGINE_VERSION`, and
+  1–128 URLs against `KNOWN_OPTIONAL_URLS` (the exact union of
+  `OFFLINE_FEATURES[*].urls` kept in sync by a test); arbitrary same-origin
+  URLs and `blob:`/`data:`/`file:` URLs are rejected. `assets/js/ui/offline-settings.js`
+  sends that same engine version, so a shell update in the middle of a download
+  cannot cancel it with a version mismatch.
+- **Optional cache reuse** — before any network request the worker looks up the
+  URL in the engine cache. An entry is reused only if the response is `ok` and
+  carries `X-MeInsert-Engine-Version: <ENGINE_VERSION>`; otherwise it is
+  re-fetched and replaced. A `Map<url, Promise>` deduplicates concurrent
+  fetches of the same URL, an `AbortController` per job implements cancel, and
+  entries whose declared `Content-Length` exceeds 96 MiB are refused. Progress
+  replies include `bytes`/`totalBytes` when the length is known; `!ok` responses
+  are never cached. A second install of unchanged assets therefore transfers
+  zero bytes.
+- **UI states** — the settings panel tracks `queued`, `downloading`, `cached`,
+  `failed` and `cancelled` per `jobId`. Messages from any other job (including
+  a previous dialog session or after `pagehide`) are ignored. There is no
+  30-second total deadline: only a 60-second inactivity timer, reset by every
+  entry/byte progress message, stops a stalled job. Retry and cancel controls
+  are available for terminal states.
 - **Version probe** — a `GET_VERSION` message is answered with `VERSION`, the
   current shell `CACHE_VERSION` and the current `engineVersion`.
   `core/pwa.js#probeActiveWorker` compares `version` to `CURRENT_VERSION`
@@ -208,9 +239,17 @@ caches**:
 `SHARED_SHELL_URLS` in `core/format-capabilities.js` lists the small set of
 modules (worker RPC, `errors`, `tag-utils`, `image-utils`, `integrity-rules`)
 that every optional engine imports at startup. `tests/unit/offline-manifest.test.js`
-walks the static import graph from every feature entry and asserts the closure
-is fully covered by that shared set or the feature's own `urls`, that every URL
-exists on disk, and that no vendored/WASM asset leaked into the shell.
+walks the **static and dynamic** import graph from every feature entry — including
+`import('...')` with either quote style, re-exports and `new Worker(new URL(...))`
+— and asserts the closure is fully covered by that shared set or the feature's
+own `urls`, that every URL exists on disk, and that no vendored/WASM asset
+leaked into the shell. Assets reached only at runtime through a `fetch()` or a
+computed URL (the ID3 writer, `engines/exiftool.js`, the ExifTool WASM) are
+declared explicitly; tests fail if a declared dependency is removed from a URL
+list, and an in-memory graph verifies nested dynamic imports are followed
+transitively. This is why `browser-id3-writer.mjs` belongs to the audio feature,
+`engines/exiftool.js` and `mediabunny.mjs` to the image/video feature, and
+`office-xml.js`/`office-package.js` to the office feature and the shell.
 
 Bump `CACHE_VERSION` (`sw.js`) and `CURRENT_VERSION` (`assets/js/core/build.js`)
 together for shell changes. `ENGINE_VERSION` changes only when the optional

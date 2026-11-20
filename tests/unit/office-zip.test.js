@@ -92,7 +92,7 @@ test('patchZip preserves every untouched entry byte-for-byte', async () => {
   assert.equal(inspected.valid, true);
   assert.equal(textOf(inspected, 'docProps/core.xml'), '<cp:coreProperties><dc:title>Baru</dc:title></cp:coreProperties>');
   assert.equal(textOf(inspected, 'word/document.xml'), '<w:document><w:body/></w:document>');
-  assert.equal(textOf(inspected, 'word/styles.xml'), '<w:styles/>');
+  assert.equal(textOf(inspected, 'word/styles.xml'), '');
 });
 test('patchZip re-emits changed entries with the original compression method', async () => {
   const before = makeZip(BASE);

@@ -56,6 +56,7 @@ export const OFFLINE_FEATURES = [
       './assets/js/formats/vorbis-common.js',
       './assets/js/formats/vorbis-pictures.js',
       './assets/js/core/ogg-comment.js',
+      './assets/vendor/browser-id3-writer.mjs',
     ],
   },
   {
@@ -68,6 +69,9 @@ export const OFFLINE_FEATURES = [
       './assets/js/workers/exiftool.worker.js',
       './assets/js/formats/image.js',
       './assets/js/formats/mp4.js',
+      // Dynamic imports from image.js / mp4.js + the WASM fetched by index.js.
+      './assets/js/engines/exiftool.js',
+      './assets/vendor/mediabunny.mjs',
     ],
   },
   {
@@ -86,6 +90,8 @@ export const OFFLINE_FEATURES = [
       './assets/js/core/zip-directory.js',
       './assets/js/workers/office.worker.js',
       './assets/js/formats/office.js',
+      './assets/js/core/office-xml.js',
+      './assets/js/core/office-package.js',
     ],
   },
 ];

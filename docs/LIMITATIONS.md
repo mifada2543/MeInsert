@@ -58,16 +58,35 @@ per-file result.
   `.pptm`) keep their macro parts best-effort; running macros is the reader's
   responsibility and is never executed by MeInsert. **Encrypted Office files
   are rejected**, as are legacy binary formats (`.doc`, `.xls`, `.ppt`); only
-  the ZIP-based OOXML/ODF subtypes above are supported. Writes rewrite only the
-  metadata parts (`docProps/core.xml`, `docProps/app.xml`, `meta.xml`); a
-  SHA-256 ZIP-entry check verifies that every other entry is byte-identical,
-  and a failed check is surfaced as a `failed` integrity result.
+  the ZIP-based OOXML/ODF subtypes above are supported. Before any read or
+  write MeInsert validates package semantics: OOXML content types, root
+  relationships, and the main document part resolved from its relationship must
+  agree (Transitional and Strict namespaces are recognised); ODF validates the
+  manifest, `mimetype`, and `content.xml`. This is **structural and XML
+  validation, not full Office schema conformance** — a package can still fail
+  to open in a specific Office version for reasons MeInsert does not model.
+  Metadata XML is parsed namespace-aware, so arbitrary valid prefixes and
+  default namespaces work without creating unbound prefixes. Writes rewrite
+  only the metadata parts (`docProps/core.xml`, `docProps/app.xml`, `meta.xml`,
+  `docProps/custom.xml`); a SHA-256 ZIP-entry check verifies that every other
+  entry is byte-identical, and a failed check is surfaced as a `failed`
+  integrity result.
 - **Office preview** — the card shown for Office files is a summary of the
   metadata already read (title, creator, available counts, signature/macro
   status), plus an optional bounded text excerpt (up to ~280 characters from
   the first paragraphs, sheet names, or first slide). It is deliberately
   **not** a full-fidelity rendering of the document pages; use a document
   reader if you need to inspect the contents.
+- **ZIP detection and decompression bounds** — detection never loads a whole
+  Office file: it reads only the EOCD tail (≤65,557 bytes), the central
+  directory (≤8 MiB) plus a small prefix window, and the stored `mimetype`
+  local record. During inspection only known metadata/preview parts are
+  inflated, each capped at 2 MiB; a larger preview part is reported as a
+  finding with empty data rather than an error, and media/other entries are
+  never decompressed. Duplicate names (after `./`, `\`, and percent-decode
+  normalization), path traversal/absolute paths, overlapping local or central
+  ranges, inconsistent EOCD counts, and malformed deflate/CRC are rejected.
+  ZIP64 archives are not classified during detection and cannot be written.
 - **PNG / WebP** — camera fields are written as XMP (`XMP-tiff:Make/Model`,
   `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), not binary EXIF; EXIF-only
   readers may not show them.

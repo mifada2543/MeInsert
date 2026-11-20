@@ -55,6 +55,10 @@ no build step and already ships the vendored files. See
 | `npm run test:clean` / `npm run test:clean:batch` | Metadata cleaning, single and batch. |
 | `npm run test:policy` | One-time policy acknowledgment notice. |
 | `npm run test:office` | OOXML/ODF support and byte-preservation. |
+| `npm run test:offline:real` | Offline Service Worker scenarios with real request/cache measurement (Chrome). |
+| `npm run test:audit` | Portable 24-case audit harness (roundtrip, namespace, ZIP, integrity). |
+| `npm run test:independent:office` | Independent Office validation: XML parse + optional `xmllint`/LibreOffice; artefacts in an OS temp dir. |
+| `npm run test:independent:audio` | Independent FFmpeg/FFprobe audio verification (skipped explicitly when tools are absent). |
 | `npm run test:compat` | Real-file compatibility harness (Chrome, FFmpeg/ffprobe, OpenSSL). |
 | `npm run fixtures:generate` | Regenerate optional compatibility fixtures. |
 

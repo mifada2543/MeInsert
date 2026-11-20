@@ -148,7 +148,11 @@ test('offline e2e: suite SW nyata mengukur request dan Cache Storage', async () 
   assert.match(source, /caches\.keys\(\)/, 'Cache Storage must be inspected directly');
   assert.match(source, /blob:/, 'object URLs in Cache Storage must be rejected');
   assert.match(source, /SKIP:/, 'infeasible scenarios must be reported as SKIP, not PASS');
-  for (const marker of ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)']) {
+  for (const marker of ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(i)', '(j)']) {
     assert.ok(source.includes(marker), `offline scenario ${marker} must be covered`);
   }
+  assert.match(source, /transferredBytes\(/, 'the real SW suite must report measured transferred bytes');
+  assert.match(source, /secondBytes, 0/, 'the second install must be asserted at zero transferred bytes');
+  assert.match(source, /CANCEL_OPTIONAL/, 'the cancel scenario must exercise the worker cancellation path');
+  assert.match(source, /invalid_urls/, 'the worker must be probed with rejected payloads');
 });

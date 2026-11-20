@@ -5,6 +5,24 @@ import { deflateSync, inflateSync, strFromU8, strToU8 } from '../../vendor/fflat
 import { AppError } from './errors.js';
 import { readZipDirectory, ZIP_LIMITS } from './zip-directory.js';
 export const OFFICE_METADATA_PARTS = ['docProps/core.xml', 'docProps/app.xml', 'meta.xml'];
+export const OFFICE_READ_ENTRIES = Object.freeze(new Set([
+  '[Content_Types].xml',
+  '_rels/.rels',
+  'docProps/core.xml',
+  'docProps/app.xml',
+  'docProps/custom.xml',
+  'meta.xml',
+  'META-INF/manifest.xml',
+  'mimetype',
+  'word/document.xml',
+  'xl/workbook.xml',
+  'xl/_rels/workbook.xml.rels',
+  'ppt/presentation.xml',
+  'xl/sharedStrings.xml',
+  'ppt/slides/slide1.xml',
+  'content.xml',
+]));
+export const OFFICE_PREVIEW_LIMITS = Object.freeze({ maxPreviewEntry: 2 * 1024 * 1024 });
 const SIG_LOCAL = 0x04034b50;
 const SIG_CENTRAL = 0x02014b50;
 const SIG_EOCD = 0x06054b50;
@@ -57,16 +75,13 @@ export function crc32(data) {
   for (let i = 0; i < data.length; i += 1) c = CRC_TABLE[(c ^ data[i]) & 0xff] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
-
-/**
- * Parse the ZIP central directory and local headers. Untouched entries keep a
- * verbatim slice of their local record; changed entries are re-emitted by patchZip.
- * When `inflate` is false, no entry payload is decompressed (bounded memory).
- * Structural validation and ZIP-bomb limits live in readZipDirectory.
- */
-function parseZip(bytes, inflate = true) {
+function parseZip(bytes, inflate = true, options = {}) {
   const zip = readZipDirectory(bytes);
+  const { inflateAll = false } = options || {};
+  const cap = inflateAll ? ZIP_LIMITS.maxUncompressedEntry : OFFICE_PREVIEW_LIMITS.maxPreviewEntry;
   const entries = [];
+  const findings = [];
+  const skipped = [];
   let valid = true;
   let inflatedTotal = 0;
   for (const meta of zip.entries) {
@@ -77,29 +92,43 @@ function parseZip(bytes, inflate = true) {
       compressedData, extraBytes, commentBytes, centralBytes, centralEnd,
     } = meta;
     let data = new Uint8Array(0);
-    if (inflate) {
-      // Refuse suspicious payloads before asking the decompressor to allocate.
-      if (uncompressedSize > ZIP_LIMITS.maxUncompressedEntry
-          || uncompressedSize / Math.max(1, compressedSize) > ZIP_LIMITS.maxDeflateRatio) {
-        throw zipBomb(`Entri "${name}" memiliki ukuran/rasio kompresi mencurigakan.`);
-      }
-      inflatedTotal += uncompressedSize;
-      if (inflatedTotal > ZIP_LIMITS.maxUncompressedTotal) {
-        throw zipBomb('Total ukuran hasil dekompresi melebihi batas yang diizinkan.');
-      }
-      try {
-        if (method === 0) data = compressedData.slice();
-        else if (method === 8) data = inflateSync(compressedData);
-        else {
-          throw new AppError(
-            'UNSUPPORTED_COMPRESSION',
-            `Metode kompresi ZIP ${method} tidak didukung.`,
-          );
+    if (inflate && (inflateAll || OFFICE_READ_ENTRIES.has(name))) {
+      if (uncompressedSize > cap) {
+        skipped.push(`Entri "${name}" (${uncompressedSize} byte) melebihi batas pratinjau ${cap} byte; isi tidak dibaca.`);
+      } else {
+        if (uncompressedSize > ZIP_LIMITS.maxUncompressedEntry
+            || uncompressedSize / Math.max(1, compressedSize) > ZIP_LIMITS.maxDeflateRatio) {
+          throw zipBomb(`Entri "${name}" memiliki ukuran/rasio kompresi mencurigakan.`);
         }
-        if (crc32(data) !== crc || data.length !== uncompressedSize) valid = false;
-      } catch (error) {
-        if (error instanceof AppError && error.code === 'UNSUPPORTED_COMPRESSION') throw error;
-        valid = false;
+        inflatedTotal += uncompressedSize;
+        if (inflatedTotal > ZIP_LIMITS.maxUncompressedTotal) {
+          throw zipBomb('Total ukuran hasil dekompresi melebihi batas yang diizinkan.');
+        }
+        const out = new Uint8Array(Math.min(uncompressedSize + 1, cap));
+        let raw;
+        try {
+          if (method === 0) raw = compressedData.slice(0, out.length);
+          else if (method === 8) raw = inflateSync(compressedData, { out });
+          else {
+            throw new AppError(
+              'UNSUPPORTED_COMPRESSION',
+              `Metode kompresi ZIP ${method} tidak didukung.`,
+            );
+          }
+        } catch (error) {
+          if (error instanceof AppError && error.code === 'UNSUPPORTED_COMPRESSION') throw error;
+          throw badZip(`Entri "${name}" gagal didekompresi: ${error?.message || String(error)}`);
+        }
+        if (raw.length > uncompressedSize) {
+          if (method === 8) {
+            throw zipBomb(`Dekompresi entri "${name}" melebihi ukuran yang dinyatakan.`);
+          }
+          throw badZip(`Ukuran data entri "${name}" tidak sesuai.`);
+        }
+        if (raw.length !== uncompressedSize || crc32(raw) !== crc) {
+          throw badZip(`CRC atau ukuran entri "${name}" tidak sesuai.`);
+        }
+        data = raw;
       }
     }
     const localFlags = readU16(bytes, meta.localOffsetAbs + 6);
@@ -133,6 +162,8 @@ function parseZip(bytes, inflate = true) {
   return {
     bytes,
     entries,
+    findings,
+    skipped,
     eocd: zip.eocd,
     prefix: zip.prefix,
     zip64: zip.zip64,
@@ -141,7 +172,6 @@ function parseZip(bytes, inflate = true) {
     valid,
   };
 }
-
 export async function inspectZip(fileOrBytes) {
   const bytes = await toBytes(fileOrBytes);
   const zip = parseZip(bytes, true);
@@ -157,10 +187,8 @@ export async function inspectZip(fileOrBytes) {
     const contentTypes = zip.entries.find((entry) => entry.name === '[Content_Types].xml');
     if (contentTypes) macros = /macroenabled/i.test(strFromU8(contentTypes.data));
   }
-
-  // Package-structure validation is separate from CRC/header validity: a ZIP
-  // can be perfectly well-formed yet not be an Office package at all.
-  const findings = [];
+  const previewSkipped = [...(zip.skipped || [])];
+  const findings = [...previewSkipped];
   if (odf) {
     if (zip.entries[0]?.name !== 'mimetype') {
       findings.push('ODF: entri mimetype bukan entri pertama.');
@@ -184,7 +212,6 @@ export async function inspectZip(fileOrBytes) {
   }
   if (!zip.valid) findings.push('Arsip memiliki ketidaksesuaian header/CRC pada salah satu entri.');
   const packageValid = findings.length === 0;
-
   return {
     entries: zip.entries.map((entry) => ({
       name: entry.name,
@@ -202,11 +229,11 @@ export async function inspectZip(fileOrBytes) {
     valid: zip.valid,
     packageValid,
     findings,
+    previewSkipped,
     prefix: zip.prefix,
     zip64: zip.zip64,
   };
 }
-
 function buildLocalHeader(entry, method, flags, compressedSize, uncompressedSize, crc) {
   const extra = entry.extraBytes || new Uint8Array(0);
   const header = new Uint8Array(30 + entry.nameBytes.length + extra.length);
@@ -225,7 +252,6 @@ function buildLocalHeader(entry, method, flags, compressedSize, uncompressedSize
   header.set(extra, 30 + entry.nameBytes.length);
   return header;
 }
-
 function buildCentralHeader(entry, method, flags, compressedSize, uncompressedSize, crc, offset) {
   const nameBytes = entry.nameBytes;
   const extra = entry.extraBytes || new Uint8Array(0);
@@ -253,12 +279,6 @@ function buildCentralHeader(entry, method, flags, compressedSize, uncompressedSi
   header.set(comment, 46 + nameBytes.length + extra.length);
   return header;
 }
-
-/**
- * Targeted ZIP patch: copy every untouched local record verbatim, re-emit only
- * replaced entries, and fix local-header offsets in the central directory.
- * `replacements` is a Map<name, Uint8Array|null>; null removes the entry.
- */
 export async function patchZip(original, replacements) {
   const bytes = await toBytes(original);
   const zip = parseZip(bytes, false);
@@ -268,7 +288,6 @@ export async function patchZip(original, replacements) {
   const repl = replacements instanceof Map
     ? replacements
     : new Map(Object.entries(replacements || {}));
-
   const mimetypeIndex = zip.entries.findIndex((entry) => entry.name === 'mimetype');
   const odf = mimetypeIndex >= 0;
   if (odf) {
@@ -282,11 +301,9 @@ export async function patchZip(original, replacements) {
       throw new AppError('ODF_MIMETYPE_LAYOUT', 'Entri mimetype ODF tidak boleh diubah atau dihapus.');
     }
   }
-
   const chunks = [];
   const central = [];
   let offset = 0;
-
   for (const entry of zip.entries) {
     if (!repl.has(entry.name)) {
       chunks.push(entry.localBytes);
@@ -297,7 +314,7 @@ export async function patchZip(original, replacements) {
       continue;
     }
     const value = repl.get(entry.name);
-    if (value === null) continue; // deleted entry
+    if (value === null) continue;
     const data = toU8(value);
     const method = entry.method;
     if (method !== 0 && method !== 8) {
@@ -305,7 +322,7 @@ export async function patchZip(original, replacements) {
     }
     const compressed = method === 0 ? data : deflateSync(data);
     const crc = crc32(data);
-    const flags = entry.flags & ~8; // sizes live in the header; no data descriptor
+    const flags = entry.flags & ~8;
     const local = buildLocalHeader(entry, method, flags, compressed.length, data.length, crc);
     chunks.push(local, compressed);
     const cd = entry.centralBytes.slice();
@@ -318,7 +335,6 @@ export async function patchZip(original, replacements) {
     central.push(cd);
     offset += local.length + compressed.length;
   }
-
   const existing = new Set(zip.entries.map((entry) => entry.name));
   for (const [name, value] of repl) {
     if (value === null || existing.has(name)) continue;
@@ -345,7 +361,6 @@ export async function patchZip(original, replacements) {
     central.push(buildCentralHeader(entry, 0, flags, data.length, data.length, crc, offset));
     offset += local.length + data.length;
   }
-
   const cdOffset = offset;
   let cdSize = 0;
   for (const cd of central) {
@@ -362,7 +377,6 @@ export async function patchZip(original, replacements) {
   writeU32(eocd, 12, cdSize);
   writeU32(eocd, 16, cdOffset);
   chunks.push(eocd);
-
   const out = new Uint8Array(cdOffset + cdSize + 22);
   let pos = 0;
   for (const chunk of chunks) {
@@ -374,15 +388,13 @@ export async function patchZip(original, replacements) {
     : 'application/octet-stream';
   return new Blob([out], { type });
 }
-
 export async function hashZipEntries(bytes) {
   const data = await toBytes(bytes);
-  const zip = parseZip(data, true);
+  const zip = parseZip(data, true, { inflateAll: true });
   const map = new Map();
   for (const entry of zip.entries) map.set(entry.name, await sha256Hex(entry.data));
   return map;
 }
-
 async function sha256Hex(data) {
   const digest = await crypto.subtle.digest('SHA-256', data);
   const view = new Uint8Array(digest);
@@ -390,38 +402,27 @@ async function sha256Hex(data) {
   for (const byte of view) out += byte.toString(16).padStart(2, '0');
   return out;
 }
-
 function sameBytes(a, b) {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
   return true;
 }
-
 function centralIdentity(entry) {
   const copy = entry.centralBytes.slice();
   writeU32(copy, 42, 0); // the local-header offset is expected to move
   return copy;
 }
-
-/**
- * Prove that every entry outside `allowedNames` is byte-identical: same order,
- * same local record (header, flags, method, CRC, sizes, compressed bytes) and
- * the same central-directory metadata apart from the relocated offset.
- */
 export async function verifyZipPreserved(beforeBytes, afterBytes, allowedNames) {
   const before = parseZip(await toBytes(beforeBytes), false);
   const after = parseZip(await toBytes(afterBytes), false);
   const allowed = allowedNames instanceof Set ? allowedNames : new Set(allowedNames || []);
-
   const beforeEntries = before.entries.filter((entry) => !allowed.has(entry.name));
   const afterEntries = after.entries.filter((entry) => !allowed.has(entry.name));
   const changed = [];
-
   const counts = new Map();
   for (const entry of beforeEntries) counts.set(entry.name, (counts.get(entry.name) || 0) + 1);
   for (const entry of afterEntries) counts.set(entry.name, (counts.get(entry.name) || 0) - 1);
   for (const [name, delta] of counts) if (delta !== 0) changed.push(name);
-
   if (beforeEntries.length === afterEntries.length) {
     for (let i = 0; i < beforeEntries.length; i += 1) {
       const a = beforeEntries[i];

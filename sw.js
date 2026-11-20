@@ -48,6 +48,8 @@ const SHELL_URLS = [
   './assets/js/core/metadata-snapshot.js',
   './assets/js/core/offline-manifest.js',
   './assets/js/core/office-zip.js',
+  './assets/js/core/office-xml.js',
+  './assets/js/core/office-package.js',
   './assets/js/core/zip-directory.js',
   './assets/js/core/privacy-categories.js',
   './assets/js/core/pwa.js',
@@ -109,6 +111,38 @@ const SHELL_URLS = [
   './assets/img/favicon-64.png',
   './assets/img/logo-96.png',
 ];
+// Exact union of OFFLINE_FEATURES[*].urls in core/format-capabilities.js. The
+// worker is a classic script, so it cannot import that module; the manifest test
+// compares this list against the module and fails if they drift apart. Messages
+// may only name URLs from this list — never an arbitrary same-origin URL.
+const KNOWN_OPTIONAL_URLS = Object.freeze([
+  './assets/vendor/mediabunny.mjs',
+  './assets/js/workers/media.worker.js',
+  './assets/js/formats/mp3.js',
+  './assets/js/formats/flac.js',
+  './assets/js/formats/ogg.js',
+  './assets/js/formats/mkv.js',
+  './assets/js/formats/vorbis-common.js',
+  './assets/js/formats/vorbis-pictures.js',
+  './assets/js/core/ogg-comment.js',
+  './assets/vendor/browser-id3-writer.mjs',
+  './assets/vendor/exiftool-wasm/index.js',
+  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm',
+  './assets/js/workers/exiftool.worker.js',
+  './assets/js/formats/image.js',
+  './assets/js/formats/mp4.js',
+  './assets/js/engines/exiftool.js',
+  './assets/vendor/pdf-lib.esm.js',
+  './assets/js/workers/pdf.worker.js',
+  './assets/js/formats/pdf.js',
+  './assets/vendor/fflate.mjs',
+  './assets/js/core/office-zip.js',
+  './assets/js/core/zip-directory.js',
+  './assets/js/workers/office.worker.js',
+  './assets/js/formats/office.js',
+  './assets/js/core/office-xml.js',
+  './assets/js/core/office-package.js',
+]);
 let cachedShellPaths = null;
 function shellPathSet() {
   if (!cachedShellPaths) {
@@ -226,38 +260,146 @@ function replyTo(event, message) {
   if (event.ports?.[0]) event.ports[0].postMessage(message);
   else event.source?.postMessage(message);
 }
+const KNOWN_MESSAGE_TYPES = new Set([
+  'SKIP_WAITING', 'GET_VERSION', 'CACHE_OPTIONAL', 'CLEAR_OPTIONAL', 'OPTIONAL_STATUS', 'CANCEL_OPTIONAL',
+]);
+const ENGINE_HEADER = 'x-meinsert-engine-version';
+const JOB_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const MAX_OPTIONAL_URLS = 128;
+const MAX_OPTIONAL_BYTES = 96 * 1024 * 1024;
+let cachedOptionalPaths = null;
+function optionalPathSet() {
+  if (!cachedOptionalPaths) {
+    cachedOptionalPaths = new Set(KNOWN_OPTIONAL_URLS.map((path) => {
+      try { return new URL(path, self.registration.scope).pathname; } catch { return null; }
+    }).filter(Boolean));
+  }
+  return cachedOptionalPaths;
+}
+function validJobId(value) {
+  return typeof value === 'string' && JOB_ID_PATTERN.test(value);
+}
+function validVersion(value) {
+  return value === undefined || value === ENGINE_VERSION;
+}
+function failJob(event, error, jobId = '') {
+  replyTo(event, { type: 'OPTIONAL_ERROR', jobId, error, version: ENGINE_VERSION });
+}
+const pendingFetches = new Map();
+const activeJobs = new Map();
+async function cachedOptionalResponse(cache, absolute) {
+  try {
+    const response = await cache.match(absolute);
+    if (response && response.ok && response.headers.get(ENGINE_HEADER) === ENGINE_VERSION) return response;
+  } catch { /* a corrupt cache entry must trigger a fresh fetch */ }
+  return null;
+}
+async function fetchAndStore(cache, absolute, signal) {
+  if (pendingFetches.has(absolute)) return pendingFetches.get(absolute);
+  const task = (async () => {
+    const response = await fetch(absolute, { cache: 'reload', credentials: 'same-origin', signal });
+    if (!response || !response.ok) throw new Error('optional asset download failed');
+    const declared = Number(response.headers.get('content-length')) || 0;
+    if (declared > MAX_OPTIONAL_BYTES) throw new Error('optional asset exceeds the size limit');
+    const headers = new Headers(response.headers);
+    headers.set(ENGINE_HEADER, ENGINE_VERSION);
+    const store = new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+    await cache.put(absolute, store);
+    return declared;
+  })();
+  pendingFetches.set(absolute, task);
+  try {
+    return await task;
+  } finally {
+    pendingFetches.delete(absolute);
+  }
+}
 async function cacheOptional(event) {
-  const requested = Array.isArray(event.data?.urls) ? event.data.urls : [];
-  const total = requested.length;
-  if (event.data?.version && event.data.version !== ENGINE_VERSION) {
-    replyTo(event, { type: 'OPTIONAL_DONE', cached: 0, failed: total, total, version: ENGINE_VERSION, error: 'version' });
+  const payload = event.data || {};
+  const jobId = payload.jobId;
+  if (!validJobId(jobId)) {
+    failJob(event, 'invalid_job', typeof jobId === 'string' ? jobId.slice(0, 64) : '');
     return;
   }
-  replyTo(event, { type: 'OPTIONAL_START', cached: 0, failed: 0, total, version: ENGINE_VERSION });
+  if (!validVersion(payload.version)) {
+    failJob(event, 'version', jobId);
+    return;
+  }
+  const requested = Array.isArray(payload.urls) ? payload.urls : [];
+  if (requested.length < 1 || requested.length > MAX_OPTIONAL_URLS) {
+    failJob(event, 'invalid_urls', jobId);
+    return;
+  }
+  const urls = [];
+  for (const raw of requested) {
+    let absolute = null;
+    if (typeof raw === 'string' && raw.length <= 512 && !/^(blob|data|file|filesystem|javascript):/i.test(raw.trim())) {
+      try {
+        const url = new URL(raw, self.registration.scope);
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+          if (url.origin === self.location.origin && optionalPathSet().has(url.pathname)) absolute = url.href;
+        }
+      } catch { /* invalid URL — reject the whole job */ }
+    }
+    if (!absolute) {
+      failJob(event, 'invalid_urls', jobId);
+      return;
+    }
+    urls.push(absolute);
+  }
+  replyTo(event, {
+    type: 'OPTIONAL_START', jobId, cached: 0, failed: 0, total: urls.length, version: ENGINE_VERSION,
+  });
+  const controller = new AbortController();
+  activeJobs.set(jobId, controller);
   const cache = await caches.open(ENGINE_VERSION);
   let cached = 0;
   let failed = 0;
-  for (const raw of requested) {
-    let absolute = null;
-    try {
-      const url = new URL(raw, self.registration.scope);
-      if (url.origin === self.location.origin) absolute = url.href;
-    } catch { /* invalid URL — treat as a failure */ }
-    let ok = false;
-    if (absolute) {
+  let bytes = 0;
+  try {
+    for (const absolute of urls) {
+      if (controller.signal.aborted) break;
+      let ok = false;
+      let used = 0;
       try {
-        const response = await fetch(absolute, { cache: 'reload', credentials: 'same-origin' });
-        if (response && response.ok) {
-          await cache.put(absolute, response);
+        if (await cachedOptionalResponse(cache, absolute)) {
+          ok = true;
+        } else {
+          used = await fetchAndStore(cache, absolute, controller.signal);
+          bytes += used;
           ok = true;
         }
-      } catch { /* network error or quota exceeded */ }
+      } catch {
+        if (controller.signal.aborted) break;
+      }
+      if (ok) cached += 1;
+      else failed += 1;
+      replyTo(event, {
+        type: 'OPTIONAL_PROGRESS', jobId, url: absolute, ok, cached, failed,
+        total: urls.length, bytes: used, totalBytes: bytes, version: ENGINE_VERSION,
+      });
     }
-    if (ok) cached += 1;
-    else failed += 1;
-    replyTo(event, { type: 'OPTIONAL_PROGRESS', url: raw, ok, cached, failed, total, version: ENGINE_VERSION });
+  } finally {
+    activeJobs.delete(jobId);
+    replyTo(event, {
+      type: 'OPTIONAL_DONE', jobId, cached, failed, total: urls.length, bytes,
+      cancelled: controller.signal.aborted, version: ENGINE_VERSION,
+    });
   }
-  replyTo(event, { type: 'OPTIONAL_DONE', cached, failed, total, version: ENGINE_VERSION });
+}
+function cancelOptional(event) {
+  const jobId = event.data?.jobId;
+  if (!validJobId(jobId)) {
+    failJob(event, 'invalid_job', typeof jobId === 'string' ? jobId.slice(0, 64) : '');
+    return;
+  }
+  const controller = activeJobs.get(jobId);
+  if (controller) controller.abort();
+  replyTo(event, { type: 'OPTIONAL_CANCELLED', jobId, version: ENGINE_VERSION });
 }
 async function clearOptional(event) {
   const cache = await caches.open(ENGINE_VERSION);
@@ -269,19 +411,34 @@ async function clearOptional(event) {
 }
 async function optionalStatus(event) {
   const cache = await caches.open(ENGINE_VERSION);
+  const allowed = optionalPathSet();
   const urls = (await cache.keys())
     .map((request) => request.url)
-    .filter((href) => isSameOrigin(href));
+    .filter((href) => {
+      try { return isSameOrigin(href) && allowed.has(new URL(href).pathname); } catch { return false; }
+    });
   replyTo(event, { type: 'OPTIONAL_STATUS_RESULT', urls, cached: urls.length, failed: 0, version: ENGINE_VERSION });
 }
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
-  if (event.data?.type === 'GET_VERSION') {
-    const reply = { type: 'VERSION', version: CACHE_VERSION, engineVersion: ENGINE_VERSION };
-    if (event.ports?.[0]) event.ports[0].postMessage(reply);
-    else event.source?.postMessage(reply);
+  const type = event.data?.type;
+  if (!KNOWN_MESSAGE_TYPES.has(type)) {
+    failJob(event, 'unknown_type', validJobId(event.data?.jobId) ? event.data.jobId : '');
+    return;
   }
-  if (event.data?.type === 'CACHE_OPTIONAL') event.waitUntil(cacheOptional(event));
-  else if (event.data?.type === 'CLEAR_OPTIONAL') event.waitUntil(clearOptional(event));
-  else if (event.data?.type === 'OPTIONAL_STATUS') event.waitUntil(optionalStatus(event));
+  if (type === 'SKIP_WAITING') {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+  if (type === 'GET_VERSION') {
+    replyTo(event, { type: 'VERSION', version: CACHE_VERSION, engineVersion: ENGINE_VERSION });
+    return;
+  }
+  if (event.data?.version !== undefined && event.data.version !== ENGINE_VERSION) {
+    failJob(event, 'version', validJobId(event.data?.jobId) ? event.data.jobId : '');
+    return;
+  }
+  if (type === 'CACHE_OPTIONAL') event.waitUntil(cacheOptional(event));
+  else if (type === 'CLEAR_OPTIONAL') event.waitUntil(clearOptional(event));
+  else if (type === 'OPTIONAL_STATUS') event.waitUntil(optionalStatus(event));
+  else if (type === 'CANCEL_OPTIONAL') cancelOptional(event);
 });

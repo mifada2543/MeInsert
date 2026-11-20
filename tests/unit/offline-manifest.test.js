@@ -15,6 +15,11 @@ import {
   setProfile,
 } from '../../assets/js/core/offline-manifest.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const EXPLICIT_OFFLINE_ASSETS = [
+  './assets/js/engines/exiftool.js',
+  './assets/vendor/browser-id3-writer.mjs',
+  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm',
+];
 function toDiskPath(url) {
   return url.replace(/^\.\//, '');
 }
@@ -38,11 +43,59 @@ async function shellUrls() {
 function resolveImport(fromDiskPath, specifier) {
   return relative(root, resolve(dirname(join(root, fromDiskPath)), specifier)).split(sep).join('/');
 }
-function staticImports(source) {
-  return [
-    ...source.matchAll(/\bfrom\s+'([^']+)'/g),
-    ...source.matchAll(/\bimport\s+'([^']+)'/g),
-  ].map((match) => match[1]).filter((specifier) => specifier.startsWith('.'));
+function moduleSpecifiers(source) {
+  const patterns = [
+    /\bfrom\s*(['"])([^'"]+)\1/g,
+    /\bimport\s*(['"])([^'"]+)\1/g,
+    /\bimport\s*\(\s*(['"])([^'"]+)\1\s*\)/g,
+    /\bnew\s+Worker\s*\(\s*new\s+URL\s*\(\s*(['"])([^'"]+)\1/g,
+    /\bnew\s+URL\s*\(\s*(['"])([^'"]+)\1\s*,\s*import\.meta\.url\s*\)/g,
+  ];
+  const found = [];
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) found.push(match[2]);
+  }
+  return [...new Set(found)].filter((specifier) => specifier.startsWith('.'));
+}
+function isVendored(diskPath) {
+  return /\/vendor\//.test(diskPath) || /\.wasm$/i.test(diskPath);
+}
+const diskReadSource = async (diskPath) => {
+  try { return await read(diskPath); } catch { return null; }
+};
+async function checkClosure({ features, shell, shared, readSource, fileExists }) {
+  const problems = [];
+  for (const feature of features) {
+    const own = new Set(feature.urls);
+    const queue = [...feature.urls];
+    const seen = new Set();
+    while (queue.length) {
+      const url = queue.shift();
+      if (seen.has(url)) continue;
+      seen.add(url);
+      const disk = toDiskPath(url);
+      if (isVendored(disk)) continue;
+      const source = await readSource(disk);
+      if (source === null) {
+        problems.push(`${url} is unreadable`);
+        continue;
+      }
+      for (const specifier of moduleSpecifiers(source)) {
+        const targetDisk = resolveImport(disk, specifier);
+        const targetUrl = `./${targetDisk}`;
+        if (!(await fileExists(targetDisk))) {
+          problems.push(`${url} → ${specifier} (target does not exist)`);
+          continue;
+        }
+        if (own.has(targetUrl) || shell.has(targetUrl) || shared.has(targetUrl)) {
+          if (!shell.has(targetUrl) && !shared.has(targetUrl)) queue.push(targetUrl);
+        } else {
+          problems.push(`${url} → ${specifier} (not in ${feature.id} URLs or the shell)`);
+        }
+      }
+    }
+  }
+  return problems;
 }
 function memoryStorage() {
   const values = new Map();
@@ -95,41 +148,110 @@ test('worker entry points are part of the precached shell', async () => {
     .filter((url) => !shell.has(url));
   assert.deepEqual(missing, [], `Workers must be in the shell so engines can start offline: ${missing.join(', ')}`);
 });
-test('static import closure of every optional engine is available offline', async () => {
-  const shell = await shellUrls();
-  const shared = new Set(SHARED_SHELL_URLS);
-  for (const feature of OFFLINE_FEATURES) {
-    const own = new Set(feature.urls);
-    const queue = [...feature.urls];
-    const seen = new Set();
-    const problems = [];
-    while (queue.length) {
-      const url = queue.shift();
-      if (seen.has(url)) continue;
-      seen.add(url);
-      const disk = toDiskPath(url);
-      if (/\/vendor\//.test(disk) || /\.wasm$/i.test(disk)) continue;
-      let source;
-      try {
-        source = await read(disk);
-      } catch {
-        problems.push(`${url} is unreadable`);
-        continue;
-      }
-      for (const specifier of staticImports(source)) {
-        const targetDisk = resolveImport(disk, specifier);
-        const targetUrl = `./${targetDisk}`;
-        if (!(await exists(targetDisk))) {
-          problems.push(`${url} → ${specifier} (target does not exist)`);
-          continue;
-        }
-        if (own.has(targetUrl) || shell.has(targetUrl) || shared.has(targetUrl)) {
-          if (!shell.has(targetUrl) && !shared.has(targetUrl)) queue.push(targetUrl);
-        } else {
-          problems.push(`${url} → ${specifier} (not in ${feature.id} URLs or the shell)`);
-        }
-      }
-    }
-    assert.deepEqual(problems, [], `${feature.id} offline dependency closure is incomplete: ${problems.join(', ')}`);
+test('static + dynamic import closure of every optional engine is available offline', async () => {
+  const problems = await checkClosure({
+    features: OFFLINE_FEATURES,
+    shell: await shellUrls(),
+    shared: new Set(SHARED_SHELL_URLS),
+    readSource: diskReadSource,
+    fileExists: exists,
+  });
+  assert.deepEqual(problems, [], `offline dependency closure is incomplete: ${problems.join(', ')}`);
+});
+test('runtime-only assets are declared explicitly and exist on disk', async () => {
+  const declared = new Set(OFFLINE_FEATURES.flatMap((feature) => feature.urls));
+  for (const url of EXPLICIT_OFFLINE_ASSETS) {
+    assert.ok(declared.has(url), `runtime asset is not declared in any feature: ${url}`);
+    assert.ok(await exists(toDiskPath(url)), `runtime asset is missing on disk: ${url}`);
   }
+});
+test('the closure test fails when a dynamic dependency is removed from the URL list', async () => {
+  const options = {
+    shell: await shellUrls(),
+    shared: new Set(SHARED_SHELL_URLS),
+    readSource: diskReadSource,
+    fileExists: exists,
+  };
+  const removedWriter = OFFLINE_FEATURES.map((feature) => ({
+    ...feature,
+    urls: feature.urls.filter((url) => url !== './assets/vendor/browser-id3-writer.mjs'),
+  }));
+  const writerProblems = await checkClosure({ ...options, features: removedWriter });
+  assert.ok(writerProblems.some((item) => item.includes('browser-id3-writer.mjs')),
+    'removing the ID3 writer from the audio URLs must fail the closure test');
+  const removedExiftool = OFFLINE_FEATURES.map((feature) => ({
+    ...feature,
+    urls: feature.urls.filter((url) => url !== './assets/js/engines/exiftool.js'),
+  }));
+  const exiftoolProblems = await checkClosure({ ...options, features: removedExiftool });
+  assert.ok(exiftoolProblems.some((item) => item.includes('engines/exiftool.js')),
+    'removing exiftool.js from the image URLs must fail the closure test');
+});
+test('nested dynamic imports are followed transitively', async () => {
+  const graph = new Map([
+    ['root.js', "const a = await import('./a.js');"],
+    ['a.js', "export { x } from './b.js';"],
+    ['b.js', 'const c = await import("./c.js");'],
+    ['c.js', 'export default 1;'],
+  ]);
+  const urls = ['./root.js', './a.js', './b.js', './c.js'];
+  const options = {
+    shell: new Set(),
+    shared: new Set(),
+    readSource: async (diskPath) => graph.get(diskPath) ?? null,
+    fileExists: async (diskPath) => graph.has(diskPath),
+  };
+  assert.deepEqual(await checkClosure({ ...options, features: [{ id: 'nested', urls }] }), [],
+    'a complete nested dynamic chain must pass');
+  const problems = await checkClosure({
+    ...options,
+    features: [{ id: 'nested', urls: urls.filter((url) => url !== './c.js') }],
+  });
+  assert.ok(problems.some((item) => item.includes('c.js')),
+    'a deep dynamic import must be reported when it is absent from the URL list');
+});
+test('service worker optional URL allowlist matches the manifest union', async () => {
+  const sw = await read('sw.js');
+  const block = sw.match(/const KNOWN_OPTIONAL_URLS = (?:Object\.freeze\()?\[([\s\S]*?)\](?:\))?;/);
+  assert.ok(block, 'KNOWN_OPTIONAL_URLS tidak ditemukan di sw.js');
+  const fromWorker = [...block[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort();
+  const fromManifest = [...new Set(OFFLINE_FEATURES.flatMap((feature) => feature.urls))].sort();
+  assert.deepEqual(fromWorker, fromManifest, 'the SW allowlist and the manifest must list the same URLs');
+});
+test('optional cache reuses valid entries, deduplicates fetches and bounds payloads', async () => {
+  const sw = await read('sw.js');
+  assert.match(sw, /const ENGINE_HEADER = 'x-meinsert-engine-version'/);
+  assert.match(sw, /response\.headers\.get\(ENGINE_HEADER\) === ENGINE_VERSION/);
+  assert.match(sw, /const pendingFetches = new Map\(\)/);
+  assert.match(sw, /pendingFetches\.has\(absolute\)/);
+  assert.match(sw, /const activeJobs = new Map\(\)/);
+  assert.match(sw, /new AbortController\(\)/);
+  assert.match(sw, /controller\.abort\(\)/);
+  assert.match(sw, /MAX_OPTIONAL_URLS/);
+  assert.match(sw, /MAX_OPTIONAL_BYTES/);
+  assert.match(sw, /bytes: used, totalBytes: bytes/);
+  assert.doesNotMatch(sw, /setTimeout\([^)]*30_?000/);
+});
+test('service worker messages are typed, job-scoped and refuse object URLs', async () => {
+  const sw = await read('sw.js');
+  assert.match(sw, /const KNOWN_MESSAGE_TYPES = new Set\(\[/);
+  for (const type of ['SKIP_WAITING', 'GET_VERSION', 'CACHE_OPTIONAL', 'CLEAR_OPTIONAL', 'OPTIONAL_STATUS', 'CANCEL_OPTIONAL']) {
+    assert.match(sw, new RegExp(`'${type}'`), `${type} must be explicitly allowed`);
+  }
+  assert.match(sw, /invalid_job/);
+  assert.match(sw, /unknown_type/);
+  assert.match(sw, /invalid_urls/);
+  assert.match(sw, /validJobId\(jobId\)/);
+  assert.match(sw, /blob\|data\|file\|filesystem\|javascript/);
+});
+test('optional download UI uses inactivity only, with job isolation and byte progress', async () => {
+  const ui = await read('assets/js/ui/offline-settings.js');
+  assert.doesNotMatch(ui, /30_000/, 'a total 30-second download deadline must not exist');
+  assert.match(ui, /INACTIVITY_MS = 60_000/);
+  assert.match(ui, /matchesJob\(data\)/);
+  assert.match(ui, /type: 'CANCEL_OPTIONAL'/);
+  assert.match(ui, /function retryDownload/);
+  assert.match(ui, /function cancelDownload/);
+  assert.match(ui, /ui\.engineDownloadProgressBytes/);
+  assert.match(ui, /TERMINAL_STATES/);
 });

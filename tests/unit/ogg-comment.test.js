@@ -3,7 +3,9 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { inspectOggComment, oggCrc32, rewriteOggComment } from '../../assets/js/core/ogg-comment.js';
 import * as ogg from '../../assets/js/formats/ogg.js';
@@ -168,16 +170,21 @@ test('ffmpeg/ffprobe independent verification (development-only, skipped when un
     t.skip('ffmpeg/ffprobe not installed');
     return;
   }
-  for (const name of fixtures) {
-    const original = bytesOf(name);
-    const patched = rewriteOggComment(original, { changes: { TITLE: 'Info reread' } });
-    const originalPath = `/tmp/opencode/ogg-proof-original-${process.pid}-${name}`;
-    const patchedPath = `/tmp/opencode/ogg-proof-patched-${process.pid}-${name}`;
-    writeFileSync(originalPath, original);
-    writeFileSync(patchedPath, patched);
-    assert.equal(ffmpegHash(patchedPath), ffmpegHash(originalPath), `${name}: decoded audio hash unchanged`);
-    assert.ok(ffprobeField(patchedPath, 'stream_tags=title').includes('Info reread'), `${name}: ffprobe sees new title`);
-    assert.ok(ffprobeField(patchedPath, 'stream=codec_name').includes(name.endsWith('opus') ? 'opus' : 'vorbis'));
+  const workDir = mkdtempSync(join(tmpdir(), 'meinsert-ogg-'));
+  try {
+    for (const name of fixtures) {
+      const original = bytesOf(name);
+      const patched = rewriteOggComment(original, { changes: { TITLE: 'Info reread' } });
+      const originalPath = join(workDir, `original-${name}`);
+      const patchedPath = join(workDir, `patched-${name}`);
+      writeFileSync(originalPath, original);
+      writeFileSync(patchedPath, patched);
+      assert.equal(ffmpegHash(patchedPath), ffmpegHash(originalPath), `${name}: decoded audio hash unchanged`);
+      assert.ok(ffprobeField(patchedPath, 'stream_tags=title').includes('Info reread'), `${name}: ffprobe sees new title`);
+      assert.ok(ffprobeField(patchedPath, 'stream=codec_name').includes(name.endsWith('opus') ? 'opus' : 'vorbis'));
+    }
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
   }
 });
 test('growing the comment packet preserves following Ogg packets and CRC', () => {
