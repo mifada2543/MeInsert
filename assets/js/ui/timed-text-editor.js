@@ -42,6 +42,7 @@ let listening = false;
 let closeTimer = 0;
 let closeFinish = null;
 let closeAnimationEnd = null;
+let draftTimer = 0;
 
 function reduceMotion() {
   try { return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches); } catch { return false; }
@@ -104,6 +105,52 @@ function normalizeSidecar(sidecar) {
     lyrics: source.lyrics ? normalizeLyrics(source.lyrics) : null,
     subtitles: source.subtitles ? normalizeSubtitles(source.subtitles) : null,
   };
+}
+
+function draftKey() {
+  const file = state?.file;
+  const raw = `${file?.name || ''}|${file?.size || 0}|${file?.lastModified || 0}|${state?.mode || 'lyrics'}`;
+  let hash = 2166136261;
+  for (let index = 0; index < raw.length; index += 1) {
+    hash ^= raw.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `meinsert-timed-text-draft-v1-${(hash >>> 0).toString(36)}`;
+}
+function readDraft() {
+  try {
+    const raw = globalThis.localStorage?.getItem(draftKey());
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.data ? parsed : null;
+  } catch { return null; }
+}
+function updateDraftLabel() {
+  if (!refs?.draftLabel) return;
+  refs.draftLabel.hidden = !readDraft();
+}
+function writeDraft() {
+  if (!state) return;
+  try {
+    globalThis.localStorage?.setItem(draftKey(), JSON.stringify({ savedAt: Date.now(), data: state.data }));
+    updateDraftLabel();
+  } catch { /* storage is optional */ }
+}
+function scheduleDraftSave() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => { draftTimer = 0; writeDraft(); }, 220);
+}
+function flushDraftSave() {
+  if (!draftTimer) return;
+  clearTimeout(draftTimer);
+  draftTimer = 0;
+  writeDraft();
+}
+function clearDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = 0;
+  try { globalThis.localStorage?.removeItem(draftKey()); } catch { /* storage is optional */ }
+  updateDraftLabel();
 }
 
 function payloadFor(list, data) {
@@ -298,10 +345,31 @@ function buildDialog() {
     value: '0',
     on: { input: () => seekMedia() },
   });
+  const fullscreenBtn = el('button', {
+    id: 'timedTextFullscreen',
+    className: 'timed-text__ctrl timed-text__ctrl--utility',
+    type: 'button',
+    title: translated(() => t('ui.timedTextFullscreen')),
+    'aria-label': translated(() => t('ui.timedTextFullscreen')),
+    on: { click: () => toggleFullscreen() },
+  }, icon('expand'));
+  const compactBtn = el('button', {
+    id: 'timedTextCompact',
+    className: 'timed-text__ctrl timed-text__ctrl--utility',
+    type: 'button',
+    title: translated(() => t('ui.timedTextCollapsePreview')),
+    'aria-label': translated(() => t('ui.timedTextCollapsePreview')),
+    on: { click: () => togglePreviewCompact() },
+  }, icon('minimize'));
+  const videoFrame = el('div', { className: 'timed-text__video-frame' }, mediaWrap, overlay);
   const player = el('div', { className: 'timed-text__player' },
-    el('div', { className: 'timed-text__stage' }, mediaWrap, overlay),
-    el('div', { className: 'timed-text__controls' }, backBtn, playBtn, fwdBtn, seek, timeLabel),
+    videoFrame,
+    el('div', { className: 'timed-text__controls' },
+      backBtn, playBtn, fwdBtn, seek, timeLabel, compactBtn, fullscreenBtn),
   );
+  const screen = el('div', { className: 'timed-text__screen' }, player);
+  const rotateHint = el('p', { className: 'timed-text__rotate-hint' });
+  bindText(rotateHint, () => t('ui.timedTextRotateHint'));
 
   const tabs = {
     lyrics: el('button', {
@@ -325,7 +393,6 @@ function buildDialog() {
   bindText(tabs.subtitles, () => t('ui.timedTextSubtitles'));
   const tablist = el('div', { className: 'timed-text__tabs', role: 'tablist' }, tabs.lyrics, tabs.subtitles);
 
-  const markTimeBtn = actionButton({ id: 'timedTextMarkTime', iconName: 'clock', labelKey: 'ui.timedTextMarkTime', onClick: () => markTime() });
   const addLineBtn = actionButton({ id: 'timedTextAddLine', iconName: 'plus', labelKey: 'ui.timedTextAddLine', onClick: () => addRow('lyrics') });
   const lyricsHint = el('p', { className: 'timed-text__hint' });
   bindText(lyricsHint, () => t(state?.mode === 'subtitles' ? 'ui.timedTextHintVideo' : 'ui.timedTextHintAudio'));
@@ -335,10 +402,8 @@ function buildDialog() {
     id: 'timedTextPanelLyrics',
     role: 'tabpanel',
     'aria-labelledby': 'timedTextTabLyrics',
-  }, el('div', { className: 'timed-text__toolbar' }, markTimeBtn, addLineBtn), lyricsRows, lyricsHint);
+  }, el('div', { className: 'timed-text__toolbar' }, addLineBtn), lyricsRows, lyricsHint);
 
-  const markStartBtn = actionButton({ id: 'timedTextMarkStart', iconName: 'clock', labelKey: 'ui.timedTextMarkStart', onClick: () => markCue('start') });
-  const markEndBtn = actionButton({ id: 'timedTextMarkEnd', iconName: 'clock', labelKey: 'ui.timedTextMarkEnd', onClick: () => markCue('end') });
   const addCueBtn = actionButton({ id: 'timedTextAddCue', iconName: 'plus', labelKey: 'ui.timedTextAddLine', onClick: () => addRow('subtitles') });
   const showBtn = el('button', { className: 'timed-text__btn timed-text__show', type: 'button', on: { click: () => toggleOverlayVariant() } }, icon('video'), el('span', { className: 'timed-text__btn-label' }));
   const subtitlesRows = el('div', { className: 'timed-text__rows', id: 'timedTextRowsSubtitles' });
@@ -348,7 +413,7 @@ function buildDialog() {
     role: 'tabpanel',
     'aria-labelledby': 'timedTextTabSubtitles',
     hidden: true,
-  }, el('div', { className: 'timed-text__toolbar' }, markStartBtn, markEndBtn, addCueBtn, showBtn), subtitlesRows);
+  }, el('div', { className: 'timed-text__toolbar' }, addCueBtn, showBtn), subtitlesRows);
 
   const fileInput = el('input', {
     className: 'timed-text__file',
@@ -362,12 +427,15 @@ function buildDialog() {
   const exportLrcBtn = actionButton({ id: 'timedTextExportLrc', iconName: 'download', labelKey: 'ui.timedTextExportLrc', onClick: () => downloadExport('lrc') });
   const embedNote = el('small', { className: 'timed-text__embed' });
   bindText(embedNote, () => t('ui.timedTextEmbed'));
+  const draftLabel = el('small', { className: 'timed-text__draft' });
+  bindText(draftLabel, () => t('ui.timedTextDraftSaved'));
+  draftLabel.hidden = true;
   const credit = el('p', { className: 'timed-text__credit' });
   bindText(credit, () => t('ui.timedTextCredit'));
   const saveBtn = actionButton({ id: 'timedTextSave', iconName: 'check', labelKey: 'ui.timedTextSave', onClick: () => applyChanges(), primary: true });
   const actions = el('footer', { className: 'timed-text__actions' },
     el('div', { className: 'timed-text__actions-left' },
-      importBtn, fileInput, exportVttBtn, exportLrcBtn, embedNote),
+      importBtn, fileInput, exportVttBtn, exportLrcBtn, embedNote, draftLabel),
     saveBtn,
     credit,
   );
@@ -385,16 +453,20 @@ function buildDialog() {
     },
   }, el('div', { className: 'timed-text__dialog-panel' },
     el('header', { className: 'timed-text__head' },
-      el('div', { className: 'timed-text__heading' }, modeBadge, title), closeBtn),
-    player, tablist, body, actions,
+      el('div', { className: 'timed-text__heading' }, modeBadge, title, rotateHint), closeBtn),
+    el('div', { className: 'timed-text__workspace' }, screen, tablist, body),
+    actions,
   ));
   document.body.append(dialog);
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  window.addEventListener('resize', updateRotateHint);
   refs = {
-    title, modeBadge, closeBtn, player, mediaWrap, overlay, overlayText, playBtn, backBtn, fwdBtn, seek, timeLabel,
+    title, modeBadge, closeBtn, rotateHint, screen, player, videoFrame, fullscreenBtn, compactBtn,
+    mediaWrap, overlay, overlayText, playBtn, backBtn, fwdBtn, seek, timeLabel,
     tabs, tablist, panels: { lyrics: lyricsPanel, subtitles: subtitlesPanel },
     rows: { lyrics: lyricsRows, subtitles: subtitlesRows },
-    markTimeBtn, addLineBtn, markStartBtn, markEndBtn, addCueBtn, showBtn, fileInput,
-    exportVttBtn, exportLrcBtn, embedNote, credit, saveBtn,
+    addLineBtn, addCueBtn, showBtn, fileInput,
+    exportVttBtn, exportLrcBtn, embedNote, draftLabel, credit, saveBtn,
   };
   return dialog;
 }
@@ -428,7 +500,10 @@ function setupMedia(file) {
     media.addEventListener(type, handler);
     state.mediaListeners.push([media, type, handler]);
   };
-  listen('loadedmetadata', () => updatePlayer());
+  listen('loadedmetadata', () => {
+    updateVideoRatio(media);
+    updatePlayer();
+  });
   listen('durationchange', () => updatePlayer());
   listen('timeupdate', () => updatePlayer());
   listen('play', () => updatePlayState());
@@ -451,6 +526,68 @@ function currentMs() {
 function durationMs() {
   const media = state?.mediaEl;
   return media ? Math.max(0, (Number(media.duration) || 0) * 1000) : 0;
+}
+
+function updateVideoRatio(media) {
+  const width = Number(media?.videoWidth) || 0;
+  const height = Number(media?.videoHeight) || 0;
+  if (!width || !height) return;
+  state.videoRatio = width / height;
+  dialog?.style.setProperty('--tt-video-ratio', String(state.videoRatio));
+}
+
+function updateRotateHint() {
+  if (!refs?.rotateHint) return;
+  const portrait = typeof globalThis.matchMedia === 'function'
+    && globalThis.matchMedia('(orientation: portrait)').matches;
+  refs.rotateHint.hidden = !portrait || state?.mode !== 'subtitles' || Boolean(document.fullscreenElement);
+}
+
+function togglePreviewCompact() {
+  if (!state || state.mode !== 'subtitles') return;
+  state.previewCompact = !state.previewCompact;
+  dialog.dataset.preview = state.previewCompact ? 'compact' : 'full';
+  const label = t(state.previewCompact ? 'ui.timedTextExpandPreview' : 'ui.timedTextCollapsePreview');
+  refs.compactBtn.replaceChildren(icon(state.previewCompact ? 'expand' : 'minimize'));
+  refs.compactBtn.title = label;
+  refs.compactBtn.setAttribute('aria-label', label);
+  updateVideoRatio(state.mediaEl);
+}
+
+async function toggleFullscreen() {
+  const screen = refs?.screen;
+  if (!screen) return;
+  try {
+    if (document.fullscreenElement === screen) {
+      await document.exitFullscreen();
+      return;
+    }
+    if (typeof screen.requestFullscreen !== 'function') {
+      showToast(t('ui.timedTextFullscreenUnsupported'), 'info', 4000);
+      return;
+    }
+    await screen.requestFullscreen();
+    if (state?.mode === 'subtitles') {
+      try { await globalThis.screen?.orientation?.lock?.('landscape'); } catch { /* best effort */ }
+    }
+    updateRotateHint();
+  } catch {
+    showToast(t('ui.timedTextFullscreenUnsupported'), 'info', 4000);
+  }
+}
+
+function onFullscreenChange() {
+  if (!refs?.fullscreenBtn) return;
+  const active = document.fullscreenElement === refs.screen;
+  refs.fullscreenBtn.replaceChildren(icon(active ? 'minimize' : 'expand'));
+  const label = t(active ? 'ui.timedTextExitFullscreen' : 'ui.timedTextFullscreen');
+  refs.fullscreenBtn.title = label;
+  refs.fullscreenBtn.setAttribute('aria-label', label);
+  dialog.dataset.fullscreen = active ? 'true' : 'false';
+  if (!active) {
+    try { globalThis.screen?.orientation?.unlock?.(); } catch { /* best effort */ }
+  }
+  updateRotateHint();
 }
 
 function updatePlayState() {
@@ -628,6 +765,7 @@ function makeTimeInput(kind, index, field, value) {
         state.active.lyrics = -1;
         state.active.subtitles = -1;
         syncHighlights();
+        scheduleDraftSave();
       },
       keydown: (event) => event.stopPropagation(),
     },
@@ -646,16 +784,18 @@ function makeTextInput(kind, index, value) {
         const item = kind === 'lyrics' ? state.data.lyrics?.lines?.[index] : state.data.subtitles?.cues?.[index];
         if (item) item.text = event.target.value;
         syncHighlights();
+        scheduleDraftSave();
       },
       keydown: (event) => event.stopPropagation(),
     },
   });
 }
 
-function makeRowButton(labelKey, iconName, onClick) {
+function makeRowButton(labelKey, iconName, onClick, action) {
   return el('button', {
     className: 'timed-text__row-btn',
     type: 'button',
+    dataset: { action },
     title: translated(() => t(labelKey)),
     'aria-label': translated(() => t(labelKey)),
     on: { click: (event) => { event.stopPropagation(); onClick(); } },
@@ -666,6 +806,7 @@ function makeRemoveButton(onClick) {
   return el('button', {
     className: 'timed-text__row-btn timed-text__row-btn--remove',
     type: 'button',
+    dataset: { action: 'remove' },
     title: translated(() => t('ui.timedTextRemove')),
     'aria-label': translated(() => t('ui.timedTextRemove')),
     on: { click: (event) => { event.stopPropagation(); onClick(); } },
@@ -679,6 +820,7 @@ function removeRow(kind, index) {
   state.active[kind] = -1;
   renderRows(kind);
   syncHighlights();
+  scheduleDraftSave();
 }
 
 function renderRows(kind) {
@@ -723,7 +865,8 @@ function renderRows(kind) {
           row.firstElementChild.value = formatStamp(ms, 'lrc');
           state.active.lyrics = -1;
           syncHighlights();
-        }),
+          scheduleDraftSave();
+        }, 'mark-time'),
         makeRemoveButton(() => removeRow(kind, index)),
       );
     } else {
@@ -732,9 +875,7 @@ function renderRows(kind) {
         el('span', { className: 'timed-text__cue-sep', 'aria-hidden': 'true', textContent: '\u2192' }),
         makeTimeInput(kind, index, 'end', item.end),
       );
-      row.append(
-        times,
-        makeTextInput(kind, index, item.text),
+      const actions = el('div', { className: 'timed-text__row-actions' },
         makeRowButton('ui.timedTextMarkStart', 'clock', () => {
           item.start = currentMs();
           item.end = Math.max(item.end, item.start);
@@ -742,16 +883,19 @@ function renderRows(kind) {
           row.querySelector('.timed-text__cue-times .timed-text__time').value = formatStamp(item.start, 'vtt');
           state.active.subtitles = -1;
           syncHighlights();
-        }),
+          scheduleDraftSave();
+        }, 'mark-start'),
         makeRowButton('ui.timedTextMarkEnd', 'clock', () => {
           item.end = Math.max(currentMs(), item.start);
           selectRow(kind, index);
           row.querySelectorAll('.timed-text__cue-times .timed-text__time')[1].value = formatStamp(item.end, 'vtt');
           state.active.subtitles = -1;
           syncHighlights();
-        }),
+          scheduleDraftSave();
+        }, 'mark-end'),
         makeRemoveButton(() => removeRow(kind, index)),
       );
+      row.append(times, makeTextInput(kind, index, item.text), actions);
     }
     container.append(row);
     state.rows[kind].push(row);
@@ -774,21 +918,8 @@ function addRow(kind) {
   }
   renderRows(kind);
   syncHighlights();
+  scheduleDraftSave();
   state.rows[kind][state.selected[kind]]?.querySelector('.timed-text__text')?.focus();
-}
-
-function markTime() {
-  const lines = state.data.lyrics?.lines || [];
-  let index = state.selected.lyrics;
-  if (index < 0 || index >= lines.length) index = state.active.lyrics;
-  if (index < 0) return;
-  const ms = currentMs();
-  lines[index].time = ms;
-  selectRow('lyrics', index);
-  const input = state.rows.lyrics[index]?.querySelector('.timed-text__time');
-  if (input) input.value = formatStamp(ms, 'lrc');
-  state.active.lyrics = -1;
-  syncHighlights();
 }
 
 function markCue(field) {
@@ -813,6 +944,7 @@ function markCue(field) {
   if (inputs?.length) inputs[field === 'start' ? 0 : 1].value = formatStamp(ms, 'vtt');
   state.active.subtitles = -1;
   syncHighlights();
+  scheduleDraftSave();
 }
 
 async function onImport(event) {
@@ -843,6 +975,7 @@ async function onImport(event) {
       switchTab('subtitles');
     }
     syncHighlights();
+    scheduleDraftSave();
   } catch { /* unreadable import file: keep current data */ }
   input.value = '';
 }
@@ -871,6 +1004,7 @@ function applyChanges() {
   if (!state) return;
   const handler = state.onApply;
   const next = clone(state.data);
+  clearDraft();
   requestClose();
   handler?.(next);
 }
@@ -878,6 +1012,7 @@ function applyChanges() {
 function cleanupSession() {
   cancelClose();
   if (state) {
+    flushDraftSave();
     for (const [target, type, handler] of state.mediaListeners || []) target.removeEventListener(type, handler);
     if (state.mediaUrl) URL.revokeObjectURL(state.mediaUrl);
     clear(refs.mediaWrap);
@@ -913,6 +1048,12 @@ function onGlobalKeydown(event) {
   } else if (event.key === 'ArrowRight') {
     event.preventDefault();
     skip(5);
+  } else if (state.mode === 'subtitles' && String(event.key || '').toLowerCase() === 's') {
+    event.preventDefault();
+    markCue('start');
+  } else if (state.mode === 'subtitles' && String(event.key || '').toLowerCase() === 'e') {
+    event.preventDefault();
+    markCue('end');
   }
 }
 
@@ -931,6 +1072,8 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
     mode,
     tab: mode,
     overlayVariant: mode === 'subtitles' ? 'subtitle' : 'lyrics',
+    previewCompact: false,
+    videoRatio: 16 / 9,
     mediaKind: mode === 'subtitles' ? 'video' : 'audio',
     mediaUrl: '',
     mediaEl: null,
@@ -939,8 +1082,15 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
     active: { lyrics: -1, subtitles: -1 },
     rows: { lyrics: [], subtitles: [] },
   };
+  const draft = readDraft();
+  if (draft?.data) state.data = normalizeSidecar(draft.data);
 
   instance.dataset.mode = mode;
+  instance.dataset.preview = 'full';
+  instance.dataset.fullscreen = 'false';
+  instance.style.setProperty('--tt-video-ratio', '1.7777778');
+  refs.compactBtn.hidden = mode !== 'subtitles';
+  refs.fullscreenBtn.hidden = mode !== 'subtitles';
   refs.title.textContent = t(mode === 'subtitles' ? 'ui.timedTextTitleSubtitles' : 'ui.timedTextTitleLyrics');
   refs.modeBadge.textContent = t(mode === 'subtitles' ? 'ui.timedTextSubtitles' : 'ui.timedTextLyrics');
   refs.fileInput.accept = mode === 'subtitles' ? '.vtt,.srt' : '.lrc';
@@ -952,6 +1102,8 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   renderRows('lyrics');
   renderRows('subtitles');
   bindShowLabel();
+  updateDraftLabel();
+  updateRotateHint();
   updatePlayer();
 
   if (!listening) {

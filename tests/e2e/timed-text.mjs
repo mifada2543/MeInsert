@@ -54,7 +54,10 @@ try {
   if (audioMode.mode !== 'lyrics' || audioMode.visibleTabs !== 1 || audioMode.hasSvgControls < 3 || !audioMode.accept.includes('.lrc')) {
     throw new Error(`Mode audio tidak sesuai: ${JSON.stringify(audioMode)}`);
   }
-  console.log('PASS: editor lirik terbuka (mode dari ekstensi, kontrol SVG)', audioMode.badge);
+  const duplicateMarks = await page.evaluate(() => ['timedTextMarkTime', 'timedTextMarkStart', 'timedTextMarkEnd']
+    .filter((id) => document.getElementById(id)));
+  if (duplicateMarks.length) throw new Error(`Tombol mark duplikat masih ada: ${duplicateMarks.join(', ')}`);
+  console.log('PASS: editor lirik terbuka, tanpa tombol mark duplikat', audioMode.badge);
   await page.locator('#timedTextAddLine').click();
   await page.locator('#timedTextRowsLyrics .timed-text__row').first().waitFor({ timeout: 5000 });
   const lineCount = await page.locator('#timedTextRowsLyrics .timed-text__row').count();
@@ -65,13 +68,20 @@ try {
   console.log('PASS: baris lirik bisa ditambah dan diedit');
   const seek = page.locator('.timed-text__seek');
   await seek.fill('50');
-  await page.locator('#timedTextMarkTime').click();
+  await page.locator('#timedTextRowsLyrics .timed-text__row [data-action="mark-time"]').first().click();
   const stamp = await page.locator('#timedTextRowsLyrics .timed-text__time').first().inputValue();
   if (!/^\d{2}:\d{2}\.\d{2}$/.test(stamp)) throw new Error(`Stempel LRC tidak valid: ${stamp}`);
-  console.log(`PASS: Tandai waktu menulis stempel ${stamp}`);
+  console.log(`PASS: tombol mark di baris menulis stempel ${stamp}`);
+  await page.locator('.timed-text__draft').waitFor({ state: 'visible', timeout: 5000 });
+  console.log('PASS: draf tersimpan otomatis');
+  await page.locator('.timed-text__close').click();
+  await page.locator('#timedTextDialog[open]').waitFor({ state: 'hidden' });
+  await open(audio);
+  const restored = await page.locator('#timedTextRowsLyrics .timed-text__row .timed-text__text').first().inputValue();
+  if (restored !== 'Lirik uji coba') throw new Error(`Draf tidak dipulihkan: ${restored}`);
+  console.log('PASS: draf dipulihkan setelah dialog ditutup');
   await page.locator('.timed-text__btn--save').click();
   await page.locator('#timedTextDialog[open]').waitFor({ state: 'hidden' });
-  await page.locator('#timedTextDialog').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
   console.log('PASS: Apply menutup dialog dan mengembalikan state ke editor');
   await open(video);
   const videoMode = await page.evaluate(() => ({
@@ -89,7 +99,34 @@ try {
   await page.locator('#timedTextAddCue').click();
   await page.locator('#timedTextRowsSubtitles .timed-text__row').first().waitFor({ timeout: 10000 });
   await page.locator('#timedTextRowsSubtitles .timed-text__row .timed-text__text').first().fill('Aku tunggu di halte tua');
-  console.log('PASS: editor subtitle terbuka untuk berkas video', videoMode.badge);
+  const layout = await page.evaluate(() => {
+    const workspace = document.querySelector('.timed-text__workspace');
+    const media = document.querySelector('.timed-text__video-frame video');
+    const frame = document.querySelector('.timed-text__video-frame');
+    const columns = getComputedStyle(workspace).gridTemplateColumns.trim().split(/\s+/);
+    const ratio = media?.videoWidth && media?.videoHeight
+      ? media.videoWidth / media.videoHeight : 0;
+    const boxRatio = frame ? frame.getBoundingClientRect().width / frame.getBoundingClientRect().height : 0;
+    return {
+      columns: columns.length,
+      ratio,
+      boxRatio,
+      fullscreen: Boolean(document.querySelector('#timedTextFullscreen')),
+      compact: Boolean(document.querySelector('#timedTextCompact')),
+    };
+  });
+  if (layout.columns !== 2 || !layout.fullscreen || !layout.compact) {
+    throw new Error(`Layout video tidak sesuai: ${JSON.stringify(layout)}`);
+  }
+  if (layout.ratio && Math.abs(layout.boxRatio - layout.ratio) > 0.12) {
+    throw new Error(`Rasio frame tidak adaptif: ${JSON.stringify(layout)}`);
+  }
+  console.log('PASS: workspace dua kolom adaptif + layar penuh', JSON.stringify(layout));
+  await page.locator('#timedTextCompact').click();
+  if (!(await page.locator('.timed-text__video-frame').isHidden())) throw new Error('Ciutkan pratinjau gagal.');
+  await page.locator('#timedTextCompact').click();
+  if (await page.locator('.timed-text__video-frame').isHidden()) throw new Error('Buka pratinjau gagal.');
+  console.log('PASS: tombol ciutkan/buka pratinjau berfungsi');
   const overlay = page.locator('.timed-text__overlay');
   await overlay.waitFor({ state: 'attached' });
   await page.waitForFunction(() => !document.querySelector('.timed-text__overlay')?.hidden, null, { timeout: 5000 });
@@ -100,9 +137,12 @@ try {
   const mobile = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth - window.innerWidth,
     dialogWidth: document.querySelector('.timed-text')?.getBoundingClientRect().width || 0,
+    columns: getComputedStyle(document.querySelector('.timed-text__workspace')).gridTemplateColumns.trim().split(/\s+/).length,
+    rotateHint: !document.querySelector('.timed-text__rotate-hint')?.hidden,
   }));
   if (mobile.overflow > 1) throw new Error(`Horizontal scroll saat mobile: ${mobile.overflow}px`);
-  console.log('PASS: layout mobile 390x844 tanpa horizontal scroll', mobile);
+  if (mobile.columns !== 2 || !mobile.rotateHint) throw new Error(`Tampilan lanskap paksa gagal: ${JSON.stringify(mobile)}`);
+  console.log('PASS: layout lanskap 2 kolom di HP portrait tanpa horizontal scroll', mobile);
   if (errors.length) throw new Error(`Page errors: ${errors.join(' | ')}`);
   console.log('ALL timed-text editor scenarios passed');
 } finally {

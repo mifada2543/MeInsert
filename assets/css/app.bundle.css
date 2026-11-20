@@ -6585,6 +6585,22 @@ h1 {
   background: var(--surface);
   box-shadow: var(--shadow-drop);
 }
+/* Video subtitle editing: a wide, landscape-style two-column workspace. */
+.timed-text[data-mode="subtitles"] {
+  width: min(1280px, calc(100vw - 24px));
+  max-height: min(900px, calc(100dvh - 24px));
+}
+.timed-text__workspace {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+.timed-text[data-mode="subtitles"] .timed-text__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, .85fr);
+  min-height: 0;
+}
 .timed-text__head {
   display: flex;
   flex: 0 0 auto;
@@ -6610,6 +6626,15 @@ h1 {
   font-size: 10.5px;
   font-weight: 700;
   line-height: 1.3;
+}
+.timed-text__rotate-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.timed-text__rotate-hint[hidden] {
+  display: none;
 }
 .timed-text__title {
   margin: 0;
@@ -6675,31 +6700,104 @@ h1 {
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
-.timed-text__stage {
-  position: relative;
+.timed-text[data-mode="subtitles"] .timed-text__screen {
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.timed-text[data-mode="subtitles"] .timed-text__player {
+  position: static;
+  height: 100%;
+  padding: 14px;
+  border-bottom: 0;
+  align-content: center;
+}
+.timed-text[data-mode="subtitles"] .timed-text__body {
+  padding: 14px;
+}
+.timed-text[data-preview="compact"] .timed-text__video-frame {
+  display: none;
+}
+.timed-text[data-preview="compact"] .timed-text__player {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.timed-text__ctrl--utility {
+  width: 36px;
+  min-height: 36px;
+}
+.timed-text__ctrl--utility[hidden] {
+  display: none;
+}
+.timed-text__screen:fullscreen {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  width: 100vw;
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  border: 0;
+  background: #000;
+}
+.timed-text__screen:fullscreen .timed-text__player {
+  display: contents;
+}
+.timed-text__screen:fullscreen .timed-text__video-frame {
   display: grid;
   place-items: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: 0;
+  background: #000;
+}
+.timed-text__screen:fullscreen .timed-text__media {
+  max-width: 100vw;
+  max-height: calc(100dvh - 88px);
+}
+.timed-text__screen:fullscreen .timed-text__controls {
+  padding: 12px 18px;
+  background: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, .2));
+}
+.timed-text__screen:fullscreen .timed-text__time-label {
+  color: #f4f4f6;
+}
+.timed-text__video-frame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin: auto;
   overflow: hidden;
   border-radius: var(--radius-sm);
   background: #000;
+  line-height: 0;
 }
-.timed-text[data-kind="audio"] .timed-text__stage {
+.timed-text[data-kind="audio"] .timed-text__video-frame {
+  display: block;
+  width: 100%;
   height: 96px;
-}
-.timed-text[data-kind="video"] .timed-text__stage {
-  height: min(300px, 38vh);
-  max-height: none;
 }
 .timed-text__media {
   display: block;
   width: 100%;
   max-height: 220px;
 }
-.timed-text[data-kind="video"] .timed-text__media {
-  width: 100%;
-  height: 100%;
-  max-height: 100%;
+.timed-text__video-frame .timed-text__media {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: var(--tt-video-max-h, min(56vh, 560px));
+  aspect-ratio: var(--tt-video-ratio, 16 / 9);
   object-fit: contain;
+}
+.timed-text[data-kind="audio"] .timed-text__media {
+  width: 100%;
+  height: 96px;
+  max-height: 96px;
+  aspect-ratio: auto;
 }
 .timed-text__audio-art {
   position: absolute;
@@ -6913,6 +7011,24 @@ h1 {
 .timed-text__row--cue {
   grid-template-columns: 224px minmax(0, 1fr) auto auto auto;
 }
+/* The subtitle pane is intentionally narrow, so cue rows stack into cards. */
+.timed-text[data-mode="subtitles"] .timed-text__row--cue {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.timed-text[data-mode="subtitles"] .timed-text__cue-times {
+  width: 100%;
+}
+.timed-text[data-mode="subtitles"] .timed-text__cue-times .timed-text__time {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+.timed-text__row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
 .timed-text__row.is-selected {
   border-color: var(--brand);
 }
@@ -6986,6 +7102,14 @@ h1 {
   color: var(--muted);
   font-size: 11px;
 }
+.timed-text__draft {
+  color: var(--accent-text);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.timed-text__draft[hidden] {
+  display: none;
+}
 .timed-text__credit {
   flex: 1 0 100%;
   margin: 0;
@@ -7045,11 +7169,64 @@ h1 {
   .timed-text__title {
     font-size: 17px;
   }
-  .timed-text__media {
-    max-height: 180px;
+  .timed-text__video-frame .timed-text__media {
+    --tt-video-max-h: 42dvh;
   }
-  .timed-text[data-kind="video"] .timed-text__stage {
-    height: 200px;
+  /* Video subtitles always use the landscape workspace, even on a portrait phone. */
+  .timed-text[data-mode="subtitles"] {
+    width: calc(100vw - 8px);
+    max-height: calc(100dvh - env(safe-area-inset-top) - 8px);
+    margin: 4px;
+    border-radius: var(--radius-md);
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__dialog-panel {
+    border-radius: var(--radius-md);
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__workspace {
+    grid-template-columns: minmax(0, 1.55fr) minmax(132px, .8fr);
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__cue-times {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__cue-times .timed-text__time {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__cue-sep {
+    text-align: center;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__row-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__show .timed-text__btn-label {
+    display: none;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__cue-times .timed-text__time {
+    font-size: 10px;
+    padding: 6px;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__row-btn {
+    width: 44px;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__player {
+    padding: 10px;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__body {
+    padding: 10px;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__video-frame .timed-text__media {
+    --tt-video-max-h: 38dvh;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__toolbar {
+    gap: 6px;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__hint {
+    display: none;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__actions-left {
+    flex: 1 0 100%;
   }
   .timed-text__controls {
     flex-wrap: wrap;
@@ -7094,6 +7271,31 @@ h1 {
   }
   .timed-text__actions {
     padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 560px) {
+  .timed-text[data-mode="subtitles"] {
+    width: calc(100vw - 8px);
+    max-height: calc(100dvh - 8px);
+    margin: 4px;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__workspace {
+    grid-template-columns: minmax(0, 1.5fr) minmax(220px, .8fr);
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__video-frame .timed-text__media {
+    --tt-video-max-h: calc(100dvh - 200px);
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__head,
+  .timed-text[data-mode="subtitles"] .timed-text__actions {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__embed {
+    display: none;
+  }
+  .timed-text[data-mode="subtitles"] .timed-text__credit {
+    font-size: 9.5px;
   }
 }
 

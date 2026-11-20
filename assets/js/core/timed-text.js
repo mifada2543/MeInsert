@@ -7,11 +7,6 @@
  *         assets/js/music/lrc-editor.js
  * Modified for MeInsert: plain JS ESM, ms-based state, no PHP/DOM/global deps,
  * watermark added. */
-// Pure, DOM-free helpers for LRC lyrics and SRT/WebVTT subtitles. Times are
-// always integer milliseconds; nothing here touches the DOM, the network, or
-// any global state, so the same functions work in a worker and in node tests.
-// A timestamp token: MM:SS.cc, HH:MM:SS.mmm, or the 2-component MM:SS.mmm
-// variant. Quantifiers are bounded on purpose (no catastrophic backtracking).
 const TS_PATTERN = '\\d{1,3}:\\d{2}(?::\\d{2})?[.,:]\\d{1,3}';
 const LRC_TAG_RE = new RegExp(`\\[(${TS_PATTERN})\\]`, 'g');
 const TIMING_RE = new RegExp(`^(${TS_PATTERN})\\s*-->\\s*(${TS_PATTERN})(.*)$`);
@@ -23,48 +18,35 @@ const DASH_ARROW_RE = /-*[\u2013\u2014]\s*>/g;
 const HYPHEN_ARROW_RE = /-{1,}\s*>/g;
 const BOM_RE = /^\uFEFF/;
 const CRLF_RE = /\r\n?/g;
-
-/** Strip a UTF-8 BOM and normalize CRLF/CR to LF. Non-strings become ''. */
 function normalizeText(text) {
   if (typeof text !== 'string') return '';
   return text.replace(BOM_RE, '').replace(CRLF_RE, '\n');
 }
-
-/** Fold the arrow spellings seen in the wild into exactly `-->`. */
 function normalizeArrows(text) {
   return text
     .replace(ARROW_GLYPH_RE, '-->')
     .replace(DASH_ARROW_RE, '-->')
     .replace(HYPHEN_ARROW_RE, '-->');
 }
-
-/** Turn a captured timestamp token into integer milliseconds. */
 function tokenToMs(token) {
   const match = TS_TOKEN_RE.exec(token);
   if (!match) return 0;
-  // Right-pad so ".34" (centiseconds) -> 340 ms and ".345" -> 345 ms.
   const fraction = parseInt(match[4].padEnd(3, '0'), 10);
   if (match[3] !== undefined) {
     return Number(match[1]) * 3600000 + Number(match[2]) * 60000 + Number(match[3]) * 1000 + fraction;
   }
   return Number(match[1]) * 60000 + Number(match[2]) * 1000 + fraction;
 }
-
-/** Defensive millisecond coercion shared by every serializer. */
 function toMs(value) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0;
 }
-
 function prettyText(value) {
   return typeof value === 'string' ? value : String(value ?? '');
 }
-
 function pad(number, width) {
   return String(number).padStart(width, '0');
 }
-
-/** Parse LRC lyrics: BOM/CRLF tolerant, multi-timestamp, metadata skipped. */
 export function parseLrc(text) {
   const lines = [];
   for (const raw of normalizeText(text).split('\n')) {
@@ -75,7 +57,7 @@ export function parseLrc(text) {
     LRC_TAG_RE.lastIndex = 0;
     let match;
     while ((match = LRC_TAG_RE.exec(rest)) !== null) {
-      if (match.index !== 0) break; // only the leading run of timestamps
+      if (match.index !== 0) break;
       stamps.push(tokenToMs(match[1]));
       rest = rest.slice(match[0].length);
       LRC_TAG_RE.lastIndex = 0;
@@ -88,8 +70,6 @@ export function parseLrc(text) {
   lines.sort((a, b) => a.time - b.time);
   return { lines };
 }
-
-/** Serialize LRC lines as `[MM:SS.cc] text` (milliseconds rounded down to 10 ms). */
 export function serializeLrc(lines) {
   if (!Array.isArray(lines)) return '';
   const out = [];
@@ -103,8 +83,6 @@ export function serializeLrc(lines) {
   }
   return out.join('\n');
 }
-
-/** Parse SRT: numeric cue numbers, BOM, CRLF, arrow glyphs and comma decimals. */
 export function parseSrt(text) {
   const lines = normalizeText(text).split('\n');
   const cues = [];
@@ -137,8 +115,6 @@ export function parseSrt(text) {
   }
   return { cues };
 }
-
-/** Parse WebVTT: header, NOTE/STYLE/REGION blocks, cue ids and settings. */
 export function parseVtt(text) {
   const lines = normalizeText(text).split('\n');
   const cues = [];
@@ -183,7 +159,6 @@ export function parseVtt(text) {
   }
   return { cues };
 }
-
 function formatVttTime(value) {
   const time = toMs(value);
   const hours = Math.floor(time / 3600000);
@@ -192,8 +167,6 @@ function formatVttTime(value) {
   const millis = time % 1000;
   return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(seconds, 2)}.${pad(millis, 3)}`;
 }
-
-/** Serialize cues back to a WebVTT document. */
 export function serializeVtt(cues) {
   if (!Array.isArray(cues)) return 'WEBVTT\n\n';
   const blocks = [];
@@ -211,8 +184,6 @@ export function serializeVtt(cues) {
   }
   return `WEBVTT\n\n${blocks.join('\n\n')}`;
 }
-
-/** Convert LRC lines to browser-id3-writer SYLT pairs (timestamp format 2 = ms). */
 export function toSyltPairs(lines) {
   if (!Array.isArray(lines)) return [];
   const pairs = [];
@@ -224,8 +195,6 @@ export function toSyltPairs(lines) {
   }
   return pairs;
 }
-
-/** Short UI timestamp: `MM:SS` (minutes keep counting past 59). */
 export function formatTimestamp(ms) {
   const time = toMs(ms);
   const minutes = Math.floor(time / 60000);
