@@ -6,6 +6,13 @@
 
 Semua perubahan penting dicatat di sini. Versi mengikuti SemVer.
 
+## [Experiment 2 — gzip-only hardening]
+
+- Decoder wajib cocok ukuran WASM upstream dan SHA-256 jika Web Crypto tersedia; fallback tanpa Web Crypto memvalidasi struktur WASM.
+- Profil gambar mencakup fflate; estimasi gabungan tidak menghitung aset bersama dua kali. Indikator kesiapan diperbarui ketika status cache berubah.
+- Service Worker v55 memigrasikan WASM lama yang lolos SHA-256 ke key gzip tanpa download; jika CompressionStream tidak tersedia, cache menyimpan respons raw terverifikasi pada key baru. Aset production tetap gzip-only.
+- Regression test menggunakan binary upstream asli dari gzip, bukan header WASM sintetis. Test browser tidak memerlukan aset raw di checkout.
+
 ## [Local hardening — build #17]
 
 - XML Office menolak prefix tidak terikat, entity ilegal, atribut duplikat berdasarkan namespace, teks di luar root, dan tag penutup rusak; resolusi prefix mengikuti scope aktif.

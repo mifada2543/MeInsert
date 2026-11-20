@@ -62,9 +62,10 @@ export const OFFLINE_FEATURES = [
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 9_265_103,
+    bytes: 9_356_025,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
+      './assets/vendor/fflate.mjs',
       './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
       './assets/js/workers/exiftool.worker.js',
       './assets/js/formats/image.js',

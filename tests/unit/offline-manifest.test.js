@@ -105,7 +105,7 @@ function memoryStorage() {
     removeItem: (key) => { values.delete(key); },
   };
 }
-test('offline profile drives the optional URL list and byte estimate', () => {
+test('offline profile drives the optional URL list and byte estimate', async () => {
   const storage = memoryStorage();
   assert.deepEqual(getProfile(storage), { mode: 'frugal', features: [], updatedAt: 0 });
   assert.deepEqual(optionalUrls(getProfile(storage)), []);
@@ -117,7 +117,17 @@ test('offline profile drives the optional URL list and byte estimate', () => {
   assert.ok(urls.length > 10, 'all mode must cover every optional engine URL');
   assert.deepEqual(urls, [...new Set(urls)], 'optional URLs must be de-duplicated');
   assert.ok(urls.includes('./assets/js/core/zip-directory.js'), 'office feature must include zip-directory.js');
-  assert.equal(estimatedBytes(all), OFFLINE_FEATURES.reduce((sum, feature) => sum + feature.bytes, 0));
+  let uniqueBytes = 0;
+  for (const url of urls) uniqueBytes += (await stat(join(root, toDiskPath(url)))).size;
+  assert.equal(estimatedBytes(all), uniqueBytes);
+  const image = OFFLINE_FEATURES.find((feature) => feature.id === 'image');
+  assert.ok(image.urls.includes('./assets/vendor/fflate.mjs'), 'image-only offline mode must include the gzip fallback');
+  for (const ids of [['image', 'audio'], ['image', 'office']]) {
+    const profile = { mode: 'selected', features: ids };
+    let total = 0;
+    for (const url of optionalUrls(profile)) total += (await stat(join(root, toDiskPath(url)))).size;
+    assert.equal(estimatedBytes(profile), total);
+  }
   assert.equal(setProfile(storage, { mode: 'selected', features: ['pdf', 'unknown', 'pdf'] }), true);
   assert.deepEqual(getProfile(storage).features, ['pdf']);
   assert.deepEqual(optionalUrls(getProfile(storage)), [...OFFLINE_FEATURES.find((feature) => feature.id === 'pdf').urls]);

@@ -159,6 +159,18 @@ try {
     });
   });
   await openDialog();
+  await page.locator('#offlineMode-selected').click();
+  const imageStatus = page.locator('label[for="offlineFeature-image"] .offline-settings__feature-status');
+  assert.equal(await imageStatus.innerText(), 'Belum diunduh');
+  await page.evaluate(async () => {
+    const { features } = await import('/assets/js/core/format-capabilities.js');
+    const image = features().find((feature) => feature.id === 'image');
+    window.__swPort.postMessage({ type: 'OPTIONAL_STATUS_RESULT', urls: image.urls });
+  });
+  await page.waitForFunction(() => document.querySelector('label[for="offlineFeature-image"] .offline-settings__feature-status')?.textContent === 'Siap offline');
+  await page.evaluate(() => window.__swPort.postMessage({ type: 'OPTIONAL_CLEARED' }));
+  await page.waitForFunction(() => document.querySelector('label[for="offlineFeature-image"] .offline-settings__feature-status')?.textContent === 'Belum diunduh');
+  await page.locator('#offlineMode-all').click();
   await page.locator('.offline-settings__download').click();
   await page.evaluate(() => {
     const start = window.__swMessages.find((message) => message.type === 'CACHE_OPTIONAL');

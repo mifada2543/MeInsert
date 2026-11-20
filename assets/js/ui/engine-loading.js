@@ -69,8 +69,6 @@ async function gunzipEngine(bytes) {
   return gunzipSync(bytes);
 }
 export async function verifyEngineIntegrity(bytes) {
-  // Web Crypto needs a secure context; structural validation still applies
-  // when it is unavailable (e.g. a local HTTP host).
   if (typeof globalThis.crypto?.subtle?.digest !== 'function') return false;
   const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
   const hex = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
@@ -81,7 +79,8 @@ export async function decodeEngineBytes(bytes) {
   let current = bytes;
   for (let layer = 0; layer <= MAX_GZIP_LAYERS; layer += 1) {
     if (isWasmBinary(current)) {
-      if (current.byteLength === ENGINE_WASM_BYTES) await verifyEngineIntegrity(current);
+      if (current.byteLength !== ENGINE_WASM_BYTES) throw new Error('WASM size mismatch.');
+      if (!await verifyEngineIntegrity(current) && !WebAssembly.validate(current)) throw new Error('Invalid WASM binary.');
       return current;
     }
     if (!isGzipBinary(current)) throw new Error('Engine payload is neither WASM nor gzip.');

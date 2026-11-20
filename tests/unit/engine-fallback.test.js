@@ -3,11 +3,13 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import test, { afterEach, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { gzipSync } from 'node:zlib';
+import { gunzipSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 import { makeEngineFetch, resetEngineFetchStateForTests } from '../../assets/js/engines/exiftool.js';
-const WASM_HEADER = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
-const sampleWasm = () => Uint8Array.from([...WASM_HEADER, 0x0a, 0x0b, 0x0c]);
-const VALID_GZIP = gzipSync(sampleWasm());
+const fixtureGzip = readFileSync(new URL('../../assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz', import.meta.url));
+const fixtureWasm = gunzipSync(fixtureGzip);
+const sampleWasm = () => fixtureWasm;
+const VALID_GZIP = fixtureGzip;
 const realFetch = globalThis.fetch;
 let calls = [];
 beforeEach(() => {
@@ -28,8 +30,8 @@ test('a valid gzip response is fetched once and decoded without a raw WASM reque
   const fetchFn = makeEngineFetch();
   const first = await fetchFn('./zeroperl-twnm61dk.wasm');
   const second = await fetchFn('./zeroperl-twnm61dk.wasm');
-  assert.deepEqual([...new Uint8Array(await first.arrayBuffer())], [...sampleWasm()]);
-  assert.deepEqual([...new Uint8Array(await second.arrayBuffer())], [...sampleWasm()]);
+  assert.ok(Buffer.from(await first.arrayBuffer()).equals(sampleWasm()));
+  assert.ok(Buffer.from(await second.arrayBuffer()).equals(sampleWasm()));
   assert.deepEqual(calls, ['zeroperl-twnm61dk.wasm.gz']);
 });
 test('missing DecompressionStream falls back to fflate with no raw WASM request', async () => {
@@ -38,7 +40,7 @@ test('missing DecompressionStream falls back to fflate with no raw WASM request'
   try {
     delete globalThis.DecompressionStream;
     const result = await makeEngineFetch()('./zeroperl-twnm61dk.wasm');
-    assert.deepEqual([...new Uint8Array(await result.arrayBuffer())], [...sampleWasm()]);
+    assert.ok(Buffer.from(await result.arrayBuffer()).equals(sampleWasm()));
     assert.deepEqual(calls, ['zeroperl-twnm61dk.wasm.gz']);
   } finally {
     globalThis.DecompressionStream = native;
@@ -52,7 +54,7 @@ test('concurrent requests share one download', async () => {
     fetchFn('./zeroperl-twnm61dk.wasm'),
   ]);
   for (const result of results) {
-    assert.deepEqual([...new Uint8Array(await result.arrayBuffer())], [...sampleWasm()]);
+    assert.ok(Buffer.from(await result.arrayBuffer()).equals(sampleWasm()));
   }
   assert.deepEqual(calls, ['zeroperl-twnm61dk.wasm.gz']);
 });

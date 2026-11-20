@@ -3,7 +3,8 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { gzipSync } from 'node:zlib';
+import { gzipSync, gunzipSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 import {
   createProgressFetch,
   decodeEngineBytes,
@@ -14,8 +15,9 @@ import {
   isWasmBinary,
   noteEngineUrl,
 } from '../../assets/js/ui/engine-loading.js';
-const WASM_HEADER = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
-const sampleWasm = () => Uint8Array.from([...WASM_HEADER, 0x0a, 0x0b, 0x0c]);
+const fixtureGzip = readFileSync(new URL('../../assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz', import.meta.url));
+const fixtureWasm = gunzipSync(fixtureGzip);
+const sampleWasm = () => fixtureWasm;
 import { friendlyMemoryError, isMemoryError } from '../../assets/js/core/worker-client.js';
 
 const realFetch = globalThis.fetch;
@@ -120,17 +122,17 @@ test('engineRequestUrl maps only the vendored WASM to its gzip build', () => {
 test('magic-byte helpers recognise WASM and gzip binaries', () => {
   const wasm = sampleWasm();
   assert.equal(isWasmBinary(wasm), true);
-  assert.equal(isGzipBinary(gzipSync(wasm)), true);
-  assert.equal(isWasmBinary(gzipSync(wasm)), false);
+  assert.equal(isGzipBinary(fixtureGzip), true);
+  assert.equal(isWasmBinary(fixtureGzip), false);
   assert.equal(isWasmBinary(Uint8Array.from([0, 0x61, 0x73, 0x6d, 2, 0, 0, 0])), false);
   assert.equal(isWasmBinary(Uint8Array.from([1, 2, 3])), false);
 });
 test('decodeEngineResponse detects gzip by magic bytes and validates the WASM result', async () => {
   const wasm = sampleWasm();
-  const gz = gzipSync(wasm);
+  const gz = fixtureGzip;
   const response = new Response(gz, { headers: { 'content-type': 'application/octet-stream' } });
   const decoded = await decodeEngineResponse(response);
-  assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...wasm]);
+  assert.ok(Buffer.from(await decoded.arrayBuffer()).equals(wasm));
   assert.equal(decoded.headers.get('content-length'), String(wasm.byteLength));
   assert.equal(decoded.headers.get('content-type'), 'application/wasm');
 });
@@ -138,13 +140,13 @@ test('decodeEngineResponse passes a cached raw WASM through despite a misleading
   const wasm = sampleWasm();
   const response = new Response(wasm, { headers: { 'content-encoding': 'gzip' } });
   const decoded = await decodeEngineResponse(response);
-  assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...wasm]);
+  assert.ok(Buffer.from(await decoded.arrayBuffer()).equals(wasm));
 });
 test('decodeEngineResponse unwraps double-compressed gzip', async () => {
   const wasm = sampleWasm();
-  const double = gzipSync(gzipSync(wasm));
+  const double = gzipSync(fixtureGzip);
   const decoded = await decodeEngineResponse(new Response(double));
-  assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...wasm]);
+  assert.ok(Buffer.from(await decoded.arrayBuffer()).equals(wasm));
 });
 test('decodeEngineResponse rejects non-WASM bytes after decompression', async () => {
   const response = new Response(gzipSync(Uint8Array.from([1, 2, 3, 4])));
@@ -155,8 +157,8 @@ test('decodeEngineResponse uses fflate when DecompressionStream is absent', asyn
   const native = globalThis.DecompressionStream;
   try {
     delete globalThis.DecompressionStream;
-    const decoded = await decodeEngineResponse(new Response(gzipSync(wasm)));
-    assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...wasm]);
+    const decoded = await decodeEngineResponse(new Response(fixtureGzip));
+    assert.ok(Buffer.from(await decoded.arrayBuffer()).equals(wasm));
   } finally {
     globalThis.DecompressionStream = native;
   }
@@ -166,17 +168,25 @@ test('integrity verification is skipped safely without Web Crypto', async () => 
   try {
     Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
     const wasm = sampleWasm();
-    const decoded = await decodeEngineBytes(gzipSync(wasm));
-    assert.deepEqual([...decoded], [...wasm]);
+    const decoded = await decodeEngineBytes(fixtureGzip);
+    assert.ok(Buffer.from(decoded).equals(wasm));
   } finally {
     Object.defineProperty(globalThis, 'crypto', { value: cryptoGlobal, configurable: true });
   }
 });
 test('decodeEngineBytes refuses more than two gzip layers', async () => {
-  const triple = gzipSync(gzipSync(gzipSync(sampleWasm())));
+  const triple = gzipSync(gzipSync(fixtureGzip));
   await assert.rejects(() => decodeEngineBytes(triple), /gzip|WASM/i);
 });
 test('noteEngineUrl records the gzip build so offline prefetch stays compressed', () => {
   noteEngineUrl('./zeroperl-twnm61dk.wasm.gz');
   assert.match(engineWasmUrl(), /zeroperl-twnm61dk\.wasm\.gz$/);
+});
+test('rejects a valid WASM header with an incorrect binary size', async () => {
+  await assert.rejects(() => decodeEngineBytes(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0, 255)), /size mismatch/i);
+});
+test('rejects same-length corrupted WASM via pinned SHA-256', async () => {
+  const corrupted = new Uint8Array(fixtureWasm);
+  corrupted[corrupted.length - 1] ^= 1;
+  await assert.rejects(() => decodeEngineBytes(corrupted), /integrity mismatch/i);
 });

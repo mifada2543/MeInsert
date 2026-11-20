@@ -225,7 +225,7 @@ function handleSwMessage(data) {
     download.totalBytes = data.totalBytes || download.totalBytes;
     if (data.ok) rememberCached(data.url);
     resetInactivity();
-    renderProgress();
+    render();
   } else if (data.type === 'OPTIONAL_CANCELLED') {
     endDownload('cancelled', t('ui.engineDownloadCancelled'), 'info');
   } else if (data.type === 'OPTIONAL_ERROR') {
@@ -339,6 +339,7 @@ function buildDialog() {
     }, input, el('span', { className: 'offline-settings__option-text' }, name, hint)));
   }
   const featureInputs = new Map();
+  const featureStatuses = new Map();
   const featureHeading = el('h3', { className: 'offline-settings__features-title' });
   const featureHeadingLabel = el('span');
   bindText(featureHeadingLabel, () => t('ui.offlineSelected'));
@@ -356,6 +357,7 @@ function buildDialog() {
     const name = el('span', { className: 'offline-settings__feature-name' });
     bindText(name, () => t(feature.labelKey));
     const ready = el('span', { className: 'offline-settings__feature-status' });
+    featureStatuses.set(feature.id, { node: ready, feature });
     bindText(ready, () => t(featureReady(feature) ? 'ui.offlineFeatureReady' : 'ui.offlineFeatureNotReady'));
     featureList.append(el('label', {
       className: 'offline-settings__feature',
@@ -429,7 +431,7 @@ function buildDialog() {
   });
   document.body.append(dialog);
   refs = {
-    closeBtn, note, modeInputs, featureInputs, featureList, estimate, status, progress,
+    closeBtn, note, modeInputs, featureInputs, featureStatuses, featureList, estimate, status, progress,
     progressText, fill, clearBtn, cancelBtn, retryBtn, downloadBtn, downloadAllBtn,
   };
   return dialog;
@@ -451,6 +453,9 @@ function render() {
   for (const [id, input] of refs.featureInputs) {
     input.checked = draft.features.includes(id);
     input.disabled = saveData;
+  }
+  for (const { node, feature } of refs.featureStatuses.values()) {
+    node.textContent = t(featureReady(feature) ? 'ui.offlineFeatureReady' : 'ui.offlineFeatureNotReady');
   }
   refs.clearBtn.disabled = download.active;
   refs.cancelBtn.hidden = !download.active;

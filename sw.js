@@ -6,7 +6,7 @@
 // must never throw away engines the user already downloaded. ENGINE_VERSION is
 // mirrored by core/build.js (this worker is a classic script, so it cannot use
 // a static import); tests/unit/service-worker-update.test.js keeps them in sync.
-const CACHE_VERSION = 'meinsert-v54';
+const CACHE_VERSION = 'meinsert-v55';
 const ENGINE_VERSION = 'meinsert-engine-v1';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
 const INSTALL_FETCH_TIMEOUT_MS = 15_000;
@@ -201,9 +201,34 @@ self.addEventListener('install', (event) => {
     await self.skipWaiting();
   })());
 });
+// Reuse only the pinned upstream binary. No raw WASM is shipped or fetched.
+async function migrateRawWasmCache() {
+  const cache = await caches.open(ENGINE_VERSION);
+  const raw = new URL('./assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm', self.registration.scope).href;
+  const compressed = `${raw}.gz`;
+  try {
+    const legacy = await cache.match(raw);
+    if (!legacy) return;
+    // Prefer a verified legacy binary, even if an existing gzip entry is corrupt.
+    if (!legacy.ok || typeof globalThis.crypto?.subtle?.digest !== 'function') return;
+    const bytes = await legacy.arrayBuffer();
+    if (bytes.byteLength !== 27_651_111) return;
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+    const hex = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+    if (hex !== 'f854cbb7b6b014d2816a89428fcb217162bb0d7e65f2078f3bbd4b72eaa412ce') return;
+    const canCompress = typeof globalThis.CompressionStream === 'function';
+    const body = canCompress ? new Response(bytes).body.pipeThrough(new CompressionStream('gzip')) : bytes;
+    await cache.put(compressed, new Response(body, { headers: {
+      'content-type': canCompress ? 'application/gzip' : 'application/wasm',
+      [ENGINE_HEADER]: ENGINE_VERSION,
+    } }));
+    await cache.delete(raw);
+  } catch { /* Keep the old entry if migration fails; never block activation. */ }
+}
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     await migrateLegacyCache();
+    await migrateRawWasmCache();
     const keys = await caches.keys();
     await Promise.all(keys
       .filter((key) => key.startsWith('meinsert-') && key !== CACHE_VERSION && key !== ENGINE_VERSION)

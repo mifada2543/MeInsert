@@ -37,8 +37,7 @@ page.on('request', (request) => {
 const sample = join(root, 'tests/fixtures/pattern.png');
 const localCopy = '/tmp/opencode/wasm-integrity-pattern.png';
 copyFileSync(sample, localCopy);
-const rawWasm = readFileSync(join(root, 'assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm'));
-const doubleGzip = gzipSync(gzipSync(rawWasm));
+const doubleGzip = gzipSync(readFileSync(join(root, 'assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz')));
 async function openAndExpectTags(label) {
   await page.locator('#fileInput').setInputFiles(localCopy);
   await page.waitForFunction(() => /tag terbaca/.test(document.querySelector('#readStatus')?.textContent || ''),

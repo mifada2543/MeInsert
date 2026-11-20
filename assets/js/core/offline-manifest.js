@@ -67,9 +67,21 @@ export function optionalUrls(profile) {
     return [];
   }
 }
+const SHARED_OPTIONAL_BYTES = new Map([
+  ['./assets/vendor/mediabunny.mjs', 722_897],
+  ['./assets/vendor/fflate.mjs', 90_922],
+]);
 export function estimatedBytes(profile) {
   try {
-    return featuresForProfile(profile).reduce((sum, feature) => sum + (Number(feature.bytes) || 0), 0);
+    const seen = new Set();
+    return featuresForProfile(profile).reduce((sum, feature) => {
+      let bytes = Number(feature.bytes) || 0;
+      for (const url of feature.urls) {
+        if (seen.has(url)) bytes -= SHARED_OPTIONAL_BYTES.get(url) || 0;
+        seen.add(url);
+      }
+      return sum + bytes;
+    }, 0);
   } catch {
     return 0;
   }
