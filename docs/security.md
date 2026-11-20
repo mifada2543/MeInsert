@@ -90,6 +90,60 @@ policy**. `wasm-unsafe-eval` is required to run the WASM runtime and
 `frame-src blob:` is required for PDF previews. There is no `'unsafe-inline'`
 and no external CDN.
 
+## 4. Audit otomatis: method/body/query & Service Worker nyata
+
+Dua skrip E2E melengkapi pemeriksaan manual di atas:
+
+```bash
+node tests/e2e/security.mjs       # CSP + asal + bentuk request
+npm run test:offline:real          # Service Worker sungguhan + Cache Storage
+```
+
+`security.mjs` tetap memeriksa CSP di kelima halaman dan menolak request lintas
+origin. Selain itu, untuk alur open → edit → save (single **dan** batch) skrip
+mengaudit **setiap request**: tidak boleh ada `POST`/`PUT`/`PATCH`/`DELETE`,
+tidak boleh ada body, tidak boleh ada content-type upload, dan tidak boleh ada
+query string yang membawa nilai field atau nama berkas. Dengan demikian tes
+mendeteksi "upload" walaupun endpoint-nya masih origin yang sama.
+
+`offline-real.mjs` menjalankan Chrome dengan `serviceWorkers: 'allow'`
+terhadap server lokal dan mengukur unduhan lewat event `request` Playwright
+**serta** isi `caches.keys()`/`cache.keys()` — bukan hanya teks status di UI.
+Skenarionya: (a) kunjungan pertama frugal hanya meng-precache shell, tanpa
+WASM/vendor berat; (b) edit MP3 hanya mengunduh engine audio; (c) pasang satu
+engine lewat panel Penyimpanan & Offline; (d) instal penuh; (e) reload dan edit
+saat offline sungguhan; (f) pembaruan aplikasi tanpa mengunduh ulang WASM yang
+tidak berubah; (g) hapus engine opsional. Skrip juga memastikan tidak pernah
+ada URL `blob:`/`data:` atau berkas pengguna di Cache Storage. Skenario yang
+tidak dapat dijalankan tanpa memanipulasi SW secara merusak isolasi dicetak
+sebagai `SKIP:` dengan alasan — bukan `PASS`.
+
+Two E2E scripts extend the manual checks above. `security.mjs` keeps the CSP
+and cross-origin checks and additionally audits the **shape** of every request
+during single and batch open → edit → save: no mutating methods, no body, no
+upload content-type, and no query parameter carrying field values or file
+names. `offline-real.mjs` runs Chrome with real service workers against a local
+server and measures downloads through Playwright request events **and** Cache
+Storage inspection, not UI status text. It covers first frugal visit, MP3 edit,
+selective engine install, full install, genuinely offline reload/edit, an app
+update that must not re-download unchanged WASM, and optional-engine removal.
+No blob/object URL or user file is ever written to Cache Storage; any
+infeasible scenario is reported as `SKIP:` with an explicit reason.
+
+### Batasan / Limitations
+
+- Server dan berkas uji bersifat lokal dan sintetis; skrip tidak menguji host
+  produksi, beacon CDN/analitik yang disuntikkan host, atau HTTPS publik.
+- "Offline" disimulasikan dengan `context.setOffline(true)`, bukan benar-benar
+  mematikan radio perangkat; Service Worker harus tetap berada di origin aman
+  (`localhost`/`127.0.0.1` memenuhi syarat).
+- Skenario pembaruan (f) menyimulasikan deployment dengan melayani `sw.js` dan
+  `build.js` yang dimodifikasi **dari server tes** — tidak ada file aplikasi
+  yang diubah. Ini membuktikan pemisahan cache shell/engine, bukan proses rilis
+  produksi yang sebenarnya.
+- Hasil bergantung pada versi Chrome/Playwright; `SKIP` adalah hasil yang sah
+  dan tetap dilaporkan, bukan dianggap lulus.
+
 ## Catatan penting untuk pemilik host / Important note for the host owner
 
 **Host produksi menyuntikkan beacon Cloudflare Analytics yang TIDAK ada di

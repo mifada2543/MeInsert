@@ -5,6 +5,7 @@ import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js
 import { AppError } from '../core/errors.js';
 import { applyCoverImages, coverFromTags, scrubPrimaryCoverRaw } from '../core/image-utils.js';
 import { commentPictures, editPictures, flacPictures, pictureBase64, repairFlacMetadata } from './vorbis-pictures.js';
+import { rewriteOggComment } from '../core/ogg-comment.js';
 export const KNOWN_RAW = new Set([
   'vendor', 'ENCODER', 'TITLE', 'ARTIST', 'ALBUM', 'ALBUMARTIST', 'DATE',
   'GENRE', 'TRACKNUMBER', 'TRACKTOTAL', 'DISCNUMBER', 'DISCTOTAL',
@@ -205,6 +206,83 @@ export async function writeVorbis(file, payload, options, report, config) {
   delete raw.METADATA_BLOCK_PICTURE;
   const rawPictures = isFlac ? pictureComments : pictures;
   if (rawPictures.length) raw.METADATA_BLOCK_PICTURE = rawPictures.map(pictureBase64);
+  const outExt = options.extension || config.defaultExt;
+  const mime = options.mime || config.mime;
+  const verifyOutput = async (bytes, initialWarnings = []) => {
+    const blob = new Blob([bytes], { type: mime });
+    report({ stage: 'Memverifikasi hasil…', pct: 82 });
+    try {
+      const outputFile = new File([bytes], `output.${outExt}`, { type: mime });
+      const check = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
+      const afterTags = await check.getMetadataTags();
+      const checkFields = toFields(afterTags);
+      const warnings = [...initialWarnings];
+      for (const [id, value] of Object.entries(set)) {
+        if (id in checkFields && !sameValue(value, checkFields[id])) {
+          warnings.push(`Field "${id}" tidak terbaca kembali persis seperti yang diminta.`);
+        }
+      }
+      if (coverAction === 'set') {
+        const img = afterTags.images?.find((image) => image.kind === 'coverFront') || afterTags.images?.[0];
+        if (!img) warnings.push('Cover thumbnail tidak ada setelah penulisan.');
+      } else if (coverAction === 'remove') {
+        if (afterTags.images?.some((image) => image.kind !== 'coverBack')) warnings.push('Cover thumbnail belum terhapus.');
+      }
+      let info;
+      try {
+        info = (await readVorbis(outputFile)).info;
+      } catch (infoError) {
+        info = { kind: 'audio', hasCover: Boolean(afterTags.images?.length) };
+        warnings.push(`Info media tidak bisa dibaca ulang setelah penulisan: ${infoError.message || infoError}`);
+      }
+      return {
+        blob,
+        fields: checkFields,
+        custom: customFrom(afterTags),
+        raw: rawRows(afterTags),
+        info,
+        ...coverFromTags(afterTags),
+        warnings,
+      };
+    } catch (error) {
+      return {
+        blob,
+        fields: {},
+        custom: [],
+        raw: [],
+        info: {},
+        warnings: [...initialWarnings, `File sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`],
+      };
+    }
+  };
+  let fallbackWarning = null;
+  if (config.formatClass === 'OggOutputFormat') {
+    try {
+      const changes = {};
+      const originalRaw = tags.raw || {};
+      const keys = new Set([...Object.keys(originalRaw), ...Object.keys(raw)]);
+      for (const key of keys) {
+        if (key === 'vendor') continue;
+        const beforeValue = originalRaw[key];
+        const afterValue = raw[key];
+        if (beforeValue === afterValue) continue;
+        const value = afterValue === undefined ? '' : afterValue;
+        const values = Array.isArray(value) ? value : [value];
+        if (!values.every((item) => typeof item === 'string')) {
+          throw new Error(`tag "${key}" bukan teks`);
+        }
+        changes[key.toUpperCase()] = values.length ? value : '';
+      }
+      const patched = rewriteOggComment(new Uint8Array(await file.arrayBuffer()), {
+        changes,
+        vendor: raw.vendor,
+      });
+      if (patched) return await verifyOutput(patched);
+      fallbackWarning = 'Comment header Ogg tidak bisa ditimpa langsung (tidak muat atau struktur tidak dikenali); container ditulis ulang via media engine.';
+    } catch (error) {
+      fallbackWarning = `Penulisan comment header Ogg langsung tidak aman (${error.message || error}); container ditulis ulang via media engine.`;
+    }
+  }
   const output = new Output({ format, target: new BufferTarget() });
   let conversion;
   try {
@@ -230,38 +308,7 @@ export async function writeVorbis(file, payload, options, report, config) {
   } catch (error) {
     throw new AppError('WRITE_FAILED', `Gagal menulis ${config.label}.`, error.message || String(error));
   }
-  const outExt = options.extension || config.defaultExt;
-  const mime = options.mime || config.mime;
   let bytes = new Uint8Array(output.target.buffer);
   if (isFlac) bytes = repairFlacMetadata(bytes, pictures, tags.raw?.vendor);
-  const blob = new Blob([bytes], { type: mime });
-  report({ stage: 'Memverifikasi hasil…', pct: 82 });
-  try {
-    const check = new Input({ source: new BlobSource(new File([bytes], `output.${outExt}`, { type: mime })), formats: ALL_FORMATS });
-    const afterTags = await check.getMetadataTags();
-    const checkFields = toFields(afterTags);
-    const warnings = [];
-    for (const [id, value] of Object.entries(set)) {
-      if (id in checkFields && !sameValue(value, checkFields[id])) {
-        warnings.push(`Field "${id}" tidak terbaca kembali persis seperti yang diminta.`);
-      }
-    }
-    if (coverAction === 'set') {
-      const img = afterTags.images?.find((i) => i.kind === 'coverFront') || afterTags.images?.[0];
-      if (!img) warnings.push('Cover thumbnail tidak ada setelah penulisan.');
-    } else if (coverAction === 'remove') {
-      if (afterTags.images?.some((image) => image.kind !== 'coverBack')) warnings.push('Cover thumbnail belum terhapus.');
-    }
-    return {
-      blob,
-      fields: checkFields,
-      custom: customFrom(afterTags),
-      raw: rawRows(afterTags),
-      info: { kind: 'audio', hasCover: Boolean(afterTags.images?.length) },
-      ...coverFromTags(afterTags),
-      warnings,
-    };
-  } catch (error) {
-    return { blob, fields: {}, custom: [], raw: [], info: {}, warnings: [`File sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`] };
-  }
+  return verifyOutput(bytes, fallbackWarning ? [fallbackWarning] : []);
 }

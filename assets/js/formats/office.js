@@ -223,6 +223,146 @@ function inventory(xml) {
   }
   return map;
 }
+function localName(tag) {
+  return String(tag || '').split(':').pop().toLowerCase();
+}
+function canonicalInventory(xml) {
+  const result = new Map();
+  for (const [tag, values] of inventory(xml)) {
+    const key = localName(tag);
+    if (!result.has(key)) result.set(key, values);
+  }
+  return result;
+}
+function resolveTag(xml, qualified) {
+  const local = localName(qualified);
+  const match = new RegExp(`<([A-Za-z_][\\w.-]*:)?${escapeRegExp(local)}\\b`, 'i').exec(xml);
+  return match ? `${match[1] || ''}${local}` : qualified;
+}
+const CUSTOM_PART = 'docProps/custom.xml';
+const CUSTOM_FMTID = '{D5CDD505-2E9C-101B-9397-08002B2CF9AE}';
+const CUSTOM_ROOT = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+  + '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"'
+  + ' xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"></Properties>';
+function decodeAttribute(value) {
+  return decodeXml(String(value || ''));
+}
+function nativeCustomEntries(inspected, odf) {
+  const found = new Map();
+  if (!odf) {
+    const text = previewEntry(inspected, CUSTOM_PART);
+    for (const match of text.matchAll(/<property\b([^>]*)>([\s\S]*?)<\/property>/gi)) {
+      const name = /name="([^"]+)"/i.exec(match[1]);
+      const body = /<vt:lpwstr>([\s\S]*?)<\/vt:lpwstr>/i.exec(match[2])
+        || /<vt:([A-Za-z]+)>([\s\S]*?)<\/vt:\1>/i.exec(match[2]);
+      if (!name) continue;
+      const value = body ? decodeXml(body[2] || body[1] || '') : '';
+      if (value) found.set(decodeAttribute(name[1]), value);
+    }
+  } else {
+    const text = previewEntry(inspected, 'meta.xml');
+    for (const match of text.matchAll(/<meta:user-defined\b([^>]*)>([\s\S]*?)<\/meta:user-defined>/gi)) {
+      const name = /meta:name="([^"]+)"/i.exec(match[1]);
+      if (!name) continue;
+      const value = decodeXml(match[2]);
+      if (value) found.set(decodeAttribute(name[1]), value);
+    }
+  }
+  return found;
+}
+function customPropertyXml(xml, key, value) {
+  const name = escapeXml(key);
+  const pattern = new RegExp(`<property\\b[^>]*\\bname="${escapeRegExp(name)}"[^>]*>[\\s\\S]*?<\\/property>`, 'i');
+  const ids = [...xml.matchAll(/\bpid="(\d+)"/gi)].map((match) => Number(match[1]));
+  const pid = Math.max(1, ...ids) + 1;
+  const element = `<property fmtid="${CUSTOM_FMTID}" pid="${pid}" name="${name}">`
+    + `<vt:lpwstr>${escapeXml(value)}</vt:lpwstr></property>`;
+  return pattern.test(xml) ? xml.replace(pattern, element) : xml.replace(/<\/Properties\s*>/i, `${element}</Properties>`);
+}
+function customPropertyRemove(xml, key, odf) {
+  const name = escapeXml(key);
+  if (odf) {
+    const pattern = new RegExp(`<meta:user-defined\\b[^>]*\\bmeta:name="${escapeRegExp(name)}"[^>]*>[\\s\\S]*?<\\/meta:user-defined>`, 'i');
+    return xml.replace(pattern, '');
+  }
+  const pattern = new RegExp(`<property\\b[^>]*\\bname="${escapeRegExp(name)}"[^>]*>[\\s\\S]*?<\\/property>`, 'i');
+  return xml.replace(pattern, '');
+}
+function updateRelationshipXml(inspected, replacements) {
+  const name = '_rels/.rels';
+  const entry = inspected.entries.find((item) => item.name === name);
+  const xml = entry ? new TextDecoder().decode(entry.data)
+    : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+  if (/Target="\/?docProps\/custom\.xml"/i.test(xml)) return;
+  const ids = [...xml.matchAll(/\bId="rId(\d+)"/gi)].map((match) => Number(match[1]));
+  const id = `rId${Math.max(0, ...ids) + 1}`;
+  const rel = `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties" Target="docProps/custom.xml"/>`;
+  const updated = /<Relationships\s*\/>/i.test(xml)
+    ? xml.replace(/<Relationships\s*\/>/i, `<Relationships>${rel}</Relationships>`)
+    : xml.replace(/<\/Relationships\s*>/i, `${rel}</Relationships>`);
+  replacements.set(name, strToU8(updated));
+}
+function updateContentTypes(inspected, replacements) {
+  const name = '[Content_Types].xml';
+  const entry = inspected.entries.find((item) => item.name === name);
+  if (!entry) return;
+  const xml = new TextDecoder().decode(entry.data);
+  if (/PartName="\/?docProps\/custom\.xml"/i.test(xml)) return;
+  const override = '<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>';
+  replacements.set(name, strToU8(xml.replace(/<\/Types\s*>/i, `${override}</Types>`)));
+}
+const PREVIEW_LIMITS = { items: 6, itemChars: 120, totalChars: 280 };
+function previewText(xml, pattern) {
+  const out = [];
+  for (const match of String(xml || '').matchAll(pattern)) {
+    const value = decodeXml(match[1]).replace(/\s+/g, ' ').trim();
+    if (value) out.push(value.slice(0, PREVIEW_LIMITS.itemChars));
+    if (out.length >= PREVIEW_LIMITS.items) break;
+  }
+  return out;
+}
+function previewEntry(inspected, name) {
+  const entry = inspected.entries.find((item) => item.name === name);
+  return entry ? new TextDecoder().decode(entry.data) : '';
+}
+function contentPreview(inspected, subtype) {
+  const kind = String(subtype || '').toLowerCase();
+  const groups = [];
+  if (kind.startsWith('doc')) {
+    const values = previewText(previewEntry(inspected, 'word/document.xml'), /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/gi);
+    if (values.length) groups.push({ key: 'paragraphs', values });
+  } else if (kind.startsWith('xls') || kind === 'ods') {
+    const workbook = previewEntry(inspected, 'xl/workbook.xml');
+    const sheets = previewText(workbook, /<sheet\b[^>]*\bname="([^"]+)"/gi);
+    if (kind === 'ods') {
+      const odf = previewText(previewEntry(inspected, 'content.xml'), /<table:table\b[^>]*\btable:name="([^"]+)"/gi);
+      sheets.push(...odf);
+    }
+    if (sheets.length) groups.push({ key: 'sheets', values: sheets.slice(0, PREVIEW_LIMITS.items) });
+    const strings = previewText(previewEntry(inspected, 'xl/sharedStrings.xml'), /<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/gi);
+    if (strings.length) groups.push({ key: 'cells', values: strings });
+  } else if (kind.startsWith('ppt') || kind === 'odp') {
+    const slides = previewText(previewEntry(inspected, 'ppt/slides/slide1.xml'), /<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/gi);
+    if (kind === 'odp') slides.push(...previewText(previewEntry(inspected, 'content.xml'), /<text:p(?:\s[^>]*)?>([\s\S]*?)<\/text:p>/gi));
+    if (slides.length) groups.push({ key: 'slides', values: slides });
+  } else if (kind === 'odt') {
+    const values = previewText(previewEntry(inspected, 'content.xml'), /<text:p(?:\s[^>]*)?>([\s\S]*?)<\/text:p>/gi);
+    if (values.length) groups.push({ key: 'paragraphs', values });
+  }
+  let used = 0;
+  const trimmed = [];
+  for (const group of groups) {
+    const values = [];
+    for (const value of group.values) {
+      if (used + value.length > PREVIEW_LIMITS.totalChars) break;
+      used += value.length;
+      values.push(value);
+    }
+    if (values.length) trimmed.push({ key: group.key, values });
+    if (used >= PREVIEW_LIMITS.totalChars) break;
+  }
+  return { contentPreview: trimmed };
+}
 function inferSubtype(inspected, options, file) {
   const explicit = String(options?.subtype || '').toLowerCase();
   if (OFFICE_SUBTYPES.includes(explicit)) return explicit;
@@ -248,7 +388,7 @@ function inferSubtype(inspected, options, file) {
 function fieldValue(fieldId, targets, parts, odf) {
   const values = [];
   for (const [kind, tag] of targets[fieldId] || []) {
-    const found = parts.get(kind)?.get(tag);
+    const found = parts.get(kind)?.get(localName(tag));
     if (found) values.push(...found);
   }
   if (!values.length) return fieldId === 'keywords' ? [] : '';
@@ -258,23 +398,35 @@ function fieldValue(fieldId, targets, parts, odf) {
   if (fieldId === 'date' || fieldId === 'modified') return toDateInput(values[0]);
   return values.join(', ');
 }
+function assertOfficePackage(inspected) {
+  if (inspected.packageValid === false) {
+    throw new AppError(
+      'NOT_OFFICE_PACKAGE',
+      'Arsip ini bukan paket Office yang valid.',
+      (inspected.findings || []).join('; '),
+    );
+  }
+}
 export async function read(file, options = {}) {
   const bytes = await toBytes(file);
   const inspected = await inspectZip(bytes);
+  assertOfficePackage(inspected);
   const subtype = inferSubtype(inspected, options, file);
   const odf = inspected.odf;
   const targets = FIELD_TARGETS[odf ? 'odf' : 'ooxml'];
   const parts = new Map();
+  const canonical = new Map();
   const partText = new Map();
   for (const kind of ['core', 'app', 'meta']) {
     const entry = inspected.entries.find((item) => item.name === PART_NAMES[kind]);
     const text = entry ? new TextDecoder().decode(entry.data) : '';
     partText.set(kind, text);
     parts.set(kind, text ? inventory(text) : new Map());
+    canonical.set(kind, text ? canonicalInventory(text) : new Map());
   }
   const fields = {};
   for (const id of new Set([...Object.keys(FIELD_TARGETS.ooxml), ...Object.keys(FIELD_TARGETS.odf)])) {
-    fields[id] = fieldValue(id, targets, parts, odf);
+    fields[id] = fieldValue(id, targets, canonical, odf);
   }
   const raw = [];
   const custom = [];
@@ -288,6 +440,9 @@ export async function read(file, options = {}) {
     }
   }
   raw.sort((a, b) => a.group.localeCompare(b.group) || a.tag.localeCompare(b.tag));
+  for (const [key, value] of nativeCustomEntries(inspected, odf)) {
+    if (!custom.some((item) => item.key === key)) custom.push({ key, value });
+  }
   custom.sort((a, b) => a.key.localeCompare(b.key));
   const warnings = [];
   if (inspected.signed) warnings.push(SIGNED_WARNING);
@@ -302,14 +457,16 @@ export async function read(file, options = {}) {
       signed: inspected.signed,
       macros: inspected.macros,
       valid: inspected.valid,
+      packageValid: inspected.packageValid,
       entryCount: inspected.entries.length,
-      ...officeSummary(fields, parts, partText, subtype),
+      ...officeSummary(fields, canonical, partText, subtype),
+      ...contentPreview(inspected, subtype),
     },
     warnings,
   };
 }
 function firstValue(map, tag) {
-  const values = map?.get(tag);
+  const values = map?.get(localName(tag));
   return values && values.length ? String(values[0]).trim() : '';
 }
 function attributeValue(xml, attribute) {
@@ -338,16 +495,6 @@ function officeSummary(fields, parts, partText, subtype) {
     sheets: odf ? null : positiveCount(firstValue(app, 'Sheets')),
   };
 }
-function hasNamespace(xml, prefix) {
-  return new RegExp(`xmlns:${escapeRegExp(prefix)}\\s*=`, 'i').test(xml);
-}
-function ensureNamespace(xml, prefix) {
-  if (!prefix || hasNamespace(xml, prefix)) return xml;
-  const match = /<[A-Za-z_][\w.-]*(?::[\w.-]+)?[^>]*?>/.exec(xml);
-  if (!match) return xml;
-  const index = match.index + match[0].length - 1;
-  return `${xml.slice(0, index)} xmlns:${prefix}="urn:meinsert:custom"${xml.slice(index)}`;
-}
 function setFieldValue(p, id, value, targets, kind, tag, odf) {
   let values;
   if (id === 'keywords') {
@@ -360,7 +507,7 @@ function setFieldValue(p, id, value, targets, kind, tag, odf) {
     const text = asString(value);
     values = text ? [text] : [];
   }
-  p.xml = upsert(p.xml, tag, values, anchorFor(kind, odf, p.xml));
+  p.xml = upsert(p.xml, resolveTag(p.xml, tag), values, anchorFor(kind, odf, p.xml));
 }
 function fieldMatches(id, expected, actual, definitions) {
   const definition = definitions.find((field) => field.id === id);
@@ -373,6 +520,7 @@ function fieldMatches(id, expected, actual, definitions) {
 export async function write(file, payload, options = {}, report = () => {}) {
   const bytes = await toBytes(file);
   const inspected = await inspectZip(bytes);
+  assertOfficePackage(inspected);
   const subtype = inferSubtype(inspected, options, file);
   const odf = inspected.odf;
   const targets = FIELD_TARGETS[odf ? 'odf' : 'ooxml'];
@@ -424,10 +572,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     }
   }
   const replacements = new Map();
-  const removeTags = [
-    ...(payload?.rawRemove || []),
-    ...(payload?.customRemove || []),
-  ].map((item) => asString(item).trim()).filter(Boolean);
+  const removeTags = [...(payload?.rawRemove || [])].map((item) => asString(item).trim()).filter(Boolean);
   for (const tag of removeTags) {
     const entry = inspected.entries.find((item) => item.name === tag);
     if (entry && !OFFICE_METADATA_PARTS.includes(tag) && tag !== 'mimetype' && tag !== '[Content_Types].xml') {
@@ -437,29 +582,45 @@ export async function write(file, payload, options = {}, report = () => {}) {
     let matched = false;
     for (const kind of ['core', 'app', 'meta']) {
       const part = loadPart(kind);
-      if (part && hasElement(part.xml, tag)) {
-        part.xml = upsert(part.xml, tag, [], anchorFor(kind, odf, part.xml));
+      if (part && hasElement(part.xml, resolveTag(part.xml, tag))) {
+        part.xml = upsert(part.xml, resolveTag(part.xml, tag), [], anchorFor(kind, odf, part.xml));
         matched = true;
       }
     }
     if (!matched && !entry) warnings.push(`Tag "${tag}" tidak ditemukan di metadata yang dapat ditulis.`);
   }
-  for (const item of payload?.custom || []) {
-    const key = asString(item?.key).trim();
-    if (!key) continue;
-    if (!/^[A-Za-z_][\w.-]*(?::[A-Za-z_][\w.-]*)?$/.test(key)) {
-      warnings.push(`Key kustom "${key}" tidak valid dan diabaikan.`);
-      continue;
+  const customRemove = [...(payload?.customRemove || [])].map((item) => asString(item).trim()).filter(Boolean);
+  if (customRemove.length || (payload?.custom || []).length) {
+    if (odf) {
+      const part = ensurePart('meta');
+      let xml = part.xml;
+      for (const key of customRemove) xml = customPropertyRemove(xml, key, true);
+      for (const item of payload?.custom || []) {
+        const key = asString(item?.key).trim();
+        if (!key) continue;
+        const value = asString(item?.value);
+        const element = `<meta:user-defined meta:name="${escapeXml(key)}">${escapeXml(value)}</meta:user-defined>`;
+        const pattern = new RegExp(`<meta:user-defined\\b[^>]*\\bmeta:name="${escapeRegExp(escapeXml(key))}"[^>]*>[\\s\\S]*?<\\/meta:user-defined>`, 'i');
+        xml = pattern.test(xml) ? xml.replace(pattern, element) : xml.replace(/<\/office:meta\s*>/i, `${element}</office:meta>`);
+      }
+      part.xml = xml;
+    } else {
+      const entry = inspected.entries.find((item) => item.name === CUSTOM_PART);
+      let xml = entry ? new TextDecoder().decode(entry.data) : CUSTOM_ROOT;
+      for (const key of customRemove) xml = customPropertyRemove(xml, key, false);
+      for (const item of payload?.custom || []) {
+        const key = asString(item?.key).trim();
+        if (!key) continue;
+        if (!/^[A-Za-z_][\w.-]*(?::[A-Za-z_][\w.-]*)?$/.test(key)) {
+          warnings.push(`Key kustom "${key}" tidak valid dan diabaikan.`);
+          continue;
+        }
+        xml = customPropertyXml(xml, key, asString(item?.value));
+      }
+      replacements.set(CUSTOM_PART, strToU8(xml));
+      updateRelationshipXml(inspected, replacements);
+      updateContentTypes(inspected, replacements);
     }
-    const kind = odf ? 'meta' : 'core';
-    const part = ensurePart(kind);
-    const prefix = key.includes(':') ? key.split(':')[0] : '';
-    if (prefix && !hasNamespace(part.xml, prefix)) {
-      part.xml = ensureNamespace(part.xml, prefix);
-      warnings.push(`Tag kustom "${key}" memakai namespace "${prefix}" yang tidak dikenal; deklarasi placeholder ditambahkan.`);
-    }
-    const value = asString(item?.value);
-    part.xml = upsert(part.xml, key, value ? [value] : [], anchorFor(kind, odf, part.xml));
   }
   for (const part of parts.values()) {
     if (part && part.xml !== part.root) replacements.set(part.name, strToU8(part.xml));

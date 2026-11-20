@@ -137,7 +137,7 @@ Select **Save**, review the changes, and confirm. The output is read again and v
 - **Storage & Offline settings** — choose *Frugal* (default), *Mostly ready*, or *Download everything*. Frugal mode is forced automatically when the browser enables Save-Data.
 - **Comfortable on small screens** — theme, language, and settings move into the ☰ menu (which turns into ✕ when open); primary actions stay visible, secondary controls live in the **Options** panel.
 - **Animated preview open/close** — smooth, keeps media playing, and respects the system's reduced-motion setting.
-- **Office document preview** — a summary card built from document metadata (title, creator, counts, signature/macro status) helps you confirm you picked the right file. It is not a rendering of the page contents.
+- **Office document preview** — a summary card built from document metadata (title, creator, counts, signature/macro status) helps you confirm you picked the right file. A bounded content excerpt is available when present; it is not a full-fidelity rendering.
 
 ---
 

@@ -3,46 +3,32 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { deflateSync, inflateSync, strFromU8, strToU8 } from '../../vendor/fflate.mjs';
 import { AppError } from './errors.js';
-
+import { readZipDirectory, ZIP_LIMITS } from './zip-directory.js';
 export const OFFICE_METADATA_PARTS = ['docProps/core.xml', 'docProps/app.xml', 'meta.xml'];
-
 const SIG_LOCAL = 0x04034b50;
 const SIG_CENTRAL = 0x02014b50;
 const SIG_EOCD = 0x06054b50;
-const SIG_ZIP64_LOCATOR = 0x07064b50;
-const SIG_DATA_DESCRIPTOR = 0x08074b50;
-
-// DOS timestamp for 1980-01-01 00:00:00 — deterministic for freshly added entries.
 const FIXED_TIME = 0;
 const FIXED_DATE = 0x0021;
-
 function readU16(bytes, offset) {
   return bytes[offset] | (bytes[offset + 1] << 8);
 }
-
-function readU32(bytes, offset) {
-  return ((bytes[offset]
-    | (bytes[offset + 1] << 8)
-    | (bytes[offset + 2] << 16)
-    | (bytes[offset + 3] << 24)) >>> 0);
-}
-
 function writeU16(bytes, offset, value) {
   bytes[offset] = value & 0xff;
   bytes[offset + 1] = (value >>> 8) & 0xff;
 }
-
 function writeU32(bytes, offset, value) {
   bytes[offset] = value & 0xff;
   bytes[offset + 1] = (value >>> 8) & 0xff;
   bytes[offset + 2] = (value >>> 16) & 0xff;
   bytes[offset + 3] = (value >>> 24) & 0xff;
 }
-
 function badZip(message, detail = '') {
   return new AppError('CORRUPT_OFFICE', message, detail);
 }
-
+function zipBomb(message, detail = '') {
+  return new AppError('ZIP_BOMB_SUSPECTED', message, detail);
+}
 async function toBytes(input) {
   if (input instanceof Uint8Array) return input;
   if (input instanceof ArrayBuffer) return new Uint8Array(input);
@@ -50,7 +36,6 @@ async function toBytes(input) {
   if (Array.isArray(input)) return new Uint8Array(input);
   throw badZip('Arsip Office tidak bisa dibaca.', 'Input bukan Blob/File/Uint8Array.');
 }
-
 function toU8(value) {
   if (value instanceof Uint8Array) return value;
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
@@ -58,8 +43,6 @@ function toU8(value) {
   if (Array.isArray(value)) return new Uint8Array(value);
   throw new AppError('INVALID_REPLACEMENT', 'Isi pengganti bukan Uint8Array.', String(value));
 }
-
-// Standard CRC-32 (IEEE 802.3), built once.
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
   for (let n = 0; n < 256; n += 1) {
@@ -69,108 +52,41 @@ const CRC_TABLE = (() => {
   }
   return table;
 })();
-
 export function crc32(data) {
   let c = 0xffffffff;
   for (let i = 0; i < data.length; i += 1) c = CRC_TABLE[(c ^ data[i]) & 0xff] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
 
-function findEocd(bytes) {
-  const floor = Math.max(0, bytes.length - (22 + 0xffff));
-  let loose = -1;
-  for (let i = bytes.length - 22; i >= floor; i -= 1) {
-    if (readU32(bytes, i) !== SIG_EOCD) continue;
-    if (loose < 0) loose = i;
-    const commentLen = readU16(bytes, i + 20);
-    if (i + 22 + commentLen === bytes.length) return i;
-  }
-  return loose;
-}
-
 /**
  * Parse the ZIP central directory and local headers. Untouched entries keep a
  * verbatim slice of their local record; changed entries are re-emitted by patchZip.
  * When `inflate` is false, no entry payload is decompressed (bounded memory).
+ * Structural validation and ZIP-bomb limits live in readZipDirectory.
  */
 function parseZip(bytes, inflate = true) {
-  if (bytes.length < 22) throw badZip('Arsip Office terlalu pendek atau rusak.');
-  const eocd = findEocd(bytes);
-  if (eocd < 0) throw badZip('End of Central Directory tidak ditemukan.');
-
-  // ZIP64 needs 64-bit offset handling we deliberately do not fake.
-  if (eocd >= 20 && readU32(bytes, eocd - 20) === SIG_ZIP64_LOCATOR) {
-    throw new AppError('ZIP64_UNSUPPORTED', 'Arsip Office memakai ZIP64 yang tidak didukung.');
-  }
-
-  const count = readU16(bytes, eocd + 10);
-  const cdSize = readU32(bytes, eocd + 12);
-  const cdOffset = readU32(bytes, eocd + 16);
-  if (count === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) {
-    throw new AppError('ZIP64_UNSUPPORTED', 'Arsip Office memakai ZIP64 yang tidak didukung.');
-  }
-  if (cdOffset + cdSize > bytes.length) throw badZip('Central directory berada di luar file.');
-
+  const zip = readZipDirectory(bytes);
   const entries = [];
   let valid = true;
-  let p = cdOffset;
-  for (let index = 0; index < count; index += 1) {
-    if (p + 46 > bytes.length || readU32(bytes, p) !== SIG_CENTRAL) {
-      throw badZip('Central directory header tidak valid.');
-    }
-    const flags = readU16(bytes, p + 8);
-    if (flags & 1) {
-      throw new AppError(
-        'ENCRYPTED_OFFICE',
-        'Dokumen Office terenkripsi. Hapus proteksi terlebih dahulu, lalu coba lagi.',
-      );
-    }
-    const method = readU16(bytes, p + 10);
-    const modTime = readU16(bytes, p + 12);
-    const modDate = readU16(bytes, p + 14);
-    const crc = readU32(bytes, p + 16);
-    const compressedSize = readU32(bytes, p + 20);
-    const uncompressedSize = readU32(bytes, p + 24);
-    const nameLen = readU16(bytes, p + 28);
-    const extraLen = readU16(bytes, p + 30);
-    const commentLen = readU16(bytes, p + 32);
-    const versionMadeBy = readU16(bytes, p + 4);
-    const versionNeeded = readU16(bytes, p + 6);
-    const internalAttrs = readU16(bytes, p + 36);
-    const externalAttrs = readU32(bytes, p + 38);
-    const localOffset = readU32(bytes, p + 42);
-    const bodyStart = p + 46;
-    const centralEnd = bodyStart + nameLen + extraLen + commentLen;
-    if (centralEnd > cdOffset + cdSize) throw badZip('Central directory entry terpotong.');
-
-    const nameBytes = bytes.subarray(bodyStart, bodyStart + nameLen);
-    const extraBytes = bytes.subarray(bodyStart + nameLen, bodyStart + nameLen + extraLen);
-    const commentBytes = bytes.subarray(bodyStart + nameLen + extraLen, centralEnd);
-    const centralBytes = bytes.slice(p, centralEnd);
-
-    if (localOffset + 30 > cdOffset || readU32(bytes, localOffset) !== SIG_LOCAL) {
-      throw badZip('Local file header tidak ditemukan pada offset yang tercatat.');
-    }
-    const localFlags = readU16(bytes, localOffset + 6);
-    const localMethod = readU16(bytes, localOffset + 8);
-    if (localFlags !== flags || localMethod !== method) valid = false;
-    const localNameLen = readU16(bytes, localOffset + 26);
-    const localExtraLen = readU16(bytes, localOffset + 28);
-    const dataStart = localOffset + 30 + localNameLen + localExtraLen;
-    const dataEnd = dataStart + compressedSize;
-    if (dataEnd > cdOffset) throw badZip('Data entry melampaui central directory.');
-
-    let localEnd = dataEnd;
-    if (flags & 8) {
-      let descriptor = dataEnd;
-      if (descriptor + 4 <= cdOffset && readU32(bytes, descriptor) === SIG_DATA_DESCRIPTOR) descriptor += 4;
-      descriptor += 12;
-      localEnd = Math.min(descriptor, cdOffset);
-    }
-
-    const compressedData = bytes.subarray(dataStart, dataEnd);
+  let inflatedTotal = 0;
+  for (const meta of zip.entries) {
+    const {
+      name, nameBytes, method, flags, modTime, modDate,
+      crc32: crc, compressedSize, uncompressedSize, versionMadeBy, versionNeeded,
+      internalAttrs, externalAttrs, localOffset, localEnd, localBytes,
+      compressedData, extraBytes, commentBytes, centralBytes, centralEnd,
+    } = meta;
     let data = new Uint8Array(0);
     if (inflate) {
+      // Refuse suspicious payloads before asking the decompressor to allocate.
+      if (uncompressedSize > ZIP_LIMITS.maxUncompressedEntry
+          || uncompressedSize / Math.max(1, compressedSize) > ZIP_LIMITS.maxDeflateRatio) {
+        throw zipBomb(`Entri "${name}" memiliki ukuran/rasio kompresi mencurigakan.`);
+      }
+      inflatedTotal += uncompressedSize;
+      if (inflatedTotal > ZIP_LIMITS.maxUncompressedTotal) {
+        throw zipBomb('Total ukuran hasil dekompresi melebihi batas yang diizinkan.');
+      }
       try {
         if (method === 0) data = compressedData.slice();
         else if (method === 8) data = inflateSync(compressedData);
@@ -186,9 +102,11 @@ function parseZip(bytes, inflate = true) {
         valid = false;
       }
     }
-
+    const localFlags = readU16(bytes, meta.localOffsetAbs + 6);
+    const localMethod = readU16(bytes, meta.localOffsetAbs + 8);
+    if (localFlags !== flags || localMethod !== method) valid = false;
     entries.push({
-      name: strFromU8(nameBytes),
+      name,
       nameBytes,
       method,
       flags,
@@ -203,7 +121,7 @@ function parseZip(bytes, inflate = true) {
       externalAttrs,
       localOffset,
       localEnd,
-      localBytes: bytes.subarray(localOffset, localEnd),
+      localBytes,
       compressedData,
       data,
       extraBytes,
@@ -211,17 +129,26 @@ function parseZip(bytes, inflate = true) {
       centralBytes,
       centralEnd,
     });
-    p = centralEnd;
   }
-  if (p !== cdOffset + cdSize) valid = false;
-  return { bytes, entries, eocd, cdOffset, cdSize, valid };
+  return {
+    bytes,
+    entries,
+    eocd: zip.eocd,
+    prefix: zip.prefix,
+    zip64: zip.zip64,
+    cdOffset: zip.cdStart,
+    cdSize: zip.cdSize,
+    valid,
+  };
 }
 
 export async function inspectZip(fileOrBytes) {
   const bytes = await toBytes(fileOrBytes);
   const zip = parseZip(bytes, true);
   const names = zip.entries.map((entry) => entry.name);
-  const signed = names.some((name) => /(^|\/)_xmlsignatures\//i.test(name));
+  const has = (name) => names.includes(name);
+  const signed = names.some((name) => /(^|\/)_xmlsignatures\//i.test(name)
+    || /(^|\/)META-INF\/documentsignatures\.xml$/i.test(name));
   const mimetypeEntry = zip.entries.find((entry) => entry.name === 'mimetype');
   const odf = Boolean(mimetypeEntry);
   const mimetype = odf ? strFromU8(mimetypeEntry.data).trim() : '';
@@ -230,6 +157,34 @@ export async function inspectZip(fileOrBytes) {
     const contentTypes = zip.entries.find((entry) => entry.name === '[Content_Types].xml');
     if (contentTypes) macros = /macroenabled/i.test(strFromU8(contentTypes.data));
   }
+
+  // Package-structure validation is separate from CRC/header validity: a ZIP
+  // can be perfectly well-formed yet not be an Office package at all.
+  const findings = [];
+  if (odf) {
+    if (zip.entries[0]?.name !== 'mimetype') {
+      findings.push('ODF: entri mimetype bukan entri pertama.');
+    }
+    if (mimetypeEntry.method !== 0) {
+      findings.push('ODF: entri mimetype tidak disimpan tanpa kompresi (STORED).');
+    }
+    if (!/^application\/vnd\.oasis\.opendocument\./i.test(mimetype)) {
+      findings.push('ODF: nilai mimetype tidak dikenali.');
+    }
+    if (!has('META-INF/manifest.xml')) {
+      findings.push('ODF: META-INF/manifest.xml tidak ditemukan.');
+    }
+  } else {
+    if (!has('[Content_Types].xml')) {
+      findings.push('OOXML: [Content_Types].xml tidak ditemukan.');
+    }
+    if (!['word/document.xml', 'xl/workbook.xml', 'ppt/presentation.xml'].some(has)) {
+      findings.push('OOXML: tidak ada part dokumen utama (word/document.xml, xl/workbook.xml, atau ppt/presentation.xml).');
+    }
+  }
+  if (!zip.valid) findings.push('Arsip memiliki ketidaksesuaian header/CRC pada salah satu entri.');
+  const packageValid = findings.length === 0;
+
   return {
     entries: zip.entries.map((entry) => ({
       name: entry.name,
@@ -245,6 +200,10 @@ export async function inspectZip(fileOrBytes) {
     odf,
     mimetype,
     valid: zip.valid,
+    packageValid,
+    findings,
+    prefix: zip.prefix,
+    zip64: zip.zip64,
   };
 }
 
@@ -303,6 +262,9 @@ function buildCentralHeader(entry, method, flags, compressedSize, uncompressedSi
 export async function patchZip(original, replacements) {
   const bytes = await toBytes(original);
   const zip = parseZip(bytes, false);
+  if (zip.zip64) {
+    throw new AppError('ZIP64_UNSUPPORTED', 'Arsip Office dengan ZIP64 tidak dapat ditulis ulang.');
+  }
   const repl = replacements instanceof Map
     ? replacements
     : new Map(Object.entries(replacements || {}));

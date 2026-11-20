@@ -26,6 +26,7 @@
     "test:office": "node tests/e2e/office.mjs",
     "test:about": "node tests/e2e/about.mjs",
     "test:offline": "node tests/e2e/offline-settings.mjs",
+    "test:offline:real": "node tests/e2e/offline-real.mjs",
     "test:reveal": "node tests/e2e/scroll-reveal.mjs",
     "test:preview": "node tests/e2e/preview-animation.mjs",
     "test:action-bar": "node tests/e2e/action-bar.mjs",

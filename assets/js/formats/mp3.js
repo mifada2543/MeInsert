@@ -240,7 +240,8 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   report({ stage: 'Memverifikasi tag baru…', pct: 82 });
   let after;
   try {
-    const output = new Input({ source: new BlobSource(new File([out], 'output.mp3', { type: 'audio/mpeg' })), formats: ALL_FORMATS });
+    const outputFile = new File([out], 'output.mp3', { type: 'audio/mpeg' });
+    const output = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
     const afterTags = await output.getMetadataTags();
     after = tagsToFields(afterTags);
     const warnings = [];
@@ -250,12 +251,19 @@ export async function write(file, payload, _options = {}, report = () => {}) {
       }
     }
     warnings.push(...warningsFor(tags));
+    let info;
+    try {
+      info = (await read(outputFile)).info;
+    } catch (infoError) {
+      info = { kind: 'audio', hasCover: Boolean(afterTags.images?.length) };
+      warnings.push(`Info media tidak bisa dibaca ulang setelah penulisan: ${infoError.message || infoError}`);
+    }
     return {
       blob,
       fields: after,
       custom: customTags(afterTags),
       raw: rawRows(afterTags),
-      info: { kind: 'audio', hasCover: Boolean(afterTags.images?.length) },
+      info,
       ...coverFromTags(afterTags),
       warnings: [...new Set(warnings)],
     };

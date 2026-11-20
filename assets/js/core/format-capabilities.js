@@ -34,6 +34,13 @@ export const STATUS_KEYS = {
   unsupported: 'ui.statusUnsupported',
 };
 export const OFFICE_NOTE_KEY = 'ui.officeFormatsNote';
+export const SHARED_SHELL_URLS = Object.freeze([
+  './assets/js/workers/rpc.js',
+  './assets/js/core/errors.js',
+  './assets/js/core/tag-utils.js',
+  './assets/js/core/image-utils.js',
+  './assets/js/core/integrity-rules.js',
+]);
 export const OFFLINE_FEATURES = [
   {
     id: 'audio',
@@ -48,6 +55,7 @@ export const OFFLINE_FEATURES = [
       './assets/js/formats/mkv.js',
       './assets/js/formats/vorbis-common.js',
       './assets/js/formats/vorbis-pictures.js',
+      './assets/js/core/ogg-comment.js',
     ],
   },
   {
@@ -75,6 +83,7 @@ export const OFFLINE_FEATURES = [
     urls: [
       './assets/vendor/fflate.mjs',
       './assets/js/core/office-zip.js',
+      './assets/js/core/zip-directory.js',
       './assets/js/workers/office.worker.js',
       './assets/js/formats/office.js',
     ],

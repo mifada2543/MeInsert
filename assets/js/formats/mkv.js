@@ -249,7 +249,8 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const extension = options.subtype === 'webm' ? 'webm' : 'mkv';
   const blob = new Blob([bytes], { type: mime });
   report({ stage: 'Memverifikasi hasil…', pct: 82 });
-  const check = new Input({ source: new BlobSource(new File([bytes], `output.${extension}`, { type: mime })), formats: ALL_FORMATS });
+  const outputFile = new File([bytes], `output.${extension}`, { type: mime });
+  const check = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
   try {
     await verifyPacketTiming(await input.getTracks(), check, EncodedPacketSink);
   } catch (error) {
@@ -269,7 +270,14 @@ export async function write(file, payload, options = {}, report = () => {}) {
     } else if (coverAction === 'remove' && afterTags.images?.some((img) => img.kind !== 'coverBack')) {
       warnings.push('Cover thumbnail belum terhapus.');
     }
-    return { blob, fields, custom: customFrom(afterTags), raw: rawRows(afterTags), info: { kind: 'video', hasCover: Boolean(afterTags.images?.length), rewrite: true }, ...coverFromTags(afterTags), warnings };
+    let info;
+    try {
+      info = (await read(outputFile)).info;
+    } catch (infoError) {
+      info = { kind: 'video', hasCover: Boolean(afterTags.images?.length), rewrite: true };
+      warnings.push(`Info media tidak bisa dibaca ulang setelah penulisan: ${infoError.message || infoError}`);
+    }
+    return { blob, fields, custom: customFrom(afterTags), raw: rawRows(afterTags), info, ...coverFromTags(afterTags), warnings };
   } catch (error) {
     return { blob, fields: {}, custom: [], raw: [], info: {}, warnings: [`File sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`] };
   }

@@ -2,7 +2,13 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* MeInsert service worker.*/
-const CACHE_VERSION = 'meinsert-v51';
+// The shell and the optional engines use separate caches: bumping the shell
+// must never throw away engines the user already downloaded. ENGINE_VERSION is
+// mirrored by core/build.js (this worker is a classic script, so it cannot use
+// a static import); tests/unit/service-worker-update.test.js keeps them in sync.
+const CACHE_VERSION = 'meinsert-v52';
+const ENGINE_VERSION = 'meinsert-engine-v1';
+const LEGACY_SHELL_VERSION = 'meinsert-v51';
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -42,6 +48,7 @@ const SHELL_URLS = [
   './assets/js/core/metadata-snapshot.js',
   './assets/js/core/offline-manifest.js',
   './assets/js/core/office-zip.js',
+  './assets/js/core/zip-directory.js',
   './assets/js/core/privacy-categories.js',
   './assets/js/core/pwa.js',
   './assets/js/core/build.js',
@@ -102,6 +109,38 @@ const SHELL_URLS = [
   './assets/img/favicon-64.png',
   './assets/img/logo-96.png',
 ];
+let cachedShellPaths = null;
+function shellPathSet() {
+  if (!cachedShellPaths) {
+    cachedShellPaths = new Set(SHELL_URLS.map((path) => {
+      try { return new URL(path, self.registration.scope).pathname; } catch { return null; }
+    }).filter(Boolean));
+  }
+  return cachedShellPaths;
+}
+function isShellRequest(request) {
+  try { return shellPathSet().has(new URL(request.url).pathname); } catch { return false; }
+}
+function isSameOrigin(url) {
+  try { return new URL(url).origin === self.location.origin; } catch { return false; }
+}
+async function migrateLegacyCache() {
+  const keys = await caches.keys();
+  if (!keys.includes(LEGACY_SHELL_VERSION)) return;
+  const legacy = await caches.open(LEGACY_SHELL_VERSION);
+  const engine = await caches.open(ENGINE_VERSION);
+  const shell = shellPathSet();
+  const requests = await legacy.keys();
+  await Promise.all(requests.map(async (request) => {
+    let pathname = null;
+    try { pathname = new URL(request.url).pathname; } catch { return; }
+    if (shell.has(pathname)) return;
+    try {
+      const response = await legacy.match(request);
+      if (response) await engine.put(request, response.clone());
+    } catch { /* best-effort migration */ }
+  }));
+}
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_VERSION);
@@ -121,9 +160,10 @@ self.addEventListener('install', (event) => {
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
+    await migrateLegacyCache();
     const keys = await caches.keys();
     await Promise.all(keys
-      .filter((key) => key.startsWith('meinsert-') && key !== CACHE_VERSION)
+      .filter((key) => key.startsWith('meinsert-') && key !== CACHE_VERSION && key !== ENGINE_VERSION)
       .map((key) => caches.delete(key)));
     await self.clients.claim();
   })());
@@ -154,7 +194,7 @@ async function networkFirst(event) {
   }
 }
 async function cacheFirst(request) {
-  const cache = await caches.open(CACHE_VERSION);
+  const cache = await caches.open(isShellRequest(request) ? CACHE_VERSION : ENGINE_VERSION);
   const cached = await cache.match(request, { ignoreSearch: true });
   if (cached) return cached;
   const response = await fetch(request);
@@ -182,12 +222,6 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(cacheFirst(request));
   }
 });
-function scopeUrl(path) {
-  try { return new URL(path, self.registration.scope).href; } catch { return null; }
-}
-function shellUrlSet() {
-  return new Set(SHELL_URLS.map(scopeUrl).filter(Boolean));
-}
 function replyTo(event, message) {
   if (event.ports?.[0]) event.ports[0].postMessage(message);
   else event.source?.postMessage(message);
@@ -195,12 +229,12 @@ function replyTo(event, message) {
 async function cacheOptional(event) {
   const requested = Array.isArray(event.data?.urls) ? event.data.urls : [];
   const total = requested.length;
-  if (event.data?.version && event.data.version !== CACHE_VERSION) {
-    replyTo(event, { type: 'OPTIONAL_DONE', cached: 0, failed: total, total, version: CACHE_VERSION, error: 'version' });
+  if (event.data?.version && event.data.version !== ENGINE_VERSION) {
+    replyTo(event, { type: 'OPTIONAL_DONE', cached: 0, failed: total, total, version: ENGINE_VERSION, error: 'version' });
     return;
   }
-  replyTo(event, { type: 'OPTIONAL_START', cached: 0, failed: 0, total, version: CACHE_VERSION });
-  const cache = await caches.open(CACHE_VERSION);
+  replyTo(event, { type: 'OPTIONAL_START', cached: 0, failed: 0, total, version: ENGINE_VERSION });
+  const cache = await caches.open(ENGINE_VERSION);
   let cached = 0;
   let failed = 0;
   for (const raw of requested) {
@@ -221,37 +255,29 @@ async function cacheOptional(event) {
     }
     if (ok) cached += 1;
     else failed += 1;
-    replyTo(event, { type: 'OPTIONAL_PROGRESS', url: raw, ok, cached, failed, total, version: CACHE_VERSION });
+    replyTo(event, { type: 'OPTIONAL_PROGRESS', url: raw, ok, cached, failed, total, version: ENGINE_VERSION });
   }
-  replyTo(event, { type: 'OPTIONAL_DONE', cached, failed, total, version: CACHE_VERSION });
+  replyTo(event, { type: 'OPTIONAL_DONE', cached, failed, total, version: ENGINE_VERSION });
 }
 async function clearOptional(event) {
-  const cache = await caches.open(CACHE_VERSION);
-  const shell = shellUrlSet();
-  const optional = (await cache.keys()).filter((request) => {
-    try {
-      return new URL(request.url).origin === self.location.origin && !shell.has(request.url);
-    } catch { return false; }
-  });
+  const cache = await caches.open(ENGINE_VERSION);
+  const optional = (await cache.keys()).filter((request) => isSameOrigin(request.url));
   await Promise.all(optional.map((request) => cache.delete(request)));
   replyTo(event, {
-    type: 'OPTIONAL_CLEARED', cached: optional.length, failed: 0, deleted: optional.length, version: CACHE_VERSION,
+    type: 'OPTIONAL_CLEARED', cached: optional.length, failed: 0, deleted: optional.length, version: ENGINE_VERSION,
   });
 }
 async function optionalStatus(event) {
-  const cache = await caches.open(CACHE_VERSION);
-  const shell = shellUrlSet();
+  const cache = await caches.open(ENGINE_VERSION);
   const urls = (await cache.keys())
     .map((request) => request.url)
-    .filter((href) => {
-      try { return new URL(href).origin === self.location.origin && !shell.has(href); } catch { return false; }
-    });
-  replyTo(event, { type: 'OPTIONAL_STATUS_RESULT', urls, cached: urls.length, failed: 0, version: CACHE_VERSION });
+    .filter((href) => isSameOrigin(href));
+  replyTo(event, { type: 'OPTIONAL_STATUS_RESULT', urls, cached: urls.length, failed: 0, version: ENGINE_VERSION });
 }
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
   if (event.data?.type === 'GET_VERSION') {
-    const reply = { type: 'VERSION', version: CACHE_VERSION };
+    const reply = { type: 'VERSION', version: CACHE_VERSION, engineVersion: ENGINE_VERSION };
     if (event.ports?.[0]) event.ports[0].postMessage(reply);
     else event.source?.postMessage(reply);
   }

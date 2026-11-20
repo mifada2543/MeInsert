@@ -2,6 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { fileExtension } from './tag-utils.js';
+import { readZipDirectory } from './zip-directory.js';
 const EXTENSIONS = {
   jpg: { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' },
   jpeg: { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' },
@@ -56,9 +57,8 @@ function sniffOgg(bytes) {
   if (text.includes('\u007fFLAC')) return { id: 'ogg', subtype: 'flac', label: 'FLAC in Ogg', mime: 'audio/ogg' };
   return { id: 'ogg', subtype: 'unknown', label: 'Ogg', mime: 'audio/ogg' };
 }
-// ZIP (OOXML/ODF) deteksi: baca local header tanpa dekompresi. Sengaja mandiri
-// agar detector tetap Node-safe dan tidak bergantung pada modul zip adapter.
-const ZIP_SNIFF_BYTES = 8192;
+const ZIP_SNIFF_BYTES = 65536;
+const ZIP_FULL_READ_LIMIT = 128 * 1024 * 1024;
 function isZipLocalHeader(bytes, offset) {
   return bytes[offset] === 0x50 && bytes[offset + 1] === 0x4b
     && bytes[offset + 2] === 0x03 && bytes[offset + 3] === 0x04;
@@ -95,9 +95,23 @@ function scanZipHead(bytes) {
   }
   return { names, mimetype };
 }
-function sniffZip(bytes) {
-  if (!isZipLocalHeader(bytes, 0)) return null;
-  const { names, mimetype } = scanZipHead(bytes);
+function sniffZip(bytes, zipBytes = null) {
+  let names = null;
+  let mimetype = '';
+  try {
+    const zip = readZipDirectory(zipBytes || bytes);
+    names = zip.entries.map((entry) => entry.name);
+    const odfEntry = zip.entries.find((entry) => entry.name === 'mimetype');
+    if (odfEntry && odfEntry.method === 0 && odfEntry.compressedData.length
+        && odfEntry.compressedData.length < 512) {
+      mimetype = ascii(odfEntry.compressedData, 0, odfEntry.compressedData.length).trim();
+    }
+  } catch { /* fall back to a bounded local-header scan */ }
+  if (!names) {
+    const found = scanZipHead(bytes);
+    if (!found.names.length) return null;
+    ({ names, mimetype } = found);
+  }
   const has = (name) => names.includes(name);
   if (has('mimetype')) {
     const odf = {
@@ -126,7 +140,7 @@ function sniffZip(bytes) {
   }
   return null;
 }
-function sniff(bytes) {
+function sniff(bytes, zipBytes = null) {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' };
   }
@@ -157,15 +171,13 @@ function sniff(bytes) {
   if (mp4) return mp4;
   const ogg = sniffOgg(bytes);
   if (ogg) return ogg;
-  const zip = sniffZip(bytes);
+  const zip = sniffZip(bytes, zipBytes);
   if (zip) return zip;
   return null;
 }
 function extensionMatches(ext, byExt, byMagic) {
   if (byExt.id !== byMagic.id) return false;
   if (byExt.subtype === byMagic.subtype) return true;
-  // Subtipe Office adalah jenis dokumen berbeda; ketidaksesuaian jadi warning,
-  // bukan kegagalan. Tidak ada toleransi lintas subtipe seperti Ogg/MP4.
   if (byExt.id === 'office') return false;
   if ((ext === 'ogg' || ext === 'oga') && byMagic.id === 'ogg') return true;
   if ((ext === 'mp4' || ext === 'm4v') && byMagic.id === 'mp4') return true;
@@ -198,15 +210,19 @@ const EXT_BY_SUBTYPE = {
 };
 export async function detectFile(file) {
   let head = new Uint8Array(await file.slice(0, 128).arrayBuffer());
-  // ZIP Office menyimpan nama entri di local header; 128 byte sering tidak cukup
-  // untuk melihat `word/document.xml` dan sejenisnya. Hanya ZIP yang dibaca lebih
-  // jauh — deteksi format lain tetap identik.
-  if (head.length >= 4 && isZipLocalHeader(head, 0)) {
+  const ext = fileExtension(file.name);
+  const candidateZip = (head.length >= 4 && isZipLocalHeader(head, 0)) || EXTENSIONS[ext]?.id === 'office';
+  let zipBytes = null;
+  if (candidateZip && file.size <= ZIP_FULL_READ_LIMIT) {
+    try {
+      zipBytes = new Uint8Array(await file.arrayBuffer());
+    } catch { /* keep the bounded head */ }
+  }
+  if (candidateZip && !zipBytes) {
     const wider = new Uint8Array(await file.slice(0, ZIP_SNIFF_BYTES).arrayBuffer());
     if (wider.length > head.length) head = wider;
   }
-  const byMagic = sniff(head);
-  const ext = fileExtension(file.name);
+  const byMagic = sniff(head, zipBytes);
   const byExt = EXTENSIONS[ext];
   if (byMagic) {
     const actualExt = EXT_BY_SUBTYPE[byMagic.subtype] || ext || 'bin';

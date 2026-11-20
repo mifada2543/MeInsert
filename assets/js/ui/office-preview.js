@@ -15,6 +15,22 @@ function stat(key, value) {
 function chip(key, tone = '') {
   return el('span', { className: `office-chip${tone ? ` office-chip--${tone}` : ''}`, textContent: translated(() => t(key)) });
 }
+const CONTENT_LABELS = {
+  paragraphs: 'ui.officePreviewParagraphs',
+  sheets: 'ui.officePreviewWorksheet',
+  cells: 'ui.officePreviewCells',
+  slides: 'ui.officePreviewSlideText',
+};
+function contentSection(groups) {
+  if (!groups?.length) return null;
+  return el('details', { className: 'office-preview-content' },
+    el('summary', { textContent: translated(() => t('ui.officePreviewShowContent')) }),
+    ...groups.map((group) => el('div', { className: 'office-preview-content-group' },
+      el('strong', { textContent: translated(() => t(CONTENT_LABELS[group.key] || 'ui.officePreviewContentTitle')) }),
+      el('p', { textContent: group.values.join(' · ') }),
+    )),
+  );
+}
 export function buildOfficePreview({ file, detection, readResult }) {
   const info = readResult?.info || {};
   const title = String(info.title || '').trim();
@@ -55,6 +71,7 @@ export function buildOfficePreview({ file, detection, readResult }) {
     subtitle,
     stats,
     status,
+    contentSection(info.contentPreview),
     el('p', { className: 'office-preview-hint', textContent: translated(() => t('ui.officePreviewHint')) }),
   );
 }

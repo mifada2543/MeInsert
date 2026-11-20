@@ -8,7 +8,7 @@ Semua perubahan penting dicatat di sini. Versi mengikuti SemVer.
 
 ## [main — setelah v1.3.0]
 
-Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec19`); `git pull` dari remote sudah mengambil semuanya. Yang belum ada hanyalah tag/versi rilis baru, sehingga `package.json` dan badge README masih `v1.3.0`; cache dinaikkan ke `meinsert-v51` mengikuti aset offline baru.
+Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec19`); `git pull` dari remote sudah mengambil semuanya. Yang belum ada hanyalah tag/versi rilis baru, sehingga `package.json` dan badge README masih `v1.3.0`. Shell cache `meinsert-v52` dan engine cache `meinsert-engine-v1` kini memiliki siklus hidup terpisah.
 
 ### Pengalaman pengguna
 - Halaman **Tentang MeInsert** (`about.html`) merangkum prinsip, format, dan tautan kebijakan untuk pengguna baru.
@@ -22,11 +22,28 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - Halaman About desktop disusun ulang: hero penuh lebar dan kartu tersebar dalam tiga kolom; ikon "Banyak file" kini dua lembar bertumpuk.
 
 ### Keandalan & infrastruktur
-- Perbaikan Ctrl+R: registrasi SW dengan `updateViaCache: 'none'`, navigasi network-first + fallback cache; cache `meinsert-v51` (`CACHE_VERSION` = `CURRENT_VERSION`).
+- Perbaikan Ctrl+R: registrasi SW dengan `updateViaCache: 'none'`, navigasi network-first + fallback cache; shell `meinsert-v52` (`CACHE_VERSION` = `CURRENT_VERSION`) dan engine `meinsert-engine-v1` yang dipertahankan lintas update aplikasi.
+
+### Hardening hasil audit lanjutan
+- Deteksi Office memakai **ZIP central directory** (modul `core/zip-directory.js`), sehingga arsip ber-prefix tetap dikenali dari isi; ZIP biasa yang diganti nama `.docx` ditolak sebagai `NOT_OFFICE_PACKAGE`.
+- Parser metadata Office **namespace-aware**: prefix alternatif (`d:` untuk `dc:`) tetap terbaca dan ditulis tanpa menambah elemen ber-prefix tak terdeklarasi.
+- Validasi struktur package OOXML/ODF, deteksi tanda tangan ODF, serta proteksi ZIP bomb (batas entri, ukuran, rasio kompresi, dan central directory) sebelum dekompresi.
+- Custom properties Office kini ditulis native ke `docProps/custom.xml` (OOXML) atau `meta:user-defined` (ODF), lengkap dengan content type dan relationship.
+- Cuplikan isi Office terbatas (~280 karakter: paragraf awal, nama sheet, atau teks slide pertama) ditampilkan di bawah ringkasan metadata bila tersedia.
+- Ogg Vorbis/Opus: penulisan metadata kini mematch comment packet secara langsung—termasuk menumbuhkan halaman Ogg bila perlu—tanpa mengubah packet audio, sequence, granule, atau CRC. Fallback engine diberi warning eksplisit bila tidak feasible.
+- `write` pada adapter audio/video mengembalikan `info` hasil baca ulang blob output, menghilangkan `STRUCTURE_LOST` palsu untuk sample rate/channel.
+- Offline: dependency engine diverifikasi dengan test closure statis; E2E Service Worker nyata mengukur request/cache (frugal, MP3, selektif, penuh, offline, update, uninstall) dan security test memeriksa method/body/query selain origin.
+
+### Verifikasi hardening
+- 250 unit test, lint, `check:css`, `check:policies`.
+- Audit mandiri 24/24: 16 roundtrip format, prefix namespace, padded ZIP, generic ZIP rejection, ODF signature, integritas Ogg/Opus/MP3/MKV.
+- FFprobe/FFmpeg development-only: durasi `0.250000` (Vorbis) dan `0.256500` (Opus) identik sebelum/sesudah; decoded MD5 identik (`af0c2520…` dan `8f1304dd…`).
+- E2E: 16 suite + `offline-real` dengan Service Worker aktif; compat 48/48.
+- Catatan batas: comment baru yang membutuhkan >255 lacing segment masih jatuh ke engine dengan warning; FLAC-in-Ogg/Speex dan stream multi-page tidak dipatch langsung.
 - Satu proses Chrome bersama untuk seluruh suite E2E lewat CDP; CI membagi 16 suite ke 4 runner paralel dan melewati `apt-get` bila ffmpeg/openssl sudah tersedia.
 - Dokumentasi disegarkan: fitur bersihkan metadata tidak lagi ditandai "segera hadir", README ID/EN lebih ramah pemula, arsitektur SW dan daftar script diperbarui.
 
-### Verifikasi
+### Verifikasi tahap UI
 - 218 unit test, 16/16 suite E2E, 48/48 kasus kompatibilitas, lint, `check:css`, `check:policies`.
 
 ## [1.3.0] — 2026-11-18

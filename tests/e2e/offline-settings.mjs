@@ -145,6 +145,50 @@ try {
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('meinsert:open-settings')));
   await page.waitForFunction(() => document.getElementById('offlineSettingsDialog')?.open === true);
   console.log('PASS: Escape closes the dialog and the meinsert:open-settings window event opens it');
+  const versions = await page.evaluate(async () => {
+    const build = await import('/assets/js/core/build.js');
+    return { shell: build.CURRENT_VERSION, engine: build.ENGINE_VERSION };
+  });
+  assert.ok(versions.shell && versions.engine, 'both cache markers must be exported by build.js');
+  assert.notEqual(versions.engine, versions.shell, 'shell and engine caches must be versioned independently');
+  await page.evaluate((key) => {
+    localStorage.setItem(key, JSON.stringify({
+      mode: 'all', features: ['audio', 'image', 'pdf', 'office'], updatedAt: Date.now(), version: 1,
+    }));
+  }, PROFILE_KEY);
+  await page.reload();
+  await mount();
+  await page.evaluate(() => {
+    window.__swMessages = [];
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        controller: {
+          postMessage(message, transfer) {
+            window.__swMessages.push(message);
+            if (Array.isArray(transfer) && transfer[0]) window.__swPort = transfer[0];
+          },
+        },
+      },
+    });
+  });
+  await openDialog();
+  await page.locator('.offline-settings__download').click();
+  await page.evaluate(() => {
+    window.__swPort.postMessage({ type: 'OPTIONAL_DONE', cached: 1, failed: 0, total: 1 });
+  });
+  await page.locator('.offline-settings__clear').click();
+  const messages = await page.evaluate(() => window.__swMessages);
+  for (const type of ['OPTIONAL_STATUS', 'CACHE_OPTIONAL', 'CLEAR_OPTIONAL']) {
+    assert.ok(messages.some((message) => message.type === type), `${type} must be sent to the worker`);
+    assert.ok(messages.filter((message) => message.type === type).every((message) => message.version === versions.engine),
+      `${type} must carry the engine version, not the shell version`);
+    assert.ok(messages.filter((message) => message.type === type).every((message) => message.version !== versions.shell),
+      `${type} must not be invalidated by a shell-only update`);
+  }
+  const download = messages.find((message) => message.type === 'CACHE_OPTIONAL');
+  assert.ok(download.urls.length > 10, 'the download must cover every optional engine URL');
+  console.log('PASS: OPTIONAL_STATUS, CACHE_OPTIONAL and CLEAR_OPTIONAL all use the independent engine version');
   assert.deepEqual(external, [], `unexpected external requests: ${external.join('; ')}`);
   console.log('PASS: no requests left the same origin');
   assert.deepEqual(errors, [], `unexpected page errors: ${errors.join('; ')}`);

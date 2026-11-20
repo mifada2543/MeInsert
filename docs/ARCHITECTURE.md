@@ -55,8 +55,9 @@ compatibility harness (`tests/compat/`) fails on any other browser request.
   messages, per-action timeouts, watchdog restart of crashed/timed-out workers,
   and an idle (~8 min) disposal timer.
 - `pwa.js` / `build.js` / `reload-guard.js` — service-worker registration and
-  update flow, the `CURRENT_VERSION` marker (must equal `CACHE_VERSION` in
-  `sw.js`), and "safe to reload" gating so updates never interrupt processing.
+  update flow, the `CURRENT_VERSION` marker (must equal the shell `CACHE_VERSION`
+  in `sw.js`) plus the independent `ENGINE_VERSION` marker for optional engines,
+  and "safe to reload" gating so updates never interrupt processing.
 - `history.js` — undo/redo stacks (single file and per batch group), cleared
   after a successful save or when a new file is opened.
 - `tag-utils.js`, `image-utils.js`, `errors.js` — value coercion/date helpers,
@@ -162,28 +163,55 @@ assembles a ZIP and JSON/CSV report instead of a single download.
 
 ## Service worker / offline strategy
 
-`sw.js` treats the app as a precached, offline-first PWA:
+`sw.js` treats the app as a precached, offline-first PWA with **two independent
+caches**:
 
+- **Shell cache** (`CACHE_VERSION`, e.g. `meinsert-v52`) holds the always-needed
+  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v1`) holds
+  the optional format engines downloaded on demand. Separating them means a
+  shell update never discards engines the user already paid to download, and
+  clearing optional engines never removes shell assets. The two version markers
+  are mirrored by `CURRENT_VERSION` and `ENGINE_VERSION` in
+  `assets/js/core/build.js`; the worker is a classic script and cannot import
+  the module, so tests keep the copies in sync.
 - **Install** — precaches `SHELL_URLS` (HTML pages, CSS bundle, all JS modules,
-  fonts, icons, and policy Markdown) into a versioned cache (`CACHE_VERSION`,
-  e.g. `meinsert-v50`; always check `sw.js`). Precache fetches use `cache: 'reload'` and
+  including `core/zip-directory.js`, fonts, icons, and policy Markdown) into the
+  shell cache. Precache fetches use `cache: 'reload'` and
   `credentials: 'same-origin'`; failures are warned, not fatal. Then
   `skipWaiting()` activates the new worker promptly.
-- **Activate** — deletes old `meinsert-*` caches and calls `clients.claim()` to
-  take control of the current page.
-- **Fetch** — GET requests only; anything cross-origin is ignored. Policy
-  Markdown and other cacheable assets (CSS/JS/WASM/fonts/images/JSON/SVG/ICO)
-  use **cache-first**. Navigations are **network-first with a cache fallback**:
+- **Activate** — first migrates optional entries from the legacy single cache
+  (`meinsert-v51`) into the engine cache, skipping anything already in the
+  shell; then deletes old `meinsert-*` caches except the two *active* caches,
+  and calls `clients.claim()` to take control of the current page.
+- **Fetch** — GET requests only; anything cross-origin is ignored. A
+  shell URL uses **cache-first against the shell cache**; any other cacheable
+  asset (vendor library, WASM, format adapter) uses cache-first against the
+  engine cache. Navigations are **network-first with a shell cache fallback**:
   try the network, then serve the cached shell (falling back to `index.html` /
   `./`), with a 503 offline response if nothing is cached. This avoids a blank
   page on Ctrl+R when the network is slow or unavailable.
-- **Version probe** — a `GET_VERSION` message is answered with `VERSION` and
-  the current `CACHE_VERSION`. `core/pwa.js#probeActiveWorker` compares it to
-  `CURRENT_VERSION` (`core/build.js`) and triggers an update + safe reload when
-  they differ. Registration uses `updateViaCache: 'none'` so the browser always
-  revalidates `sw.js`; `reload-guard.js` prevents reloading mid-processing.
-- Vendored libraries and ExifTool WASM are **not** in the precache; they are
-  fetched on first use and then cached by the cache-first asset rule.
+- **Optional cache protocol** — `CACHE_OPTIONAL`, `OPTIONAL_STATUS` and
+  `CLEAR_OPTIONAL` messages validate and report `ENGINE_VERSION`, and operate
+  only on the engine cache. `assets/js/ui/offline-settings.js` sends that same
+  engine version, so a shell update in the middle of a download cannot cancel
+  it with a version mismatch.
+- **Version probe** — a `GET_VERSION` message is answered with `VERSION`, the
+  current shell `CACHE_VERSION` and the current `engineVersion`.
+  `core/pwa.js#probeActiveWorker` compares `version` to `CURRENT_VERSION`
+  (`core/build.js`) and triggers an update + safe reload when they differ.
+  Registration uses `updateViaCache: 'none'` so the browser always revalidates
+  `sw.js`; `reload-guard.js` prevents reloading mid-processing.
+- Vendored libraries and ExifTool WASM are **not** in the shell precache; they
+  are fetched on first use into the engine cache, or saved there by the
+  optional download UI.
 
-Both `CACHE_VERSION` (`sw.js`) and `CURRENT_VERSION` (`assets/js/core/build.js`)
-must be bumped together. New offline assets must be added to `SHELL_URLS`.
+`SHARED_SHELL_URLS` in `core/format-capabilities.js` lists the small set of
+modules (worker RPC, `errors`, `tag-utils`, `image-utils`, `integrity-rules`)
+that every optional engine imports at startup. `tests/unit/offline-manifest.test.js`
+walks the static import graph from every feature entry and asserts the closure
+is fully covered by that shared set or the feature's own `urls`, that every URL
+exists on disk, and that no vendored/WASM asset leaked into the shell.
+
+Bump `CACHE_VERSION` (`sw.js`) and `CURRENT_VERSION` (`assets/js/core/build.js`)
+together for shell changes. `ENGINE_VERSION` changes only when the optional
+engine format changes. New always-needed assets must be added to `SHELL_URLS`.

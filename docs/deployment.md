@@ -82,6 +82,42 @@ Mitigation:
 - The pages also detect a stale worker: when the worker build is older than
   the page build, the page forces an update and then refreshes itself.
 
+## Cache shell dan cache engine / Shell and engine caches
+
+Sejak `meinsert-v52`, service worker memakai dua cache yang terpisah:
+
+- `CACHE_VERSION` (`sw.js`, sama dengan `CURRENT_VERSION` di
+  `assets/js/core/build.js`) adalah **cache shell**. Naikkan keduanya bersamaan
+  saat aset shell berubah.
+- `ENGINE_VERSION` (`sw.js`, sama dengan `ENGINE_VERSION` di `build.js`,
+  mis. `meinsert-engine-v1`) adalah **cache mesin opsional**. Versi ini
+  berdiri sendiri: memperbarui shell tidak membatalkan unduhan mesin yang
+  sudah tersimpan, dan menghapus mesin opsional tidak menghapus shell.
+
+`activate` melakukan migrasi sekali dari cache lama `meinsert-v51`: entri yang
+bukan bagian dari `SHELL_URLS` disalin ke cache engine sebelum cache lama
+dihapus. Hanya cache lama yang cocok pola `meinsert-*` yang dihapus; kedua cache
+aktif selalu dipertahankan. Pesan `CACHE_OPTIONAL`, `OPTIONAL_STATUS`, dan
+`CLEAR_OPTIONAL` memakai **versi engine**, sedangkan probe `GET_VERSION`
+memakai versi shell (dan menyertakan `engineVersion`).
+
+Since `meinsert-v52`, the service worker uses two separate caches:
+
+- `CACHE_VERSION` (`sw.js`, equal to `CURRENT_VERSION` in
+  `assets/js/core/build.js`) is the **shell cache**. Bump both together when a
+  shell asset changes.
+- `ENGINE_VERSION` (`sw.js`, equal to `ENGINE_VERSION` in `build.js`, e.g.
+  `meinsert-engine-v1`) is the **optional engine cache**. It is versioned
+  independently: a shell update does not invalidate engines already downloaded,
+  and clearing optional engines never deletes the shell.
+
+`activate` migrates once from the old `meinsert-v51` cache: entries outside
+`SHELL_URLS` are copied into the engine cache before the old cache is deleted.
+Only stale `meinsert-*` caches are removed; both active caches are preserved.
+`CACHE_OPTIONAL`, `OPTIONAL_STATUS`, and `CLEAR_OPTIONAL` messages use the
+**engine version**, while the `GET_VERSION` probe uses the shell version (and
+also reports `engineVersion`).
+
 ## Verifikasi / Verification
 
 ```bash

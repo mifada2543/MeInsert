@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { setReloadUnsafe, isReloadSafe, onReloadSafeChange } from '../../assets/js/core/reload-guard.js';
-import { CURRENT_VERSION } from '../../assets/js/core/build.js';
+import { CURRENT_VERSION, ENGINE_VERSION } from '../../assets/js/core/build.js';
 test('reload guard blocks while work is pending and releases again', () => {
   setReloadUnsafe('test-dirty', false);
   assert.equal(isReloadSafe(), true);
@@ -41,6 +41,52 @@ test('page and service worker agree on the build marker and can probe each other
   const pwa = await readFile(new URL('../../assets/js/core/pwa.js', import.meta.url), 'utf8');
   assert.match(pwa, /GET_VERSION/);
   assert.match(pwa, /CURRENT_VERSION/);
+});
+test('shell and optional engines use independent cache versions', async () => {
+  const sw = await readFile(new URL('../../sw.js', import.meta.url), 'utf8');
+  assert.match(sw, new RegExp(`const ENGINE_VERSION = '${ENGINE_VERSION}'`),
+    'sw.js and build.js must share one engine cache marker');
+  assert.notEqual(ENGINE_VERSION, CURRENT_VERSION, 'the engine cache must not be tied to the shell build marker');
+  assert.match(sw, /const LEGACY_SHELL_VERSION = 'meinsert-v51'/, 'the previous single cache must be known for migration');
+});
+test('cache routing keeps shell assets and optional engines apart', async () => {
+  const sw = await readFile(new URL('../../sw.js', import.meta.url), 'utf8');
+  assert.match(sw, /async function networkFirst\(event\) \{[\s\S]*?caches\.open\(CACHE_VERSION\)/,
+    'navigations must read and write the shell cache');
+  assert.match(sw, /async function cacheFirst\(request\) \{\s*const cache = await caches\.open\(isShellRequest\(request\) \? CACHE_VERSION : ENGINE_VERSION\)/,
+    'asset requests must be routed by shell membership');
+  for (const fn of ['cacheOptional', 'clearOptional', 'optionalStatus']) {
+    const block = sw.match(new RegExp(`async function ${fn}\\(event\\) \\{[\\s\\S]*?\\n\\}`));
+    assert.ok(block, `${fn} must exist in sw.js`);
+    assert.match(block[0], /caches\.open\(ENGINE_VERSION\)/, `${fn} must use the engine cache`);
+    assert.doesNotMatch(block[0], /CACHE_VERSION/, `${fn} must not use the shell version`);
+  }
+  assert.match(sw, /event\.data\.version !== ENGINE_VERSION/,
+    'optional caching must validate against the engine version');
+  assert.match(sw, /version: CACHE_VERSION, engineVersion: ENGINE_VERSION/,
+    'GET_VERSION must report the shell version and the engine version');
+});
+test('the optional-cache UI sends the engine version, not the shell version', async () => {
+  const ui = await readFile(new URL('../../assets/js/ui/offline-settings.js', import.meta.url), 'utf8');
+  assert.match(ui, /import \{ ENGINE_VERSION \} from '\.\.\/core\/build\.js'/);
+  for (const type of ['OPTIONAL_STATUS', 'CACHE_OPTIONAL', 'CLEAR_OPTIONAL']) {
+    assert.match(ui, new RegExp(`type: '${type}',[^}]*version: ENGINE_VERSION`),
+      `${type} must send ENGINE_VERSION`);
+  }
+  assert.doesNotMatch(ui, /version: CURRENT_VERSION/, 'optional cache messages must not use the shell marker');
+});
+test('activation migrates optional entries once and keeps both active caches', async () => {
+  const sw = await readFile(new URL('../../sw.js', import.meta.url), 'utf8');
+  const activate = sw.match(/self\.addEventListener\('activate'[\s\S]*?\n\}\);/);
+  assert.ok(activate, 'activate handler must exist');
+  assert.match(activate[0], /await migrateLegacyCache\(\)/, 'migration must run before cleanup');
+  assert.match(activate[0], /key !== CACHE_VERSION && key !== ENGINE_VERSION/,
+    'cleanup must preserve both active caches');
+  const migration = sw.match(/async function migrateLegacyCache\(\) \{[\s\S]*?\n\}/);
+  assert.ok(migration, 'migration helper must exist');
+  assert.match(migration[0], /keys\.includes\(LEGACY_SHELL_VERSION\)/, 'migration must be guarded by cache presence');
+  assert.match(migration[0], /if \(shell\.has\(pathname\)\) return/, 'shell entries must not be copied into the engine cache');
+  assert.match(migration[0], /engine\.put\(request, response\.clone\(\)\)/, 'optional entries must be copied into the engine cache');
 });
 test('registration bypasses the HTTP cache so a normal reload revalidates sw.js', async () => {
   const pwa = await readFile(new URL('../../assets/js/core/pwa.js', import.meta.url), 'utf8');

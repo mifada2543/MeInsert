@@ -51,6 +51,20 @@ jobs:
       env:
         CHROME_BIN: /usr/bin/google-chrome
         MEINSERT_E2E_SHARD: ${{ matrix.shard }}/4
+  offline-real:
+    name: Real offline service worker (network + cache audit)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: npm
+    - run: npm ci
+    - name: Real Service Worker offline audit
+      run: npm run test:offline:real
+      env:
+        CHROME_BIN: /usr/bin/google-chrome
   compat:
     name: Real fixture compatibility (Chrome)
     runs-on: ubuntu-latest

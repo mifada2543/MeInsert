@@ -3,7 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { strToU8, zipSync } from '../../assets/vendor/fflate.mjs';
+import { strFromU8, strToU8, unzipSync, zipSync } from '../../assets/vendor/fflate.mjs';
 import office, { fieldsFor, OFFICE_SUBTYPES, read, sectionsFor, write } from '../../assets/js/formats/office.js';
 import { verifyZipPreserved } from '../../assets/js/core/office-zip.js';
 const CONTENT_TYPES = '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
@@ -107,7 +107,8 @@ test('read returns mapped fields and raw rows for OOXML packages', async () => {
   assert.equal(result.fields.manager, 'Manajer lama');
   assert.equal(result.fields.software, 'Word lama');
   assert.deepEqual(result.info, {
-    subtype: 'docx', signed: false, macros: false, valid: true, entryCount: 5,
+    subtype: 'docx', signed: false, macros: false, valid: true, packageValid: true,
+    contentPreview: [], entryCount: 5,
     title: 'Judul lama', creator: 'Penulis lama', subject: 'Subjek lama',
     company: 'PT Lama', application: 'Word lama', modified: '2020-02-01',
     pages: null, words: null, slides: null, sheets: null,
@@ -152,7 +153,7 @@ test('write applies set, remove, rawRemove, and custom edits while preserving ot
   });
   const after = new Uint8Array(await result.blob.arrayBuffer());
   assert.deepEqual(
-    await verifyZipPreserved(before, after, ['docProps/core.xml', 'docProps/app.xml']),
+    await verifyZipPreserved(before, after, ['docProps/core.xml', 'docProps/app.xml', '_rels/.rels', '[Content_Types].xml', 'docProps/custom.xml']),
     { ok: true, changed: [] },
   );
   assert.equal(result.fields.title, 'Judul baru');
@@ -230,4 +231,49 @@ test('write rejects an empty plan with NO_CHANGES and dispose is safe', async ()
   );
   await assert.doesNotReject(() => office.dispose());
   await assert.doesNotReject(() => office.dispose());
+});
+test('read and write keep an alternate dc: prefix valid', async () => {
+  const core = CORE_XML.replaceAll('dc:', 'd:').replaceAll('xmlns:dc=', 'xmlns:d=');
+  const source = ooxmlZip({ 'docProps/core.xml': strToU8(core) });
+  const result = await read(officeFile(source, 'prefix.docx'), { subtype: 'docx' });
+  assert.equal(result.fields.title, 'Judul lama');
+  const written = await write(officeFile(source, 'prefix.docx'), { set: { title: 'Judul baru' } }, { subtype: 'docx' });
+  const parts = unzipSync(new Uint8Array(await written.blob.arrayBuffer()));
+  const coreAfter = strFromU8(parts['docProps/core.xml']);
+  assert.match(coreAfter, /<d:title>Judul baru<\/d:title>/);
+  assert.doesNotMatch(coreAfter, /<dc:title>/);
+  assert.equal(written.fields.title, 'Judul baru');
+});
+test('an ordinary ZIP renamed to .docx is rejected, not written as Office', async () => {
+  const bytes = zipSync({ 'test.txt': strToU8('not a document') });
+  const file = officeFile(bytes, 'generic.docx');
+  await assert.rejects(() => read(file, { subtype: 'docx' }), (error) => error.code === 'NOT_OFFICE_PACKAGE');
+  await assert.rejects(() => write(file, { set: { title: 'x' } }, { subtype: 'docx' }),
+    (error) => error.code === 'NOT_OFFICE_PACKAGE');
+});
+test('ODF digital signature entries are detected', async () => {
+  const result = await read(officeFile(odfZip({
+    'META-INF/documentsignatures.xml': strToU8('<document-signatures/>'),
+  }), 'signed.odt'), {});
+  assert.equal(result.info.signed, true);
+  assert.ok(result.warnings.some((warning) => /tanda tangan/i.test(warning)));
+});
+test('custom properties use native OOXML custom.xml with content type and relationship', async () => {
+  const result = await write(officeFile(ooxmlZip(), 'input.docx'), {
+    custom: [{ key: 'ProjectCode', value: 'ABC' }],
+  }, { subtype: 'docx' });
+  assert.deepEqual(result.custom, [{ key: 'ProjectCode', value: 'ABC' }]);
+  const parts = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
+  assert.match(strFromU8(parts['docProps/custom.xml']), /name="ProjectCode"/);
+  assert.match(strFromU8(parts['docProps/custom.xml']), /<vt:lpwstr>ABC<\/vt:lpwstr>/);
+  assert.match(strFromU8(parts['[Content_Types].xml']), /docProps\/custom\.xml/);
+  assert.match(strFromU8(parts['_rels/.rels']), /custom-properties/);
+});
+test('read exposes a bounded content preview for identification', async () => {
+  const source = ooxmlZip({
+    'word/document.xml': strToU8('<w:document><w:body><w:p><w:r><w:t>Halo dokumen</w:t></w:r></w:p></w:body></w:document>'),
+  });
+  const result = await read(officeFile(source, 'preview.docx'), { subtype: 'docx' });
+  assert.equal(result.info.contentPreview[0].key, 'paragraphs');
+  assert.deepEqual(result.info.contentPreview[0].values, ['Halo dokumen']);
 });

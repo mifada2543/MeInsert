@@ -5,7 +5,7 @@
 import { bindText, bindTranslation, t } from '../i18n/index.js';
 import { clear, el, formatBytes } from './dom.js';
 import { showToast } from './toast.js';
-import { CURRENT_VERSION } from '../core/build.js';
+import { ENGINE_VERSION } from '../core/build.js';
 import { featureFor, features } from '../core/format-capabilities.js';
 import {
   OFFLINE_PROFILE_KEY,
@@ -106,7 +106,7 @@ function postToSw(message) {
   }
 }
 function askOptionalStatus() {
-  postToSw({ type: 'OPTIONAL_STATUS', version: CURRENT_VERSION });
+  postToSw({ type: 'OPTIONAL_STATUS', version: ENGINE_VERSION });
 }
 function setStatus(message, kind = 'info') {
   if (!refs) return;
@@ -194,7 +194,7 @@ function startDownload(all) {
   }
   draft = next;
   render();
-  if (!setProfile(storage(), draft) || !postToSw({ type: 'CACHE_OPTIONAL', urls, version: CURRENT_VERSION })) {
+  if (!setProfile(storage(), draft) || !postToSw({ type: 'CACHE_OPTIONAL', urls, version: ENGINE_VERSION })) {
     setStatus(t('ui.offlinePartial'), 'warn');
     showToast(t('ui.offlinePartial'), 'error');
     render();
@@ -211,7 +211,7 @@ function startDownload(all) {
 }
 function clearOptional() {
   if (download.active) return;
-  if (!postToSw({ type: 'CLEAR_OPTIONAL', version: CURRENT_VERSION })) {
+  if (!postToSw({ type: 'CLEAR_OPTIONAL', version: ENGINE_VERSION })) {
     setStatus(t('ui.offlinePartial'), 'warn');
     showToast(t('ui.offlinePartial'), 'error');
     return;

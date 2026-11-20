@@ -64,8 +64,10 @@ per-file result.
   and a failed check is surfaced as a `failed` integrity result.
 - **Office preview** — the card shown for Office files is a summary of the
   metadata already read (title, creator, available counts, signature/macro
-  status). It is deliberately **not** a rendering of the document pages; use a
-  document reader if you need to inspect the contents.
+  status), plus an optional bounded text excerpt (up to ~280 characters from
+  the first paragraphs, sheet names, or first slide). It is deliberately
+  **not** a full-fidelity rendering of the document pages; use a document
+  reader if you need to inspect the contents.
 - **PNG / WebP** — camera fields are written as XMP (`XMP-tiff:Make/Model`,
   `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), not binary EXIF; EXIF-only
   readers may not show them.

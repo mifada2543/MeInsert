@@ -78,23 +78,49 @@ function checkPolicy(policy, pageName) {
   assert.equal(directive(policy, 'form-action'), "'none'", `${where}: form-action`);
   assert.doesNotMatch(policy, /'unsafe-inline'/, `${where}: 'unsafe-inline' must not be allowed`);
 }
-
-// Browser-internal schemes only; no application/network origin is exempt.
-// chrome://resources/* is emitted by headless Chrome's own download UI.
 const ALLOWED_SCHEMES = new Set(['blob:', 'data:', 'about:', 'chrome:', 'chrome-extension:', 'devtools:']);
-
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const UPLOAD_CONTENT_TYPES = /^(multipart\/form-data|application\/octet-stream|application\/x-www-form-urlencoded)$/i;
+const SENSITIVE_QUERY_KEYS = /^(file|files|data|content|metadata|meta|blob|upload|payload|title|artist|album|filename|name)$/i;
+const AUDIT_MARKERS = ['Security audit title', 'Batch security audit', 'document.pdf', 'pattern.png'];
 function isAllowed(url, baseOrigin) {
   const parsed = new URL(url);
   if (ALLOWED_SCHEMES.has(parsed.protocol)) return true;
   return parsed.origin === baseOrigin;
 }
-
 function assertNoExternal(requests, baseOrigin, label) {
   const offenders = [...new Set(requests.map((request) => request.url()))]
     .filter((url) => !isAllowed(url, baseOrigin));
   assert.deepEqual(offenders, [], `${label}: external requests observed:\n${offenders.join('\n')}`);
 }
-
+function assertNoUpload(requests, baseOrigin, label) {
+  const problems = [];
+  const containsMarker = (text) => AUDIT_MARKERS.some((marker) => text.toLowerCase().includes(marker.toLowerCase()));
+  for (const request of requests) {
+    const href = request.url();
+    let parsed;
+    try { parsed = new URL(href); } catch { continue; }
+    if (!/^https?:$/.test(parsed.protocol) || !isAllowed(href, baseOrigin)) continue;
+    const method = request.method().toUpperCase();
+    if (MUTATING_METHODS.has(method)) problems.push(`${label}: mutating method ${method} → ${href}`);
+    const body = request.postData() || '';
+    if (body) {
+      problems.push(`${label}: request carries a body (${method}) → ${href}`);
+      if (containsMarker(body)) problems.push(`${label}: request body contains edited/file data → ${href}`);
+    }
+    const contentType = request.headers()['content-type'] || '';
+    if (UPLOAD_CONTENT_TYPES.test(contentType)) {
+      problems.push(`${label}: upload-style content-type "${contentType}" → ${href}`);
+    }
+    for (const [key, value] of parsed.searchParams) {
+      if (SENSITIVE_QUERY_KEYS.test(key) || containsMarker(key) || containsMarker(value)) {
+        problems.push(`${label}: query parameter carries metadata → ${href}`);
+      }
+    }
+    if (parsed.search) problems.push(`${label}: unexpected query string → ${href}`);
+  }
+  assert.deepEqual([...new Set(problems)], [], `${label}: request hygiene violations:\n${problems.join('\n')}`);
+}
 const server = await serve();
 const address = server.address();
 if (!address || typeof address === 'string') {
@@ -108,18 +134,12 @@ const browser = await getBrowser({
   headless: true,
   args: ['--disable-dev-shm-usage', '--autoplay-policy=no-user-gesture-required'],
 });
-
 try {
-  // Service workers are blocked here for deterministic reads: a previously
-  // cached worker can serve stale engine files, which makes this network
-  // audit flaky. The SW itself is same-origin and on the request allowlist.
   const context = await browser.newContext({ locale: 'id-ID', serviceWorkers: 'block', acceptDownloads: true });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
-
-  // 1. Meta CSP on all five HTML pages.
   for (const pageName of pages) {
     await page.goto(`${base}/${pageName}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
     const policy = await page.evaluate(() =>
@@ -127,12 +147,8 @@ try {
     checkPolicy(policy, pageName);
   }
   console.log('PASS: all five HTML pages carry the hardened meta CSP');
-
-  // 2. Real open -> edit -> save flows must not contact any external origin.
   const requests = [];
   page.on('request', (request) => requests.push(request));
-
-  // Single file mode.
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.locator('#fileInput').setInputFiles(join(root, 'tests/fixtures/document.pdf'));
   await page.locator('#field-title').waitFor({ timeout: 60000 });
@@ -141,11 +157,9 @@ try {
   await page.locator('.review-btn-confirm').click();
   await page.locator('.result-download').waitFor({ timeout: 90000 });
   assertNoExternal(requests, baseOrigin, 'single-file save');
-  console.log('PASS: single-file open -> edit -> save produced no external requests');
+  assertNoUpload(requests, baseOrigin, 'single-file save');
+  console.log('PASS: single-file open -> edit -> save produced no external requests or uploads');
   requests.length = 0;
-
-  // Batch mode. Wait for network idle so the dynamically imported batch UI
-  // has attached its file-input listener before uploading.
   await page.goto(`${base}/batch.html`, { waitUntil: 'networkidle', timeout: 60000 });
   await page.locator('#batchFileInput').setInputFiles([
     join(root, 'tests/fixtures/pattern.png'),
@@ -160,10 +174,10 @@ try {
   await page.waitForFunction(() => !document.querySelector('#batchGroups').inert
     && /selesai/.test(document.querySelector('#batchStatus')?.textContent || ''), null, { timeout: 90000 });
   assertNoExternal(requests, baseOrigin, 'batch save');
-  console.log('PASS: batch open -> edit -> save produced no external requests');
-
+  assertNoUpload(requests, baseOrigin, 'batch save');
+  console.log('PASS: batch open -> edit -> save produced no external requests or uploads');
   assert.deepEqual(errors, [], 'no page errors');
-  console.log('PASS: no external network requests during editing; no page errors');
+  console.log('PASS: no external requests, no uploads and no page errors during editing');
   await context.close();
 } finally {
   await browser.close();
