@@ -67,7 +67,7 @@ export function decodeEntities(value, label = 'XML') {
     const semi = source.indexOf(';', at + 1);
     if (semi < 0) throw invalid(label, 'Entitas XML tidak diakhiri titik koma.');
     const entity = source.slice(at + 1, semi);
-    if (/^#x[0-9a-f]+$/i.test(entity)) {
+    if (/^#x[0-9a-fA-F]+$/.test(entity)) {
       const code = Number.parseInt(entity.slice(2), 16);
       if (!validXmlChar(code)) throw invalid(label, 'Referensi karakter XML tidak valid.');
       out += String.fromCodePoint(code);
@@ -104,8 +104,10 @@ function parseAttributes(source, from, to, label) {
   const seen = new Set();
   let index = from;
   while (index < to) {
+    const before = index;
     index = skipSpace(source, index, to);
     if (index >= to) break;
+    if (before === index) throw invalid(label, 'Atribut XML harus dipisahkan spasi.');
     const name = readName(source, index, to);
     if (!name) throw invalid(label, 'Atribut XML tidak valid.');
     index += name.length;
@@ -119,7 +121,10 @@ function parseAttributes(source, from, to, label) {
     if (valueEnd < 0 || valueEnd > to) throw invalid(label, `Nilai atribut "${name}" tidak ditutup.`);
     if (seen.has(name)) throw invalid(label, `Atribut "${name}" duplikat.`);
     seen.add(name);
-    attrs.push({ name, value: source.slice(valueStart, valueEnd), valueStart, valueEnd });
+    const value = source.slice(valueStart, valueEnd);
+    if (value.includes('<')) throw invalid(label, 'Karakter ilegal pada atribut.');
+    decodeEntities(value, label);
+    attrs.push({ name, value, valueStart, valueEnd });
     index = valueEnd + 1;
   }
   return attrs;
@@ -187,24 +192,11 @@ export class XmlDocument {
     return this;
   }
   prefixFor(node, uri, preferred = '') {
-    const scopes = [];
-    for (let cursor = node; cursor; cursor = cursor.parent) scopes.push(cursor.ns);
-    const pick = (want) => {
-      for (const scope of scopes) {
-        for (const [prefix, bound] of Object.entries(scope)) {
-          if (bound === uri && prefix === want) return prefix;
-        }
-      }
-      return null;
-    };
-    if (preferred) {
-      const found = pick(preferred);
-      if (found !== null) return { prefix: found, declared: false };
-    }
+    const scopes = [node.ns];
+    if (preferred && node.ns[preferred] === uri) return { prefix: preferred, declared: false };
     const named = pickNamed(scopes, uri);
     if (named !== null) return { prefix: named, declared: false };
-    const defaultPrefix = pick('');
-    if (defaultPrefix !== null) return { prefix: '', declared: false };
+    if (!preferred && (node.ns[''] || '') === uri) return { prefix: '', declared: false };
     const base = (preferred || 'ns').replace(/[^A-Za-z0-9_]/g, '') || 'ns';
     let candidate = base;
     let suffix = 1;
@@ -218,12 +210,17 @@ export class XmlDocument {
     const name = chosen.prefix ? `${chosen.prefix}:${local}` : local;
     let declarations = chosen.declared ? ` xmlns:${chosen.prefix}="${encodeXml(uri, this.label)}"` : '';
     const rendered = [];
+    const scope = { ns: { ...parent.ns } };
+    if (chosen.declared) scope.ns[chosen.prefix] = uri;
     for (const attr of attributes) {
       let attrName = attr.name;
       if (attr.uri) {
-        const found = this.prefixFor(parent, attr.uri, attr.prefix || 'xsi');
+        const found = this.prefixFor(scope, attr.uri, attr.prefix || 'xsi');
         attrName = found.prefix ? `${found.prefix}:${attr.local}` : attr.local;
-        if (found.declared) declarations += ` xmlns:${found.prefix}="${encodeXml(attr.uri, this.label)}"`;
+        if (found.declared) {
+          declarations += ` xmlns:${found.prefix}="${encodeXml(attr.uri, this.label)}"`;
+          scope.ns[found.prefix] = attr.uri;
+        }
       }
       rendered.push(` ${attrName}="${encodeXml(attr.value, this.label)}"`);
     }
@@ -258,6 +255,7 @@ export class XmlDocument {
       out = `${out.slice(0, edit.start)}${edit.text}${out.slice(edit.end)}`;
       previous = edit;
     }
+    parseXml(out, this.label);
     return out;
   }
 }
@@ -279,6 +277,7 @@ function isDescendant(node, ancestor) {
 }
 export function parseXml(source, label = 'XML') {
   const text = String(source ?? '');
+  for (const char of text) if (!validXmlChar(char.codePointAt(0))) throw invalid(label, 'Karakter XML ilegal.');
   if (text.includes('\u0000')) throw invalid(label, 'XML mengandung byte NUL.');
   if (/<!DOCTYPE\b/i.test(text) || /<!ENTITY\b/i.test(text)) {
     throw invalid(label, 'DTD dan entitas eksternal tidak didukung dan ditolak.');
@@ -286,20 +285,27 @@ export function parseXml(source, label = 'XML') {
   const nodes = [];
   const stack = [];
   let root = null;
-  let index = 0;
+  let index = text.charCodeAt(0) === 0xfeff ? 1 : 0;
+  const documentStart = index;
   let count = 0;
   while (index < text.length) {
     if (text[index] !== '<') {
       const next = text.indexOf('<', index);
       const end = next < 0 ? text.length : next;
       const parent = stack[stack.length - 1] || null;
-      if (parent) parent.children.push({ type: 'text', start: index, end, text: text.slice(index, end) });
+      const raw = text.slice(index, end);
+      if (!parent && [...raw].some((char) => !isSpace(char))) throw invalid(label, 'Teks di luar akar XML.');
+      if (raw.includes(']]>')) throw invalid(label, 'Delimiter CDATA ilegal.');
+      decodeEntities(raw, label);
+      if (parent) parent.children.push({ type: 'text', start: index, end, text: raw });
       index = end;
       continue;
     }
     if (text.startsWith('<!--', index)) {
       const end = text.indexOf('-->', index + 4);
       if (end < 0) throw invalid(label, 'Komentar XML tidak ditutup.');
+      const comment = text.slice(index + 4, end);
+      if (comment.includes('--') || comment.endsWith('-')) throw invalid(label, 'Komentar XML ilegal.');
       index = end + 3;
       continue;
     }
@@ -307,6 +313,7 @@ export function parseXml(source, label = 'XML') {
       const end = text.indexOf(']]>', index + 9);
       if (end < 0) throw invalid(label, 'CDATA tidak ditutup.');
       const parent = stack[stack.length - 1] || null;
+      if (!parent) throw invalid(label, 'CDATA di luar akar XML.');
       if (parent) parent.children.push({ type: 'cdata', start: index, end: end + 3, text: text.slice(index + 9, end) });
       index = end + 3;
       continue;
@@ -314,6 +321,11 @@ export function parseXml(source, label = 'XML') {
     if (text.startsWith('<?', index)) {
       const end = text.indexOf('?>', index + 2);
       if (end < 0) throw invalid(label, 'Instruksi pemrosesan tidak ditutup.');
+      const target = readName(text, index + 2, end);
+      if (!target || (index + 2 + target.length < end && !isSpace(text[index + 2 + target.length]))) throw invalid(label, 'Instruksi pemrosesan ilegal.');
+      if (/^xml$/i.test(target)) {
+        if (target !== 'xml' || index !== documentStart || !/^xml\s+version\s*=\s*(['"])1\.0\1(?:\s+encoding\s*=\s*(['"])[A-Za-z][A-Za-z0-9._-]*\2)?(?:\s+standalone\s*=\s*(['"])(?:yes|no)\3)?\s*$/.test(text.slice(index + 2, end))) throw invalid(label, 'Deklarasi XML ilegal.');
+      }
       index = end + 2;
       continue;
     }
@@ -323,6 +335,7 @@ export function parseXml(source, label = 'XML') {
       if (!name) throw invalid(label, 'Tag penutup tidak valid.');
       const closeEnd = text.indexOf('>', index + 2 + name.length);
       if (closeEnd < 0) throw invalid(label, 'Tag penutup tidak ditutup.');
+      if (skipSpace(text, index + 2 + name.length, closeEnd) !== closeEnd) throw invalid(label, 'Tag penutup ilegal.');
       const node = stack.pop();
       if (!node || node.name !== name) throw invalid(label, `Tag penutup "${name}" tidak cocok.`);
       node.endTagStart = index;
@@ -336,6 +349,7 @@ export function parseXml(source, label = 'XML') {
     let last = tagEnd - 1;
     while (last > index && isSpace(text[last])) last -= 1;
     const selfClosing = text[last] === '/';
+    if (selfClosing && last !== tagEnd - 1) throw invalid(label, 'Tag kosong ilegal.');
     const attrEnd = selfClosing ? last : tagEnd;
     const attrs = parseAttributes(text, index + 1 + name.length, attrEnd, label);
     const parent = stack[stack.length - 1] || null;
@@ -343,13 +357,28 @@ export function parseXml(source, label = 'XML') {
     if (stack.length >= MAX_DEPTH) throw invalid(label, 'XML terlalu dalam.');
     count += 1;
     if (count > MAX_NODES) throw invalid(label, 'XML memiliki terlalu banyak elemen.');
-    const ns = Object.assign(Object.create(null), parent?.ns || {});
+    const xmlUri = 'http://www.w3.org/XML/1998/namespace';
+    const xmlnsUri = 'http://www.w3.org/2000/xmlns/';
+    const ns = Object.assign(Object.create(null), { xml: xmlUri }, parent?.ns || {});
     for (const attr of attrs) {
-      if (attr.name === 'xmlns') ns[''] = decodeEntities(attr.value, label);
-      else if (attr.name.startsWith('xmlns:')) ns[attr.name.slice(6)] = decodeEntities(attr.value, label);
+      if (attr.name !== 'xmlns' && !attr.name.startsWith('xmlns:')) continue;
+      const key = attr.name === 'xmlns' ? '' : attr.name.slice(6);
+      const bound = decodeEntities(attr.value, label);
+      if (key === 'xmlns' || bound === xmlnsUri || (key === 'xml') !== (bound === xmlUri) || (key && !bound)) throw invalid(label, 'Deklarasi namespace ilegal.');
+      ns[key] = bound;
     }
     const { prefix, local } = splitName(name);
-    const uri = ns[prefix] || (prefix === 'xml' ? 'http://www.w3.org/XML/1998/namespace' : '');
+    if (prefix && (!ns[prefix] || prefix === 'xmlns')) throw invalid(label, 'Prefix elemen tidak terdaftar.');
+    const uri = ns[prefix] || '';
+    const expanded = new Set();
+    for (const attr of attrs) {
+      if (attr.name === 'xmlns' || attr.name.startsWith('xmlns:')) continue;
+      const parts = splitName(attr.name);
+      if (parts.prefix && !ns[parts.prefix]) throw invalid(label, 'Prefix atribut tidak terdaftar.');
+      const key = `${parts.prefix ? ns[parts.prefix] : ''}\u0000${parts.local}`;
+      if (expanded.has(key)) throw invalid(label, 'Atribut namespace duplikat.');
+      expanded.add(key);
+    }
     const node = {
       type: 'element', name, prefix, local, uri, attrs, ns,
       start: index,

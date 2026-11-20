@@ -11,6 +11,7 @@
     "check:css": "node scripts/build-css.mjs --check",
     "build:policies": "node scripts/build-policies.mjs",
     "check:policies": "node scripts/build-policies.mjs --check",
+    "check:assets": "node scripts/check-assets.mjs",
     "lint": "eslint assets/js sw.js scripts tests",
     "serve": "python3 -m http.server 8000",
     "test": "node --test tests/unit/*.test.js",

@@ -6,6 +6,15 @@
 
 Semua perubahan penting dicatat di sini. Versi mengikuti SemVer.
 
+## [Local hardening — build #17]
+
+- XML Office menolak prefix tidak terikat, entity ilegal, atribut duplikat berdasarkan namespace, teks di luar root, dan tag penutup rusak; resolusi prefix mengikuti scope aktif.
+- Validasi part utama Office dipisah dari batas preview 2 MiB dan mengikuti relationship package; batas keamanan ZIP dan parser tetap berlaku.
+- Cache engine menggunakan progress byte selama transfer, deduplikasi fetch, dan reuse cache runtime. Shell v53; engine v1 dipertahankan. Progress byte menghitung body setelah decoding HTTP, bukan kuota jaringan aktual.
+- Pengujian tambahan: XML adversarial, relationship nonstandar, dan stream cache dengan mock Service Worker. Browser E2E masih perlu dijalankan pada environment dengan Playwright.
+- Kompresi aset `assets/img/`: WebP (FFmpeg q90) menggantikan ikon PWA, WebP lossless menggantikan logo, JPEG q85 menggantikan OG; PNG tetap hanya untuk `apple-touch-icon` dan `favicon` yang memang butuh kompatibilitas luas. Total **513.437 → 56.814 byte (-88,9%)** untuk 7 file (dulu 7 file 513 KB, sempat 9 file 185 KB karena turunan WebP disimpan ganda). Tidak ada format duplikat lagi. Ikon PWA kini ikut di-precache shell. Shell `meinsert-v54`, engine tetap `meinsert-engine-v1`.
+- QA release validation: 313 unit, E2E/offline-real dengan Service Worker nyata, verifikasi independen Office/Media (LibreOffice, FFmpeg/FFprobe, xmllint), fuzz deterministik 240 kasus, dan pengukuran memori/transfer. Tidak ada defect produk yang terkonfirmasi; 2 kasus Ogg multi-page Vorbis **BLOCKED** karena FFprobe tidak dapat mendecode fixture buatan (adapter menolak aman).
+
 ## [main — setelah v1.3.0]
 
 Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec19`); `git pull` dari remote sudah mengambil semuanya. Yang belum ada hanyalah tag/versi rilis baru, sehingga `package.json` dan badge README masih `v1.3.0`. Shell cache `meinsert-v52` dan engine cache `meinsert-engine-v1` kini memiliki siklus hidup terpisah.

@@ -7,7 +7,6 @@ import { createReadStream, copyFileSync, existsSync, mkdtempSync } from 'node:fs
 import { extname, join, normalize } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const contentTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -26,7 +25,6 @@ if (!chrome) {
   console.log('SKIP engine-loading: Chrome/Chromium tidak ditemukan.');
   process.exit(0);
 }
-
 function serve() {
   const server = createServer((request, response) => {
     const url = new URL(request.url || '/', 'http://127.0.0.1');
@@ -49,7 +47,6 @@ function serve() {
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
-
 const server = await serve();
 const address = server.address();
 if (!address || typeof address === 'string') {
@@ -58,19 +55,16 @@ if (!address || typeof address === 'string') {
 }
 const base = `http://127.0.0.1:${address.port}`;
 const browser = await getBrowser({ executablePath: chrome, headless: true, args: ['--disable-dev-shm-usage'] });
-// SW diblokir supaya unduhan WASM benar-benar terjadi dan progres bisa muncul.
 const context = await browser.newContext({ locale: 'id-ID', serviceWorkers: 'block' });
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-
 try {
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  const sample = join(mkdtempSync(join(tmpdir(), 'meinsert-engine-')), 'icon-512.png');
-  copyFileSync(join(root, 'assets/img/icon-512.png'), sample);
+  const sample = join(mkdtempSync(join(tmpdir(), 'meinsert-engine-')), 'pattern.png');
+  copyFileSync(join(root, 'tests/fixtures/pattern.png'), sample);
   await page.locator('#fileInput').setInputFiles(sample);
   await page.waitForFunction(() => /tag terbaca|gagal|Gagal/.test(document.querySelector('#readStatus')?.textContent || ''), null, { timeout: 120000 });
-  // Status progres bersifat sementara: jika sempat muncul, harus hilang.
   await page.waitForFunction(() => document.querySelectorAll('.engine-loading').length === 0, null, { timeout: 30000 });
   if (errors.length) throw new Error(`Page errors: ${errors.join(' | ')}`);
   console.log('engine-loading e2e OK; readStatus =', await page.locator('#readStatus').innerText());

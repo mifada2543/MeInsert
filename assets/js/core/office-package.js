@@ -70,7 +70,7 @@ function nsAttr(doc, node, local, uri) {
   const attr = node?.attrs.find((item) => {
     const at = item.name.indexOf(':');
     const prefix = at < 0 ? '' : item.name.slice(0, at);
-    return item.name.slice(at + 1) === local && (node.ns[prefix] || '') === uri;
+    return item.name.slice(at + 1) === local && (prefix ? node.ns[prefix] || '' : '') === uri;
   });
   return attr ? attr.value.trim() : '';
 }

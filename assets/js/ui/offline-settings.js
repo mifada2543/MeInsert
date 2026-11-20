@@ -194,7 +194,9 @@ function handleSwMessage(data) {
   }
   if (data.type === 'OPTIONAL_STATUS_RESULT') {
     if (download.active) return;
+    cachedUrls.clear();
     for (const url of data.urls || []) rememberCached(url);
+    render();
     return;
   }
   if (!matchesJob(data)) return;
@@ -209,11 +211,17 @@ function handleSwMessage(data) {
     renderProgress();
     setStatus(t('ui.engineLoadingMetadata'));
     render();
+  } else if (data.type === 'OPTIONAL_BYTES') {
+    if (data.totalBytes > download.bytes) {
+      download.bytes = data.totalBytes;
+      resetInactivity();
+      renderProgress();
+    }
   } else if (data.type === 'OPTIONAL_PROGRESS') {
     download.cached = data.cached || 0;
     download.failed = data.failed || 0;
     download.total = data.total || download.total;
-    download.bytes += data.bytes || 0;
+    download.bytes = data.totalBytes || download.bytes;
     download.totalBytes = data.totalBytes || download.totalBytes;
     if (data.ok) rememberCached(data.url);
     resetInactivity();

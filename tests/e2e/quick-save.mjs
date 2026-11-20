@@ -7,7 +7,6 @@ import { createServer } from 'node:http';
 import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -22,7 +21,6 @@ const contentTypes = {
   '.webp': 'image/webp',
   '.woff2': 'font/woff2',
 };
-
 function serve() {
   const server = createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);
@@ -39,7 +37,6 @@ function serve() {
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -83,7 +80,7 @@ try {
   assert.equal(await checkbox.getAttribute('aria-describedby'), 'quickSaveHint');
   assert.equal(await page.locator('#main').getAttribute('tabindex'), '-1', 'skip link target is focusable');
   assert.equal(await page.locator('.drop-folder-hint').count(), 0, 'folder hint is batch-only');
-  const sample = join(root, 'assets/img/icon-512.png');
+  const sample = join(root, 'tests/fixtures/pattern.png');
   await page.locator('#fileInput').setInputFiles(sample);
   await page.locator('#field-title').waitFor({ timeout: 60000 });
   await checkbox.check();

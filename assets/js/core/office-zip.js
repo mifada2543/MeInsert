@@ -2,6 +2,8 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { deflateSync, inflateSync, strFromU8, strToU8 } from '../../vendor/fflate.mjs';
+import { NS, parseXml } from './office-xml.js';
+import { normalizePart } from './office-package.js';
 import { AppError } from './errors.js';
 import { readZipDirectory, ZIP_LIMITS } from './zip-directory.js';
 export const OFFICE_METADATA_PARTS = ['docProps/core.xml', 'docProps/app.xml', 'meta.xml'];
@@ -77,8 +79,8 @@ export function crc32(data) {
 }
 function parseZip(bytes, inflate = true, options = {}) {
   const zip = readZipDirectory(bytes);
-  const { inflateAll = false } = options || {};
-  const cap = inflateAll ? ZIP_LIMITS.maxUncompressedEntry : OFFICE_PREVIEW_LIMITS.maxPreviewEntry;
+  const { inflateAll = false, mainPart = '' } = options || {};
+  const required = new Set(['[Content_Types].xml', '_rels/.rels', 'docProps/core.xml', 'docProps/app.xml', 'docProps/custom.xml', 'meta.xml', 'META-INF/manifest.xml', 'mimetype', 'word/document.xml', 'xl/workbook.xml', 'ppt/presentation.xml', 'content.xml', mainPart]);
   const entries = [];
   const findings = [];
   const skipped = [];
@@ -92,7 +94,8 @@ function parseZip(bytes, inflate = true, options = {}) {
       compressedData, extraBytes, commentBytes, centralBytes, centralEnd,
     } = meta;
     let data = new Uint8Array(0);
-    if (inflate && (inflateAll || OFFICE_READ_ENTRIES.has(name))) {
+    const cap = inflateAll || required.has(name) ? ZIP_LIMITS.maxUncompressedEntry : OFFICE_PREVIEW_LIMITS.maxPreviewEntry;
+    if (inflate && (inflateAll || required.has(name) || OFFICE_READ_ENTRIES.has(name))) {
       if (uncompressedSize > cap) {
         skipped.push(`Entri "${name}" (${uncompressedSize} byte) melebihi batas pratinjau ${cap} byte; isi tidak dibaca.`);
       } else {
@@ -174,7 +177,17 @@ function parseZip(bytes, inflate = true, options = {}) {
 }
 export async function inspectZip(fileOrBytes) {
   const bytes = await toBytes(fileOrBytes);
-  const zip = parseZip(bytes, true);
+  let zip = parseZip(bytes, true);
+  let mainPart = '';
+  const rels = zip.entries.find((entry) => entry.name === '_rels/.rels');
+  if (rels?.data.length) {
+    try {
+      const doc = parseXml(strFromU8(rels.data), '_rels/.rels');
+      const rel = doc.findAll(NS.rels, 'Relationship').find((node) => /\/officeDocument$/i.test(doc.attribute(node, 'Type')));
+      mainPart = normalizePart(doc.attribute(rel, 'Target')) || '';
+    } catch {}
+  }
+  if (mainPart && !OFFICE_READ_ENTRIES.has(mainPart)) zip = parseZip(bytes, true, { mainPart });
   const names = zip.entries.map((entry) => entry.name);
   const has = (name) => names.includes(name);
   const signed = names.some((name) => /(^|\/)_xmlsignatures\//i.test(name)
@@ -206,7 +219,7 @@ export async function inspectZip(fileOrBytes) {
     if (!has('[Content_Types].xml')) {
       findings.push('OOXML: [Content_Types].xml tidak ditemukan.');
     }
-    if (!['word/document.xml', 'xl/workbook.xml', 'ppt/presentation.xml'].some(has)) {
+    if (!(mainPart && has(mainPart)) && !['word/document.xml', 'xl/workbook.xml', 'ppt/presentation.xml'].some(has)) {
       findings.push('OOXML: tidak ada part dokumen utama (word/document.xml, xl/workbook.xml, atau ppt/presentation.xml).');
     }
   }

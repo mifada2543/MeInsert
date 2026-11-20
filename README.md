@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/img/icon-512.png" alt="MeInsert" width="120" height="120" />
+<img src="assets/img/icon-512.webp" alt="MeInsert" width="120" height="120" />
 
 # MeInsert
 
@@ -25,7 +25,7 @@ Tidak ada server. Tidak ada upload. Tidak ada akun.
 ![Service Worker](https://img.shields.io/badge/Service_Worker-PWA-61DAFB?style=flat-square)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-F7DF1E?style=flat-square)
 
-![Preview](assets/img/og-image.png)
+![Preview](assets/img/og-image.jpg)
 
 </div>
 

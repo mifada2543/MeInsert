@@ -1,3 +1,6 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir, stat } from 'node:fs/promises';
@@ -120,7 +123,7 @@ test('service worker: tidak precache vendor berat & WASM ExifTool', async () => 
   const sw = await read('sw.js');
   const block = sw.match(/const SHELL_URLS = \[([\s\S]*?)\];/);
   const urls = [...block[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
-  const heavy = urls.filter((url) => /vendor\/|\.wasm$|icon-512|icon-maskable/.test(url));
+  const heavy = urls.filter((url) => /vendor\/|\.wasm$/i.test(url));
   assert.deepEqual(heavy, [], `Aset berat seharusnya on-demand: ${heavy.join(', ')}`);
 });
 test('service worker: fetch handler menolak non-GET dan origin lain', async () => {

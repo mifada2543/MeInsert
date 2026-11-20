@@ -7,7 +7,6 @@ import { createReadStream, mkdtempSync, copyFileSync, existsSync } from 'node:fs
 import { extname, join, normalize } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const contentTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -23,7 +22,6 @@ const contentTypes = new Map([
   ['.woff2', 'font/woff2'],
   ['.pdf', 'application/pdf'],
 ]);
-
 function serve() {
   const server = createServer((request, response) => {
     const url = new URL(request.url || '/', 'http://127.0.0.1');
@@ -46,7 +44,6 @@ function serve() {
     server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -61,7 +58,6 @@ function findChrome() {
   }
   return found;
 }
-
 const server = await serve();
 const address = server.address();
 if (!address || typeof address === 'string') {
@@ -74,16 +70,13 @@ const context = await browser.newContext({ locale: 'id-ID', serviceWorkers: 'all
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-
 try {
   await page.goto(`${base}/`, { waitUntil: 'networkidle', timeout: 60000 });
   console.log('homeTitle', await page.title());
   console.log('modeCards', await page.locator('.mode-card').count());
-
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   console.log('singleEditorInputs', await page.locator('#fileInput').count());
   console.log('singleHeaderNav', await page.locator('.header-link[data-nav="batch"]').count());
-
   await page.goto(`${base}/batch.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   console.log('batchTitle', await page.title());
   await page.waitForFunction(() => Boolean(navigator.serviceWorker), null, { timeout: 30000 });
@@ -92,10 +85,9 @@ try {
     return reg.active?.state === 'activated';
   }, null, { timeout: 120000 });
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-
   const sampleDir = mkdtempSync(join(tmpdir(), 'meinsert-e2e-'));
-  const sample = join(sampleDir, 'icon-512.png');
-  copyFileSync(join(root, 'assets/img/icon-512.png'), sample);
+  const sample = join(sampleDir, 'pattern.png');
+  copyFileSync(join(root, 'tests/fixtures/pattern.png'), sample);
   await page.locator('#batchFileInput').setInputFiles(sample);
   await page.waitForSelector('.batch-group', { timeout: 30000 });
   await page.waitForFunction(() => {
@@ -104,14 +96,11 @@ try {
   }, null, { timeout: 60000 });
   console.log('batchAddTiles', await page.locator('.batch-add-tile').count());
   console.log('batchStatus', await page.locator('#batchStatus').innerText());
-
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
   console.log('offlineBatchGroup', await page.locator('.batch-groups').count());
   console.log('offlineSingleLink', await page.locator('.header-link[data-nav="single"]').count());
   await context.setOffline(false);
-
-  // Mobile pass: bottom glass nav, sticky preview, no horizontal overflow.
   const mobileContext = await browser.newContext({ locale: 'id-ID', viewport: { width: 390, height: 844 } });
   const mobilePage = await mobileContext.newPage();
   try {
@@ -133,10 +122,9 @@ try {
     console.log('mobileNav', JSON.stringify(navStyles));
     if (navStyles.position !== 'fixed') throw new Error('Bottom nav should be position:fixed on mobile');
     if (navStyles.scrollWidth !== navStyles.innerWidth) throw new Error('Horizontal overflow on single.html (mobile)');
-
     const mobileSampleDir = mkdtempSync(join(tmpdir(), 'meinsert-e2e-mobile-'));
-    const mobileSample = join(mobileSampleDir, 'icon-512.png');
-    copyFileSync(join(root, 'assets/img/icon-512.png'), mobileSample);
+    const mobileSample = join(mobileSampleDir, 'pattern.png');
+    copyFileSync(join(root, 'tests/fixtures/pattern.png'), mobileSample);
     await mobilePage.locator('#fileInput').setInputFiles(mobileSample);
     await mobilePage.waitForFunction(() => /tag terbaca|gagal|Gagal/.test(document.querySelector('#readStatus')?.textContent || ''), null, { timeout: 60000 });
     await mobilePage.waitForFunction(() => {
@@ -167,7 +155,6 @@ try {
   } finally {
     await mobileContext.close();
   }
-
   if (errors.length) {
     throw new Error(`Page errors:\n${errors.join('\n')}`);
   }

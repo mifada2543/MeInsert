@@ -1,12 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* Bundel otomatis dari assets/css/*.css — JANGAN diedit langsung.
- * Sumber: assets/css/app.css + @import. Jalankan `npm run build:css`. */
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Entry point. Urutan @import = urutan cascade; jangan diurutkan ulang tanpa menguji. */
 
 /* MeInsert · fonts.css — @font-face (IBM Plex, OFL 1.1 — lihat assets/fonts/OFL.txt). Path url() relatif terhadap folder css/. */
@@ -4854,9 +4849,6 @@ h1 {
   .batch-options.is-open { animation: none; }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 .policy-main { padding-block: 36px 80px; }
 .policy-intro { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 12px; }
 .policy-intro p { margin: 0; }
@@ -5160,9 +5152,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 .language-toggle {
   flex-shrink: 0;
   padding: 0;
@@ -5176,9 +5165,6 @@ h1 {
   .header-actions { gap: 4px; }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Indikator ringan saat mesin metadata (WASM) pertama kali dimuat. */
 .engine-loading {
   position: fixed;
@@ -5255,9 +5241,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Fase 2 — toggle simpan cepat, petunjuk seret folder, dan pesan memori. */
 
 .quick-save-toggle {
@@ -5343,9 +5326,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Fase 3 — panel profil bersih + ringkasan sebelum/sesudah (editor satu file). */
 
 /* Home entry card — subtle privacy tint, tokens keep it themed in dark mode. */
@@ -5801,9 +5781,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Fase 3 — aksi bersihkan metadata pada mode batch + ringkasan per file. */
 
 .batch-clean-btn {
@@ -6097,9 +6074,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnSlnnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Landing capability chips and honest support-status strip. */
 .chip-dot.office { background: var(--brand); }
 .format-chips__note {
@@ -6150,9 +6124,6 @@ h1 {
   .format-status__dot { transition: none; }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Scroll-driven reveal + progress line (progressive enhancement). */
 .js-reveal-ready [data-reveal] {
   opacity: 0;
@@ -6238,9 +6209,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Storage & Offline settings dialog. Non-modal, theme-aware, tokens only. */
 .offline-settings__trigger {
   position: relative;
@@ -6545,9 +6513,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Hamburger menu for small screens. */
 .menu-toggle {
   display: none;
@@ -6734,9 +6699,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Halaman Tentang — memakai bahasa visual yang sama dengan beranda:hero + kartu pilihan mode. */
 .landing-about {
   grid-template-columns: minmax(0, 1fr);
@@ -6909,9 +6871,6 @@ h1 {
   }
 }
 
-/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Kartu pemberitahuan kebijakan sekali pakai (non-modal) di index/single/batch. */
 .policy-notice {
   --policy-notice-edit-lift: 96px;

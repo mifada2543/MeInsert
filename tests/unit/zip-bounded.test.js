@@ -141,10 +141,10 @@ test('media entries are never inflated and keep empty data', async () => {
   assert.equal(inspected.packageValid, true);
   assert.deepEqual(inspected.findings, []);
 });
-test('an oversized preview part is skipped with a finding, not an error', async () => {
+test('an oversized preview-only part is skipped with a finding, not an error', async () => {
   const big = randomBytes(OFFICE_PREVIEW_LIMITS.maxPreviewEntry + 1024);
-  const inspected = await inspectZip(zipSync({ 'word/document.xml': [big, { level: 0 }] }));
-  const entry = inspected.entries.find((item) => item.name === 'word/document.xml');
+  const inspected = await inspectZip(zipSync({ 'xl/sharedStrings.xml': [big, { level: 0 }] }));
+  const entry = inspected.entries.find((item) => item.name === 'xl/sharedStrings.xml');
   assert.equal(entry.data.length, 0);
   assert.ok(inspected.findings.some((finding) => /pratinjau/i.test(finding)));
   assert.equal(inspected.valid, true);

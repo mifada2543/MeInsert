@@ -20,12 +20,12 @@ const entry = join(cssDir, 'app.css');
 const outFile = join(cssDir, 'app.bundle.css');
 const BANNER = `/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
-/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* Bundel otomatis dari assets/css/*.css — JANGAN diedit langsung.
- * Sumber: assets/css/app.css + @import. Jalankan \`npm run build:css\`. */`;
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */`;
+const WATERMARK_LINES = new Set(BANNER.split('\n'));
 const IMPORT_RE = /@import\s+"([^"]+)";\s*/g;
 async function readCss(file) {
-  return readFile(file, 'utf8');
+  const source = await readFile(file, 'utf8');
+  return source.split(/\r?\n/).filter((line) => !WATERMARK_LINES.has(line.trim())).join('\n');
 }
 /** Resolve an @import target relative to the importing file. */
 function resolveImport(fromFile, spec) {
@@ -70,7 +70,8 @@ function seenCount(css) {
   return (css.match(/\{/g) || []).length;
 }
 export async function cssIsUpToDate() {
-  const current = await readCss(outFile, 'utf8').catch(() => '');
+  // Compare raw bytes: readCss() intentionally strips watermarks for bundling.
+  const current = await readFile(outFile, 'utf8').catch(() => '');
   const fresh = await bundleCss();
   return current.trim() === fresh.trim();
 }

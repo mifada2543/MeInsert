@@ -132,14 +132,25 @@ function assertSameOriginOnly(requests, baseOrigin, label) {
   assert.deepEqual(mutating, [], `${label}: mutating requests:\n${mutating.join('\n')}`);
 }
 async function cacheSnapshot(page) {
-  return page.evaluate(async () => {
-    const snapshot = {};
-    for (const name of await caches.keys()) {
-      const cache = await caches.open(name);
-      snapshot[name] = (await cache.keys()).map((request) => request.url);
+  let lastError = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      return await withTimeout(page.evaluate(async () => {
+        const snapshot = {};
+        for (const name of await caches.keys()) {
+          const cache = await caches.open(name);
+          snapshot[name] = (await cache.keys()).map((request) => request.url);
+        }
+        return snapshot;
+      }), 15_000, 'cache snapshot');
+    } catch (error) {
+      lastError = error;
+      if (!/Execution context was destroyed|navigation|Target closed/i.test(String(error))) throw error;
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
+      await sleep(300 * (attempt + 1));
     }
-    return snapshot;
-  });
+  }
+  throw lastError;
 }
 async function waitFor(predicate, label, timeout = 90_000) {
   const deadline = Date.now() + timeout;

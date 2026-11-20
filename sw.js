@@ -6,7 +6,7 @@
 // must never throw away engines the user already downloaded. ENGINE_VERSION is
 // mirrored by core/build.js (this worker is a classic script, so it cannot use
 // a static import); tests/unit/service-worker-update.test.js keeps them in sync.
-const CACHE_VERSION = 'meinsert-v52';
+const CACHE_VERSION = 'meinsert-v54';
 const ENGINE_VERSION = 'meinsert-engine-v1';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
 const INSTALL_FETCH_TIMEOUT_MS = 15_000;
@@ -110,7 +110,10 @@ const SHELL_URLS = [
   './assets/fonts/ibm-plex-sans-latin.woff2',
   './assets/img/apple-touch-icon.png',
   './assets/img/favicon-64.png',
-  './assets/img/logo-96.png',
+  './assets/img/logo-96.webp',
+  './assets/img/icon-192.webp',
+  './assets/img/icon-512.webp',
+  './assets/img/icon-maskable-512.webp',
 ];
 // Exact union of OFFLINE_FEATURES[*].urls in core/format-capabilities.js. The
 // worker is a classic script, so it cannot import that module; the manifest test
@@ -239,6 +242,14 @@ async function networkFirst(event) {
 }
 async function cacheFirst(request) {
   const cache = await caches.open(isShellRequest(request) ? CACHE_VERSION : ENGINE_VERSION);
+  const optional = !isShellRequest(request) && optionalPathSet().has(new URL(request.url).pathname) && !new URL(request.url).search;
+  if (optional) {
+    const absolute = request.url;
+    const existing = await cachedOptionalResponse(cache, absolute);
+    if (existing) return existing;
+    await fetchAndStore(cache, absolute);
+    return cache.match(absolute);
+  }
   const cached = await cache.match(request, { ignoreSearch: true });
   if (cached) return cached;
   const response = await fetch(request);
@@ -300,32 +311,59 @@ const activeJobs = new Map();
 async function cachedOptionalResponse(cache, absolute) {
   try {
     const response = await cache.match(absolute);
-    if (response && response.ok && response.headers.get(ENGINE_HEADER) === ENGINE_VERSION) return response;
+    if (response && response.ok && (!response.headers.has(ENGINE_HEADER) || response.headers.get(ENGINE_HEADER) === ENGINE_VERSION)) return response;
   } catch { /* a corrupt cache entry must trigger a fresh fetch */ }
   return null;
 }
-async function fetchAndStore(cache, absolute, signal) {
-  if (pendingFetches.has(absolute)) return pendingFetches.get(absolute);
-  const task = (async () => {
-    const response = await fetch(absolute, { cache: 'reload', credentials: 'same-origin', signal });
-    if (!response || !response.ok) throw new Error('optional asset download failed');
-    const declared = Number(response.headers.get('content-length')) || 0;
-    if (declared > MAX_OPTIONAL_BYTES) throw new Error('optional asset exceeds the size limit');
-    const headers = new Headers(response.headers);
-    headers.set(ENGINE_HEADER, ENGINE_VERSION);
-    const store = new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    });
-    await cache.put(absolute, store);
-    return declared;
-  })();
-  pendingFetches.set(absolute, task);
+async function fetchAndStore(cache, absolute, signal, progress = () => {}) {
+  let job = pendingFetches.has(absolute) ? pendingFetches.get(absolute) : null;
+  if (!job) {
+    const controller = new AbortController();
+    job = { controller, listeners: new Set(), bytes: 0, task: null };
+    const current = job;
+    current.task = (async () => {
+      const response = await fetch(absolute, { cache: 'reload', credentials: 'same-origin', signal: controller.signal });
+      if (!response || !response.ok || response.status !== 200 || !response.body) throw new Error('optional asset download failed');
+      const declared = Number(response.headers.get('content-length')) || 0;
+      if (declared > MAX_OPTIONAL_BYTES) throw new Error('optional asset exceeds the size limit');
+      const headers = new Headers(response.headers);
+      headers.set(ENGINE_HEADER, ENGINE_VERSION);
+      headers.delete('content-encoding');
+      headers.delete('content-length');
+      const reader = response.body.getReader();
+      const stream = new ReadableStream({
+        async pull(target) {
+          try {
+            const { done, value } = await reader.read();
+            if (done) { target.close(); return; }
+            current.bytes += value.byteLength;
+            if (current.bytes > MAX_OPTIONAL_BYTES) throw new Error('optional asset exceeds the size limit');
+            for (const listener of current.listeners) listener(current.bytes);
+            target.enqueue(value);
+          } catch (error) { target.error(error); await reader.cancel().catch(() => {}); }
+        },
+        cancel(reason) { return reader.cancel(reason); },
+      });
+      await cache.put(absolute, new Response(stream, { status: response.status, statusText: response.statusText, headers }));
+      return current.bytes;
+    })().finally(() => { if (pendingFetches.get(absolute) === current) pendingFetches.delete(absolute); });
+    pendingFetches.set(absolute, current);
+  }
+  const listener = (bytes) => progress(bytes);
+  job.listeners.add(listener);
+  if (job.bytes) listener(job.bytes);
+  let abort;
   try {
-    return await task;
+    if (!signal) return await job.task;
+    return await Promise.race([job.task, new Promise((resolve, reject) => {
+      abort = () => reject(new Error('cancelled'));
+      if (signal.aborted) abort();
+      else signal.addEventListener('abort', abort, { once: true });
+    })]);
   } finally {
-    pendingFetches.delete(absolute);
+    if (abort) signal.removeEventListener('abort', abort);
+    job.listeners.delete(listener);
+    if (signal?.aborted && !job.listeners.size) job.controller.abort();
   }
 }
 async function cacheOptional(event) {
@@ -351,7 +389,7 @@ async function cacheOptional(event) {
       try {
         const url = new URL(raw, self.registration.scope);
         if (url.protocol === 'http:' || url.protocol === 'https:') {
-          if (url.origin === self.location.origin && optionalPathSet().has(url.pathname)) absolute = url.href;
+          if (url.origin === self.location.origin && optionalPathSet().has(url.pathname) && !url.search && !url.hash) absolute = url.href;
         }
       } catch { /* invalid URL — reject the whole job */ }
     }
@@ -379,7 +417,10 @@ async function cacheOptional(event) {
         if (await cachedOptionalResponse(cache, absolute)) {
           ok = true;
         } else {
-          used = await fetchAndStore(cache, absolute, controller.signal);
+          used = await fetchAndStore(cache, absolute, controller.signal, (received) => {
+            replyTo(event, { type: 'OPTIONAL_BYTES', jobId, url: absolute,
+              totalBytes: bytes + received, version: ENGINE_VERSION });
+          });
           bytes += used;
           ok = true;
         }
@@ -422,11 +463,12 @@ async function clearOptional(event) {
 async function optionalStatus(event) {
   const cache = await caches.open(ENGINE_VERSION);
   const allowed = optionalPathSet();
-  const urls = (await cache.keys())
-    .map((request) => request.url)
-    .filter((href) => {
-      try { return isSameOrigin(href) && allowed.has(new URL(href).pathname); } catch { return false; }
-    });
+  const urls = [];
+  for (const request of await cache.keys()) {
+    const href = request.url;
+    if (isSameOrigin(href) && allowed.has(new URL(href).pathname) && !new URL(href).search
+      && await cachedOptionalResponse(cache, href)) urls.push(href);
+  }
   replyTo(event, { type: 'OPTIONAL_STATUS_RESULT', urls, cached: urls.length, failed: 0, version: ENGINE_VERSION });
 }
 self.addEventListener('message', (event) => {
