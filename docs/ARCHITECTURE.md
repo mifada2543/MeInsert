@@ -36,8 +36,13 @@ compatibility harness (`tests/compat/`) fails on any other browser request.
   by change planning and integrity.
 - `change-plan.js` — `buildChangePlan()` turns a baseline snapshot plus a
   requested payload into an explicit list of `operations` (field / custom / raw
-  / cover) and a minimal write `payload`. No-op edits are dropped; risks are
-  attached (e.g. `SIGNED_PDF`, `MKV_REWRITE`, memory warnings).
+  / cover / `sidecar`) and a minimal write `payload`. No-op edits are dropped;
+  risks are attached (e.g. `SIGNED_PDF`, `MKV_REWRITE`, memory warnings).
+- `timed-text.js` — DOM-free LRC/SRT/WebVTT parser and serializer, plus cue
+  style normalization (`normalizeCueStyle`, `cueStyleToCss`,
+  `cueStyleToSettings`). `serializeVtt(cues, style)` emits a `STYLE` block,
+  `<c.mi-cue>` wrappers and position/alignment cue settings that survive the
+  MKV/MP4 muxers. Ported from MEeL (see the third-party attributions).
 - `integrity.js` — `verifyIntegrity(plan, afterSnapshot)` re-compares every
   planned change and every *unchanged* field, custom tag, raw tag, XMP property,
   cover, and structure property against the output snapshot. Returns a status
@@ -136,7 +141,10 @@ into an X), `action-bar.js` and `batch-action-bar.js` (compact pinned action
 bars with an **Options** panel), `offline-settings.js` (Frugal / Mostly ready /
 Download everything), `format-chips.js` and `core/format-capabilities.js`
 (format capability labels), `scroll-reveal.js` (scroll entrance animation), and
-`clean-metadata.js` (privacy profiles). The standalone `about.html` page uses
+`clean-metadata.js` (privacy profiles), and `timed-text-editor.js` (synchronized
+lyrics/subtitles editor: extension-driven audio/video mode, two-column preview,
+karaoke view, per-line timestamping, inline appearance preferences and local
+draft saving). The standalone `about.html` page uses
 `assets/css/pages/about.css` and is part of the precached app shell.
 `review-dialog.js` is the confirmation step: it renders planned operations,
 unchanged counts, and risk warnings before any write is authorized.
@@ -162,16 +170,22 @@ The path a file takes from selection to download (all in the browser):
    (synchronized lyrics/subtitle cues). A baseline snapshot is created
    (`core/metadata-snapshot.js#createSnapshot`) and the form is rendered.
 5. **Edit & plan** — the user changes fields or opens the timed-text editor
-   (`ui/timed-text-editor.js`, ported from MEeL — see third-party attributions);
-   `editor/editor-changes.js#collectChanges` gathers the payload including the
-   `sidecar`, and `core/change-plan.js#buildChangePlan` produces the minimal
-   operation list and write payload, attaching risk warnings.
+   (`ui/timed-text-editor.js`, ported from MEeL — see third-party attributions).
+   Line drafts autosave to `localStorage` keyed by file identity and are cleared
+   on **Apply**; appearance preferences persist separately in
+   `meinsert-timed-text-style-v1`. `editor/editor-changes.js#collectChanges`
+   gathers the payload including the `sidecar`, and
+   `core/change-plan.js#buildChangePlan` produces the minimal operation list and
+   write payload, attaching risk warnings.
 6. **Review** — `ui/review-dialog.js#openReviewDialog` shows exactly what will
    change (and what will not) and asks for confirmation. Nothing is written
    until the user confirms.
 7. **Write in a worker** — `editor/editor-save.js#saveMetadata` calls
    `MetadataClient.write`; the adapter applies `plan.payload` through its engine
-   and returns a new `Blob` plus a re-read of its own output.
+   and returns a new `Blob` plus a re-read of its own output. For timed text,
+   `mkv.js`/`mp4.js` add a WebVTT track containing the `STYLE` block from
+   `core/timed-text.js`, and verify A/V packet equivalence before releasing the
+   result.
 8. **Verify** — `core/integrity.js#verifyIntegrity` compares the output snapshot
    against the plan and the original baseline for fields, custom tags, raw
    tags, XMP, cover, structure, and payload proofs. The result is shown to the

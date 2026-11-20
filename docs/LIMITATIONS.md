@@ -50,6 +50,15 @@ per-file result.
   demuxes video/audio only). On reload, the lyric field is recovered from
   `LYRICS`, but subtitle cues must be re-imported from a `.vtt` file.
 - Only one language per track is supported in this version.
+- Text colour, background colour/opacity, size, bold/shadow, position and
+  alignment are editable in the **Text appearance** panel. They are applied
+  exactly to the in-editor preview and to exported `.vtt` files. The same
+  `STYLE` block and cue settings are written into the embedded WebVTT track,
+  but player support varies: MKV/WebVTT players such as mpv/VLC usually honour
+  them, while MP4 `wvtt` and browser-native players may ignore colours and
+  backgrounds. Position/alignment settings are the most widely supported.
+- Appearance preferences are stored in `localStorage` separately from the
+  line draft. The draft is cleared when you press **Apply**.
 
 ## Format-specific caveats
 

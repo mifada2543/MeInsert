@@ -4,6 +4,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CUE_STYLE_DEFAULTS,
+  cueStyleToCss,
+  cueStyleToSettings,
+  normalizeCueStyle,
   parseLrc,
   serializeLrc,
   parseSrt,
@@ -144,23 +148,37 @@ test('parseVtt returns empty cues for empty, garbage and non-string input', () =
   }
 });
 
-test('serializeVtt writes the header, optional ids, timing lines and settings', () => {
+test('serializeVtt writes the header, style block, ids, timing lines and settings', () => {
   assert.equal(serializeVtt([]), 'WEBVTT\n\n');
   const cues = [
-    { id: 'intro', start: 1000, end: 2500, text: 'Halo\ndunia', settings: 'align:start position:50%' },
+    { id: 'intro', start: 1000, end: 2500, text: 'Halo\ndunia', settings: 'position:50%' },
     { id: null, start: 60000, end: 62000, text: 'Tanpa id', settings: '' },
   ];
+  const settings = cueStyleToSettings(CUE_STYLE_DEFAULTS);
   assert.equal(serializeVtt(cues), [
     'WEBVTT',
     '',
-    'intro',
-    '00:00:01.000 --> 00:00:02.500 align:start position:50%',
-    'Halo',
-    'dunia',
+    `STYLE\n${cueStyleToCss(CUE_STYLE_DEFAULTS)}`,
     '',
-    '00:01:00.000 --> 00:01:02.000',
-    'Tanpa id',
+    'intro',
+    `00:00:01.000 --> 00:00:02.500 ${settings} position:50%`,
+    '<c.mi-cue>Halo\ndunia</c>',
+    '',
+    `00:01:00.000 --> 00:01:02.000 ${settings}`,
+    '<c.mi-cue>Tanpa id</c>',
   ].join('\n'));
+});
+test('cue style settings sanitize colors and map position/alignment', () => {
+  const style = normalizeCueStyle({
+    theme: 'custom', color: '#abc', bgColor: '#123456', bgOpacity: 2,
+    fontSize: 'large', bold: false, outline: false, position: 'top', align: 'start',
+  });
+  assert.equal(style.color, '#FFFFFF');
+  assert.equal(style.bgColor, '#123456');
+  assert.equal(style.bgOpacity, 1);
+  assert.equal(cueStyleToSettings(style), 'align:start line:10% size:80%');
+  assert.match(cueStyleToCss(style), /color: #FFFFFF/);
+  assert.match(cueStyleToCss(style), /rgba\(18, 52, 86, 1\)/);
 });
 
 test('VTT import -> export -> import preserves cues exactly', () => {
@@ -178,13 +196,19 @@ test('VTT import -> export -> import preserves cues exactly', () => {
     'Terakhir',
   ].join('\n');
   const original = parseVtt(input).cues;
-  assert.deepEqual(parseVtt(serializeVtt(original)).cues, original);
+  const settings = cueStyleToSettings(CUE_STYLE_DEFAULTS);
+  const expected = original.map((cue) => ({
+    ...cue,
+    settings: `${settings}${cue.settings ? ` ${cue.settings}` : ''}`,
+  }));
+  assert.deepEqual(parseVtt(serializeVtt(original)).cues, expected);
 });
 
 test('SRT import -> VTT export -> VTT import preserves cue fields', () => {
   const srt = '1\r\n00:00:01,000 --> 00:00:02,000\r\nHalo\r\ndunia\r\n';
   const cues = parseSrt(srt).cues;
-  assert.deepEqual(parseVtt(serializeVtt(cues)).cues, cues);
+  const expected = cues.map((cue) => ({ ...cue, settings: cueStyleToSettings(CUE_STYLE_DEFAULTS) }));
+  assert.deepEqual(parseVtt(serializeVtt(cues)).cues, expected);
 });
 
 test('LRC import -> export -> import and toSyltPairs use millisecond pairs', () => {

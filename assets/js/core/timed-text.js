@@ -155,7 +155,8 @@ export function parseVtt(text) {
       body.push(lines[index].trim());
       index++;
     }
-    cues.push({ id, start, end, text: body.join('\n'), settings });
+    const plain = body.join('\n').replace(/<c\.mi-cue>([\s\S]*?)<\/c>/g, '$1');
+    cues.push({ id, start, end, text: plain, settings });
   }
   return { cues };
 }
@@ -167,19 +168,90 @@ function formatVttTime(value) {
   const millis = time % 1000;
   return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(seconds, 2)}.${pad(millis, 3)}`;
 }
-export function serializeVtt(cues) {
-  if (!Array.isArray(cues)) return 'WEBVTT\n\n';
-  const blocks = [];
+export const CUE_STYLE_DEFAULTS = Object.freeze({
+  theme: 'default',
+  color: '#FFFFFF',
+  bgColor: '#000000',
+  bgOpacity: 0.72,
+  fontSize: 'medium',
+  bold: true,
+  outline: true,
+  position: 'bottom',
+  align: 'center',
+});
+export const CUE_STYLE_THEMES = Object.freeze({
+  default: { ...CUE_STYLE_DEFAULTS },
+  contrast: { ...CUE_STYLE_DEFAULTS, theme: 'contrast', bgOpacity: 0.92, fontSize: 'large' },
+  yellow: { ...CUE_STYLE_DEFAULTS, theme: 'yellow', color: '#FFE066', bgOpacity: 0.82 },
+  plain: { ...CUE_STYLE_DEFAULTS, theme: 'plain', bgOpacity: 0, bold: false, outline: false },
+  meel: { ...CUE_STYLE_DEFAULTS, theme: 'meel', color: '#F5F5FC', bgColor: '#15151F', bgOpacity: 0.68, bold: false, outline: false, position: 'middle' },
+});
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+function safeColor(value, fallback) {
+  return HEX_COLOR_RE.test(String(value || '')) ? String(value).toUpperCase() : fallback;
+}
+function clamp(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+}
+export function normalizeCueStyle(style) {
+  const source = style && typeof style === 'object' ? style : {};
+  const theme = CUE_STYLE_THEMES[source.theme] ? source.theme : 'custom';
+  const base = CUE_STYLE_THEMES[theme] || CUE_STYLE_DEFAULTS;
+  return {
+    theme,
+    color: safeColor(source.color, base.color),
+    bgColor: safeColor(source.bgColor, base.bgColor),
+    bgOpacity: clamp(source.bgOpacity, 0, 1, base.bgOpacity),
+    fontSize: ['small', 'medium', 'large'].includes(source.fontSize) ? source.fontSize : base.fontSize,
+    bold: typeof source.bold === 'boolean' ? source.bold : base.bold,
+    outline: typeof source.outline === 'boolean' ? source.outline : base.outline,
+    position: ['top', 'middle', 'bottom'].includes(source.position) ? source.position : base.position,
+    align: ['start', 'center', 'end'].includes(source.align) ? source.align : base.align,
+  };
+}
+function rgba(color, opacity) {
+  const hex = safeColor(color, '#000000').slice(1);
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${Number(opacity.toFixed(2))})`;
+}
+export function cueStyleToCss(style) {
+  const s = normalizeCueStyle(style);
+  const size = s.fontSize === 'large' ? '130%' : s.fontSize === 'small' ? '82%' : '100%';
+  const rules = [
+    '::cue {',
+    `  color: ${s.color};`,
+  ];
+  if (s.bgOpacity > 0) rules.push(`  background-color: ${rgba(s.bgColor, s.bgOpacity)};`);
+  rules.push(`  font-size: ${size};`);
+  rules.push(`  font-weight: ${s.bold ? '700' : '400'};`);
+  if (s.outline) rules.push('  text-shadow: 0 1px 3px rgba(0, 0, 0, .9);');
+  rules.push('}');
+  return rules.join('\n');
+}
+export function cueStyleToSettings(style) {
+  const s = normalizeCueStyle(style);
+  const line = s.position === 'top' ? 'line:10%' : s.position === 'middle' ? 'line:50%' : 'line:90%';
+  const align = s.align === 'center' ? 'align:middle' : `align:${s.align}`;
+  return `${align} ${line} size:80%`;
+}
+export function serializeVtt(cues, style) {
+  if (!Array.isArray(cues) || cues.length === 0) return 'WEBVTT\n\n';
+  const s = normalizeCueStyle(style);
+  const settings = cueStyleToSettings(s);
+  const blocks = [`STYLE\n${cueStyleToCss(s)}`];
   for (const cue of cues) {
     if (!cue || typeof cue !== 'object') continue;
-    const settings = typeof cue.settings === 'string' ? cue.settings.trim() : '';
-    const timing = `${formatVttTime(cue.start)} --> ${formatVttTime(cue.end)}${settings ? ` ${settings}` : ''}`;
+    const own = typeof cue.settings === 'string' ? cue.settings.trim() : '';
+    const timing = `${formatVttTime(cue.start)} --> ${formatVttTime(cue.end)} ${settings}${own ? ` ${own}` : ''}`;
     const id = cue.id === null || cue.id === undefined ? '' : prettyText(cue.id).trim();
     const text = prettyText(cue.text);
     const block = [];
     if (id) block.push(id);
-    block.push(timing);
-    if (text) block.push(text);
+    block.push(timing.trim());
+    if (text) block.push(`<c.mi-cue>${text}</c>`);
     blocks.push(block.join('\n'));
   }
   return `WEBVTT\n\n${blocks.join('\n\n')}`;

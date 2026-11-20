@@ -13,6 +13,9 @@ import { beginChange, endChange } from '../core/history.js';
 import { setSidecar } from '../editor/editor-state.js';
 import { syncActionBar } from '../editor/editor-changes.js';
 import {
+  CUE_STYLE_DEFAULTS,
+  CUE_STYLE_THEMES,
+  normalizeCueStyle,
   formatTimestamp,
   parseLrc,
   parseSrt,
@@ -24,6 +27,7 @@ import {
 const EXIT_MS = 160;
 const EXIT_SAFETY_MS = EXIT_MS + 100;
 const TOLERANCE_MS = 150;
+const STYLE_STORAGE_KEY = 'meinsert-timed-text-style-v1';
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'mov', 'm4v', 'ogv', 'ogm', 'mkv', 'avi']);
 const AUDIO_EXTS = new Set(['mp3', 'flac', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'wav']);
 const TIMED_TEXT_EXTS = new Set([...VIDEO_EXTS, ...AUDIO_EXTS]);
@@ -89,14 +93,14 @@ function normalizeLyrics(value) {
   if (Array.isArray(value)) return { lang: 'id', lines: value.map(normalizeLine) };
   const root = value && typeof value === 'object' ? (value.lyrics && typeof value.lyrics === 'object' ? value.lyrics : value) : {};
   const lines = Array.isArray(root.lines) ? root.lines : [];
-  return { lang: stringValue(root.lang, 'id'), lines: lines.map(normalizeLine) };
+  return { lang: stringValue(root.lang, 'id'), lines: lines.map(normalizeLine), style: normalizeCueStyle(root.style) };
 }
 
 function normalizeSubtitles(value) {
   if (Array.isArray(value)) return { lang: 'id', cues: value.map(normalizeCue) };
   const root = value && typeof value === 'object' ? (value.subtitles && typeof value.subtitles === 'object' ? value.subtitles : value) : {};
   const cues = Array.isArray(root.cues) ? root.cues : [];
-  return { lang: stringValue(root.lang, 'id'), cues: cues.map(normalizeCue) };
+  return { lang: stringValue(root.lang, 'id'), cues: cues.map(normalizeCue), style: normalizeCueStyle(root.style) };
 }
 
 function normalizeSidecar(sidecar) {
@@ -151,6 +155,140 @@ function clearDraft() {
   draftTimer = 0;
   try { globalThis.localStorage?.removeItem(draftKey()); } catch { /* storage is optional */ }
   updateDraftLabel();
+}
+
+function loadSavedStyles() {
+  try {
+    const raw = globalThis.localStorage?.getItem(STYLE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== 'object') return {};
+    const out = {};
+    for (const mode of ['lyrics', 'subtitles']) {
+      if (parsed[mode]) out[mode] = normalizeCueStyle(parsed[mode]);
+    }
+    return out;
+  } catch { return {}; }
+}
+function saveStyles(styles) {
+  try { globalThis.localStorage?.setItem(STYLE_STORAGE_KEY, JSON.stringify(styles)); } catch { /* storage is optional */ }
+}
+function stylesEqual(a, b) {
+  return JSON.stringify(normalizeCueStyle(a)) === JSON.stringify(normalizeCueStyle(b));
+}
+function currentStyle() {
+  return normalizeCueStyle(state?.data?.[state.mode]?.style);
+}
+function applyStylePreview() {
+  if (!state || !refs) return;
+  const s = currentStyle();
+  const frame = refs.videoFrame;
+  frame.style.setProperty('--tt-cue-color', s.color);
+  frame.style.setProperty('--tt-cue-bg', s.bgColor);
+  frame.style.setProperty('--tt-cue-opacity', String(s.bgOpacity));
+  frame.style.setProperty('--tt-cue-size', s.fontSize === 'large' ? '1.3em' : s.fontSize === 'small' ? '.82em' : '1em');
+  frame.style.setProperty('--tt-cue-weight', s.bold ? '700' : '400');
+  frame.style.setProperty('--tt-cue-shadow', s.outline ? '0 1px 3px rgba(0,0,0,.9)' : 'none');
+  frame.dataset.cuePosition = s.position;
+  frame.dataset.cueAlign = s.align;
+  if (refs.overlay) {
+    refs.overlay.dataset.position = s.position;
+    refs.overlay.dataset.cueAlign = s.align;
+  }
+}
+function handleStyleChange(patch, replace = false) {
+  if (!state) return;
+  const base = replace ? (patch || {}) : { ...state.styleDraft, ...patch };
+  state.styleDraft = normalizeCueStyle(base);
+  state.data[state.mode].style = state.styleDraft;
+  refs.stylePanel.setStyle(state.styleDraft);
+  applyStylePreview();
+  scheduleDraftSave();
+}
+function savePreference() {
+  if (!state) return;
+  const styles = loadSavedStyles();
+  styles[state.mode] = normalizeCueStyle(state.styleDraft);
+  saveStyles(styles);
+  state.styleBaseline = normalizeCueStyle(state.styleDraft);
+  showToast(t('ui.timedTextStyleSaved'), 'success', 3200);
+}
+function confirmUnsavedStyle() {
+  return new Promise((resolve) => {
+    if (!refs?.stylePanel?.element || !dialog) { resolve(false); return; }
+    const existing = dialog.querySelector('.timed-text__unsaved-notice');
+    if (existing) existing.remove();
+    const cancelBtn = el('button', {
+      className: 'timed-text__btn',
+      type: 'button',
+      on: { click: () => { notice.remove(); resolve(false); } },
+    }, translated(() => t('ui.timedTextStyleDiscard')));
+    const saveBtn = el('button', {
+      className: 'timed-text__btn timed-text__btn--save',
+      type: 'button',
+      on: { click: () => { notice.remove(); resolve(true); } },
+    }, translated(() => t('ui.timedTextSavePreference')));
+    const notice = el('div', {
+      className: 'timed-text__unsaved-notice',
+      role: 'alertdialog',
+      'aria-modal': 'false',
+    },
+      el('strong', { textContent: t('ui.timedTextStyleUnsavedTitle') }),
+      el('span', { textContent: t('ui.timedTextStyleUnsaved') }),
+      el('div', { className: 'timed-text__unsaved-actions' }, cancelBtn, saveBtn),
+    );
+    refs.stylePanel.element.append(notice);
+    saveBtn.focus();
+  });
+}
+function exitStyleModeImmediate() {
+  if (!state) return;
+  state.styleMode = false;
+  if (dialog) dialog.dataset.styleMode = 'false';
+  refs.stylePanel.element.hidden = true;
+  refs.body.hidden = false;
+  refs.body.querySelectorAll('.timed-text__rows, .timed-text__hint').forEach((node) => { node.hidden = false; });
+  const gear = state.mode === 'subtitles' ? refs.styleBtnSubtitles : refs.styleBtnLyrics;
+  gear.replaceChildren(icon('refresh'));
+  const label = t('ui.timedTextStyleTitle');
+  gear.title = label;
+  gear.setAttribute('aria-label', label);
+}
+async function exitStyleMode() {
+  if (!state?.styleMode) return true;
+  if (!stylesEqual(state.styleDraft, state.styleBaseline)) {
+    const save = await confirmUnsavedStyle();
+    if (save) savePreference();
+    else state.data[state.mode].style = state.styleBaseline;
+  }
+  applyStylePreview();
+  exitStyleModeImmediate();
+  return true;
+}
+async function toggleStyleMode() {
+  if (!state) return;
+  if (state.styleMode) {
+    await exitStyleMode();
+    return;
+  }
+  const saved = loadSavedStyles()[state.mode];
+  const fromData = state.data[state.mode]?.style;
+  state.styleDraft = normalizeCueStyle(saved || fromData || CUE_STYLE_DEFAULTS);
+  state.styleBaseline = normalizeCueStyle(state.styleDraft);
+  state.styleMode = true;
+  if (dialog) dialog.dataset.styleMode = 'true';
+  refs.body.querySelectorAll('.timed-text__rows, .timed-text__hint').forEach((node) => { node.hidden = true; });
+  refs.stylePanel.element.hidden = false;
+  refs.stylePanel.setStyle(state.styleDraft);
+  const gear = state.mode === 'subtitles' ? refs.styleBtnSubtitles : refs.styleBtnLyrics;
+  gear.replaceChildren(icon('x'));
+  const label = t('ui.timedTextStyleClose');
+  gear.title = label;
+  gear.setAttribute('aria-label', label);
+  refs.stylePanel.element.querySelector('#timedTextSavePreference')?.focus();
+}
+async function onRequestClose() {
+  if (state?.styleMode) await exitStyleMode();
+  requestClose();
 }
 
 function payloadFor(list, data) {
@@ -284,6 +422,93 @@ function trapFocus(event) {
   }
 }
 
+function buildStylePanel(onChange) {
+  const presetButtons = new Map();
+  const presetRow = el('div', { className: 'timed-text__preset-row' });
+  for (const [key, preset] of Object.entries(CUE_STYLE_THEMES)) {
+    const label = key === 'meel' ? 'ui.timedTextThemeMeel' : `ui.timedTextTheme${key[0].toUpperCase()}${key.slice(1)}`;
+    const button = el('button', {
+      type: 'button',
+      className: 'timed-text__preset',
+      dataset: { theme: key },
+      on: { click: () => onChange(preset, true) },
+    }, translated(() => t(label)));
+    presetButtons.set(key, button);
+    presetRow.append(button);
+  }
+
+  const colorText = el('input', { type: 'color', className: 'timed-text__color' });
+  const colorBg = el('input', { type: 'color', className: 'timed-text__color' });
+  const opacity = el('input', { type: 'range', className: 'timed-text__opacity', min: '0', max: '100', step: '1' });
+  const opacityValue = el('span', { className: 'timed-text__opacity-value' });
+  const sizeButtons = new Map();
+  const sizeRow = el('div', { className: 'timed-text__segment' });
+  for (const [value, key] of [['small', 'ui.timedTextSizeSmall'], ['medium', 'ui.timedTextSizeMedium'], ['large', 'ui.timedTextSizeLarge']]) {
+    const button = el('button', { type: 'button', className: 'timed-text__segment-btn', on: { click: () => onChange({ fontSize: value, theme: 'custom' }) } }, translated(() => t(key)));
+    sizeButtons.set(value, button);
+    sizeRow.append(button);
+  }
+  const bold = el('input', { type: 'checkbox' });
+  const outline = el('input', { type: 'checkbox' });
+  const positionButtons = new Map();
+  const positionRow = el('div', { className: 'timed-text__segment' });
+  for (const [value, key] of [['top', 'ui.timedTextPosTop'], ['middle', 'ui.timedTextPosMiddle'], ['bottom', 'ui.timedTextPosBottom']]) {
+    const button = el('button', { type: 'button', className: 'timed-text__segment-btn', on: { click: () => onChange({ position: value, theme: 'custom' }) } }, translated(() => t(key)));
+    positionButtons.set(value, button);
+    positionRow.append(button);
+  }
+  const alignButtons = new Map();
+  const alignRow = el('div', { className: 'timed-text__segment' });
+  for (const [value, key] of [['start', 'ui.timedTextAlignStart'], ['center', 'ui.timedTextAlignCenter'], ['end', 'ui.timedTextAlignEnd']]) {
+    const button = el('button', { type: 'button', className: 'timed-text__segment-btn', on: { click: () => onChange({ align: value, theme: 'custom' }) } }, translated(() => t(key)));
+    alignButtons.set(value, button);
+    alignRow.append(button);
+  }
+  const field = (labelKey, control) => el('label', { className: 'timed-text__style-field' },
+    el('span', { className: 'timed-text__style-label' }, translated(() => t(labelKey))), control);
+  const check = (labelKey, input) => el('label', { className: 'timed-text__style-check' }, input, el('span', {}, translated(() => t(labelKey))));
+  const note = el('p', { className: 'timed-text__style-note' });
+  bindText(note, () => t('ui.timedTextStyleNote'));
+  const resetBtn = el('button', { type: 'button', className: 'timed-text__btn', id: 'timedTextStyleReset', on: { click: () => onChange(CUE_STYLE_DEFAULTS, true) } }, icon('refresh'), el('span', {}, translated(() => t('ui.timedTextStyleReset'))));
+  const saveBtn = el('button', { type: 'button', className: 'timed-text__btn timed-text__btn--save', id: 'timedTextSavePreference', on: { click: () => savePreference() } }, icon('check'), el('span', {}, translated(() => t('ui.timedTextSavePreference'))));
+  const element = el('section', { className: 'timed-text__style-panel', hidden: true },
+    el('div', { className: 'timed-text__style-head' },
+      el('h3', { className: 'timed-text__style-title', textContent: translated(() => t('ui.timedTextStyleTitle')) }), resetBtn),
+    field('ui.timedTextTheme', presetRow),
+    field('ui.timedTextColorText', colorText),
+    field('ui.timedTextColorBg', colorBg),
+    field('ui.timedTextOpacity', el('div', { className: 'timed-text__opacity-row' }, opacity, opacityValue)),
+    field('ui.timedTextSize', sizeRow),
+    el('div', { className: 'timed-text__style-checks' }, check('ui.timedTextBold', bold), check('ui.timedTextOutline', outline)),
+    field('ui.timedTextPosition', positionRow),
+    field('ui.timedTextAlign', alignRow),
+    note,
+    saveBtn,
+  );
+  const setStyle = (style) => {
+    const s = normalizeCueStyle(style);
+    for (const [key, button] of presetButtons) button.classList.toggle('is-active', s.theme === key);
+    colorText.value = s.color;
+    colorBg.value = s.bgColor;
+    opacity.value = String(Math.round(s.bgOpacity * 100));
+    opacityValue.textContent = `${Math.round(s.bgOpacity * 100)}%`;
+    for (const [key, button] of sizeButtons) button.classList.toggle('is-active', s.fontSize === key);
+    bold.checked = s.bold;
+    outline.checked = s.outline;
+    for (const [key, button] of positionButtons) button.classList.toggle('is-active', s.position === key);
+    for (const [key, button] of alignButtons) button.classList.toggle('is-active', s.align === key);
+  };
+  colorText.addEventListener('input', () => onChange({ color: colorText.value, theme: 'custom' }));
+  colorBg.addEventListener('input', () => onChange({ bgColor: colorBg.value, theme: 'custom' }));
+  opacity.addEventListener('input', () => {
+    opacityValue.textContent = `${opacity.value}%`;
+    onChange({ bgOpacity: Number(opacity.value) / 100, theme: 'custom' });
+  });
+  bold.addEventListener('change', () => onChange({ bold: bold.checked, theme: 'custom' }));
+  outline.addEventListener('change', () => onChange({ outline: outline.checked, theme: 'custom' }));
+  return { element, setStyle };
+}
+
 function actionButton({ id, iconName, labelKey, onClick, primary = false }) {
   const label = el('span', { className: 'timed-text__btn-label' });
   bindText(label, () => t(labelKey));
@@ -307,7 +532,7 @@ function buildDialog() {
     type: 'button',
     title: translated(() => t('ui.timedTextClose')),
     'aria-label': translated(() => t('ui.timedTextClose')),
-    on: { click: () => requestClose() },
+    on: { click: () => onRequestClose() },
   }, icon('x'));
 
   const mediaWrap = el('div', { className: 'timed-text__media-wrap' });
@@ -361,7 +586,8 @@ function buildDialog() {
     'aria-label': translated(() => t('ui.timedTextCollapsePreview')),
     on: { click: () => togglePreviewCompact() },
   }, icon('minimize'));
-  const videoFrame = el('div', { className: 'timed-text__video-frame' }, mediaWrap, overlay);
+  const karaoke = el('div', { className: 'timed-text__karaoke', 'aria-hidden': 'true' });
+  const videoFrame = el('div', { className: 'timed-text__video-frame' }, mediaWrap, overlay, karaoke);
   const player = el('div', { className: 'timed-text__player' },
     videoFrame,
     el('div', { className: 'timed-text__controls' },
@@ -392,6 +618,17 @@ function buildDialog() {
   bindText(tabs.lyrics, () => t('ui.timedTextLyrics'));
   bindText(tabs.subtitles, () => t('ui.timedTextSubtitles'));
   const tablist = el('div', { className: 'timed-text__tabs', role: 'tablist' }, tabs.lyrics, tabs.subtitles);
+  const makeStyleBtn = (id) => el('button', {
+    id,
+    className: 'timed-text__ctrl timed-text__ctrl--utility',
+    type: 'button',
+    title: translated(() => t('ui.timedTextStyleTitle')),
+    'aria-label': translated(() => t('ui.timedTextStyleTitle')),
+    on: { click: () => toggleStyleMode() },
+  }, icon('refresh'));
+  const styleBtnLyrics = makeStyleBtn('timedTextStyleLyrics');
+  const styleBtnSubtitles = makeStyleBtn('timedTextStyleSubtitles');
+  const stylePanel = buildStylePanel(handleStyleChange);
 
   const addLineBtn = actionButton({ id: 'timedTextAddLine', iconName: 'plus', labelKey: 'ui.timedTextAddLine', onClick: () => addRow('lyrics') });
   const lyricsHint = el('p', { className: 'timed-text__hint' });
@@ -402,7 +639,7 @@ function buildDialog() {
     id: 'timedTextPanelLyrics',
     role: 'tabpanel',
     'aria-labelledby': 'timedTextTabLyrics',
-  }, el('div', { className: 'timed-text__toolbar' }, addLineBtn), lyricsRows, lyricsHint);
+  }, el('div', { className: 'timed-text__toolbar' }, addLineBtn, styleBtnLyrics), lyricsRows, lyricsHint);
 
   const addCueBtn = actionButton({ id: 'timedTextAddCue', iconName: 'plus', labelKey: 'ui.timedTextAddLine', onClick: () => addRow('subtitles') });
   const showBtn = el('button', { className: 'timed-text__btn timed-text__show', type: 'button', on: { click: () => toggleOverlayVariant() } }, icon('video'), el('span', { className: 'timed-text__btn-label' }));
@@ -413,7 +650,7 @@ function buildDialog() {
     role: 'tabpanel',
     'aria-labelledby': 'timedTextTabSubtitles',
     hidden: true,
-  }, el('div', { className: 'timed-text__toolbar' }, addCueBtn, showBtn), subtitlesRows);
+  }, el('div', { className: 'timed-text__toolbar' }, addCueBtn, styleBtnSubtitles, showBtn), subtitlesRows);
 
   const fileInput = el('input', {
     className: 'timed-text__file',
@@ -454,14 +691,16 @@ function buildDialog() {
   }, el('div', { className: 'timed-text__dialog-panel' },
     el('header', { className: 'timed-text__head' },
       el('div', { className: 'timed-text__heading' }, modeBadge, title, rotateHint), closeBtn),
-    el('div', { className: 'timed-text__workspace' }, screen, tablist, body),
+    el('div', { className: 'timed-text__workspace' }, screen,
+      el('div', { className: 'timed-text__editor-pane' }, tablist, body, stylePanel.element)),
     actions,
   ));
   document.body.append(dialog);
   document.addEventListener('fullscreenchange', onFullscreenChange);
   window.addEventListener('resize', updateRotateHint);
   refs = {
-    title, modeBadge, closeBtn, rotateHint, screen, player, videoFrame, fullscreenBtn, compactBtn,
+    title, modeBadge, closeBtn, rotateHint, screen, player, videoFrame, karaoke, fullscreenBtn, compactBtn,
+    styleBtnLyrics, styleBtnSubtitles, stylePanel, body,
     mediaWrap, overlay, overlayText, playBtn, backBtn, fwdBtn, seek, timeLabel,
     tabs, tablist, panels: { lyrics: lyricsPanel, subtitles: subtitlesPanel },
     rows: { lyrics: lyricsRows, subtitles: subtitlesRows },
@@ -665,6 +904,7 @@ function syncHighlights() {
   if (!state) return;
   syncLyrics();
   syncCues();
+  syncKaraoke();
   renderOverlay();
 }
 
@@ -692,6 +932,30 @@ function syncCues() {
   state.active.subtitles = index;
   state.rows.subtitles.forEach((row, i) => row.classList.toggle('is-active', i === index));
   centerRow(state.rows.subtitles[index], refs.rows.subtitles);
+}
+
+function renderKaraoke() {
+  if (!refs?.karaoke || !state) return;
+  clear(refs.karaoke);
+  const lines = state.data.lyrics?.lines || [];
+  for (const line of lines) {
+    const node = el('div', { className: 'timed-text__karaoke-line', dataset: { time: String(line.time) } }, line.text);
+    if (/^\[[^\]]+\]$/.test(String(line.text).trim())) node.classList.add('is-section');
+    refs.karaoke.append(node);
+  }
+  syncKaraoke();
+}
+function syncKaraoke() {
+  if (!refs?.karaoke) return;
+  const nodes = [...refs.karaoke.children];
+  const ms = currentMs();
+  let index = -1;
+  for (let i = nodes.length - 1; i >= 0; i -= 1) {
+    if (ms >= Number(nodes[i].dataset.time) - TOLERANCE_MS) { index = i; break; }
+  }
+  nodes.forEach((node, i) => node.classList.toggle('is-active', i === index));
+  const active = nodes[index];
+  if (active?.scrollIntoView) active.scrollIntoView({ block: 'center', behavior: reduceMotion() ? 'auto' : 'smooth' });
 }
 
 function renderOverlay() {
@@ -783,6 +1047,7 @@ function makeTextInput(kind, index, value) {
       input: (event) => {
         const item = kind === 'lyrics' ? state.data.lyrics?.lines?.[index] : state.data.subtitles?.cues?.[index];
         if (item) item.text = event.target.value;
+        if (kind === 'lyrics') renderKaraoke();
         syncHighlights();
         scheduleDraftSave();
       },
@@ -819,6 +1084,7 @@ function removeRow(kind, index) {
   state.selected[kind] = -1;
   state.active[kind] = -1;
   renderRows(kind);
+  if (kind === 'lyrics') renderKaraoke();
   syncHighlights();
   scheduleDraftSave();
 }
@@ -917,6 +1183,7 @@ function addRow(kind) {
     state.selected.subtitles = cues.length - 1;
   }
   renderRows(kind);
+  if (kind === 'lyrics') renderKaraoke();
   syncHighlights();
   scheduleDraftSave();
   state.rows[kind][state.selected[kind]]?.querySelector('.timed-text__text')?.focus();
@@ -963,6 +1230,7 @@ async function onImport(event) {
       state.selected.lyrics = -1;
       state.active.lyrics = -1;
       renderRows('lyrics');
+      renderKaraoke();
       switchTab('lyrics');
     } else if (ext === 'srt' || ext === 'vtt') {
       const parsed = fromCore(ext, text, lang);
@@ -1030,7 +1298,7 @@ function onGlobalKeydown(event) {
   if (!dialog?.open || !state) return;
   if (event.key === 'Escape') {
     event.preventDefault();
-    requestClose();
+    void onRequestClose();
     return;
   }
   if (event.key === 'Tab') {
@@ -1084,6 +1352,13 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   };
   const draft = readDraft();
   if (draft?.data) state.data = normalizeSidecar(draft.data);
+  const savedStyles = loadSavedStyles();
+  for (const item of ['lyrics', 'subtitles']) {
+    if (state.data[item] && savedStyles[item]) state.data[item].style = savedStyles[item];
+  }
+  state.styleMode = false;
+  state.styleDraft = currentStyle();
+  state.styleBaseline = currentStyle();
 
   instance.dataset.mode = mode;
   instance.dataset.preview = 'full';
@@ -1101,6 +1376,8 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   renderTabs();
   renderRows('lyrics');
   renderRows('subtitles');
+  renderKaraoke();
+  applyStylePreview();
   bindShowLabel();
   updateDraftLabel();
   updateRotateHint();

@@ -87,7 +87,11 @@ Embed JPEG/PNG/WebP covers up to 10 MB. GIF/BMP covers are also supported for MP
 
 ### Synchronized lyrics & subtitles
 
-The **Lyrics & subtitles** button in the editor opens a panel to type, timestamp, import (`.lrc`, `.srt`, `.vtt`) and export timed text. The preview uses your local media (`blob:`) with no upload. On save, the text is embedded inside the container: `SYLT` for MP3, a `LYRICS` comment for FLAC/OGG/Opus, `©lyr` plus a WebVTT track for MP4/M4A, and a WebVTT track for MKV/WebM. Lyrics can also become a track labelled "Lirik" that appears in players that support it. The original file is never overwritten; `.vtt` export remains available for compatibility. Details and limits are in the [limitations documentation](docs/LIMITATIONS.md).
+The **Lyrics & subtitles** button opens a two-column editor: media preview on the left and the line list on the right (video uses a forced landscape layout). You can type, timestamp each line directly, import (`.lrc`, `.srt`, `.vtt`) and export timed text. The preview uses your local media (`blob:`) with no upload.
+
+The **gear** button opens the **Text appearance** panel for text colour, background colour/opacity, size, bold, shadow, position and alignment, including a **MEeL** preset. Preferences are stored in `localStorage` after you press **Save preference**; unsaved changes prompt **Discard** / **Save**. Line drafts are saved automatically and cleared after you press **Apply**.
+
+On save, the text is embedded inside the container: `SYLT` for MP3, a `LYRICS` comment for FLAC/OGG/Opus, `©lyr` plus a WebVTT track for MP4/M4A, and a WebVTT track for MKV/WebM. Lyrics can also become a track labelled "Lirik". The `STYLE` block and cue settings are written too; colours and backgrounds are guaranteed in the preview and `.vtt` file, while internal players may differ. The original file is never overwritten. Details and limits are in the [limitations documentation](docs/LIMITATIONS.md).
 
 ### Office documents
 
@@ -208,12 +212,12 @@ Technical depth was moved out of this README to keep it short:
 ```bash
 npm run serve            # local server http://localhost:8000
 npm run test:fast        # fast gate: unit + lint + CSS + policy (~3s, no browser)
-npm test                 # 218 unit tests
+npm test                 # 372 unit tests
 npm run lint             # ESLint
 npm run check:css        # CSS bundle matches its sources
 npm run check:policies   # policy pages match their Markdown sources
 npm run test:e2e         # browser smoke test (1 suite)
-npm run test:e2e:all     # all 16 E2E suites in one shared Chrome process (CDP)
+npm run test:e2e:all     # all 18 E2E suites in one shared Chrome process (CDP)
 # CI shards suites across 4 runners: MEINSERT_E2E_SHARD=1/4 npm run test:e2e:all
 npm run test:preview     # preview open/close animation
 npm run test:action-bar  # action bar & Options panel
@@ -225,6 +229,8 @@ npm run test:undo        # single-file undo/redo
 npm run test:undo:batch  # batch undo/redo
 npm run test:security    # CSP and network audit
 npm run test:engine      # WASM engine download and status
+npm run test:wasm-integrity # WASM E2E with an active Service Worker
+npm run test:timed-text  # lyrics/subtitle editor and appearance preferences
 npm run test:quick-save  # quick save
 npm run test:clean       # clean metadata (single and batch)
 npm run test:office      # OOXML/ODF documents
@@ -250,6 +256,7 @@ Bundled dependencies retain their own licenses. See the [attribution index](asse
 - **ExifTool 13.60** (Artistic/GPL), **@colorhythm/exiftool-wasm** (Apache-2.0) + **zeroperl** (MIT)
 - **Mediabunny** (MPL-2.0), **pdf-lib**, **browser-id3-writer**, **fflate** (MIT)
 - **IBM Plex fonts** — SIL Open Font License 1.1
+- **MEeL — LRC editor & timed-text helpers** (AGPL-3.0, © 2026 Mifada) — adapted source for the lyrics/subtitle editor; the exact source and destination files are listed in [NOTICE-en.md](./NOTICE-en.md) and the [attribution index](assets/THIRD_PARTY_LICENSES.md).
 - **Brand artwork** — original project assets; [provenance](assets/img/PROVENANCE.md)
 
 ### Licensing and monetization (AGPLv3)

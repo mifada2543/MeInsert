@@ -80,7 +80,38 @@ try {
   const restored = await page.locator('#timedTextRowsLyrics .timed-text__row .timed-text__text').first().inputValue();
   if (restored !== 'Lirik uji coba') throw new Error(`Draf tidak dipulihkan: ${restored}`);
   console.log('PASS: draf dipulihkan setelah dialog ditutup');
-  await page.locator('.timed-text__btn--save').click();
+
+  await page.locator('#timedTextStyleLyrics').click();
+  const panel = page.locator('.timed-text__style-panel');
+  await panel.waitFor({ state: 'visible' });
+  if (!(await page.locator('.timed-text__rows').first().isHidden())) throw new Error('Panel preferensi tidak menimpa daftar baris.');
+  await panel.locator('[data-theme="yellow"]').click();
+  const cueColor = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
+  if (cueColor !== '#FFE066') throw new Error(`Pratinjau tidak mengikuti tema: ${cueColor}`);
+  console.log('PASS: panel preferensi menimpa editor dan pratinjau berubah', cueColor);
+
+  await page.locator('#timedTextStyleLyrics').click();
+  const confirm = page.locator('.timed-text__unsaved-notice');
+  await confirm.waitFor({ state: 'visible' });
+  const confirmText = await confirm.innerText();
+  if (!/belum tersimpan/i.test(confirmText)) throw new Error(`Konfirmasi salah: ${confirmText}`);
+  await confirm.locator('.timed-text__btn--save').click();
+  await confirm.waitFor({ state: 'hidden' });
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('meinsert-timed-text-style-v1') || '{}'));
+  if (saved.lyrics?.theme !== 'yellow') throw new Error(`Preferensi tidak tersimpan: ${JSON.stringify(saved)}`);
+  console.log('PASS: konfirmasi preferensi belum tersimpan -> Simpan');
+
+  await page.locator('#timedTextStyleLyrics').click();
+  await panel.locator('[data-theme="plain"]').click();
+  await page.locator('#timedTextStyleLyrics').click();
+  await confirm.waitFor({ state: 'visible' });
+  await confirm.locator('.timed-text__btn:not(.timed-text__btn--save)').click();
+  await confirm.waitFor({ state: 'hidden' });
+  const reverted = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
+  if (reverted !== '#FFE066') throw new Error(`Batalkan tidak mengembalikan preferensi: ${reverted}`);
+  console.log('PASS: Batalkan mengembalikan preferensi tersimpan');
+
+  await page.locator('#timedTextSave').click();
   await page.locator('#timedTextDialog[open]').waitFor({ state: 'hidden' });
   console.log('PASS: Apply menutup dialog dan mengembalikan state ke editor');
   await open(video);

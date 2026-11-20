@@ -28,8 +28,12 @@ Lowercase, hyphenated. Refined from the supported formats and the README's
 feature list; the owner selects the final subset on the repository page.
 
 ```
-privacy metadata-editor pwa browser-only offline-first webassembly exif id3 pdf exiftool matroska mp4 office ooxml odf image-metadata audio-metadata video-metadata no-upload client-side javascript
+privacy metadata-editor pwa browser-only offline-first webassembly exif id3 pdf exiftool matroska mp4 office ooxml odf image-metadata audio-metadata video-metadata subtitle-editor lyrics-editor no-upload client-side javascript
 ```
+
+The synchronized lyrics/subtitle editor (extended from MEeL) is credited
+explicitly in `NOTICE.md` / `NOTICE-en.md`, with the exact source and adapted
+file list in `assets/THIRD_PARTY_LICENSES.md`.
 
 ## Show HN — draft (English)
 

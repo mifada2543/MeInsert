@@ -40,6 +40,12 @@ production or `http://localhost/...` on XAMPP), plus `blob:` and `data:` URLs
 for previews and downloads. There must be no request to any analytics domain,
 CDN, or upload endpoint.
 
+Timed-text editing follows the same rule: audio/video previews come from
+`URL.createObjectURL(file)` (`blob:`), and line drafts / appearance preferences
+are written only to `localStorage` (`meinsert-timed-text-draft-v1-*` and
+`meinsert-timed-text-style-v1`). No lyric or subtitle text is uploaded, and the
+draft is cleared when you press **Apply / Terapkan**.
+
 Automated check (local server + Chromium):
 
 ```bash

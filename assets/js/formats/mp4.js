@@ -302,10 +302,10 @@ async function embedSidecar(baseFile, payload, report) {
   else output.setMetadataTags(mediaTags);
   const tracks = [];
   if (timedLyrics.length) {
-    tracks.push({ name: 'Lirik', vtt: serializeVtt(lyricCues(timedLyrics)), primary: !cues.length });
+    tracks.push({ name: 'Lirik', vtt: serializeVtt(lyricCues(timedLyrics), payload?.sidecar?.lyrics?.style), primary: !cues.length });
   }
   if (cues.length) {
-    tracks.push({ name: 'Subtitle', vtt: serializeVtt(cues), primary: true });
+    tracks.push({ name: 'Subtitle', vtt: serializeVtt(cues, payload?.sidecar?.subtitles?.style), primary: true });
   }
   for (const track of tracks) {
     const source = new TextSubtitleSource('webvtt');
