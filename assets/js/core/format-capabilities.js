@@ -65,11 +65,10 @@ export const OFFLINE_FEATURES = [
     bytes: 27_800_000,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
-      './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm',
+      './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
       './assets/js/workers/exiftool.worker.js',
       './assets/js/formats/image.js',
       './assets/js/formats/mp4.js',
-      // Dynamic imports from image.js / mp4.js + the WASM fetched by index.js.
       './assets/js/engines/exiftool.js',
       './assets/vendor/mediabunny.mjs',
     ],

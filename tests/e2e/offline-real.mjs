@@ -97,8 +97,8 @@ function withTimeout(promise, ms, label) {
 const pathOf = (url) => {
   try { return new URL(url, base).pathname; } catch { return String(url); }
 };
-const isHeavy = (url) => /\/assets\/vendor\/|\.wasm(?:\?|$)/i.test(pathOf(url));
-const isWasm = (url) => /\.wasm(?:\?|$)/i.test(pathOf(url));
+const isHeavy = (url) => /\/assets\/vendor\/|\.wasm(?:\.gz|\.br)?(?:\?|$)/i.test(pathOf(url));
+const isWasm = (url) => /\.wasm(?:\.gz|\.br)?(?:\?|$)/i.test(pathOf(url));
 const isOtherEngine = (url) => /exiftool|\.wasm|pdf-lib|fflate|office\.worker|\/assets\/js\/formats\/(?:image|pdf|office|mp4)\.js/i.test(pathOf(url));
 const optionalResponses = [];
 const skipped = [];
@@ -279,7 +279,7 @@ try {
     const wanted = new Set(FEATURE_URLS.pdf.map(pathOf));
     const downloaded = [...requestedPaths(requests)].filter((path) => wanted.has(path));
     assert.ok(downloaded.length > 0, 'selective download did not fetch the PDF engine URLs');
-    assert.deepEqual([...requestedPaths(requests)].filter((path) => /\.wasm(?:\?|$)/i.test(path)), [],
+    assert.deepEqual([...requestedPaths(requests)].filter((path) => /\.wasm(?:\.gz|\.br)?(?:\?|$)/i.test(path)), [],
       'PDF-only install must not download WASM');
     assert.ok(Object.keys(snapshot).includes(ENGINE_VERSION), 'engine cache missing after selective install');
     assertSameOriginOnly(requests, baseOrigin, 'PDF engine install');
@@ -295,7 +295,7 @@ try {
     const wanted = new Set(ALL_OPTIONAL_URLS.map(pathOf));
     const downloaded = [...requestedPaths(requests)].filter((path) => wanted.has(path));
     assert.ok(downloaded.length > 10, `full install only fetched ${downloaded.length} optional URLs`);
-    assert.ok(downloaded.some((path) => /\.wasm(?:\?|$)/i.test(path)), 'full install did not fetch the ExifTool WASM');
+    assert.ok(downloaded.some((path) => /\.wasm(?:\.gz|\.br)?(?:\?|$)/i.test(path)), 'full install did not fetch the ExifTool WASM');
     assertSameOriginOnly(requests, baseOrigin, 'full engine install');
     await assertNoUserFilesCached(page, 'full engine install');
     const firstBytes = await transferredBytes(optionalResponses);

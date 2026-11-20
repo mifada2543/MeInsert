@@ -3,24 +3,18 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { parseMetadata, writeMetadata, dispose as disposeExifTool } from '../../vendor/exiftool-wasm/index.js';
 import { AppError } from '../core/errors.js';
-import { createProgressFetch } from '../ui/engine-loading.js';
-
+import { createProgressFetch, decodeEngineResponse, engineRequestUrl } from '../ui/engine-loading.js';
 function inWorker() {
   return typeof WorkerGlobalScope !== 'undefined'
     && typeof self !== 'undefined'
     && self instanceof WorkerGlobalScope;
 }
-
 function postEngineProgress(payload) {
   if (!inWorker()) return;
   try {
     self.postMessage({ type: 'engine-progress', ...payload });
   } catch { /* UI terbaik */ }
 }
-
-// `options.fetch` diteruskan vendor sampai ke G.create({ fetch }). Runtime
-// memanggilnya hanya saat WASM belum termuat, dan mengharapkan sebuah Response.
-// URL tetap same-origin: pembungkus tidak pernah mengarahkan ke origin lain.
 function makeEngineFetch() {
   const progressFetch = createProgressFetch({
     onProgress: ({ loaded, total }) => postEngineProgress({ phase: 'downloading', loaded, total }),
@@ -28,16 +22,28 @@ function makeEngineFetch() {
   return async (url, init) => {
     postEngineProgress({ phase: 'loading' });
     try {
-      const response = await progressFetch(url, init);
+      const compressedUrl = engineRequestUrl(url);
+      let response = null;
+      let compressed = false;
+      if (compressedUrl !== String(url)) {
+        try {
+          response = await progressFetch(compressedUrl, init);
+          if (response?.ok) compressed = true;
+          else response = null;
+        } catch {
+          response = null;
+        }
+      }
+      if (!response) response = await progressFetch(url, init);
+      const decoded = await decodeEngineResponse(response, { compressed });
       postEngineProgress({ phase: 'ready' });
-      return response;
+      return decoded;
     } catch (error) {
       postEngineProgress({ phase: 'error' });
       throw error;
     }
   };
 }
-
 function jsonTransform(text) {
   const parsed = JSON.parse(text);
   if (Array.isArray(parsed)) return parsed[0] || {};

@@ -5,7 +5,16 @@ import { bindText, t, translated } from '../i18n/index.js';
 import { clear, el, formatBytes } from './dom.js';
 import { getProfile } from '../core/offline-manifest.js';
 const VENDOR_DIR = new URL('../../vendor/exiftool-wasm/', import.meta.url);
-const FALLBACK_WASM_URL = new URL('zeroperl-twnm61dk.wasm', VENDOR_DIR).href;
+const ENGINE_WASM_NAME = 'zeroperl-twnm61dk.wasm';
+const ENGINE_WASM_GZ_NAME = `${ENGINE_WASM_NAME}.gz`;
+const ENGINE_WASM_PATTERN = /zeroperl-twnm61dk\.wasm(?:\.(?:gz|br))?$/i;
+function canDecodeCompressedEngine() {
+  return typeof globalThis.DecompressionStream === 'function';
+}
+const FALLBACK_WASM_URL = new URL(
+  canDecodeCompressedEngine() ? ENGINE_WASM_GZ_NAME : ENGINE_WASM_NAME,
+  VENDOR_DIR,
+).href;
 let observedWasmUrl = null;
 let activeLoads = 0;
 let prefetchPromise = null;
@@ -25,12 +34,35 @@ export function noteEngineUrl(url) {
   if (!url) return;
   try {
     const resolved = new URL(resolveEngineUrl(url));
-    if (!resolved.pathname.endsWith('.wasm')) return;
-    if (!observedWasmUrl) observedWasmUrl = resolved.href;
+    if (!ENGINE_WASM_PATTERN.test(resolved.pathname)) return;
+    if (!observedWasmUrl || /\.wasm\.(?:gz|br)$/i.test(resolved.pathname)) observedWasmUrl = resolved.href;
   } catch { /* biarkan fetch memakai nilai asli */ }
 }
 export function engineWasmUrl() {
   return observedWasmUrl || FALLBACK_WASM_URL;
+}
+export function engineRequestUrl(url) {
+  const text = String(url);
+  if (!canDecodeCompressedEngine()) return text;
+  return ENGINE_WASM_PATTERN.test(text) && !/\.wasm\.(?:gz|br)$/i.test(text)
+    ? `${text.slice(0, -ENGINE_WASM_NAME.length)}${ENGINE_WASM_GZ_NAME}`
+    : text;
+}
+export async function decodeEngineResponse(response, { compressed = false } = {}) {
+  if (!compressed || !response) return response;
+  const encoding = String(response.headers?.get?.('content-encoding') || '').toLowerCase();
+  if (encoding && encoding !== 'identity') return response;
+  const body = response.body;
+  if (!body || typeof body.pipeThrough !== 'function') return response;
+  const plain = await new Response(body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  const headers = new Headers(response.headers);
+  headers.delete('content-encoding');
+  headers.set('content-length', String(plain.byteLength));
+  return new Response(plain, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 function joinChunks(chunks, length) {
   const bytes = new Uint8Array(length);

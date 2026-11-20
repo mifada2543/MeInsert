@@ -3,6 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Development-only guard for optimised brand assets. No runtime dependency.
 import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const EXPECTED = new Map([
@@ -24,9 +25,20 @@ for (const [name, magic] of EXPECTED) {
     problems.push(`${name}: bukan container WebP`);
   }
 }
+const ENGINE_DIR = new URL('../assets/vendor/exiftool-wasm/', import.meta.url);
+const wasm = readFileSync(new URL('zeroperl-twnm61dk.wasm', ENGINE_DIR));
+const wasmGz = readFileSync(new URL('zeroperl-twnm61dk.wasm.gz', ENGINE_DIR));
+if (wasm.byteLength > 30 * 1024 * 1024) problems.push(`WASM engine grew to ${wasm.byteLength} bytes`);
+if (wasmGz.byteLength > 12 * 1024 * 1024) problems.push(`gzip WASM grew to ${wasmGz.byteLength} bytes`);
+if (wasmGz.byteLength >= wasm.byteLength) problems.push('gzip WASM is not smaller than the raw engine');
+try {
+  if (!gunzipSync(wasmGz).equals(wasm)) problems.push('gzip WASM does not decompress to the raw engine');
+} catch (error) {
+  problems.push(`gzip WASM is not readable: ${error.message}`);
+}
 if (problems.length) {
   console.error(`Asset check failed:\n${problems.join('\n')}`);
   process.exitCode = 1;
 } else {
-  console.log(`Asset check ok: ${EXPECTED.size} optimised image assets.`);
+  console.log(`Asset check ok: ${EXPECTED.size} optimised images, WASM ${wasm.byteLength} -> ${wasmGz.byteLength} bytes.`);
 }

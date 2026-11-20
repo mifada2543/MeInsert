@@ -18,7 +18,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const EXPLICIT_OFFLINE_ASSETS = [
   './assets/js/engines/exiftool.js',
   './assets/vendor/browser-id3-writer.mjs',
-  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm',
+  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
 ];
 function toDiskPath(url) {
   return url.replace(/^\.\//, '');
@@ -58,7 +58,7 @@ function moduleSpecifiers(source) {
   return [...new Set(found)].filter((specifier) => specifier.startsWith('.'));
 }
 function isVendored(diskPath) {
-  return /\/vendor\//.test(diskPath) || /\.wasm$/i.test(diskPath);
+  return /\/vendor\//.test(diskPath) || /\.wasm(?:\.gz|\.br)?$/i.test(diskPath);
 }
 const diskReadSource = async (diskPath) => {
   try { return await read(diskPath); } catch { return null; }
@@ -128,7 +128,7 @@ test('shared shell modules are precached and free of vendored assets', async () 
   for (const url of SHARED_SHELL_URLS) {
     assert.ok(shell.has(url), `shared module is not precached: ${url}`);
     assert.ok(await exists(toDiskPath(url)), `shared module is missing on disk: ${url}`);
-    assert.doesNotMatch(url, /vendor\/|\.wasm$/, `vendored asset leaked into the shared shell: ${url}`);
+    assert.doesNotMatch(url, /vendor\/|\.wasm(?:\.gz|\.br)?$/, `vendored asset leaked into the shared shell: ${url}`);
   }
 });
 test('every optional engine URL exists on disk', async () => {

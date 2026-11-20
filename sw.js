@@ -115,10 +115,6 @@ const SHELL_URLS = [
   './assets/img/icon-512.webp',
   './assets/img/icon-maskable-512.webp',
 ];
-// Exact union of OFFLINE_FEATURES[*].urls in core/format-capabilities.js. The
-// worker is a classic script, so it cannot import that module; the manifest test
-// compares this list against the module and fails if they drift apart. Messages
-// may only name URLs from this list — never an arbitrary same-origin URL.
 const KNOWN_OPTIONAL_URLS = Object.freeze([
   './assets/vendor/mediabunny.mjs',
   './assets/js/workers/media.worker.js',
@@ -131,7 +127,7 @@ const KNOWN_OPTIONAL_URLS = Object.freeze([
   './assets/js/core/ogg-comment.js',
   './assets/vendor/browser-id3-writer.mjs',
   './assets/vendor/exiftool-wasm/index.js',
-  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm',
+  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
   './assets/js/workers/exiftool.worker.js',
   './assets/js/formats/image.js',
   './assets/js/formats/mp4.js',
@@ -216,7 +212,7 @@ self.addEventListener('activate', (event) => {
   })());
 });
 function isCacheableAsset(pathname) {
-  return /\.(css|js|mjs|wasm|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
+  return /\.(css|js|mjs|wasm|gz|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
 }
 async function networkFirst(event) {
   const { request } = event;
