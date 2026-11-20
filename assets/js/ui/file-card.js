@@ -7,9 +7,9 @@ import { icon } from './icons.js';
 import { coverAcceptFor } from '../core/image-utils.js';
 import { openLightbox } from './lightbox.js';
 import { captureMediaSession, canReuseMedia, restoreMediaSession } from './media-session.js';
+import { buildOfficePreview } from './office-preview.js';
 const mediaFrames = new WeakMap();
 const mediaRatioBound = new WeakSet();
-
 function bindMediaRatio(media, frame) {
   mediaFrames.set(media, frame);
   if (media.readyState >= 1) setMediaRatio(frame, media.videoWidth, media.videoHeight);
@@ -25,6 +25,7 @@ export function previewKind(detection) {
   if (!detection) return 'file';
   if (detection.id === 'image') return 'image';
   if (detection.id === 'pdf') return 'pdf';
+  if (detection.id === 'office') return 'office';
   if (detection.id === 'mp4' && detection.subtype !== 'm4a') return 'video';
   if (detection.id === 'mkv') return 'video';
   if (detection.id === 'mp3' || detection.id === 'flac' || detection.id === 'ogg' || detection.subtype === 'm4a') return 'audio';
@@ -202,7 +203,6 @@ function buildAudioStage({ cover, previewUrl, detectionId, onCoverChooseFile, on
   return stage;
 }
 const COLLAPSE_MS = 320;
-
 export function setCardMinimized(container, minimized) {
   clearTimeout(container._previewCollapseTimer);
   if (minimized) {
@@ -303,6 +303,8 @@ export function renderFileCard(container, {
     }
   } else if (kind === 'pdf' && previewUrl) {
     frame.append(el('iframe', { src: previewUrl, title: translated(() => (t('ui.preview', { v0: file.name }))) }));
+  } else if (kind === 'office') {
+    frame.append(buildOfficePreview({ file, detection, readResult }));
   } else {
     frame.append(el('div', { className: 'preview-icon' }, icon(kind === 'pdf' ? 'pdf' : 'file')));
   }
@@ -323,7 +325,7 @@ export function renderFileCard(container, {
   const infoBlock = el('div', { className: 'file-info' },
     el('div', { className: 'file-kind' },
       el('span', { className: 'file-badge' },
-        el('span', { className: `chip-dot ${detection?.id === 'pdf' ? 'pdf' : detection?.id === 'image' ? 'image' : detection?.id === 'mp4' || detection?.id === 'mkv' ? 'video' : 'audio'}` }),
+        el('span', { className: `chip-dot ${detection?.id === 'pdf' ? 'pdf' : detection?.id === 'image' ? 'image' : detection?.id === 'office' ? 'office' : detection?.id === 'mp4' || detection?.id === 'mkv' ? 'video' : 'audio'}` }),
         detection?.label || 'File',
       ),
       el('span', { className: 'file-kind-aside' },

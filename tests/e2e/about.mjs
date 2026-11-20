@@ -72,6 +72,25 @@ try {
   assert.equal(await page.locator('main a[href="./Terms.html"]').count() > 0, true);
   assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://meinsert.my.id/about.html');
   console.log('PASS: About chrome, canonical URL and policy links are present');
+  const desktop = await page.evaluate(() => {
+    const hero = document.querySelector('.hero-copy').getBoundingClientRect();
+    const cards = [...document.querySelectorAll('.about-card')].map((card) => {
+      const rect = card.getBoundingClientRect();
+      return { x: Math.round(rect.x), width: Math.round(rect.width) };
+    });
+    const format = document.querySelector('.about-card-formats').getBoundingClientRect();
+    return {
+      heroWidth: Math.round(hero.width),
+      columns: new Set(cards.map((card) => card.x)).size,
+      formatFullWidth: format.width > hero.width,
+      batchIcon: document.querySelector('[data-nav="batch"] .nav-icon path')?.getAttribute('d') || '',
+    };
+  });
+  assert.ok(desktop.heroWidth > 600, 'hero uses the full desktop width');
+  assert.ok(desktop.columns >= 3, 'cards spread across the page instead of stacking on the right');
+  assert.ok(desktop.formatFullWidth, 'the format card spans the full row');
+  assert.match(desktop.batchIcon, /M14 3H7/, 'batch icon shows overlapping files, not layers');
+  console.log('PASS: desktop About layout spreads cards and the batch icon reads as multiple files');
   const introBefore = await page.locator('#aboutIntro').innerText();
   assert.match(introBefore, /editor metadata lokal/);
   await page.locator('[data-language-toggle]').click();
@@ -97,7 +116,7 @@ try {
   await mobile.evaluate(async () => {
     const module = await import('/assets/js/ui/mobile-menu.js');
     module.initMobileMenu();
-    module.initMobileMenu(); // idempotent
+    module.initMobileMenu();
   });
   assert.equal(await mobile.locator('#menuToggle').isVisible(), true);
   assert.equal(await mobile.locator('#aboutLink').isVisible(), false);
@@ -122,7 +141,7 @@ try {
   console.log('PASS: offline settings item dispatches meinsert:open-settings');
   await mobile.locator('#menuToggle').click();
   await mobile.locator('#mobileMenu').waitFor({ state: 'visible' });
-  await mobile.waitForTimeout(250); // let the hamburger→X transition finish
+  await mobile.waitForTimeout(250);
   const toggleShape = await mobile.evaluate(() => ({
     top: getComputedStyle(document.querySelector('.menu-line--top')).transform,
     middle: getComputedStyle(document.querySelector('.menu-line--middle')).opacity,

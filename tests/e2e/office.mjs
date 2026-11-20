@@ -89,6 +89,18 @@ async function waitForRead(page, label) {
 async function editSaveAndReread(page, base, file, sourceName, label) {
   await openSingle(page, base, file);
   await waitForRead(page, label);
+  const preview = await page.evaluate(() => {
+    const frame = document.querySelector('.file-card--top .preview-frame');
+    const summary = document.querySelector('.file-card--top .office-preview');
+    return {
+      kind: frame?.className || '',
+      title: summary?.querySelector('.office-preview-title')?.textContent || '',
+      hint: summary?.querySelector('.office-preview-hint')?.textContent || '',
+    };
+  });
+  assert.match(preview.kind, /preview-frame--office/, `${label}: office preview replaces the generic file icon`);
+  assert.equal(preview.title, 'Contoh Judul', `${label}: preview shows the document title`);
+  assert.match(preview.hint, /metadata/i, `${label}: preview is labeled as a metadata summary`);
   assert.equal(await page.locator('#field-title').inputValue(), 'Contoh Judul', `${label}: the source title was read`);
   await page.locator('#field-title').fill('Judul Diubah');
   await page.locator('#field-title').blur();
@@ -140,6 +152,16 @@ const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 try {
+  await page.goto(`${base}/batch.html`, { waitUntil: 'domcontentloaded' });
+  const accepts = await page.evaluate(() => [...document.querySelectorAll('input[type="file"]')]
+    .map((input) => input.getAttribute('accept') || ''));
+  assert.ok(accepts.length >= 2, 'batch exposes both file inputs');
+  for (const ext of ['.docx', '.docm', '.xlsx', '.xlsm', '.pptx', '.pptm', '.odt', '.ods', '.odp']) {
+    for (const accept of accepts) {
+      assert.ok(accept.includes(ext), `batch file picker hides ${ext} unless "All files" is selected`);
+    }
+  }
+  console.log('PASS: batch file picker lists every supported Office format');
   for (const [name, family] of [['sample.docx', 'OOXML'], ['sample.odt', 'ODF'], ['sample.docm', 'macro']]) {
     if (!has(name)) {
       skip(`single-editor ${family}`, `tests/fixtures/${name} is missing`);
@@ -213,6 +235,17 @@ try {
     assert.ok(groups.length === 1 || groups.length === 2,
       `either one office group with two files or two groups with one file (${JSON.stringify(groups)})`);
     console.log(`PASS: batch produced ${groups.length === 1 ? 'one office group with two files' : 'two office groups with one file each'}`);
+    await page.locator('.batch-file-main').first().click();
+    await page.waitForFunction(() => Boolean(document.querySelector('.batch-preview-stage--office .office-preview')), null, { timeout: 30000 });
+    const batchPreview = await page.evaluate(() => ({
+      title: document.querySelector('.batch-preview-stage--office .office-preview-title')?.textContent || '',
+      hasOpenLink: Boolean(document.querySelector('.batch-preview-stage--office .batch-preview-open')),
+    }));
+    assert.equal(batchPreview.title, 'Contoh Judul', 'batch office preview shows the document title');
+    assert.equal(batchPreview.hasOpenLink, false, 'batch office preview does not create a useless blob link');
+    console.log('PASS: batch office preview shows a document summary without an object URL');
+    await page.locator('#batchDetailBackBtn').click();
+    await page.locator('#batchGroups').waitFor({ state: 'visible' });
     const groupCount = await page.locator('.batch-group').count();
     for (let index = 0; index < groupCount; index++) {
       const title = page.locator('.batch-group').nth(index).locator('[data-field-id="title"] .field-input');

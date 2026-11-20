@@ -6,6 +6,7 @@ import { el, clear, formatBytes } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openLightbox } from '../ui/lightbox.js';
 import { previewKind } from '../ui/file-card.js';
+import { buildOfficePreview } from '../ui/office-preview.js';
 import { formatDuration } from './batch-limits.js';
 import { durationOf } from './batch-item.js';
 export class BatchPreview {
@@ -64,6 +65,7 @@ export class BatchPreview {
     return this.previewNode;
   }
   createPreviewUrl(item, kind) {
+    if (kind === 'office') return null;
     if (kind === 'pdf' && item.file.type !== 'application/pdf') {
       return URL.createObjectURL(new Blob([item.file], { type: 'application/pdf' }));
     }
@@ -172,6 +174,8 @@ export class BatchPreview {
       stage.append(cover, copy);
     } else if (kind === 'pdf') {
       stage.append(el('iframe', { src: this.previewUrl, title: translated(() => (t('ui.pdfPreviewOf', { v0: item.file.name }))) }));
+    } else if (kind === 'office') {
+      stage.append(buildOfficePreview({ file: item.file, detection: item.detection, readResult: item.readResult }));
     } else {
       stage.append(this.previewFallback(item, 'Format file ini belum bisa dipratinjau.'));
     }
@@ -181,7 +185,9 @@ export class BatchPreview {
         el('span', { textContent: translated(() => (item.detection?.label || this.previewKindLabel(kind))) }),
       ),
       el('span', { className: 'batch-preview-detail', textContent: translated(() => (this.previewDetail(item, kind))) }),
-      el('a', { className: 'batch-preview-open', href: this.previewUrl, target: '_blank', rel: 'noopener', textContent: translated(() => (t('ui.openInANewTab'))) }),
+      this.previewUrl
+        ? el('a', { className: 'batch-preview-open', href: this.previewUrl, target: '_blank', rel: 'noopener', textContent: translated(() => (t('ui.openInANewTab'))) })
+        : null,
     );
     wrap.append(stage, meta);
     if (kind === 'pdf') {

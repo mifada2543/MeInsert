@@ -222,6 +222,115 @@
   padding: 18px 22px 20px;
   background: linear-gradient(160deg, var(--surface-2), var(--surface));
 }
+.file-card--top .preview-frame--office {
+  display: block;
+  min-height: 0;
+  padding: clamp(18px, 3vw, 28px);
+  background: linear-gradient(160deg, var(--surface-2), var(--surface));
+}
+.office-preview {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  min-height: 0;
+  margin-inline: auto;
+  color: var(--ink);
+}
+.office-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+.office-preview-head .icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  color: var(--brand);
+}
+.office-preview-head .icon svg {
+  width: 100%;
+  height: 100%;
+}
+.office-preview-format {
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, var(--line));
+  border-radius: 6px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.office-preview-kind {
+  color: var(--muted);
+  font-size: 11px;
+}
+.office-preview-title {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.office-preview-title--empty {
+  color: var(--muted);
+  font-style: italic;
+}
+.office-preview-byline {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.office-preview-byline strong {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.office-preview-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.office-preview-stat strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+.office-preview-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.office-chip {
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 10.5px;
+}
+.office-chip--warn {
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--line));
+  background: var(--warning-soft);
+  color: var(--ink);
+}
+.office-chip--bad {
+  border-color: color-mix(in srgb, var(--danger, #dc2626) 55%, var(--line));
+  color: var(--danger, #dc2626);
+}
+.office-preview-hint {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
 .audio-stage {
   display: grid;
   gap: 14px;
@@ -384,7 +493,8 @@
   height: 0;
   min-height: 0;
 }
-.file-card.is-collapsing .preview-frame--audio {
+.file-card.is-collapsing .preview-frame--audio,
+.file-card.is-collapsing .preview-frame--office {
   padding: 0;
 }
 .file-card.is-minimized .preview-frame {

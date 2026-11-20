@@ -6,11 +6,9 @@ import assert from 'node:assert/strict';
 import { strToU8, zipSync } from '../../assets/vendor/fflate.mjs';
 import office, { fieldsFor, OFFICE_SUBTYPES, read, sectionsFor, write } from '../../assets/js/formats/office.js';
 import { verifyZipPreserved } from '../../assets/js/core/office-zip.js';
-
 const CONTENT_TYPES = '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
   + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
   + '</Types>';
-
 const CORE_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"'
   + ' xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/"'
@@ -24,12 +22,10 @@ const CORE_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<dcterms:created xsi:type="dcterms:W3CDTF">2020-01-01T00:00:00Z</dcterms:created>'
   + '<dcterms:modified xsi:type="dcterms:W3CDTF">2020-02-01T00:00:00Z</dcterms:modified>'
   + '</cp:coreProperties>';
-
 const APP_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   + '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">'
   + '<Application>Word lama</Application><Company>PT Lama</Company><Manager>Manajer lama</Manager>'
   + '</Properties>';
-
 const META_XML = '<?xml version="1.0" encoding="UTF-8"?>'
   + '<office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"'
   + ' xmlns:dc="http://purl.org/dc/elements/1.1/"'
@@ -44,7 +40,6 @@ const META_XML = '<?xml version="1.0" encoding="UTF-8"?>'
   + '<dc:date>2020-02-01T00:00:00Z</dc:date>'
   + '<meta:generator>LibreOffice lama</meta:generator>'
   + '</office:meta></office:document-meta>';
-
 function ooxmlZip(extra = {}) {
   return zipSync({
     '[Content_Types].xml': strToU8(CONTENT_TYPES),
@@ -55,7 +50,6 @@ function ooxmlZip(extra = {}) {
     ...extra,
   });
 }
-
 function odfZip(extra = {}) {
   return zipSync({
     mimetype: [strToU8('application/vnd.oasis.opendocument.text'), { level: 0 }],
@@ -65,18 +59,15 @@ function odfZip(extra = {}) {
     ...extra,
   });
 }
-
 function officeFile(bytes, name) {
   return new File([bytes], name, { type: 'application/octet-stream' });
 }
-
 function readU32(bytes, offset) {
   return ((bytes[offset]
     | (bytes[offset + 1] << 8)
     | (bytes[offset + 2] << 16)
     | (bytes[offset + 3] << 24)) >>> 0);
 }
-
 function markEncrypted(zipBytes) {
   const out = zipBytes.slice();
   for (let i = 0; i + 4 <= out.length; i += 1) {
@@ -86,7 +77,6 @@ function markEncrypted(zipBytes) {
   }
   return out;
 }
-
 test('adapter exports the expected metadata and 9 extensions', () => {
   assert.equal(office.meta.id, 'office');
   assert.equal(office.meta.engine, 'office');
@@ -95,7 +85,6 @@ test('adapter exports the expected metadata and 9 extensions', () => {
   assert.equal(office.meta.mime, 'application/octet-stream');
   assert.equal(typeof office.dispose, 'function');
 });
-
 test('sectionsFor and fieldsFor follow the adapter field contract', () => {
   assert.deepEqual(sectionsFor('docx').map((section) => section.id), ['umum']);
   const ooxml = fieldsFor('docx');
@@ -106,7 +95,6 @@ test('sectionsFor and fieldsFor follow the adapter field contract', () => {
   assert.ok(odf.some((field) => field.id === 'keywords' && field.native === 'meta.xml:meta:keyword'));
   assert.ok(!odf.some((field) => field.id === 'company'));
 });
-
 test('read returns mapped fields and raw rows for OOXML packages', async () => {
   const result = await read(officeFile(ooxmlZip(), 'input.docx'), { subtype: 'docx' });
   assert.equal(result.fields.title, 'Judul lama');
@@ -118,12 +106,16 @@ test('read returns mapped fields and raw rows for OOXML packages', async () => {
   assert.equal(result.fields.company, 'PT Lama');
   assert.equal(result.fields.manager, 'Manajer lama');
   assert.equal(result.fields.software, 'Word lama');
-  assert.deepEqual(result.info, { subtype: 'docx', signed: false, macros: false, entryCount: 5 });
+  assert.deepEqual(result.info, {
+    subtype: 'docx', signed: false, macros: false, valid: true, entryCount: 5,
+    title: 'Judul lama', creator: 'Penulis lama', subject: 'Subjek lama',
+    company: 'PT Lama', application: 'Word lama', modified: '2020-02-01',
+    pages: null, words: null, slides: null, sheets: null,
+  });
   assert.ok(result.raw.some((row) => row.group === 'core' && row.tag === 'dc:title' && row.value === 'Judul lama'));
   assert.ok(result.raw.some((row) => row.group === 'app' && row.tag === 'Company' && row.value === 'PT Lama'));
   assert.deepEqual(result.warnings, []);
 });
-
 test('read infers the ODF subtype from the mimetype and reads multiple keywords', async () => {
   const result = await read(officeFile(odfZip(), 'input.odt'), {});
   assert.equal(result.info.subtype, 'odt');
@@ -134,7 +126,20 @@ test('read infers the ODF subtype from the mimetype and reads multiple keywords'
   assert.equal(result.fields.company, '');
   assert.ok(result.raw.some((row) => row.group === 'meta' && row.tag === 'meta:keyword'));
 });
+test('read exposes document counts used by the Office preview card', async () => {
+  const appXml = APP_XML.replace('</Properties>', '<Pages>6</Pages><Words>1240</Words><Slides>9</Slides></Properties>');
+  const ooxml = await read(officeFile(ooxmlZip({ 'docProps/app.xml': strToU8(appXml) }), 'input.pptx'), { subtype: 'pptx' });
+  assert.equal(ooxml.info.pages, 6);
+  assert.equal(ooxml.info.words, 1240);
+  assert.equal(ooxml.info.slides, 9);
+  assert.equal(ooxml.info.sheets, null);
 
+  const metaXml = META_XML.replace('</office:meta>', '<meta:document-statistic meta:page-count="4" meta:word-count="800"/></office:meta>');
+  const odf = await read(officeFile(odfZip({ 'meta.xml': strToU8(metaXml) }), 'input.odt'), {});
+  assert.equal(odf.info.pages, 4);
+  assert.equal(odf.info.words, 800);
+  assert.equal(odf.info.slides, null);
+});
 test('write applies set, remove, rawRemove, and custom edits while preserving other entries', async () => {
   const before = ooxmlZip();
   const result = await write(officeFile(before, 'input.docx'), {
@@ -145,7 +150,6 @@ test('write applies set, remove, rawRemove, and custom edits while preserving ot
   }, { subtype: 'docx' }, (progress) => {
     assert.equal(typeof progress.pct, 'number');
   });
-
   const after = new Uint8Array(await result.blob.arrayBuffer());
   assert.deepEqual(
     await verifyZipPreserved(before, after, ['docProps/core.xml', 'docProps/app.xml']),
@@ -160,7 +164,6 @@ test('write applies set, remove, rawRemove, and custom edits while preserving ot
   assert.deepEqual(result.custom, [{ key: 'cp:myTag', value: 'Nilai' }]);
   assert.equal(result.info.subtype, 'docx');
 });
-
 test('write honors customRemove on its own output', async () => {
   const first = await write(officeFile(ooxmlZip(), 'input.docx'), {
     custom: [{ key: 'cp:myTag', value: 'Nilai' }],
@@ -172,14 +175,12 @@ test('write honors customRemove on its own output', async () => {
   }, { subtype: 'docx' });
   assert.deepEqual(second.custom, []);
 });
-
 test('write updates ODF meta.xml and re-reads its own output', async () => {
   const before = odfZip();
   const result = await write(officeFile(before, 'input.odt'), {
     set: { title: 'Judul ODF', keywords: ['alpha', 'beta'], date: '2024-03-02', software: 'MeInsert' },
     remove: ['description'],
   }, { subtype: 'odt' });
-
   const after = new Uint8Array(await result.blob.arrayBuffer());
   assert.deepEqual(await verifyZipPreserved(before, after, ['meta.xml']), { ok: true, changed: [] });
   assert.equal(result.fields.title, 'Judul ODF');
@@ -190,26 +191,22 @@ test('write updates ODF meta.xml and re-reads its own output', async () => {
   assert.ok(!result.raw.some((row) => row.tag === 'dc:description'));
   assert.equal(result.info.subtype, 'odt');
 });
-
 test('read and write warn about signatures and macros', async () => {
   const signed = await read(officeFile(ooxmlZip({
     'word/_xmlsignatures/sig1.xml': strToU8('<Signature/>'),
   }), 'signed.docx'), { subtype: 'docx' });
   assert.ok(signed.info.signed);
   assert.ok(signed.warnings.some((warning) => /tanda tangan digital/i.test(warning)));
-
   const signedWrite = await write(officeFile(ooxmlZip({
     'word/_xmlsignatures/sig1.xml': strToU8('<Signature/>'),
   }), 'signed.docx'), { set: { title: 'X' } }, { subtype: 'docx' });
   assert.ok(signedWrite.warnings.some((warning) => /tanda tangan digital/i.test(warning)));
-
   const macros = await read(officeFile(ooxmlZip({
     'word/vbaProject.bin': strToU8('VBA'),
   }), 'macro.docm'), { subtype: 'docm' });
   assert.ok(macros.info.macros);
   assert.ok(macros.warnings.some((warning) => /makro/i.test(warning)));
 });
-
 test('encrypted packages surface ENCRYPTED_OFFICE from read and write', async () => {
   const encrypted = officeFile(markEncrypted(ooxmlZip()), 'encrypted.docx');
   await assert.rejects(() => read(encrypted, { subtype: 'docx' }), (error) => error.code === 'ENCRYPTED_OFFICE');
@@ -218,7 +215,6 @@ test('encrypted packages surface ENCRYPTED_OFFICE from read and write', async ()
     (error) => error.code === 'ENCRYPTED_OFFICE',
   );
 });
-
 test('write escapes XML entities and round-trips the exact value', async () => {
   const title = 'A & B <C> "D" \'E\'';
   const result = await write(officeFile(ooxmlZip(), 'input.docx'), {
@@ -227,7 +223,6 @@ test('write escapes XML entities and round-trips the exact value', async () => {
   assert.equal(result.fields.title, title);
   assert.deepEqual(result.warnings, []);
 });
-
 test('write rejects an empty plan with NO_CHANGES and dispose is safe', async () => {
   await assert.rejects(
     () => write(officeFile(ooxmlZip(), 'input.docx'), {}, { subtype: 'docx' }),

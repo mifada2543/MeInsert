@@ -137,6 +137,7 @@ Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ula
 - **Penyimpanan & Offline** — pilih *Hemat* (default), *Siap sebagian*, atau *Unduh semuanya*. MeInsert otomatis memakai mode hemat jika browser mengaktifkan Save-Data.
 - **Nyaman di layar kecil** — tombol tema, bahasa, dan pengaturan masuk ke menu ☰ (berubah menjadi ✕ saat terbuka); tombol aksi utama tetap terlihat, pengaturan lain ada di panel **Opsi**.
 - **Buka/tutup pratinjau beranimasi** — halus, tidak menghentikan putar media, dan hormati pengaturan pengurangan gerak di sistem.
+- **Pratinjau dokumen Office** — kartu ringkasan dari metadata dokumen (judul, pembuat, jumlah, status tanda tangan/makro) membantu memastikan Anda memilih file yang benar. Ini bukan tampilan isi halaman.
 
 ---
 

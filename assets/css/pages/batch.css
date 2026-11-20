@@ -571,6 +571,12 @@
   max-height: none;
   background: #0b0b10;
 }
+.batch-preview-stage--office {
+  display: block;
+  min-height: 0;
+  padding: clamp(16px, 3vw, 24px);
+  background: linear-gradient(160deg, var(--surface-2), var(--surface));
+}
 .batch-preview-stage img,.batch-preview-stage video {
   display: block;
   width: 100%;

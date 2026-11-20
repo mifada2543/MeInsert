@@ -5,9 +5,7 @@ import { asArray, asString, sameValue, toDateInput, toIsoDate } from '../core/ta
 import { AppError } from '../core/errors.js';
 import { inspectZip, OFFICE_METADATA_PARTS, patchZip, verifyZipPreserved } from '../core/office-zip.js';
 import { strFromU8, strToU8 } from '../../vendor/fflate.mjs';
-
 export const OFFICE_SUBTYPES = ['docx', 'xlsx', 'pptx', 'docm', 'xlsm', 'pptm', 'odt', 'ods', 'odp'];
-
 export const meta = {
   id: 'office',
   engine: 'office',
@@ -16,11 +14,9 @@ export const meta = {
   extensions: [...OFFICE_SUBTYPES],
   mime: 'application/octet-stream',
 };
-
 const ODF_SUBTYPES = new Set(['odt', 'ods', 'odp']);
 const SIGNED_WARNING = 'Dokumen Office ini memiliki tanda tangan digital. Menulis metadata akan membuat tanda tangan tidak valid.';
 const MACRO_WARNING = 'Dokumen Office ini mengandung makro. Metadata ditulis dengan usaha terbaik; integritas makro tidak dijamin.';
-
 export function sectionsFor(_subtype) {
   return [{
     id: 'umum',
@@ -28,7 +24,6 @@ export function sectionsFor(_subtype) {
     description: 'Ditulis ke docProps/core.xml, docProps/app.xml, atau meta.xml sesuai format dokumen. Bagian lain dari arsip tidak diubah.',
   }];
 }
-
 function commonFields(nativeBase, keywordsNative, dateNative, modifiedNative, softwareNative, withOfficeExtras) {
   const fields = [
     { id: 'title', section: 'umum', label: 'Judul', type: 'text', native: `${nativeBase}:dc:title`, placeholder: 'Judul dokumen', maxLength: 256 },
@@ -49,7 +44,6 @@ function commonFields(nativeBase, keywordsNative, dateNative, modifiedNative, so
   fields.push({ id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: softwareNative, placeholder: 'Aplikasi pembuat dokumen', maxLength: 200 });
   return fields;
 }
-
 const OOXML_FIELDS = commonFields(
   'docProps/core.xml',
   'docProps/core.xml:cp:keywords',
@@ -66,11 +60,9 @@ const ODF_FIELDS = commonFields(
   'meta.xml:meta:generator',
   false,
 );
-
 export function fieldsFor(subtype) {
   return ODF_SUBTYPES.has(String(subtype || '').toLowerCase()) ? ODF_FIELDS : OOXML_FIELDS;
 }
-
 const FIELD_TARGETS = {
   ooxml: {
     title: [['core', 'dc:title']],
@@ -135,7 +127,6 @@ const FRESH_ROOTS = {
     + ' xmlns:dc="http://purl.org/dc/elements/1.1/"'
     + ' xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0">\n<office:meta>\n</office:meta>\n</office:document-meta>',
 };
-
 async function toBytes(input) {
   if (input instanceof Uint8Array) return input;
   if (input instanceof ArrayBuffer) return new Uint8Array(input);
@@ -143,11 +134,9 @@ async function toBytes(input) {
   if (Array.isArray(input)) return new Uint8Array(input);
   throw new AppError('CORRUPT_FILE', 'Dokumen Office tidak bisa dibaca.');
 }
-
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
 function decodeXml(value) {
   return String(value || '')
     .replace(/&lt;/g, '<')
@@ -156,7 +145,6 @@ function decodeXml(value) {
     .replace(/&apos;/g, "'")
     .replace(/&amp;/g, '&');
 }
-
 function escapeXml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -165,11 +153,9 @@ function escapeXml(value) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
 }
-
 function elementText(inner) {
   return decodeXml(String(inner).replace(/<[^>]*>/g, '')).trim();
 }
-
 function elementPatterns(qualified) {
   const name = escapeRegExp(qualified);
   return {
@@ -177,7 +163,6 @@ function elementPatterns(qualified) {
     self: new RegExp(`<${name}\\b(?:\\s[^>]*)?\\/>`, 'gi'),
   };
 }
-
 function elementValues(xml, qualified) {
   const { paired } = elementPatterns(qualified);
   const out = [];
@@ -187,22 +172,18 @@ function elementValues(xml, qualified) {
   }
   return out;
 }
-
 function hasElement(xml, qualified) {
   const { paired, self } = elementPatterns(qualified);
   return paired.test(xml) || self.test(xml);
 }
-
 function removeElements(xml, qualified) {
   const { paired, self } = elementPatterns(qualified);
   return xml.replace(self, '').replace(paired, '');
 }
-
 function rootName(xml) {
   const match = /<([A-Za-z_][\w.-]*(?::[\w.-]+)?)(?=[\s>/])/.exec(xml);
   return match ? match[1] : '';
 }
-
 function insertElements(xml, qualified, values, anchor) {
   if (!values.length) return xml;
   const fragment = values.map((value) => `<${qualified}>${escapeXml(value)}</${qualified}>`).join('');
@@ -216,16 +197,13 @@ function insertElements(xml, qualified, values, anchor) {
   if (closeIndex < 0) return `${xml}${fragment}`;
   return `${xml.slice(0, closeIndex)}${fragment}${xml.slice(closeIndex)}`;
 }
-
 function upsert(xml, qualified, values, anchor) {
   return insertElements(removeElements(xml, qualified), qualified, values, anchor);
 }
-
 function anchorFor(kind, odf, xml) {
   if (odf && kind === 'meta') return 'office:meta';
   return rootName(xml);
 }
-
 function inventory(xml) {
   const map = new Map();
   const container = rootName(xml);
@@ -245,7 +223,6 @@ function inventory(xml) {
   }
   return map;
 }
-
 function inferSubtype(inspected, options, file) {
   const explicit = String(options?.subtype || '').toLowerCase();
   if (OFFICE_SUBTYPES.includes(explicit)) return explicit;
@@ -268,7 +245,6 @@ function inferSubtype(inspected, options, file) {
   const extension = String(options?.extension || (file?.name || '').split('.').pop() || '').toLowerCase();
   return OFFICE_SUBTYPES.includes(extension) ? extension : 'docx';
 }
-
 function fieldValue(fieldId, targets, parts, odf) {
   const values = [];
   for (const [kind, tag] of targets[fieldId] || []) {
@@ -282,25 +258,24 @@ function fieldValue(fieldId, targets, parts, odf) {
   if (fieldId === 'date' || fieldId === 'modified') return toDateInput(values[0]);
   return values.join(', ');
 }
-
 export async function read(file, options = {}) {
   const bytes = await toBytes(file);
   const inspected = await inspectZip(bytes);
   const subtype = inferSubtype(inspected, options, file);
   const odf = inspected.odf;
   const targets = FIELD_TARGETS[odf ? 'odf' : 'ooxml'];
-
   const parts = new Map();
+  const partText = new Map();
   for (const kind of ['core', 'app', 'meta']) {
     const entry = inspected.entries.find((item) => item.name === PART_NAMES[kind]);
-    parts.set(kind, entry ? inventory(new TextDecoder().decode(entry.data)) : new Map());
+    const text = entry ? new TextDecoder().decode(entry.data) : '';
+    partText.set(kind, text);
+    parts.set(kind, text ? inventory(text) : new Map());
   }
-
   const fields = {};
   for (const id of new Set([...Object.keys(FIELD_TARGETS.ooxml), ...Object.keys(FIELD_TARGETS.odf)])) {
     fields[id] = fieldValue(id, targets, parts, odf);
   }
-
   const raw = [];
   const custom = [];
   for (const [kind, map] of parts) {
@@ -314,12 +289,10 @@ export async function read(file, options = {}) {
   }
   raw.sort((a, b) => a.group.localeCompare(b.group) || a.tag.localeCompare(b.tag));
   custom.sort((a, b) => a.key.localeCompare(b.key));
-
   const warnings = [];
   if (inspected.signed) warnings.push(SIGNED_WARNING);
   if (inspected.macros) warnings.push(MACRO_WARNING);
   if (!inspected.valid) warnings.push('Struktur arsip Office tidak sepenuhnya valid. Periksa kembali file hasil.');
-
   return {
     fields,
     custom,
@@ -328,16 +301,46 @@ export async function read(file, options = {}) {
       subtype,
       signed: inspected.signed,
       macros: inspected.macros,
+      valid: inspected.valid,
       entryCount: inspected.entries.length,
+      ...officeSummary(fields, parts, partText, subtype),
     },
     warnings,
   };
 }
-
+function firstValue(map, tag) {
+  const values = map?.get(tag);
+  return values && values.length ? String(values[0]).trim() : '';
+}
+function attributeValue(xml, attribute) {
+  const match = new RegExp(`${attribute.replace(/:/g, '\\:')}="([^"]*)"`, 'i').exec(xml || '');
+  return match ? match[1].trim() : '';
+}
+function positiveCount(value) {
+  const number = Number.parseInt(String(value || '').replace(/[^0-9]/g, ''), 10);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+function officeSummary(fields, parts, partText, subtype) {
+  const app = parts.get('app') || new Map();
+  const metaText = partText.get('meta') || '';
+  const odf = ODF_SUBTYPES.has(String(subtype || '').toLowerCase());
+  const readable = (value) => (typeof value === 'string' ? value.trim() : String(value || '').trim());
+  return {
+    title: readable(fields.title),
+    creator: readable(fields.creator),
+    subject: readable(fields.subject),
+    company: readable(fields.company),
+    application: readable(fields.software),
+    modified: readable(fields.modified),
+    pages: odf ? positiveCount(attributeValue(metaText, 'meta:page-count')) : positiveCount(firstValue(app, 'Pages')),
+    words: odf ? positiveCount(attributeValue(metaText, 'meta:word-count')) : positiveCount(firstValue(app, 'Words')),
+    slides: odf ? null : positiveCount(firstValue(app, 'Slides')),
+    sheets: odf ? null : positiveCount(firstValue(app, 'Sheets')),
+  };
+}
 function hasNamespace(xml, prefix) {
   return new RegExp(`xmlns:${escapeRegExp(prefix)}\\s*=`, 'i').test(xml);
 }
-
 function ensureNamespace(xml, prefix) {
   if (!prefix || hasNamespace(xml, prefix)) return xml;
   const match = /<[A-Za-z_][\w.-]*(?::[\w.-]+)?[^>]*?>/.exec(xml);
@@ -345,7 +348,6 @@ function ensureNamespace(xml, prefix) {
   const index = match.index + match[0].length - 1;
   return `${xml.slice(0, index)} xmlns:${prefix}="urn:meinsert:custom"${xml.slice(index)}`;
 }
-
 function setFieldValue(p, id, value, targets, kind, tag, odf) {
   let values;
   if (id === 'keywords') {
@@ -360,7 +362,6 @@ function setFieldValue(p, id, value, targets, kind, tag, odf) {
   }
   p.xml = upsert(p.xml, tag, values, anchorFor(kind, odf, p.xml));
 }
-
 function fieldMatches(id, expected, actual, definitions) {
   const definition = definitions.find((field) => field.id === id);
   if (definition?.type === 'tags') {
@@ -369,7 +370,6 @@ function fieldMatches(id, expected, actual, definitions) {
   if (definition?.type === 'date') return toDateInput(expected) === toDateInput(actual);
   return sameValue(expected, actual);
 }
-
 export async function write(file, payload, options = {}, report = () => {}) {
   const bytes = await toBytes(file);
   const inspected = await inspectZip(bytes);
@@ -383,7 +383,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const warnings = [];
   if (inspected.signed) warnings.push(SIGNED_WARNING);
   if (inspected.macros) warnings.push(MACRO_WARNING);
-
   const parts = new Map();
   const loadPart = (kind) => {
     if (parts.has(kind)) return parts.get(kind);
@@ -405,7 +404,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     parts.set(kind, part);
     return part;
   };
-
   for (const [id, value] of Object.entries(set)) {
     if (!supported.has(id)) {
       warnings.push(`Field "${id}" tidak tersedia untuk format ${subtype.toUpperCase()} dan diabaikan.`);
@@ -425,7 +423,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
       if (part) part.xml = upsert(part.xml, tag, [], anchorFor(kind, odf, part.xml));
     }
   }
-
   const replacements = new Map();
   const removeTags = [
     ...(payload?.rawRemove || []),
@@ -447,7 +444,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     }
     if (!matched && !entry) warnings.push(`Tag "${tag}" tidak ditemukan di metadata yang dapat ditulis.`);
   }
-
   for (const item of payload?.custom || []) {
     const key = asString(item?.key).trim();
     if (!key) continue;
@@ -465,12 +461,10 @@ export async function write(file, payload, options = {}, report = () => {}) {
     const value = asString(item?.value);
     part.xml = upsert(part.xml, key, value ? [value] : [], anchorFor(kind, odf, part.xml));
   }
-
   for (const part of parts.values()) {
     if (part && part.xml !== part.root) replacements.set(part.name, strToU8(part.xml));
   }
   if (!replacements.size) throw new AppError('NO_CHANGES', 'Tidak ada metadata yang perlu ditulis.');
-
   report({ stage: 'Menulis metadata ke arsip Office…', pct: 40 });
   let blob;
   try {
@@ -479,7 +473,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
     if (error instanceof AppError) throw error;
     throw new AppError('WRITE_FAILED', 'Gagal menulis metadata Office.', error.message || String(error));
   }
-
   report({ stage: 'Memverifikasi hasil…', pct: 80 });
   const afterBytes = new Uint8Array(await blob.arrayBuffer());
   let preserved;
@@ -491,7 +484,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   if (!preserved.ok) {
     throw new AppError('INTEGRITY_FAILED', 'Entri di luar metadata berubah saat menulis Office.', preserved.changed.join(', '));
   }
-
   const verified = await read(new File([afterBytes], `output.${subtype}`, {
     type: options?.mime || file?.type || meta.mime,
   }), { ...options, subtype });
@@ -507,7 +499,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
       finalWarnings.push(`Field "${id}" belum sepenuhnya terhapus.`);
     }
   }
-
   return {
     blob,
     fields: verified.fields,
@@ -517,12 +508,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     warnings: finalWarnings,
   };
 }
-
 export async function dispose() {}
-
-// Generic form rendering/validation still reads `adapter.fields`; expose the
-// union of all subtype fields so office files use the same path as other
-// adapters (sections still come from `sectionsFor`/`fieldsFor`).
 export const fields = [...new Map(
   OFFICE_SUBTYPES.flatMap((subtype) => fieldsFor(subtype)).map((field) => [field.id, field]),
 ).values()];

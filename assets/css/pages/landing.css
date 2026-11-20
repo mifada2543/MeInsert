@@ -81,6 +81,7 @@ h1 {
 .chip-dot.pdf { background: #ef4444; }
 .chip-dot.audio { background: #ea580c; }
 .chip-dot.video { background: #8585cc; }
+.chip-dot.office { background: #2f6fed; }
 .trust-row {
   display: flex;
   flex-wrap: wrap;

@@ -8,7 +8,7 @@ Semua perubahan penting dicatat di sini. Versi mengikuti SemVer.
 
 ## [main — setelah v1.3.0]
 
-Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec19`); `git pull` dari remote sudah mengambil semuanya. Yang belum ada hanyalah tag/versi rilis baru, sehingga `package.json` dan badge README masih `v1.3.0` dan cache tetap `meinsert-v50`.
+Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec19`); `git pull` dari remote sudah mengambil semuanya. Yang belum ada hanyalah tag/versi rilis baru, sehingga `package.json` dan badge README masih `v1.3.0`; cache dinaikkan ke `meinsert-v51` mengikuti aset offline baru.
 
 ### Pengalaman pengguna
 - Halaman **Tentang MeInsert** (`about.html`) merangkum prinsip, format, dan tautan kebijakan untuk pengguna baru.
@@ -18,9 +18,11 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - Action bar editor dan footer batch jadi kompak pinned dengan panel **Opsi**; policy notice tidak menutup panel tersebut.
 - Chip kapabilitas format, scroll reveal (kecuali kartu dukungan agar tidak menimpa panel), dan animasi buka/tutup pratinjau yang tidak memutus putar media.
 - Dukungan dokumen Office OOXML/ODF (docx/xlsx/pptx/docm/xlsm/pptm/odt/ods/odp) dengan patch ZIP terarah dan verifikasi byte-preservation.
+- Pratinjau Office: kartu ringkasan dari metadata yang sudah dibaca (judul, pembuat, jumlah halaman/slide/kata, status tanda tangan/makro) di editor tunggal dan batch — tanpa renderer berat dan tanpa menyesatkan sebagai tampilan isi halaman.
+- Halaman About desktop disusun ulang: hero penuh lebar dan kartu tersebar dalam tiga kolom; ikon "Banyak file" kini dua lembar bertumpuk.
 
 ### Keandalan & infrastruktur
-- Perbaikan Ctrl+R: registrasi SW dengan `updateViaCache: 'none'`, navigasi network-first + fallback cache; cache `meinsert-v50` (`CACHE_VERSION` = `CURRENT_VERSION`).
+- Perbaikan Ctrl+R: registrasi SW dengan `updateViaCache: 'none'`, navigasi network-first + fallback cache; cache `meinsert-v51` (`CACHE_VERSION` = `CURRENT_VERSION`).
 - Satu proses Chrome bersama untuk seluruh suite E2E lewat CDP; CI membagi 16 suite ke 4 runner paralel dan melewati `apt-get` bila ffmpeg/openssl sudah tersedia.
 - Dokumentasi disegarkan: fitur bersihkan metadata tidak lagi ditandai "segera hadir", README ID/EN lebih ramah pemula, arsitektur SW dan daftar script diperbarui.
 
@@ -61,7 +63,7 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 
 ### Perubahan umum
 - Versi `package.json`/lock → `1.3.0`; badge README ID/EN → `v1.3.0`.
-- `CACHE_VERSION` (`sw.js`) dan `CURRENT_VERSION` (`assets/js/core/build.js`) → `meinsert-v45` (nilai sama; kemudian dinaikkan ke `meinsert-v50` di `main`).
+- `CACHE_VERSION` (`sw.js`) dan `CURRENT_VERSION` (`assets/js/core/build.js`) → `meinsert-v45` (nilai sama; kemudian dinaikkan ke `meinsert-v50`, lalu `meinsert-v51` di `main`).
 - Modul offline baru masuk `SHELL_URLS`; bundel CSS di-rebuild dari sumber modular.
 - Skrip/CI baru: `test:security`, `test:engine`, `test:quick-save`, `test:clean`, `test:clean:batch`.
 
