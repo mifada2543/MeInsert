@@ -110,6 +110,14 @@ via the File System Access API when available, otherwise in memory (fflate).
 `dom.js`, `icons.js`, `toast.js`, `theme.js`, `form-view.js`, `raw-view.js`,
 `result-view.js`, `file-card.js`, `review-dialog.js`, `confirm.js`,
 `lightbox.js`, `media-session.js`, `editing-navigation.js`, and `policy-toc.js`.
+
+Newer shell/utility modules: `mobile-menu.js` (responsive ☰ menu that morphs
+into an X), `action-bar.js` and `batch-action-bar.js` (compact pinned action
+bars with an **Options** panel), `offline-settings.js` (Frugal / Mostly ready /
+Download everything), `format-chips.js` and `core/format-capabilities.js`
+(format capability labels), `scroll-reveal.js` (scroll entrance animation), and
+`clean-metadata.js` (privacy profiles). The standalone `about.html` page uses
+`assets/css/pages/about.css` and is part of the precached app shell.
 `review-dialog.js` is the confirmation step: it renders planned operations,
 unchanged counts, and risk warnings before any write is authorized.
 
@@ -158,20 +166,22 @@ assembles a ZIP and JSON/CSV report instead of a single download.
 
 - **Install** — precaches `SHELL_URLS` (HTML pages, CSS bundle, all JS modules,
   fonts, icons, and policy Markdown) into a versioned cache (`CACHE_VERSION`,
-  e.g. `meinsert-v44`). Precache fetches use `cache: 'reload'` and
+  e.g. `meinsert-v50`; always check `sw.js`). Precache fetches use `cache: 'reload'` and
   `credentials: 'same-origin'`; failures are warned, not fatal. Then
   `skipWaiting()` activates the new worker promptly.
 - **Activate** — deletes old `meinsert-*` caches and calls `clients.claim()` to
   take control of the current page.
 - **Fetch** — GET requests only; anything cross-origin is ignored. Policy
   Markdown and other cacheable assets (CSS/JS/WASM/fonts/images/JSON/SVG/ICO)
-  use **cache-first**. Navigations use **stale-while-revalidate**: serve the
-  cached shell (falling back to `index.html` / `./`) while refreshing the cache
-  in the background, with a 503 offline response if nothing is cached.
+  use **cache-first**. Navigations are **network-first with a cache fallback**:
+  try the network, then serve the cached shell (falling back to `index.html` /
+  `./`), with a 503 offline response if nothing is cached. This avoids a blank
+  page on Ctrl+R when the network is slow or unavailable.
 - **Version probe** — a `GET_VERSION` message is answered with `VERSION` and
   the current `CACHE_VERSION`. `core/pwa.js#probeActiveWorker` compares it to
   `CURRENT_VERSION` (`core/build.js`) and triggers an update + safe reload when
-  they differ. `reload-guard.js` prevents reloading mid-processing.
+  they differ. Registration uses `updateViaCache: 'none'` so the browser always
+  revalidates `sw.js`; `reload-guard.js` prevents reloading mid-processing.
 - Vendored libraries and ExifTool WASM are **not** in the precache; they are
   fetched on first use and then cached by the cache-first asset rule.
 

@@ -26,6 +26,10 @@ per-file result.
 - **Loss scope** — only requested field changes are written. This is not a
   promise that every unsupported tag survives; review the integrity findings
   after each write. A `failed` integrity result is flagged to the user.
+- **Local preferences** — theme, language, quick save, and the one-time policy
+  acknowledgment (`meinsert.policyAck`, valid for 30 days) live only in this
+  browser's `localStorage`. They are never uploaded, and clearing site data
+  resets them (the policy notice then appears again).
 
 ## Format-specific caveats
 

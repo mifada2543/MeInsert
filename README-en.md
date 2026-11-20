@@ -37,9 +37,9 @@ Pick one of these three needs — all of them run in your browser, with no accou
 |---|---|---|
 | ✏️ Edit **one file**'s metadata | [Single-file editor](https://meinsert.my.id/single.html) | Available |
 | 📦 Edit **many files** at once, plus ZIP and reports | [Batch mode](https://meinsert.my.id/batch.html) | Available |
-| 🧹 **Clean metadata** from files | — | **Coming** — planned for v1.3 Fase 3 |
+| 🧹 **Clean metadata** from files | [Clean metadata](https://meinsert.my.id/index.html?clean=1) | Available — remove sensitive GPS/EXIF data or pick tags per category |
 
-[🚀 Try the live demo](https://meinsert.my.id/) · [📄 Single file](./single.html) · [📦 Batch](./batch.html) · [⚙️ Installation](#quick-installation-xampp)
+[🚀 Try the live demo](https://meinsert.my.id/) · [📄 Single file](./single.html) · [📦 Batch](./batch.html) · [🧹 Clean metadata](./index.html?clean=1) · [⚙️ Installation](#quick-installation-xampp)
 
 ---
 
@@ -65,13 +65,13 @@ Pick one of these three needs — all of them run in your browser, with no accou
 |---|---|---|
 | Files are read and written in the browser using WASM and Workers. No file uploads. | Static files: no backend or deployment build step. Runs directly on XAMPP/Apache. | The app shell works offline after caching completes. Format engines and WASM work offline after they have been loaded. |
 
-**Two modes available today, one principle:** single-file editing for one file, and batch for format-group processing. The **clean metadata** mode is planned (v1.3 Fase 3).
+**Three needs, one principle:** edit a single file, process many files by format group, or clean metadata. **Clean metadata** is available now — choose the Privacy profile, remove everything safe, or pick categories yourself. Results are still reviewed and verified as usual.
 
 ---
 
 ## Supported formats
 
-Automatic detection uses **magic bytes**, not just filename extensions. Only the relevant fields for the detected format are displayed.
+Formats are detected from the **file contents**, not just the extension — a wrongly named file is still read correctly. Only the relevant fields are shown. Technical details live in the [limitations documentation](docs/LIMITATIONS.md).
 
 | Category | Formats | Writing Method |
 |---|---|---|
@@ -132,12 +132,17 @@ Select **Save**, review the changes, and confirm. The output is read again and v
 - **Light/dark theme** — follows the system or a manual preference, with no flash on load.
 - **Installable PWA** — install from the browser menu; the app shell and format dependencies work offline after first load.
 - **Continuous media preview** — changing a thumbnail or discarding changes does not stop audio/video preview.
+- **About page** — a short summary of principles, supported formats, and policy links; no need to read the full documents first.
+- **One-time policy notice** — just click **Got it**; the choice is saved in your browser for 30 days.
+- **Storage & Offline settings** — choose *Frugal* (default), *Mostly ready*, or *Download everything*. Frugal mode is forced automatically when the browser enables Save-Data.
+- **Comfortable on small screens** — theme, language, and settings move into the ☰ menu (which turns into ✕ when open); primary actions stay visible, secondary controls live in the **Options** panel.
+- **Animated preview open/close** — smooth, keeps media playing, and respects the system's reduced-motion setting.
 
 ---
 
 ## Interface language
 
-Select **ID** (Indonesian) or **EN** (English) beside the theme button on the home, single-file, or batch page.
+Select **ID** (Indonesian) or **EN** (English) in the header of the home, single-file, or batch page. On small screens (≤700px), the toggle lives in the ☰ menu together with the theme button and **Storage & Offline**.
 
 - The preference is stored locally under `meinsert-language`.
 - Without a saved preference, the Indonesian/English browser language is used; other languages fall back to Indonesian.
@@ -151,21 +156,16 @@ Select **ID** (Indonesian) or **EN** (English) beside the theme button on the ho
 No deployment build is needed. HTML/CSS/JS and vendor files are included in the repository.
 
 ```bash
-# 1. Clone into htdocs
-cd /opt/lampp/htdocs
+# 1. Put a copy in your XAMPP htdocs folder, then open it in the browser
 git clone https://github.com/mifada2543/meinsert.git MeInsert
-cd MeInsert
-
-# 2. Development dependencies / vendor updates (once, or when updating libraries)
-npm install
-npm run vendor
-
-# 3. Open in your browser
 # http://localhost/MeInsert/
-# Use Install / Add to Home Screen for the PWA
 ```
 
-> Stay online until the service worker finishes caching the app shell. Then the pages can open offline. Vendor libraries and ExifTool WASM (~27 MB) are fetched and cached on first use.
+You do **not** need `npm install` to use the app — vendor libraries are included in the repository. `npm install` and `npm run vendor` are only for **development** or when upgrading libraries (see CONTRIBUTING.md).
+
+Use your browser's **Install / Add to Home Screen** action to install the PWA.
+
+> Stay online until the browser finishes caching the pages and main assets. Then the pages can open offline. Vendor libraries and ExifTool WASM (~27 MB) are fetched and cached on first use. In **Storage & Offline** you can choose Frugal, Mostly ready, or Download everything.
 
 Run a local server without XAMPP:
 
@@ -179,7 +179,7 @@ Hosting note: `.htaccess` is for Apache/XAMPP, `_headers` is for Netlify/Cloudfl
 
 ## How to verify the local-only claim
 
-Open DevTools → **Network**, then run open → edit → save: only same-origin requests may appear. After the first visit, airplane mode still works. The `connect-src 'self'` CSP makes requests to any other origin impossible by policy.
+Open DevTools → **Network**, then open a file → edit → save. There should be **no requests to any other address** — everything happens in your browser. After the first visit, switch on airplane mode: the pages and editor still work. The Content Security Policy blocks outgoing requests too, so this check is more than a promise.
 
 Full guide plus a note about the production host's analytics beacon: **[docs/security.md](docs/security.md)**. Automated check: `node tests/e2e/security.mjs`.
 
@@ -193,6 +193,7 @@ Technical depth was moved out of this README to keep it short:
 - **[Limitations and compatibility findings](docs/LIMITATIONS.md)** — per-format limits, verification, and harness evidence.
 - **[Verifying the local-only claim](docs/security.md)** — DevTools, airplane mode, and CSP.
 - **[Deployment and hosting headers](docs/deployment.md)** — `.htaccess`, `_headers`, GitHub Pages, and `/sw.js` caching.
+- **[About page](about.html)** — a quick explanation for new users.
 - **[Launch notes](docs/launch-notes.md)** — release summary.
 
 ---
@@ -202,19 +203,29 @@ Technical depth was moved out of this README to keep it short:
 ```bash
 npm run serve            # local server http://localhost:8000
 npm run test:fast        # fast gate: unit + lint + CSS + policy (~3s, no browser)
-npm test                 # unit tests
-npm run test:e2e         # browser smoke test
+npm test                 # 218 unit tests
+npm run lint             # ESLint
+npm run check:css        # CSS bundle matches its sources
+npm run check:policies   # policy pages match their Markdown sources
+npm run test:e2e         # browser smoke test (1 suite)
 npm run test:e2e:all     # all 16 E2E suites in one shared Chrome process (CDP)
 # CI shards suites across 4 runners: MEINSERT_E2E_SHARD=1/4 npm run test:e2e:all
 npm run test:preview     # preview open/close animation
 npm run test:action-bar  # action bar & Options panel
+npm run test:about       # About page and mobile menu
+npm run test:offline     # Storage & Offline settings
+npm run test:reveal      # scroll-reveal animation
 npm run test:i18n        # bilingual UI and offline
 npm run test:undo        # single-file undo/redo
 npm run test:undo:batch  # batch undo/redo
-node tests/e2e/security.mjs  # CSP and network audit
-npm run test:compat      # compatibility harness with real fixtures
-npm run lint             # ESLint
+npm run test:security    # CSP and network audit
+npm run test:engine      # WASM engine download and status
+npm run test:quick-save  # quick save
+npm run test:clean       # clean metadata (single and batch)
+npm run test:office      # OOXML/ODF documents
+npm run test:compat      # 48 compatibility cases with real fixtures
 npm run build:css        # regenerate app.bundle.css
+npm run build:policies   # regenerate policy pages from Markdown
 ```
 
 ---

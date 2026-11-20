@@ -37,9 +37,9 @@ Pilih salah satu dari tiga kebutuhan ini — semuanya berjalan di browser Anda, 
 |---|---|---|
 | ✏️ Edit metadata **satu file** | [Editor Satu file](https://meinsert.my.id/single.html) | Tersedia |
 | 📦 Edit **banyak file** sekaligus + ZIP & laporan | [Mode Batch](https://meinsert.my.id/batch.html) | Tersedia |
-| 🧹 **Bersihkan metadata** dari berkas | — | **Coming** — direncanakan di v1.3 Fase 3 |
+| 🧹 **Bersihkan metadata** dari berkas | [Bersihkan metadata](https://meinsert.my.id/index.html?clean=1) | Tersedia — hapus GPS/EXIF sensitif atau pilih tag per kategori |
 
-[🚀 Coba demo langsung](https://meinsert.my.id/) · [📄 Satu file](./single.html) · [📦 Batch](./batch.html) · [⚙️ Instalasi](#instalasi-cepat-xampp)
+[🚀 Coba demo langsung](https://meinsert.my.id/) · [📄 Satu file](./single.html) · [📦 Batch](./batch.html) · [🧹 Bersihkan metadata](./index.html?clean=1) · [⚙️ Instalasi](#instalasi-cepat-xampp)
 
 ---
 
@@ -65,13 +65,13 @@ Pilih salah satu dari tiga kebutuhan ini — semuanya berjalan di browser Anda, 
 |---|---|---|
 | Semua dibaca/ditulis di browser via WASM + Workers. Tidak ada upload ke server mana pun. | Statis — tanpa backend dan tanpa build saat deploy. Jalan langsung dari XAMPP/Apache. | App shell tersedia offline setelah pemasangan cache selesai. Engine format dan WASM tersedia offline setelah sekali dimuat. |
 
-**Dua mode yang tersedia, satu prinsip:** satu file untuk edit satuan, dan batch untuk proses massal per grup format. Mode **bersihkan metadata** sedang direncanakan (v1.3 Fase 3).
+**Tiga kebutuhan, satu prinsip:** edit satu file, proses massal per grup format, atau bersihkan metadata. Mode **bersihkan metadata** sudah tersedia — pilih profil Privasi, hapus semua yang aman, atau atur sendiri per kategori. Hasilnya tetap ditinjau dan diverifikasi seperti biasa.
 
 ---
 
 ## Format didukung
 
-Deteksi otomatis dari **magic bytes** (bukan hanya ekstensi), lalu hanya field yang relevan untuk format tersebut yang ditampilkan.
+Format dikenali dari **isi file**, bukan hanya ekstensi — jadi file yang salah nama tetap terbaca dengan benar. Hanya field yang relevan yang ditampilkan. Detail teknis penulisan ada di [dokumentasi keterbatasan](docs/LIMITATIONS.md).
 
 | Kategori | Format | Metode Penulisan |
 |---|---|---|
@@ -132,12 +132,17 @@ Klik **Simpan** → tinjau seluruh perubahan → konfirmasi → hasil dibaca ula
 - **Tema gelap/terang** — ikut sistem, bisa manual, tanpa flicker saat memuat.
 - **PWA Installable** — pasang ke layar utama; app shell dan dependensi format tersedia offline setelah dimuat sekali.
 - **Pratinjau media kontinu** — mengganti thumbnail atau membatalkan perubahan tidak menghentikan pratinjau audio/video.
+- **Halaman Tentang** — ringkasan prinsip, format yang didukung, dan tautan kebijakan; cukup satu halaman tanpa harus membaca dokumen panjang.
+- **Pemberitahuan kebijakan sekali konfirmasi** — cukup klik **Mengerti**; pilihan Anda disimpan di browser selama 30 hari.
+- **Penyimpanan & Offline** — pilih *Hemat* (default), *Siap sebagian*, atau *Unduh semuanya*. MeInsert otomatis memakai mode hemat jika browser mengaktifkan Save-Data.
+- **Nyaman di layar kecil** — tombol tema, bahasa, dan pengaturan masuk ke menu ☰ (berubah menjadi ✕ saat terbuka); tombol aksi utama tetap terlihat, pengaturan lain ada di panel **Opsi**.
+- **Buka/tutup pratinjau beranimasi** — halus, tidak menghentikan putar media, dan hormati pengaturan pengurangan gerak di sistem.
 
 ---
 
 ## Bahasa antarmuka
 
-Pilih **ID** (Indonesia) atau **EN** (English) di samping tombol tema pada beranda, editor satu file, maupun batch.
+Pilih **ID** (Indonesia) atau **EN** (English) di header beranda, editor satu file, maupun batch. Di layar kecil (≤700px), tombolnya ada di dalam menu ☰ bersama tombol tema dan **Penyimpanan & Offline**.
 
 - Pilihan disimpan secara lokal dengan kunci `meinsert-language`.
 - Tanpa preferensi, bahasa browser Indonesia/Inggris dipakai; bahasa lain memakai Indonesia sebagai fallback.
@@ -151,21 +156,16 @@ Pilih **ID** (Indonesia) atau **EN** (English) di samping tombol tema pada beran
 Tidak perlu build. File HTML/CSS/JS statis, vendor sudah termasuk di repo.
 
 ```bash
-# 1. Clone ke htdocs
-cd /opt/lampp/htdocs
+# 1. Letakkan salinan di folder htdocs/XAMPP Anda, lalu buka di browser
 git clone https://github.com/mifada2543/meinsert.git MeInsert
-cd MeInsert
-
-# 2. (Sekali saja / saat update library) Pasang vendor
-npm install
-npm run vendor
-
-# 3. Buka di browser
 # http://localhost/MeInsert/
-# → gunakan menu Install / Tambahkan ke layar utama untuk PWA
 ```
 
-> Kunjungan pertama tetap online sampai service worker selesai menyimpan app shell. Setelah itu halaman bisa dibuka offline. Library vendor dan ExifTool WASM (~27 MB) diambil saat pertama dipakai lalu disimpan.
+Tidak perlu menjalankan `npm install` untuk memakai aplikasi — library vendor sudah termasuk di repository. `npm install` dan `npm run vendor` hanya diperlukan jika Anda **mengembangkan** atau memperbarui library (lihat CONTRIBUTING.md).
+
+Gunakan menu browser **Install / Tambahkan ke layar utama** untuk memasang PWA.
+
+> Kunjungan pertama tetap online sampai browser selesai menyimpan halaman dan aset utamanya. Setelah itu halaman bisa dibuka offline. Library vendor dan ExifTool WASM (~27 MB) diambil saat pertama dipakai lalu disimpan. Di pengaturan **Penyimpanan & Offline** Anda bisa memilih mode Hemat, Siap sebagian, atau Unduh semuanya.
 
 Serve lokal tanpa XAMPP:
 
@@ -179,7 +179,7 @@ Catatan hosting: `.htaccess` untuk Apache/XAMPP, `_headers` untuk Netlify/Cloudf
 
 ## Cara memverifikasi klaim lokal
 
-Buka DevTools → **Network**, lalu lakukan open → edit → save: hanya permintaan ke origin yang sama yang boleh muncul. Setelah kunjungan pertama, mode pesawat tetap bisa dipakai. CSP `connect-src 'self'` membuat permintaan ke origin lain mustahil oleh kebijakan.
+Buka DevTools → **Network**, lalu buka file → ubah → simpan. Seharusnya **tidak ada permintaan ke alamat lain** — semua proses terjadi di browser Anda. Setelah kunjungan pertama, aktifkan mode pesawat: halaman dan editor tetap bisa dipakai. Aturan keamanan (`Content-Security-Policy`) juga memblokir permintaan keluar, jadi pemeriksaan ini bukan sekadar janji.
 
 Panduan lengkap + penjelasan beacon analitik host produksi: **[docs/security.md](docs/security.md)**. Pemeriksaan otomatis: `node tests/e2e/security.mjs`.
 
@@ -193,6 +193,7 @@ Detail teknis dipindahkan dari README agar halaman ini tetap ringkas:
 - **[Keterbatasan & temuan kompatibilitas](docs/LIMITATIONS.md)** — batas per format, verifikasi, dan bukti harness.
 - **[Verifikasi klaim lokal](docs/security.md)** — DevTools, mode pesawat, dan CSP.
 - **[Deployment & header hosting](docs/deployment.md)** — `.htaccess`, `_headers`, GitHub Pages, dan cache `/sw.js`.
+- **[Halaman Tentang](about.html)** — penjelasan singkat untuk pengguna baru.
 - **[Catatan peluncuran](docs/launch-notes.md)** — ringkasan rilis.
 
 ---
@@ -202,19 +203,29 @@ Detail teknis dipindahkan dari README agar halaman ini tetap ringkas:
 ```bash
 npm run serve            # server lokal http://localhost:8000
 npm run test:fast        # gate cepat: unit + lint + CSS + policy (~3det, tanpa browser)
-npm test                 # unit test
-npm run test:e2e         # smoke test browser
+npm test                 # 218 unit test
+npm run lint             # ESLint
+npm run check:css        # pastikan bundel CSS sinkron dengan sumber
+npm run check:policies   # pastikan halaman kebijakan sinkron dengan Markdown
+npm run test:e2e         # smoke test browser (1 suite)
 npm run test:e2e:all     # semua 16 suite E2E dalam satu proses Chrome (CDP)
 # CI membagi suite ke 4 runner: MEINSERT_E2E_SHARD=1/4 npm run test:e2e:all
 npm run test:preview     # animasi buka/tutup pratinjau
 npm run test:action-bar  # action bar & panel Opsi
+npm run test:about       # halaman Tentang & menu mobile
+npm run test:offline     # pengaturan Penyimpanan & Offline
+npm run test:reveal      # animasi muncul saat scroll
 npm run test:i18n        # UI bilingual & offline
 npm run test:undo        # undo/redo satu file
 npm run test:undo:batch  # undo/redo batch
-node tests/e2e/security.mjs  # CSP + audit jaringan
-npm run test:compat      # harness kompatibilitas dengan fixture nyata
-npm run lint             # ESLint
+npm run test:security    # CSP + audit jaringan
+npm run test:engine      # unduh & status engine WASM
+npm run test:quick-save  # simpan cepat
+npm run test:clean       # bersihkan metadata (satu file & batch)
+npm run test:office      # dokumen Office OOXML/ODF
+npm run test:compat      # 48 kasus kompatibilitas dengan fixture nyata
 npm run build:css        # regenerasi app.bundle.css
+npm run build:policies   # regenerasi halaman kebijakan dari Markdown
 ```
 
 ---

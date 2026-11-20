@@ -16,7 +16,7 @@ diunduh seluruhnya di dalam browser Anda.
 
 | Version | Supported |
 |---|---|
-| Latest release (`v1.2.x` and newer) | ✅ |
+| Latest release (`v1.3.x` and newer) | ✅ |
 | `main` branch (development) | ✅ |
 | Older releases | ❌ — please update to the latest release first |
 

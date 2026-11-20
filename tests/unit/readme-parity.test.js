@@ -44,3 +44,20 @@ test('both READMEs use the custom domain and never the old GitHub Pages host', a
     assert.ok(text.includes('https://meinsert.my.id/'));
   }
 });
+test('both READMEs describe shipped features as available, not upcoming', async () => {
+  for (const file of FILES) {
+    const text = await read(file);
+    assert.doesNotMatch(text, /\bcoming\b|\bplanned\b|direncanakan|fase\s*3/i,
+      `${file} still describes a shipped feature as upcoming`);
+    for (const marker of ['?clean=1', 'about.html', 'test:e2e:all', 'test:fast', 'test:preview']) {
+      assert.ok(text.includes(marker), `${file} must mention ${marker}`);
+    }
+  }
+});
+test('version badge in both READMEs matches package.json', async () => {
+  const { version } = JSON.parse(await read('package.json'));
+  for (const file of FILES) {
+    const text = await read(file);
+    assert.ok(text.includes(`version-v${version}-`), `${file} badge must show v${version}`);
+  }
+});

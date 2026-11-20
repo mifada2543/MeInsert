@@ -38,10 +38,23 @@ no build step and already ships the vendored files. See
 | `npm run lint` | Run ESLint over `assets/js`, `sw.js`, `scripts`, and `tests`. |
 | `npm run serve` | Serve the folder locally with `python3 -m http.server 8000`. |
 | `npm test` | Run the unit tests (`node --test tests/unit/*.test.js`). |
+| `npm run test:fast` | Fast local gate: unit + lint + CSS + policy checks, no browser (~3s). |
 | `npm run test:e2e` | Browser smoke test (requires Chrome/Chromium; override with `CHROME_BIN`). |
+| `npm run test:e2e:all` | All 16 E2E suites in one shared Chrome process (CDP). Set `MEINSERT_E2E_SHARD=1/4` to run a quarter of them. |
 | `npm run test:undo` | Single-file undo/redo end-to-end test. |
 | `npm run test:undo:batch` | Batch undo/redo end-to-end test. |
 | `npm run test:i18n` | Indonesian/English UI end-to-end test. |
+| `npm run test:about` | About page and responsive mobile menu. |
+| `npm run test:offline` | Storage & Offline settings. |
+| `npm run test:reveal` | Scroll-reveal animation and overlay regressions. |
+| `npm run test:preview` | Preview open/close animation, including PDF/audio collapse. |
+| `npm run test:action-bar` | Compact action bars and Options panels. |
+| `npm run test:security` | CSP and no-external-request audit. |
+| `npm run test:engine` | WASM engine download progress and retry UI. |
+| `npm run test:quick-save` | Quick save preference and behavior. |
+| `npm run test:clean` / `npm run test:clean:batch` | Metadata cleaning, single and batch. |
+| `npm run test:policy` | One-time policy acknowledgment notice. |
+| `npm run test:office` | OOXML/ODF support and byte-preservation. |
 | `npm run test:compat` | Real-file compatibility harness (Chrome, FFmpeg/ffprobe, OpenSSL). |
 | `npm run fixtures:generate` | Regenerate optional compatibility fixtures. |
 

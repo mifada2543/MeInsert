@@ -13,13 +13,13 @@
 English (≤350 characters):
 
 ```
-Edit image, PDF, audio and video metadata locally in your browser. 100% client-side — no upload, no account, no analytics. Works offline as a PWA. AGPLv3. Live: https://meinsert.my.id/
+Edit image, PDF, audio, video and Office metadata locally in your browser. 100% client-side — no upload, no account, no analytics. Works offline as a PWA. AGPLv3. Live: https://meinsert.my.id/
 ```
 
 Bahasa Indonesia (padanan, ≤350 karakter):
 
 ```
-Edit metadata gambar, PDF, audio, dan video langsung di browser Anda. 100% sisi klien — tanpa upload, akun, atau analitik. Berfungsi offline sebagai PWA. AGPLv3. Live: https://meinsert.my.id/
+Edit metadata gambar, PDF, audio, video, dan dokumen Office langsung di browser Anda. 100% sisi klien — tanpa upload, akun, atau analitik. Berfungsi offline sebagai PWA. AGPLv3. Live: https://meinsert.my.id/
 ```
 
 ## Suggested GitHub topics
@@ -28,7 +28,7 @@ Lowercase, hyphenated. Refined from the supported formats and the README's
 feature list; the owner selects the final subset on the repository page.
 
 ```
-privacy metadata-editor pwa browser-only offline-first webassembly exif id3 pdf exiftool matroska mp4 image-metadata audio-metadata video-metadata no-upload client-side javascript
+privacy metadata-editor pwa browser-only offline-first webassembly exif id3 pdf exiftool matroska mp4 office ooxml odf image-metadata audio-metadata video-metadata no-upload client-side javascript
 ```
 
 ## Show HN — draft (English)
@@ -48,7 +48,8 @@ account, and there is no analytics or external request — you can verify this i
 the DevTools Network tab, and it works offline as an installable PWA.
 
 Supported formats: JPEG, PNG, WebP, TIFF, PDF, MP3, FLAC, Ogg Vorbis/Opus,
-MP4/M4A/MOV, and MKV/WebM. You can edit common fields, add custom tags, and
+MP4/M4A/MOV, MKV/WebM, and Office documents (DOCX/XLSX/PPTX/ODT/ODS/ODP).
+You can edit common fields, add custom tags, and
 replace or remove cover art. Before saving you get a review of exactly what
 changes; after writing, the output is read again and compared against the
 original so you can see what was preserved. The original file is never
@@ -85,7 +86,8 @@ bisa mengeceknya di tab Network DevTools, dan aplikasinya tetap bisa dipakai
 offline sebagai PWA yang bisa dipasang.
 
 Format yang didukung: JPEG, PNG, WebP, TIFF, PDF, MP3, FLAC, Ogg Vorbis/Opus,
-MP4/M4A/MOV, serta MKV/WebM. Anda bisa mengubah field umum, menambah custom tag,
+MP4/M4A/MOV, MKV/WebM, serta dokumen Office (DOCX/XLSX/PPTX/ODT/ODS/ODP).
+Anda bisa mengubah field umum, menambah custom tag,
 dan mengganti atau menghapus sampul. Sebelum menyimpan, tersedia dialog tinjauan
 yang menunjukkan persis apa yang berubah; setelah penulisan, hasil dibaca lagi
 dan dibandingkan dengan berkas asli agar terlihat apa yang tetap utuh. File asli
