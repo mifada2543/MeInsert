@@ -113,3 +113,14 @@ test('policy links are HTML pages in both the served shell and the runtime langu
   assert.match(i18n, /link\.dataset\.policy === 'terms' \? '\.\/Terms\.html' : '\.\/privacy\.html'/);
   assert.doesNotMatch(i18n, /TERMS\.md|PRIVACY\.md/);
 });
+test('shell precache and simulated update have bounded waits', async () => {
+  const sw = await readFile(new URL('../../sw.js', import.meta.url), 'utf8');
+  assert.match(sw, /const INSTALL_FETCH_TIMEOUT_MS = 15_000/, 'shell precache needs an explicit timeout');
+  assert.match(sw, /async function precacheShellUrl\(cache, url\)/, 'precache must go through a bounded helper');
+  assert.match(sw, /signal: controller\.signal/, 'precache fetch must be abortable');
+  assert.match(sw, /Promise\.allSettled\(SHELL_URLS\.map\(\(url\) => precacheShellUrl\(cache, url\)\)\)/);
+  const e2e = await readFile(new URL('../e2e/offline-real.mjs', import.meta.url), 'utf8');
+  assert.ok(e2e.includes('withTimeout(page.evaluate'), 'registration.update() must be time-bounded in E2E');
+  assert.ok(e2e.includes("60_000, 'registration.update()'"), 'update timeout must be explicit');
+  assert.ok(e2e.includes('STAGE: (f)'), 'update scenario needs stage logging for slow CI runs');
+});

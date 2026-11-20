@@ -44,6 +44,7 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - Test portabilitas: Ogg proof memakai `os.tmpdir()` + `mkdtemp()` dan dibersihkan, bukan `/tmp/opencode/` hardcode. Semua harness verifikasi independen dipindahkan ke `tests/independent/` dan memakai path relatif repositori; artefak dibuat di direktori sementara OS lalu dihapus. Didaftarkan sebagai `npm run test:audit`, `test:independent:office`, dan `test:independent:audio`.
 - Ogg: edge case comment panjang/Unicode/kunci duplikat, CRC korup, stream terpotong, dan chained stream diuji; decoded audio diverifikasi dengan FFmpeg.
 - Offline: closure dependency kini memindai import statis **dan dinamis** (`browser-id3-writer.mjs`, `engines/exiftool.js`, `office-xml.js`, `office-package.js` termasuk); `cacheOptional` memakai cache yang sudah valid, dedup konkuren, job id, dan timeout inactivity 60 detik yang di-reset oleh progress (bukan timeout total 30 detik). Pesan SW divalidasi terhadap allowlist 26 URL; URL arbitrari/blob/data ditolak.
+- Perbaikan hang CI `offline-real`: precache shell memakai `AbortController` 15 detik per URL sehingga `registration.update()` tidak menunggu fetch yang macet; simulasi update di E2E dibatasi 60 detik dengan log stage dan `SKIP` eksplisit bila update tidak teramati; job CI diberi `timeout-minutes: 15`.
 
 ### Verifikasi hardening fase II
 - 292 unit test (termasuk fuzz namespace/ZIP deterministik), lint, `check:css`, `check:policies`.

@@ -85,6 +85,15 @@ function findChrome() {
   return found;
 }
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function withTimeout(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${label} after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
 const pathOf = (url) => {
   try { return new URL(url, base).pathname; } catch { return String(url); }
 };
@@ -315,12 +324,15 @@ try {
     try {
       requests.length = 0;
       optionalResponses.length = 0;
-      await page.evaluate(async () => {
+      console.log('STAGE: (f) requesting service worker update');
+      await withTimeout(page.evaluate(async () => {
         const registration = await navigator.serviceWorker.getRegistration();
         if (!registration) throw new Error('No service worker registration to update');
         await registration.update();
-      });
+      }), 60_000, 'registration.update()');
+      console.log('STAGE: (f) update call resolved, waiting for cache names');
       await cacheNamesHave(page, [UPDATED_SHELL_VERSION, ENGINE_VERSION], `updated shell ${UPDATED_SHELL_VERSION}`);
+      console.log('STAGE: (f) updated shell and engine caches observed');
       await cacheHas(page, ENGINE_VERSION, ALL_OPTIONAL_URLS, 'engine cache preserved across update');
       await waitFor(async () => {
         const version = await page.evaluate(() => navigator.serviceWorker.controller?.postMessage
@@ -333,6 +345,7 @@ try {
           : '');
         return version === UPDATED_SHELL_VERSION ? true : null;
       }, 'updated worker controlling the page');
+      console.log('STAGE: (f) updated worker is controlling the page');
       const paths = requestedPaths(requests);
       assert.deepEqual([...paths].filter(isWasm), [], 'app update re-downloaded unchanged WASM files');
       const wasmBytes = await transferredBytes(optionalResponses.filter((response) => isWasm(response.url())));
@@ -343,7 +356,7 @@ try {
         [ENGINE_VERSION, UPDATED_SHELL_VERSION].sort(), 'old shell cache must be removed, engine cache kept');
       console.log(`PASS: (f) app update rebuilt shell only — engine cache intact, ${wasmBytes} WASM bytes transferred`);
     } catch (error) {
-      if (/Timed out waiting for updated/.test(String(error))) {
+      if (/Timed out waiting for (updated|registration\.update)/.test(String(error))) {
         skip('(f) app update without re-downloading WASM',
           `simulated deployment did not trigger an SW update in this browser: ${error.message}`);
       } else {

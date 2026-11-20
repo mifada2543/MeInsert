@@ -9,6 +9,7 @@
 const CACHE_VERSION = 'meinsert-v52';
 const ENGINE_VERSION = 'meinsert-engine-v1';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
+const INSTALL_FETCH_TIMEOUT_MS = 15_000;
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
   ...DOCUMENT_URLS,
@@ -175,14 +176,23 @@ async function migrateLegacyCache() {
     } catch { /* best-effort migration */ }
   }));
 }
+async function precacheShellUrl(cache, url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), INSTALL_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      cache: 'reload', credentials: 'same-origin', signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Precache gagal untuk ${url}`);
+    await cache.put(url, response);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_VERSION);
-    const results = await Promise.allSettled(SHELL_URLS.map(async (url) => {
-      const response = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
-      if (!response.ok) throw new Error(`Precache gagal untuk ${url}`);
-      await cache.put(url, response);
-    }));
+    const results = await Promise.allSettled(SHELL_URLS.map((url) => precacheShellUrl(cache, url)));
     const failed = results
       .map((result, index) => (result.status === 'rejected' ? SHELL_URLS[index] : null))
       .filter(Boolean);
