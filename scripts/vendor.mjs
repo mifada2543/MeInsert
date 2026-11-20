@@ -13,9 +13,12 @@
  * intentionally leaves them untouched; do not delete assets/vendor/licenses/
  * wholesale on a re-vendor run. See assets/THIRD_PARTY_LICENSES.md.
  */
-import { cp, mkdir, readdir, copyFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, copyFile, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzip } from 'node:zlib';
+import { promisify } from 'node:util';
+const gzipAsync = promisify(gzip);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const nm = join(root, 'node_modules');
 const vendor = join(root, 'assets', 'vendor');
@@ -45,8 +48,12 @@ const wasmDir = join(nm, '@colorhythm', 'exiftool-wasm', 'dist', 'esm');
 for (const file of await readdir(wasmDir)) {
   if (!file.endsWith('.wasm')) continue;
   await cp(join(wasmDir, file), join(vendor, 'exiftool-wasm', file));
-  console.log(`copied ${file}`);
 }
-const mainWasm = (await readdir(join(vendor, 'exiftool-wasm'))).find((f) => f.endsWith('.wasm'));
-if (!mainWasm) throw new Error('ExifTool WASM asset was not copied.');
-console.log(`done. ExifTool asset: ${mainWasm}`);
+const mainWasm = (await readdir(wasmDir)).find((file) => file.endsWith('.wasm'));
+if (!mainWasm) throw new Error('ExifTool WASM asset was not found in node_modules.');
+const wasmBytes = await readFile(join(vendor, 'exiftool-wasm', mainWasm));
+const compressed = await gzipAsync(wasmBytes, { level: 9 });
+const compressedPath = join(vendor, 'exiftool-wasm', `${mainWasm}.gz`);
+await writeFile(compressedPath, compressed);
+console.log(`compressed ${wasmBytes.byteLength} -> ${compressed.byteLength} bytes (${mainWasm}.gz)`);
+console.log(`done. ExifTool asset: ${mainWasm}.gz (raw copy is gitignored)`);

@@ -32,3 +32,29 @@ test('stream progress precedes cache completion and lazy cache is reused', async
   entries.set(url, new Response('legacy cached engine'));
   assert.ok(await context.api.cachedOptionalResponse(cache, url));
 });
+test('legacy pinned raw WASM is migrated to the gzip URL without a network request', async () => {
+  const { gunzipSync } = await import('node:zlib');
+  const gz = await readFile(new URL('../../assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz', import.meta.url));
+  const raw = gunzipSync(gz);
+  const url = 'https://test.local/assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm';
+  const entries = new Map([[url, new Response(raw)]]);
+  const cache = {
+    match: async (key) => entries.get(key)?.clone(),
+    put: async (key, response) => entries.set(key, new Response(await response.arrayBuffer(), { headers: response.headers })),
+    delete: async (key) => entries.delete(key),
+  };
+  const context = vm.createContext({ URL, Response, Headers, Uint8Array, CompressionStream, crypto: globalThis.crypto,
+    caches: { open: async () => cache }, self: { registration: { scope: 'https://test.local/' }, addEventListener() {} },
+    fetch: async () => { throw new Error('unexpected network request'); } });
+  vm.runInContext(source + '\nthis.migrate = migrateRawWasmCache;', context);
+  await context.migrate();
+  assert.equal(entries.has(url), false);
+  assert.ok(gunzipSync(Buffer.from(await entries.get(`${url}.gz`).arrayBuffer())).equals(raw));
+  assert.equal(entries.get(`${url}.gz`).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v1');
+  await context.migrate();
+  assert.equal(entries.size, 1);
+  entries.clear();
+  entries.set(url, new Response(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0)));
+  await context.migrate();
+  assert.equal(entries.has(`${url}.gz`), false);
+});

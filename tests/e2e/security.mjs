@@ -3,9 +3,9 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import assert from 'node:assert/strict';
 import { getBrowser } from './harness.mjs';
-import { createServer } from 'node:http';
-import { createReadStream, existsSync } from 'node:fs';
-import { extname, join, normalize } from 'node:path';
+import { createStaticServer } from './server.mjs';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
@@ -26,26 +26,7 @@ const contentTypes = new Map([
 ]);
 
 function serve() {
-  const server = createServer((request, response) => {
-    const url = new URL(request.url || '/', 'http://127.0.0.1');
-    let pathname = decodeURIComponent(url.pathname);
-    if (pathname === '/') pathname = '/index.html';
-    const filePath = normalize(join(root, pathname));
-    if (!filePath.startsWith(root)) {
-      response.writeHead(403).end('Forbidden');
-      return;
-    }
-    if (!existsSync(filePath)) {
-      response.writeHead(404).end('Not found');
-      return;
-    }
-    response.writeHead(200, { 'content-type': contentTypes.get(extname(filePath)) || 'application/octet-stream' });
-    createReadStream(filePath).pipe(response);
-  });
-  return new Promise((resolve, reject) => {
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => resolve(server));
-  });
+  return createStaticServer({ root, contentTypes, traversalStatus: 403 });
 }
 
 function findChrome() {

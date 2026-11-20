@@ -6,7 +6,7 @@ import { bindText, bindTranslation, t } from '../i18n/index.js';
 import { clear, el, formatBytes } from './dom.js';
 import { showToast } from './toast.js';
 import { ENGINE_VERSION } from '../core/build.js';
-import { featureFor, features } from '../core/format-capabilities.js';
+import { features } from '../core/format-capabilities.js';
 import {
   OFFLINE_PROFILE_KEY,
   estimatedBytes,
@@ -51,8 +51,8 @@ function absoluteUrl(value) {
 function rememberCached(url) {
   if (url) cachedUrls.add(absoluteUrl(url));
 }
-function cachedFeature(feature) {
-  return Boolean(feature?.urls?.length) && feature.urls.every((url) => cachedUrls.has(absoluteUrl(url)));
+function featureReady(feature) {
+  return feature.urls.every((url) => cachedUrls.has(absoluteUrl(url)));
 }
 function newJobId() {
   jobCounter += 1;
@@ -225,7 +225,7 @@ function handleSwMessage(data) {
     download.totalBytes = data.totalBytes || download.totalBytes;
     if (data.ok) rememberCached(data.url);
     resetInactivity();
-    renderProgress();
+    render();
   } else if (data.type === 'OPTIONAL_CANCELLED') {
     endDownload('cancelled', t('ui.engineDownloadCancelled'), 'info');
   } else if (data.type === 'OPTIONAL_ERROR') {
@@ -339,6 +339,7 @@ function buildDialog() {
     }, input, el('span', { className: 'offline-settings__option-text' }, name, hint)));
   }
   const featureInputs = new Map();
+  const featureStatuses = new Map();
   const featureHeading = el('h3', { className: 'offline-settings__features-title' });
   const featureHeadingLabel = el('span');
   bindText(featureHeadingLabel, () => t('ui.offlineSelected'));
@@ -355,10 +356,13 @@ function buildDialog() {
     featureInputs.set(feature.id, input);
     const name = el('span', { className: 'offline-settings__feature-name' });
     bindText(name, () => t(feature.labelKey));
+    const ready = el('span', { className: 'offline-settings__feature-status' });
+    featureStatuses.set(feature.id, { node: ready, feature });
+    bindText(ready, () => t(featureReady(feature) ? 'ui.offlineFeatureReady' : 'ui.offlineFeatureNotReady'));
     featureList.append(el('label', {
       className: 'offline-settings__feature',
       for: input.id,
-    }, input, name, el('span', {
+    }, input, name, ready, el('span', {
       className: 'offline-settings__feature-size',
       textContent: formatBytes(feature.bytes),
     })));
@@ -427,7 +431,7 @@ function buildDialog() {
   });
   document.body.append(dialog);
   refs = {
-    closeBtn, note, modeInputs, featureInputs, featureList, estimate, status, progress,
+    closeBtn, note, modeInputs, featureInputs, featureStatuses, featureList, estimate, status, progress,
     progressText, fill, clearBtn, cancelBtn, retryBtn, downloadBtn, downloadAllBtn,
   };
   return dialog;
@@ -449,6 +453,9 @@ function render() {
   for (const [id, input] of refs.featureInputs) {
     input.checked = draft.features.includes(id);
     input.disabled = saveData;
+  }
+  for (const { node, feature } of refs.featureStatuses.values()) {
+    node.textContent = t(featureReady(feature) ? 'ui.offlineFeatureReady' : 'ui.offlineFeatureNotReady');
   }
   refs.clearBtn.disabled = download.active;
   refs.cancelBtn.hidden = !download.active;
@@ -538,18 +545,7 @@ export function openOfflineSettings() {
   first.focus();
   askOptionalStatus();
 }
-export function ensureFeatureOffline(featureId) {
-  try {
-    const feature = featureFor(featureId);
-    if (!feature) return false;
-    if (globalThis.navigator?.onLine !== false) return true;
-    if (cachedFeature(feature)) return true;
-    showToast(t('ui.offlineMissingEngine'), 'error');
-    return false;
-  } catch {
-    return false;
-  }
-}
+
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => initOfflineSettings(), { once: true });

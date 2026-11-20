@@ -45,7 +45,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'audio',
     labelKey: 'ui.offlineFeatureAudio',
-    bytes: 900_000,
+    bytes: 795_178,
     urls: [
       './assets/vendor/mediabunny.mjs',
       './assets/js/workers/media.worker.js',
@@ -62,14 +62,14 @@ export const OFFLINE_FEATURES = [
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 27_800_000,
+    bytes: 9_356_025,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
-      './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm',
+      './assets/vendor/fflate.mjs',
+      './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
       './assets/js/workers/exiftool.worker.js',
       './assets/js/formats/image.js',
       './assets/js/formats/mp4.js',
-      // Dynamic imports from image.js / mp4.js + the WASM fetched by index.js.
       './assets/js/engines/exiftool.js',
       './assets/vendor/mediabunny.mjs',
     ],
@@ -77,13 +77,13 @@ export const OFFLINE_FEATURES = [
   {
     id: 'pdf',
     labelKey: 'ui.offlineFeaturePdf',
-    bytes: 600_000,
+    bytes: 548_886,
     urls: ['./assets/vendor/pdf-lib.esm.js', './assets/js/workers/pdf.worker.js', './assets/js/formats/pdf.js'],
   },
   {
     id: 'office',
     labelKey: 'ui.offlineFeatureOffice',
-    bytes: 200_000,
+    bytes: 191_721,
     urls: [
       './assets/vendor/fflate.mjs',
       './assets/js/core/office-zip.js',

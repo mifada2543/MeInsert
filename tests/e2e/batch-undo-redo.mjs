@@ -3,9 +3,9 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import assert from 'node:assert/strict';
 import { getBrowser } from './harness.mjs';
-import { createServer } from 'node:http';
-import { createReadStream, existsSync } from 'node:fs';
-import { extname, join, normalize } from 'node:path';
+import { createStaticServer } from './server.mjs';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const contentTypes = {
@@ -20,20 +20,7 @@ const contentTypes = {
   '.woff2': 'font/woff2',
 };
 function serve() {
-  const server = createServer((request, response) => {
-    const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);
-    const filePath = normalize(join(root, pathname === '/' ? '/index.html' : pathname));
-    if (!filePath.startsWith(root) || !existsSync(filePath)) {
-      response.writeHead(404).end('Not found');
-      return;
-    }
-    response.writeHead(200, { 'content-type': contentTypes[extname(filePath)] || 'application/octet-stream' });
-    createReadStream(filePath).pipe(response);
-  });
-  return new Promise((resolve, reject) => {
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => resolve(server));
-  });
+  return createStaticServer({ root, contentTypes, traversalStatus: 404 });
 }
 function findChrome() {
   const candidates = [

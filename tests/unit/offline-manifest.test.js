@@ -18,7 +18,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const EXPLICIT_OFFLINE_ASSETS = [
   './assets/js/engines/exiftool.js',
   './assets/vendor/browser-id3-writer.mjs',
-  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm',
+  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
 ];
 function toDiskPath(url) {
   return url.replace(/^\.\//, '');
@@ -58,7 +58,7 @@ function moduleSpecifiers(source) {
   return [...new Set(found)].filter((specifier) => specifier.startsWith('.'));
 }
 function isVendored(diskPath) {
-  return /\/vendor\//.test(diskPath) || /\.wasm$/i.test(diskPath);
+  return /\/vendor\//.test(diskPath) || /\.wasm(?:\.gz|\.br)?$/i.test(diskPath);
 }
 const diskReadSource = async (diskPath) => {
   try { return await read(diskPath); } catch { return null; }
@@ -105,7 +105,7 @@ function memoryStorage() {
     removeItem: (key) => { values.delete(key); },
   };
 }
-test('offline profile drives the optional URL list and byte estimate', () => {
+test('offline profile drives the optional URL list and byte estimate', async () => {
   const storage = memoryStorage();
   assert.deepEqual(getProfile(storage), { mode: 'frugal', features: [], updatedAt: 0 });
   assert.deepEqual(optionalUrls(getProfile(storage)), []);
@@ -117,7 +117,17 @@ test('offline profile drives the optional URL list and byte estimate', () => {
   assert.ok(urls.length > 10, 'all mode must cover every optional engine URL');
   assert.deepEqual(urls, [...new Set(urls)], 'optional URLs must be de-duplicated');
   assert.ok(urls.includes('./assets/js/core/zip-directory.js'), 'office feature must include zip-directory.js');
-  assert.equal(estimatedBytes(all), OFFLINE_FEATURES.reduce((sum, feature) => sum + feature.bytes, 0));
+  let uniqueBytes = 0;
+  for (const url of urls) uniqueBytes += (await stat(join(root, toDiskPath(url)))).size;
+  assert.equal(estimatedBytes(all), uniqueBytes);
+  const image = OFFLINE_FEATURES.find((feature) => feature.id === 'image');
+  assert.ok(image.urls.includes('./assets/vendor/fflate.mjs'), 'image-only offline mode must include the gzip fallback');
+  for (const ids of [['image', 'audio'], ['image', 'office']]) {
+    const profile = { mode: 'selected', features: ids };
+    let total = 0;
+    for (const url of optionalUrls(profile)) total += (await stat(join(root, toDiskPath(url)))).size;
+    assert.equal(estimatedBytes(profile), total);
+  }
   assert.equal(setProfile(storage, { mode: 'selected', features: ['pdf', 'unknown', 'pdf'] }), true);
   assert.deepEqual(getProfile(storage).features, ['pdf']);
   assert.deepEqual(optionalUrls(getProfile(storage)), [...OFFLINE_FEATURES.find((feature) => feature.id === 'pdf').urls]);
@@ -128,7 +138,7 @@ test('shared shell modules are precached and free of vendored assets', async () 
   for (const url of SHARED_SHELL_URLS) {
     assert.ok(shell.has(url), `shared module is not precached: ${url}`);
     assert.ok(await exists(toDiskPath(url)), `shared module is missing on disk: ${url}`);
-    assert.doesNotMatch(url, /vendor\/|\.wasm$/, `vendored asset leaked into the shared shell: ${url}`);
+    assert.doesNotMatch(url, /vendor\/|\.wasm(?:\.gz|\.br)?$/, `vendored asset leaked into the shared shell: ${url}`);
   }
 });
 test('every optional engine URL exists on disk', async () => {
@@ -139,6 +149,17 @@ test('every optional engine URL exists on disk', async () => {
     }
   }
   assert.deepEqual(missing, [], `Optional engine assets missing on disk: ${missing.join(', ')}`);
+});
+test('offline byte estimates match the actual asset sizes on disk', async () => {
+  const mismatches = [];
+  for (const feature of OFFLINE_FEATURES) {
+    let total = 0;
+    for (const url of feature.urls) total += (await stat(join(root, toDiskPath(url)))).size;
+    if (total !== feature.bytes) {
+      mismatches.push(`${feature.id}: manifest ${feature.bytes}, disk ${total}`);
+    }
+  }
+  assert.deepEqual(mismatches, [], `Offline estimates drifted from the shipped assets: ${mismatches.join(', ')}`);
 });
 test('worker entry points are part of the precached shell', async () => {
   const shell = await shellUrls();

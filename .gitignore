@@ -2,3 +2,4 @@
 node_modules/
 tests/tmp-*
 tests/tmp-shots/
+assets/vendor/exiftool-wasm/*.wasm

@@ -3,41 +3,59 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { parseMetadata, writeMetadata, dispose as disposeExifTool } from '../../vendor/exiftool-wasm/index.js';
 import { AppError } from '../core/errors.js';
-import { createProgressFetch } from '../ui/engine-loading.js';
-
+import { createProgressFetch, decodeEngineResponse, engineRequestUrl } from '../ui/engine-loading.js';
 function inWorker() {
   return typeof WorkerGlobalScope !== 'undefined'
     && typeof self !== 'undefined'
     && self instanceof WorkerGlobalScope;
 }
-
 function postEngineProgress(payload) {
   if (!inWorker()) return;
   try {
     self.postMessage({ type: 'engine-progress', ...payload });
   } catch { /* UI terbaik */ }
 }
-
-// `options.fetch` diteruskan vendor sampai ke G.create({ fetch }). Runtime
-// memanggilnya hanya saat WASM belum termuat, dan mengharapkan sebuah Response.
-// URL tetap same-origin: pembungkus tidak pernah mengarahkan ke origin lain.
-function makeEngineFetch() {
+let engineBytesPromise = null;
+let engineFetchFailed = false;
+export function resetEngineFetchStateForTests() {
+  engineBytesPromise = null;
+  engineFetchFailed = false;
+}
+export function makeEngineFetch() {
   const progressFetch = createProgressFetch({
     onProgress: ({ loaded, total }) => postEngineProgress({ phase: 'downloading', loaded, total }),
   });
   return async (url, init) => {
     postEngineProgress({ phase: 'loading' });
     try {
-      const response = await progressFetch(url, init);
+      if (engineFetchFailed) throw new Error('ExifTool engine download already failed in this worker.');
+      if (!engineBytesPromise) {
+        engineBytesPromise = (async () => {
+          const response = await progressFetch(engineRequestUrl(url), init);
+          if (!response.ok) throw new Error(`ExifTool engine download failed (${response.status}).`);
+          const decoded = await decodeEngineResponse(response);
+          return new Uint8Array(await decoded.arrayBuffer());
+        })().catch((error) => {
+          engineFetchFailed = true;
+          engineBytesPromise = null;
+          throw error;
+        });
+      }
+      const bytes = await engineBytesPromise;
       postEngineProgress({ phase: 'ready' });
-      return response;
+      return new Response(bytes, {
+        status: 200,
+        headers: {
+          'content-type': 'application/wasm',
+          'content-length': String(bytes.byteLength),
+        },
+      });
     } catch (error) {
       postEngineProgress({ phase: 'error' });
       throw error;
     }
   };
 }
-
 function jsonTransform(text) {
   const parsed = JSON.parse(text);
   if (Array.isArray(parsed)) return parsed[0] || {};

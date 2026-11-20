@@ -3,9 +3,8 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import assert from 'node:assert/strict';
 import { getBrowser } from './harness.mjs';
-import { createServer } from 'node:http';
-import { createReadStream, existsSync } from 'node:fs';
-import { extname, join, normalize } from 'node:path';
+import { createStaticServer } from './server.mjs';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const PROFILE_KEY = 'meinsert.offlineProfile';
@@ -24,20 +23,7 @@ const contentTypes = {
   '.woff2': 'font/woff2',
 };
 function serve() {
-  const server = createServer((request, response) => {
-    const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);
-    const filePath = normalize(join(root, pathname === '/' ? '/index.html' : pathname));
-    if (!filePath.startsWith(root) || !existsSync(filePath)) {
-      response.writeHead(404).end('Not found');
-      return;
-    }
-    response.writeHead(200, { 'content-type': contentTypes[extname(filePath)] || 'application/octet-stream' });
-    createReadStream(filePath).pipe(response);
-  });
-  return new Promise((resolve, reject) => {
-    server.on('error', reject);
-    server.listen(0, '127.0.0.1', () => resolve(server));
-  });
+  return createStaticServer({ root, contentTypes, traversalStatus: 404 });
 }
 function findChrome() {
   const candidates = [
@@ -173,6 +159,18 @@ try {
     });
   });
   await openDialog();
+  await page.locator('#offlineMode-selected').click();
+  const imageStatus = page.locator('label[for="offlineFeature-image"] .offline-settings__feature-status');
+  assert.equal(await imageStatus.innerText(), 'Belum diunduh');
+  await page.evaluate(async () => {
+    const { features } = await import('/assets/js/core/format-capabilities.js');
+    const image = features().find((feature) => feature.id === 'image');
+    window.__swPort.postMessage({ type: 'OPTIONAL_STATUS_RESULT', urls: image.urls });
+  });
+  await page.waitForFunction(() => document.querySelector('label[for="offlineFeature-image"] .offline-settings__feature-status')?.textContent === 'Siap offline');
+  await page.evaluate(() => window.__swPort.postMessage({ type: 'OPTIONAL_CLEARED' }));
+  await page.waitForFunction(() => document.querySelector('label[for="offlineFeature-image"] .offline-settings__feature-status')?.textContent === 'Belum diunduh');
+  await page.locator('#offlineMode-all').click();
   await page.locator('.offline-settings__download').click();
   await page.evaluate(() => {
     const start = window.__swMessages.find((message) => message.type === 'CACHE_OPTIONAL');

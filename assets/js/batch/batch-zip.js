@@ -154,6 +154,3 @@ export async function saveZipStreaming(items, { reportJson = '', onProgress, sug
     throw error;
   }
 }
-export function reportTextBlob(reportJson) {
-  return new Blob([reportJson || ''], { type: 'application/json' });
-}

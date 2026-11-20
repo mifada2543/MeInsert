@@ -18,6 +18,8 @@ jobs:
         node-version: '22'
         cache: npm
     - run: npm ci
+    - name: Asset sizes and gzip WASM integrity
+      run: npm run check:assets
     - name: Bundel CSS harus sinkron dengan sumber
       run: npm run check:css
     - name: Policy HTML must match sources
