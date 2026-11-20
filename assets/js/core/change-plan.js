@@ -3,6 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { createSnapshot, hashBytes, normalizeCustomKey, normalizeFieldValue, normalizeRawTag, normalizeText } from './metadata-snapshot.js';
 import { isCoverRaw, rulesFor } from './integrity-rules.js';
+import { t } from '../i18n/index.js';
 function fieldsFor(adapter, detection) {
   if (!adapter) return [];
   if (typeof adapter.fieldsFor === 'function') return adapter.fieldsFor(detection?.subtype) || [];
@@ -56,6 +57,7 @@ export function buildChangePlan({
   const targetFields = new Set();
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
+  const sidecar = payload?.sidecar || null;
   for (const field of definitions) {
     const beforeField = before.fields?.[field.id];
     const beforeValue = beforeField?.normalized || '';
@@ -234,6 +236,20 @@ export function buildChangePlan({
       });
     }
   }
+  if (sidecar) {
+    const lyricLines = sidecar.lyrics?.lines?.length || 0;
+    const subtitleCues = sidecar.subtitles?.cues?.length || 0;
+    operations.push({
+      kind: 'sidecar',
+      action: 'set',
+      label: t('ui.timedTextPlanRow', { v0: lyricLines, v1: subtitleCues }),
+      lyricLines,
+      subtitleCues,
+      before: '',
+      after: '',
+      source,
+    });
+  }
   const changedFields = new Set(operations.filter((op) => op.kind === 'field').map((op) => op.id));
   const changedCustom = new Set(operations.filter((op) => op.kind === 'custom').map((op) => normalizeCustomKey(formatId, op.key)));
   const changedRaw = new Set(operations.filter((op) => op.kind === 'raw').map((op) => normalizeRawTag(op.tag)));
@@ -293,6 +309,7 @@ export function buildChangePlan({
       customRemove: [...actualCustomRemove],
       rawRemove: [...actualRawRemove],
       ...(actualCover ? { cover: actualCover } : {}),
+      ...(sidecar ? { sidecar } : {}),
     },
     operations,
     noops,

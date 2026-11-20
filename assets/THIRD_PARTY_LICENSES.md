@@ -93,6 +93,28 @@ sponsorship is implied.
 - **Note**: The upstream repository is `egoroof/browser-id3-writer`;
   no other organisation is the rights holder for the bundled copy.
 
+## MEeL — LRC editor & timed-text helpers (adapted source)
+- **License**: AGPL-3.0-or-later (see `licenses/meel-LICENSE`)
+- **Copyright**: © 2026 Mifada (mifada2543)
+- **Source**: https://github.com/mifada2543/MEeL-HUB — pinned at commit
+  `95e4937c74c3929977a907a463a415dcea50d2da` (files last changed in `8e64b9f`)
+- **Files used**: `assets/js/music/lrc-editor.js`,
+  `assets/css/music/lrc-editor.css`, `assets/js/music/watch/karaoke.js`,
+  `modules/core/helpers/lyrics.php`, `modules/core/helpers/subtitle.php`
+- **Where it lives in MeInsert**: `assets/js/core/timed-text.js`,
+  `assets/js/ui/timed-text-editor.js`, `assets/css/components/timed-text-editor.css`
+- **Modifications**: ported from PHP/IIFE to plain ESM with millisecond-based
+  state; PHP/database/lucide/plyr/htmx dependencies removed; `localStorage`
+  replaced by MeInsert editor state; media preview from `URL.createObjectURL`;
+  design tokens and mobile bottom-sheet restyled for MeInsert; AGPL header and
+  MeInsert watermark added. The original editor displays karaoke lyrics while
+  playing; MeInsert reuses its timestamp parsing, tap-to-mark, active-line
+  sync (0.15 s tolerance) and centred auto-scroll.
+- **Compliance**: same author and license family as MeInsert (AGPLv3). This
+  attribution, the copied license text, and per-file source headers are kept
+  so recipients can identify the adapted code and its origin. No endorsement
+  by MEeL is implied.
+
 ---
 
 All license texts are included in the `assets/vendor/licenses/`

@@ -36,6 +36,7 @@
 @import "./components/format-capabilities.css";
 @import "./components/scroll-reveal.css";
 @import "./components/offline-settings.css";
+@import "./components/timed-text-editor.css";
 @import "./components/mobile-menu.css";
 @import "./pages/about.css";
 @import "./components/policy-notice.css";

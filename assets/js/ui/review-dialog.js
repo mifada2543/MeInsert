@@ -59,6 +59,7 @@ function planDetails(plan, { open = false } = {}) {
   const custom = operations.filter((operation) => operation.kind === 'custom');
   const raw = operations.filter((operation) => operation.kind === 'raw');
   const cover = operations.filter((operation) => operation.kind === 'cover');
+  const sidecar = operations.filter((operation) => operation.kind === 'sidecar');
   const unchanged = plan.unchanged || {};
   const details = el('details', { className: 'review-file', open });
   const fileLabel = plan.fileName || plan.outputName || plan.format?.label || 'File';
@@ -76,6 +77,7 @@ function planDetails(plan, { open = false } = {}) {
     operationGroup('Tag kustom', custom),
     operationGroup('Hapus tag mentah', raw),
     operationGroup('Sampul', cover),
+    operationGroup(sidecar[0]?.label || t('ui.lyrics'), sidecar),
     el('p', { className: 'review-unchanged' },
       translated(() => (t('ui.fieldsCustomTagsAndRawTagsRemainUnchanged', { v0: unchanged.fields || 0, v1: unchanged.custom || 0, v2: unchanged.raw || 0 }))),
     ),

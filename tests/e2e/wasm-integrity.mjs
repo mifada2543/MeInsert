@@ -5,7 +5,7 @@
 // engine-cache reuse and offline decoding of the only distributed WASM asset.
 import { getBrowser } from './harness.mjs';
 import { createStaticServer } from './server.mjs';
-import { copyFileSync, existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,12 +34,14 @@ page.on('pageerror', (error) => errors.push(error.message));
 page.on('request', (request) => {
   if (/wasm/i.test(request.url())) requests.push(request.url().replace(base, ''));
 });
-const sample = join(root, 'tests/fixtures/pattern.png');
-const localCopy = '/tmp/opencode/wasm-integrity-pattern.png';
-copyFileSync(sample, localCopy);
+const sample = {
+  name: 'pattern.png',
+  mimeType: 'image/png',
+  buffer: readFileSync(join(root, 'tests/fixtures/pattern.png')),
+};
 const doubleGzip = gzipSync(readFileSync(join(root, 'assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz')));
 async function openAndExpectTags(label) {
-  await page.locator('#fileInput').setInputFiles(localCopy);
+  await page.locator('#fileInput').setInputFiles(sample);
   await page.waitForFunction(() => /tag terbaca/.test(document.querySelector('#readStatus')?.textContent || ''),
     null, { timeout: 120000 });
   console.log(`PASS: ${label} — ${await page.locator('#readStatus').innerText()}`);

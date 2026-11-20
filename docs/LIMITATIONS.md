@@ -31,6 +31,35 @@ per-file result.
   browser's `localStorage`. They are never uploaded, and clearing site data
   resets them (the policy notice then appears again).
 
+## Timed text (lyrics & subtitles)
+
+- Lyrics and subtitles are embedded **inside the container**, never burned into
+  the video pixels. This grows the file slightly; the size delta is shown in
+  the review dialog before saving.
+- **MP3** timed lyrics use ID3v2 `SYLT` (millisecond timestamps). An existing
+  `SYLT` frame is preserved when you edit other fields.
+- **FLAC / OGG / Opus** store timed lyrics as a `LYRICS` Vorbis comment using
+  LRC syntax; the plain-text lyrics field and the timed track stay in sync.
+- **MP4 / M4A** store the plain lyrics in `©lyr` and place WebVTT cues in a
+  `wvtt` subtitle track. Browser-native `<video>` cannot render `wvtt`; use a
+  player that supports WebVTT in MP4, or export a `.vtt` sidecar.
+- **MKV / WebM** place WebVTT cues in an `S_TEXT/WEBVTT` subtitle track. The
+  engine copies existing A/V packets without re-encoding, and verifies their
+  hashes before releasing the result.
+- The engine cannot read cues back from an embedded subtitle track (mediabunny
+  demuxes video/audio only). On reload, the lyric field is recovered from
+  `LYRICS`, but subtitle cues must be re-imported from a `.vtt` file.
+- Only one language per track is supported in this version.
+- Text colour, background colour/opacity, size, bold/shadow, position and
+  alignment are editable in the **Text appearance** panel. They are applied
+  exactly to the in-editor preview and to exported `.vtt` files. The same
+  `STYLE` block and cue settings are written into the embedded WebVTT track,
+  but player support varies: MKV/WebVTT players such as mpv/VLC usually honour
+  them, while MP4 `wvtt` and browser-native players may ignore colours and
+  backgrounds. Position/alignment settings are the most widely supported.
+- Appearance preferences are stored in `localStorage` separately from the
+  line draft. The draft is cleared when you press **Apply**.
+
 ## Format-specific caveats
 
 - **MP3** — non-standard / unmapped ID3 frames are lost on write. The old ID3

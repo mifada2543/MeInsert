@@ -105,6 +105,12 @@ Menambah URL baru ke `SHELL_URLS` tidak selalu membutuhkan bump versi: perubahan
 pada `sw.js` sudah memicu `install`, yang meng-precache ulang seluruh
 `SHELL_URLS` ke cache dengan nama yang sama. Bump `CACHE_VERSION` **dan**
 `CURRENT_VERSION` secara bersamaan saat *isi* aset yang sudah di-cache berubah.
+Modul editor teks berirama (`core/timed-text.js` dan
+`ui/timed-text-editor.js`) termasuk `SHELL_URLS`, jadi tersedia offline tanpa
+unduhan mesin tambahan. Perubahan ukuran file-file audio/video yang tercantum
+di `OFFLINE_FEATURES[*].urls` (mis. `mp3.js`, `mkv.js`, `id3-sylt.js`) harus
+diikuti pembaruan nilai `bytes` agar tes estimasi offline tetap lolos.
+
 Daftar `KNOWN_OPTIONAL_URLS` di `sw.js` harus sama persis dengan gabungan
 `OFFLINE_FEATURES[*].urls`; tes `offline-manifest` memeriksanya. Sebelum
 mengunduh, worker memakai ulang entri engine yang memiliki header

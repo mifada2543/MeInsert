@@ -161,6 +161,9 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
     cover: coverSnapshot(readResult),
     structure: structureSnapshot(readResult?.info),
     mediaProof: readResult?.mediaProof || null,
+    // Container rewrites that embed a timed-text track legitimately move the
+    // A/V bytes; the packet-level proof releases those writes safely.
+    packetProof: readResult?.packetProof || null,
     warnings: [...(readResult?.warnings || [])],
     counts: {
       fields: Object.values(fields).filter((field) => field.normalized).length,

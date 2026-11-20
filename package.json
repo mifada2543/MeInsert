@@ -22,6 +22,7 @@
     "test:security": "node tests/e2e/security.mjs",
     "test:engine": "node tests/e2e/engine-loading.mjs",
     "test:wasm-integrity": "node tests/e2e/wasm-integrity.mjs",
+    "test:timed-text": "node tests/e2e/timed-text.mjs",
     "test:quick-save": "node tests/e2e/quick-save.mjs",
     "test:clean": "node tests/e2e/clean-metadata.mjs",
     "test:clean:batch": "node tests/e2e/batch-clean.mjs",

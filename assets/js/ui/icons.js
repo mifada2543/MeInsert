@@ -29,6 +29,11 @@ const paths = {
   expand: '<path d="m6 9 6 6 6-6"/>',
   undo: '<path d="M4 11h10a5 5 0 0 1 0 10H9"/><path d="m8 7-4 4 4 4"/>',
   redo: '<path d="M20 11H10a5 5 0 0 0 0 10h5"/><path d="m16 7 4 4-4 4"/>',
+  play: '<path d="M8 5.5v13l11-6.5Z" fill="currentColor" stroke="none"/>',
+  pause: '<path d="M8 5v14M16 5v14" stroke-width="3"/>',
+  rewind: '<path d="M11 6 4 12l7 6V6Zm9 0-7 6 7 6V6Z" fill="currentColor" stroke="none"/>',
+  forward: '<path d="m4 6 7 6-7 6V6Zm9 0 7 6-7 6V6Z" fill="currentColor" stroke="none"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
 };
 export function icon(name, className = '') {
   const path = paths[name] || paths.file;

@@ -85,6 +85,14 @@ Format dikenali dari **isi file**, bukan hanya ekstensi — jadi file yang salah
 
 Embed cover image (JPEG/PNG/WebP ≤ 10 MB; GIF/BMP juga untuk MP3, FLAC, OGG/Opus, dan MKV) secara native per format — `APIC` untuk MP3, `METADATA_BLOCK_PICTURE` untuk FLAC/OGG/Opus, `covr` untuk MP4/M4A (JPEG/PNG/WebP saja), Matroska attachment untuk MKV/WebM. Bisa diganti/dihapus. Rincian dan batasnya ada di [dokumentasi keterbatasan](docs/LIMITATIONS.md).
 
+### Lirik & subtitle tersinkron
+
+Tombol **Lirik & Subtitle** di editor membuka editor dua kolom: pratinjau media di kiri dan daftar baris di kanan (mode video memakai tata lanskap). Anda bisa mengetik, menandai waktu langsung di tiap baris, mengimpor (`.lrc`, `.srt`, `.vtt`), dan mengekspor teks berirama. Pratinjau memakai media lokal Anda (`blob:`), tanpa upload.
+
+Tombol **gear** membuka panel **Tampilan teks** untuk mengatur warna teks, warna/opacity latar, ukuran, tebal, bayang, posisi, dan perataan — dengan preset **MEeL**. Preferensi tersimpan di `localStorage` setelah ditekan **Simpan preferensi**; perubahan yang belum disimpan memunculkan pilihan **Batalkan** / **Simpan**. Draf baris juga tersimpan otomatis dan dihapus setelah Anda menekan **Terapkan**.
+
+Saat menyimpan, teks disisipkan ke dalam kontainer: `SYLT` untuk MP3, komentar `LYRICS` untuk FLAC/OGG/Opus, `©lyr` + track WebVTT untuk MP4/M4A, dan track WebVTT untuk MKV/WebM. Lirik juga bisa menjadi track berlabel "Lirik". Blok `STYLE` dan cue settings ikut ditulis; warna/latar dijamin pada pratinjau dan file `.vtt`, sedangkan pemutar internal mungkin berbeda. File asli tidak pernah ditimpa. Detail dan batasnya ada di [dokumentasi keterbatasan](docs/LIMITATIONS.md).
+
 ### Dokumen Office
 
 - **Didukung penuh:** DOCX, XLSX, PPTX, serta ODT, ODS, ODP.
@@ -204,12 +212,12 @@ Detail teknis dipindahkan dari README agar halaman ini tetap ringkas:
 ```bash
 npm run serve            # server lokal http://localhost:8000
 npm run test:fast        # gate cepat: unit + lint + CSS + policy (~3det, tanpa browser)
-npm test                 # 218 unit test
+npm test                 # 372 unit test
 npm run lint             # ESLint
 npm run check:css        # pastikan bundel CSS sinkron dengan sumber
 npm run check:policies   # pastikan halaman kebijakan sinkron dengan Markdown
 npm run test:e2e         # smoke test browser (1 suite)
-npm run test:e2e:all     # semua 16 suite E2E dalam satu proses Chrome (CDP)
+npm run test:e2e:all     # semua 18 suite E2E dalam satu proses Chrome (CDP)
 # CI membagi suite ke 4 runner: MEINSERT_E2E_SHARD=1/4 npm run test:e2e:all
 npm run test:preview     # animasi buka/tutup pratinjau
 npm run test:action-bar  # action bar & panel Opsi
@@ -221,6 +229,8 @@ npm run test:undo        # undo/redo satu file
 npm run test:undo:batch  # undo/redo batch
 npm run test:security    # CSP + audit jaringan
 npm run test:engine      # unduh & status engine WASM
+npm run test:wasm-integrity # E2E WASM dengan Service Worker aktif
+npm run test:timed-text  # editor lirik/subtitle + preferensi tampilan
 npm run test:quick-save  # simpan cepat
 npm run test:clean       # bersihkan metadata (satu file & batch)
 npm run test:office      # dokumen Office OOXML/ODF
@@ -246,6 +256,7 @@ Library pihak ketiga yang dibundel tetap pada lisensi aslinya — lihat [indeks 
 - **ExifTool 13.60** (Artistic/GPL), **@colorhythm/exiftool-wasm** (Apache-2.0) + **zeroperl** (MIT)
 - **Mediabunny** (MPL-2.0), **pdf-lib**, **browser-id3-writer**, **fflate** (MIT)
 - **Font IBM Plex** — SIL Open Font License 1.1
+- **MEeL — editor LRC & helper teks berirama** (AGPL-3.0, © 2026 Mifada) — kode yang diadaptasi untuk editor lirik/subtitle; daftar file sumber dan tujuan ada di [NOTICE.md](./NOTICE.md) dan [indeks atribusi](assets/THIRD_PARTY_LICENSES.md).
 - **Gambar merek** — karya asli proyek; [provenance](assets/img/PROVENANCE.md)
 
 ### Lisensi & monetisasi (AGPLv3)

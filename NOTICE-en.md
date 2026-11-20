@@ -34,6 +34,20 @@ MeInsert bundles the following independent software in `assets/vendor/` and
 * browser-id3-writer v6.4.0 — https://github.com/egoroof/browser-id3-writer (MIT)
 * IBM Plex fonts (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
   (SIL Open Font License 1.1)
+* MEeL — LRC editor & timed-text helpers (adapted source) — © 2026 Mifada
+  (mifada2543) — https://github.com/mifada2543/MEeL-HUB (AGPL-3.0-or-later)
+  Source files used (MEeL repo, commit `95e4937c74c3929977a907a463a415dcea50d2da`):
+  - `assets/js/music/lrc-editor.js` — LRC parser, tap-to-timestamp, player controls
+  - `assets/css/music/lrc-editor.css` — editor and karaoke styling
+  - `assets/js/music/watch/karaoke.js` — active-line sync and click-to-seek
+  - `modules/core/helpers/lyrics.php` — LRC parse/generate rules
+  - `modules/core/helpers/subtitle.php` — SRT-to-WebVTT conversion
+  Adapted files in MeInsert:
+  - `assets/js/core/timed-text.js` — pure parser/serializer (from lyrics.php + subtitle.php + lrc-editor.js)
+  - `assets/js/ui/timed-text-editor.js` — editor dialog (from lrc-editor.js + karaoke.js)
+  - `assets/css/components/timed-text-editor.css` — editor styling (from lrc-editor.css)
+  - `assets/vendor/licenses/meel-LICENSE` — copy of MEeL's AGPL-3.0 license
+  Modification details and attribution index: `assets/THIRD_PARTY_LICENSES.md`.
 
 **`assets/THIRD_PARTY_LICENSES.md` is the authoritative attribution index**
 for the bundle, and `assets/vendor/licenses/` holds the verbatim license texts.

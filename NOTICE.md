@@ -35,6 +35,20 @@ MeInsert membundel perangkat lunak independen berikut di `assets/vendor/` dan
 * browser-id3-writer v6.4.0 — https://github.com/egoroof/browser-id3-writer (MIT)
 * Font IBM Plex (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
   (SIL Open Font License 1.1)
+* MEeL — editor LRC & helper teks berirama (kode yang diadaptasi) — © 2026 Mifada
+  (mifada2543) — https://github.com/mifada2543/MEeL-HUB (AGPL-3.0-or-later)
+  Sumber yang dipakai (repo MEeL, commit `95e4937c74c3929977a907a463a415dcea50d2da`):
+  - `assets/js/music/lrc-editor.js` — parser LRC, tap-to-timestamp, kontrol player
+  - `assets/css/music/lrc-editor.css` — gaya editor dan karaoke
+  - `assets/js/music/watch/karaoke.js` — sinkronisasi baris aktif dan klik-untuk-seek
+  - `modules/core/helpers/lyrics.php` — aturan parse/generate LRC
+  - `modules/core/helpers/subtitle.php` — konversi SRT ke WebVTT
+  File hasil adaptasi di MeInsert:
+  - `assets/js/core/timed-text.js` — parser/serializer murni (dari lyrics.php + subtitle.php + lrc-editor.js)
+  - `assets/js/ui/timed-text-editor.js` — dialog editor (dari lrc-editor.js + karaoke.js)
+  - `assets/css/components/timed-text-editor.css` — gaya editor (dari lrc-editor.css)
+  - `assets/vendor/licenses/meel-LICENSE` — salinan lisensi AGPL-3.0 MEeL
+  Rincian modifikasi dan indeks atribusi: `assets/THIRD_PARTY_LICENSES.md`.
 
 **`assets/THIRD_PARTY_LICENSES.md` adalah indeks atribusi otoritatif** untuk
 bundel ini, dan `assets/vendor/licenses/` memuat teks lisensi aslinya. Jika
