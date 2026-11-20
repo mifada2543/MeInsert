@@ -51,6 +51,9 @@ function absoluteUrl(value) {
 function rememberCached(url) {
   if (url) cachedUrls.add(absoluteUrl(url));
 }
+function featureReady(feature) {
+  return feature.urls.every((url) => cachedUrls.has(absoluteUrl(url)));
+}
 function newJobId() {
   jobCounter += 1;
   const random = globalThis.crypto?.randomUUID?.().replace(/-/g, '')
@@ -352,10 +355,12 @@ function buildDialog() {
     featureInputs.set(feature.id, input);
     const name = el('span', { className: 'offline-settings__feature-name' });
     bindText(name, () => t(feature.labelKey));
+    const ready = el('span', { className: 'offline-settings__feature-status' });
+    bindText(ready, () => t(featureReady(feature) ? 'ui.offlineFeatureReady' : 'ui.offlineFeatureNotReady'));
     featureList.append(el('label', {
       className: 'offline-settings__feature',
       for: input.id,
-    }, input, name, el('span', {
+    }, input, name, ready, el('span', {
       className: 'offline-settings__feature-size',
       textContent: formatBytes(feature.bytes),
     })));

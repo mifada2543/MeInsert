@@ -48,14 +48,12 @@ const wasmDir = join(nm, '@colorhythm', 'exiftool-wasm', 'dist', 'esm');
 for (const file of await readdir(wasmDir)) {
   if (!file.endsWith('.wasm')) continue;
   await cp(join(wasmDir, file), join(vendor, 'exiftool-wasm', file));
-  console.log(`copied ${file}`);
 }
-const mainWasm = (await readdir(join(vendor, 'exiftool-wasm'))).find((f) => f.endsWith('.wasm'));
-if (!mainWasm) throw new Error('ExifTool WASM asset was not copied.');
-const uncompressed = join(vendor, 'exiftool-wasm', mainWasm);
-const compressedPath = `${uncompressed}.gz`;
-const wasmBytes = await readFile(uncompressed);
+const mainWasm = (await readdir(wasmDir)).find((file) => file.endsWith('.wasm'));
+if (!mainWasm) throw new Error('ExifTool WASM asset was not found in node_modules.');
+const wasmBytes = await readFile(join(vendor, 'exiftool-wasm', mainWasm));
 const compressed = await gzipAsync(wasmBytes, { level: 9 });
+const compressedPath = join(vendor, 'exiftool-wasm', `${mainWasm}.gz`);
 await writeFile(compressedPath, compressed);
 console.log(`compressed ${wasmBytes.byteLength} -> ${compressed.byteLength} bytes (${mainWasm}.gz)`);
-console.log(`done. ExifTool asset: ${mainWasm}`);
+console.log(`done. ExifTool asset: ${mainWasm}.gz (raw copy is gitignored)`);

@@ -15,29 +15,41 @@ function postEngineProgress(payload) {
     self.postMessage({ type: 'engine-progress', ...payload });
   } catch { /* UI terbaik */ }
 }
-function makeEngineFetch() {
+let engineBytesPromise = null;
+let engineFetchFailed = false;
+export function resetEngineFetchStateForTests() {
+  engineBytesPromise = null;
+  engineFetchFailed = false;
+}
+export function makeEngineFetch() {
   const progressFetch = createProgressFetch({
     onProgress: ({ loaded, total }) => postEngineProgress({ phase: 'downloading', loaded, total }),
   });
   return async (url, init) => {
     postEngineProgress({ phase: 'loading' });
     try {
-      const compressedUrl = engineRequestUrl(url);
-      let response = null;
-      let compressed = false;
-      if (compressedUrl !== String(url)) {
-        try {
-          response = await progressFetch(compressedUrl, init);
-          if (response?.ok) compressed = true;
-          else response = null;
-        } catch {
-          response = null;
-        }
+      if (engineFetchFailed) throw new Error('ExifTool engine download already failed in this worker.');
+      if (!engineBytesPromise) {
+        engineBytesPromise = (async () => {
+          const response = await progressFetch(engineRequestUrl(url), init);
+          if (!response.ok) throw new Error(`ExifTool engine download failed (${response.status}).`);
+          const decoded = await decodeEngineResponse(response);
+          return new Uint8Array(await decoded.arrayBuffer());
+        })().catch((error) => {
+          engineFetchFailed = true;
+          engineBytesPromise = null;
+          throw error;
+        });
       }
-      if (!response) response = await progressFetch(url, init);
-      const decoded = await decodeEngineResponse(response, { compressed });
+      const bytes = await engineBytesPromise;
       postEngineProgress({ phase: 'ready' });
-      return decoded;
+      return new Response(bytes, {
+        status: 200,
+        headers: {
+          'content-type': 'application/wasm',
+          'content-length': String(bytes.byteLength),
+        },
+      });
     } catch (error) {
       postEngineProgress({ phase: 'error' });
       throw error;

@@ -8,13 +8,26 @@ const VENDOR_DIR = new URL('../../vendor/exiftool-wasm/', import.meta.url);
 const ENGINE_WASM_NAME = 'zeroperl-twnm61dk.wasm';
 const ENGINE_WASM_GZ_NAME = `${ENGINE_WASM_NAME}.gz`;
 const ENGINE_WASM_PATTERN = /zeroperl-twnm61dk\.wasm(?:\.(?:gz|br))?$/i;
-function canDecodeCompressedEngine() {
+const ENGINE_WASM_BYTES = 27_651_111;
+const ENGINE_WASM_SHA256 = 'f854cbb7b6b014d2816a89428fcb217162bb0d7e65f2078f3bbd4b72eaa412ce';
+const WASM_MAGIC = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
+const GZIP_MAGIC = [0x1f, 0x8b];
+const MAX_GZIP_LAYERS = 2;
+const MAX_ENGINE_BYTES = 64 * 1024 * 1024;
+function startsWith(bytes, prefix) {
+  return Boolean(bytes?.byteLength >= prefix.length)
+    && prefix.every((value, index) => bytes[index] === value);
+}
+export function isWasmBinary(bytes) {
+  return startsWith(bytes, WASM_MAGIC);
+}
+export function isGzipBinary(bytes) {
+  return startsWith(bytes, GZIP_MAGIC);
+}
+function hasNativeGunzip() {
   return typeof globalThis.DecompressionStream === 'function';
 }
-const FALLBACK_WASM_URL = new URL(
-  canDecodeCompressedEngine() ? ENGINE_WASM_GZ_NAME : ENGINE_WASM_NAME,
-  VENDOR_DIR,
-).href;
+const FALLBACK_WASM_URL = new URL(ENGINE_WASM_GZ_NAME, VENDOR_DIR).href;
 let observedWasmUrl = null;
 let activeLoads = 0;
 let prefetchPromise = null;
@@ -43,21 +56,48 @@ export function engineWasmUrl() {
 }
 export function engineRequestUrl(url) {
   const text = String(url);
-  if (!canDecodeCompressedEngine()) return text;
   return ENGINE_WASM_PATTERN.test(text) && !/\.wasm\.(?:gz|br)$/i.test(text)
     ? `${text.slice(0, -ENGINE_WASM_NAME.length)}${ENGINE_WASM_GZ_NAME}`
     : text;
 }
-export async function decodeEngineResponse(response, { compressed = false } = {}) {
-  if (!compressed || !response) return response;
-  const encoding = String(response.headers?.get?.('content-encoding') || '').toLowerCase();
-  if (encoding && encoding !== 'identity') return response;
-  const body = response.body;
-  if (!body || typeof body.pipeThrough !== 'function') return response;
-  const plain = await new Response(body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+async function gunzipEngine(bytes) {
+  if (hasNativeGunzip()) {
+    const stream = new Response(bytes).body.pipeThrough(new DecompressionStream('gzip'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  const { gunzipSync } = await import('../../vendor/fflate.mjs');
+  return gunzipSync(bytes);
+}
+export async function verifyEngineIntegrity(bytes) {
+  // Web Crypto needs a secure context; structural validation still applies
+  // when it is unavailable (e.g. a local HTTP host).
+  if (typeof globalThis.crypto?.subtle?.digest !== 'function') return false;
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  const hex = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+  if (hex !== ENGINE_WASM_SHA256) throw new Error(`WASM integrity mismatch: ${hex}`);
+  return true;
+}
+export async function decodeEngineBytes(bytes) {
+  let current = bytes;
+  for (let layer = 0; layer <= MAX_GZIP_LAYERS; layer += 1) {
+    if (isWasmBinary(current)) {
+      if (current.byteLength === ENGINE_WASM_BYTES) await verifyEngineIntegrity(current);
+      return current;
+    }
+    if (!isGzipBinary(current)) throw new Error('Engine payload is neither WASM nor gzip.');
+    current = await gunzipEngine(current);
+    if (current.byteLength > MAX_ENGINE_BYTES) throw new Error('Decompressed engine exceeds the size limit.');
+  }
+  throw new Error('Engine payload has too many gzip layers.');
+}
+export async function decodeEngineResponse(response) {
+  if (!response) return response;
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const plain = await decodeEngineBytes(bytes);
   const headers = new Headers(response.headers);
   headers.delete('content-encoding');
   headers.set('content-length', String(plain.byteLength));
+  headers.set('content-type', 'application/wasm');
   return new Response(plain, {
     status: response.status,
     statusText: response.statusText,

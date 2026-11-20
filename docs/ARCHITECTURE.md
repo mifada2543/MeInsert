@@ -88,15 +88,15 @@ metadata/preview parts with actual-byte decompression budgets).
 `exiftool.js` wraps the vendored ExifTool WASM runtime (`readTags`,
 `writeTags`, `disposeExifToolRuntime`). Other engines are reached through the
 vendored libraries loaded inside the workers (Mediabunny, pdf-lib,
-browser-id3-writer, fflate). The ExifTool engine ships as
-`zeroperl-twnm61dk.wasm.gz`: `ui/engine-loading.js` redirects the runtime's
-`.wasm` request to that gzip build and decompresses it with
-`DecompressionStream('gzip')` before handing the bytes to the runtime. Browsers
-without `DecompressionStream` fall back to the uncompressed `.wasm`. The service
-worker caches and reuses the compressed response, while the offline byte
-estimate still describes the uncompressed size held in that cache. `npm run
-vendor` regenerates both files together and `npm run check:assets` verifies
-they match.
+browser-id3-writer, fflate). Only the gzip build of the ExifTool engine is
+vendored (`zeroperl-twnm61dk.wasm.gz`): `ui/engine-loading.js` redirects the
+runtime's `.wasm` request to it and decompresses the bytes with
+`DecompressionStream('gzip')`, falling back to the vendored `fflate.gunzipSync()`
+on browsers without that API. The service worker caches and reuses the
+compressed response, while the offline byte estimate still describes the
+uncompressed size held in that cache. `npm run vendor` regenerates the gzip
+from the pinned dependency and `npm run check:assets` verifies its expanded
+size and SHA-256.
 
 ### `assets/js/workers/**` — off-main-thread execution
 

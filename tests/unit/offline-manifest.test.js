@@ -140,6 +140,17 @@ test('every optional engine URL exists on disk', async () => {
   }
   assert.deepEqual(missing, [], `Optional engine assets missing on disk: ${missing.join(', ')}`);
 });
+test('offline byte estimates match the actual asset sizes on disk', async () => {
+  const mismatches = [];
+  for (const feature of OFFLINE_FEATURES) {
+    let total = 0;
+    for (const url of feature.urls) total += (await stat(join(root, toDiskPath(url)))).size;
+    if (total !== feature.bytes) {
+      mismatches.push(`${feature.id}: manifest ${feature.bytes}, disk ${total}`);
+    }
+  }
+  assert.deepEqual(mismatches, [], `Offline estimates drifted from the shipped assets: ${mismatches.join(', ')}`);
+});
 test('worker entry points are part of the precached shell', async () => {
   const shell = await shellUrls();
   const missing = OFFLINE_FEATURES

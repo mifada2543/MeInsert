@@ -9,7 +9,6 @@ import { createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
 const allSuites = [
@@ -19,6 +18,7 @@ const allSuites = [
   'batch-undo-redo',
   'security',
   'engine-loading',
+  'wasm-integrity',
   'quick-save',
   'clean-metadata',
   'batch-clean',
@@ -31,13 +31,10 @@ const allSuites = [
   'preview-animation',
 ];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 function option(name) {
   const flag = process.argv.slice(2).find((argument) => argument.startsWith(`--${name}=`));
   return flag ? flag.slice(name.length + 3) : undefined;
 }
-
-/** A full run locally; a deterministic slice in CI via `--shard=N/T` or env. */
 function selectSuites() {
   const explicit = option('suites') || process.env.MEINSERT_SUITES;
   if (explicit) {
@@ -53,9 +50,7 @@ function selectSuites() {
     `Invalid shard "${shard}" (expected N/T)`);
   return allSuites.filter((_, index) => index % total === number - 1);
 }
-
 const suites = selectSuites();
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -68,7 +63,6 @@ function findChrome() {
   assert.ok(found, 'Set CHROME_BIN to Chrome/Chromium executable');
   return found;
 }
-
 async function freePort() {
   const probe = createServer();
   await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve));
@@ -76,7 +70,6 @@ async function freePort() {
   await new Promise((resolve) => probe.close(resolve));
   return port;
 }
-
 async function cdpEndpoint(port) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try {
@@ -90,7 +83,6 @@ async function cdpEndpoint(port) {
   }
   throw new Error(`Chrome CDP endpoint did not come up on port ${port}`);
 }
-
 function runSuite(name, endpoint) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [join(here, `${name}.mjs`)], {
@@ -102,11 +94,7 @@ function runSuite(name, endpoint) {
     child.on('error', () => resolve(false));
   });
 }
-
 const port = await freePort();
-// Launching through Playwright keeps its low-CPU default flags (background
-// networking, component updates, etc. are disabled) while exposing a CDP port
-// that every suite can share.
 const browser = await chromium.launch({
   executablePath: findChrome(),
   headless: true,
@@ -123,7 +111,6 @@ try {
 } finally {
   await browser.close();
 }
-
 if (failures.length) {
   console.error(`\n${failures.length}/${suites.length} E2E suites failed: ${failures.join(', ')}`);
   process.exitCode = 1;

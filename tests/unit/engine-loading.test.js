@@ -6,11 +6,16 @@ import assert from 'node:assert/strict';
 import { gzipSync } from 'node:zlib';
 import {
   createProgressFetch,
+  decodeEngineBytes,
   decodeEngineResponse,
   engineRequestUrl,
   engineWasmUrl,
+  isGzipBinary,
+  isWasmBinary,
   noteEngineUrl,
 } from '../../assets/js/ui/engine-loading.js';
+const WASM_HEADER = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
+const sampleWasm = () => Uint8Array.from([...WASM_HEADER, 0x0a, 0x0b, 0x0c]);
 import { friendlyMemoryError, isMemoryError } from '../../assets/js/core/worker-client.js';
 
 const realFetch = globalThis.fetch;
@@ -76,17 +81,17 @@ test('createProgressFetch reports once and returns the original response when st
   assert.deepEqual(seen, [{ loaded: 5, total: 5 }]);
 });
 test('createProgressFetch resolves the vendor-relative URL to the same-origin WASM asset', async () => {
-  const calls = stubFetch(new Response('ok', { headers: { 'content-type': 'application/wasm' } }));
-  const result = await createProgressFetch()('./zeroperl-twnm61dk.wasm');
+  const calls = stubFetch(new Response('ok', { headers: { 'content-type': 'application/gzip' } }));
+  const result = await createProgressFetch()('./zeroperl-twnm61dk.wasm.gz');
   const requested = new URL(calls[0].url);
-  assert.match(requested.pathname, /\/vendor\/exiftool-wasm\/zeroperl-twnm61dk\.wasm$/);
+  assert.match(requested.pathname, /\/vendor\/exiftool-wasm\/zeroperl-twnm61dk\.wasm\.gz$/);
   assert.ok(['file:', 'http:', 'https:'].includes(requested.protocol));
-  assert.equal(result.headers.get('content-type'), 'application/wasm');
+  assert.equal(result.headers.get('content-type'), 'application/gzip');
 });
-test('engineWasmUrl points at the vendored WASM asset without an external origin', () => {
+test('engineWasmUrl points at the gzip WASM asset without an external origin', () => {
   const url = new URL(engineWasmUrl());
   assert.ok(['file:', 'http:', 'https:'].includes(url.protocol));
-  assert.match(url.pathname, /\/vendor\/exiftool-wasm\/zeroperl-twnm61dk\.wasm$/);
+  assert.match(url.pathname, /\/vendor\/exiftool-wasm\/zeroperl-twnm61dk\.wasm\.gz$/);
 });
 test('friendlyMemoryError marks RangeError with both friendly keys and preserves code/detail', () => {
   const source = new RangeError('Invalid array length');
@@ -112,18 +117,64 @@ test('engineRequestUrl maps only the vendored WASM to its gzip build', () => {
   assert.equal(engineRequestUrl('./zeroperl-twnm61dk.wasm.gz'), './zeroperl-twnm61dk.wasm.gz');
   assert.equal(engineRequestUrl('./another.wasm'), './another.wasm');
 });
-test('decodeEngineResponse restores the WASM bytes and corrects Content-Length', async () => {
-  const original = new Uint8Array([1, 2, 3, 4, 5]);
-  const gz = gzipSync(original);
-  const response = new Response(gz, { headers: { 'content-length': String(gz.byteLength) } });
-  const decoded = await decodeEngineResponse(response, { compressed: true });
-  assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...original]);
-  assert.equal(decoded.headers.get('content-length'), String(original.byteLength));
+test('magic-byte helpers recognise WASM and gzip binaries', () => {
+  const wasm = sampleWasm();
+  assert.equal(isWasmBinary(wasm), true);
+  assert.equal(isGzipBinary(gzipSync(wasm)), true);
+  assert.equal(isWasmBinary(gzipSync(wasm)), false);
+  assert.equal(isWasmBinary(Uint8Array.from([0, 0x61, 0x73, 0x6d, 2, 0, 0, 0])), false);
+  assert.equal(isWasmBinary(Uint8Array.from([1, 2, 3])), false);
 });
-test('decodeEngineResponse leaves a host-decoded response untouched', async () => {
-  const response = new Response('plain', { headers: { 'content-encoding': 'gzip' } });
-  const decoded = await decodeEngineResponse(response, { compressed: true });
-  assert.equal(await decoded.text(), 'plain');
+test('decodeEngineResponse detects gzip by magic bytes and validates the WASM result', async () => {
+  const wasm = sampleWasm();
+  const gz = gzipSync(wasm);
+  const response = new Response(gz, { headers: { 'content-type': 'application/octet-stream' } });
+  const decoded = await decodeEngineResponse(response);
+  assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...wasm]);
+  assert.equal(decoded.headers.get('content-length'), String(wasm.byteLength));
+  assert.equal(decoded.headers.get('content-type'), 'application/wasm');
+});
+test('decodeEngineResponse passes a cached raw WASM through despite a misleading Content-Encoding', async () => {
+  const wasm = sampleWasm();
+  const response = new Response(wasm, { headers: { 'content-encoding': 'gzip' } });
+  const decoded = await decodeEngineResponse(response);
+  assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...wasm]);
+});
+test('decodeEngineResponse unwraps double-compressed gzip', async () => {
+  const wasm = sampleWasm();
+  const double = gzipSync(gzipSync(wasm));
+  const decoded = await decodeEngineResponse(new Response(double));
+  assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...wasm]);
+});
+test('decodeEngineResponse rejects non-WASM bytes after decompression', async () => {
+  const response = new Response(gzipSync(Uint8Array.from([1, 2, 3, 4])));
+  await assert.rejects(() => decodeEngineResponse(response), /WASM/i);
+});
+test('decodeEngineResponse uses fflate when DecompressionStream is absent', async () => {
+  const wasm = sampleWasm();
+  const native = globalThis.DecompressionStream;
+  try {
+    delete globalThis.DecompressionStream;
+    const decoded = await decodeEngineResponse(new Response(gzipSync(wasm)));
+    assert.deepEqual([...new Uint8Array(await decoded.arrayBuffer())], [...wasm]);
+  } finally {
+    globalThis.DecompressionStream = native;
+  }
+});
+test('integrity verification is skipped safely without Web Crypto', async () => {
+  const cryptoGlobal = globalThis.crypto;
+  try {
+    Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
+    const wasm = sampleWasm();
+    const decoded = await decodeEngineBytes(gzipSync(wasm));
+    assert.deepEqual([...decoded], [...wasm]);
+  } finally {
+    Object.defineProperty(globalThis, 'crypto', { value: cryptoGlobal, configurable: true });
+  }
+});
+test('decodeEngineBytes refuses more than two gzip layers', async () => {
+  const triple = gzipSync(gzipSync(gzipSync(sampleWasm())));
+  await assert.rejects(() => decodeEngineBytes(triple), /gzip|WASM/i);
 });
 test('noteEngineUrl records the gzip build so offline prefetch stays compressed', () => {
   noteEngineUrl('./zeroperl-twnm61dk.wasm.gz');
