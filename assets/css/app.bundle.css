@@ -1758,7 +1758,6 @@ body[data-page="single"] {
   padding: 18px 22px 20px;
   background: linear-gradient(160deg, var(--surface-2), var(--surface));
 }
-/* Office: a quiet "identity sheet" made from metadata the reader already has. */
 .file-card--top .preview-frame--office {
   display: block;
   min-height: 0;
@@ -6712,8 +6711,6 @@ h1 {
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Halaman Tentang — memakai bahasa visual yang sama dengan beranda:hero + kartu pilihan mode. */
-/* Desktop: hero runs full width, cards spread below it instead of stacking
-   into one narrow right-hand column. */
 .landing-about {
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
