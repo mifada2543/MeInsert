@@ -302,13 +302,3 @@ export function buildChangePlan({
     hasOperations: operations.length > 0,
   };
 }
-export function planSummary(plan) {
-  return {
-    operations: plan?.operations?.length || 0,
-    fields: plan?.operations?.filter((op) => op.kind === 'field').length || 0,
-    custom: plan?.operations?.filter((op) => op.kind === 'custom').length || 0,
-    raw: plan?.operations?.filter((op) => op.kind === 'raw').length || 0,
-    cover: plan?.operations?.filter((op) => op.kind === 'cover').length || 0,
-    unchanged: plan?.unchanged || { fields: 0, custom: 0, raw: 0, cover: 0 },
-  };
-}

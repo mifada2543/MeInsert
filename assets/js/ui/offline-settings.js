@@ -6,7 +6,7 @@ import { bindText, bindTranslation, t } from '../i18n/index.js';
 import { clear, el, formatBytes } from './dom.js';
 import { showToast } from './toast.js';
 import { ENGINE_VERSION } from '../core/build.js';
-import { featureFor, features } from '../core/format-capabilities.js';
+import { features } from '../core/format-capabilities.js';
 import {
   OFFLINE_PROFILE_KEY,
   estimatedBytes,
@@ -50,9 +50,6 @@ function absoluteUrl(value) {
 }
 function rememberCached(url) {
   if (url) cachedUrls.add(absoluteUrl(url));
-}
-function cachedFeature(feature) {
-  return Boolean(feature?.urls?.length) && feature.urls.every((url) => cachedUrls.has(absoluteUrl(url)));
 }
 function newJobId() {
   jobCounter += 1;
@@ -538,18 +535,7 @@ export function openOfflineSettings() {
   first.focus();
   askOptionalStatus();
 }
-export function ensureFeatureOffline(featureId) {
-  try {
-    const feature = featureFor(featureId);
-    if (!feature) return false;
-    if (globalThis.navigator?.onLine !== false) return true;
-    if (cachedFeature(feature)) return true;
-    showToast(t('ui.offlineMissingEngine'), 'error');
-    return false;
-  } catch {
-    return false;
-  }
-}
+
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => initOfflineSettings(), { once: true });

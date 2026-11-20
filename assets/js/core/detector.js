@@ -247,7 +247,4 @@ export async function detectFile(file) {
   }
   return null;
 }
-export function supportedExtensionList() {
-  return [...new Set(Object.values(EXTENSIONS).map((v) => v.label))];
-}
 export { EXTENSIONS };

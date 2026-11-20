@@ -26,7 +26,7 @@ compatibility harness (`tests/compat/`) fails on any other browser request.
   `sniffOgg`), then compares against the extension map (`EXTENSIONS`,
   `EXT_BY_SUBTYPE`). A mismatch produces a warning and the detected type wins.
 - `registry.js` — lazy adapter loading. `ADAPTER_LOADERS` maps format ids to
-  dynamic imports; `getAdapter`, `allAdapters`, `adapterForDetection` resolve
+  dynamic imports; `getAdapter` and `adapterForDetection` resolve
   them (with a cache and failure eviction); `fieldsBySection` groups adapter
   fields into their declared sections.
 - `format-map.js` — `STANDARD_FIELDS` and `FORMAT_FIELDS` map common fields
@@ -37,8 +37,7 @@ compatibility harness (`tests/compat/`) fails on any other browser request.
 - `change-plan.js` — `buildChangePlan()` turns a baseline snapshot plus a
   requested payload into an explicit list of `operations` (field / custom / raw
   / cover) and a minimal write `payload`. No-op edits are dropped; risks are
-  attached (e.g. `SIGNED_PDF`, `MKV_REWRITE`, memory warnings); `planSummary()`
-  condenses the result.
+  attached (e.g. `SIGNED_PDF`, `MKV_REWRITE`, memory warnings).
 - `integrity.js` — `verifyIntegrity(plan, afterSnapshot)` re-compares every
   planned change and every *unchanged* field, custom tag, raw tag, XMP property,
   cover, and structure property against the output snapshot. Returns a status
@@ -89,7 +88,15 @@ metadata/preview parts with actual-byte decompression budgets).
 `exiftool.js` wraps the vendored ExifTool WASM runtime (`readTags`,
 `writeTags`, `disposeExifToolRuntime`). Other engines are reached through the
 vendored libraries loaded inside the workers (Mediabunny, pdf-lib,
-browser-id3-writer, fflate).
+browser-id3-writer, fflate). The ExifTool engine ships as
+`zeroperl-twnm61dk.wasm.gz`: `ui/engine-loading.js` redirects the runtime's
+`.wasm` request to that gzip build and decompresses it with
+`DecompressionStream('gzip')` before handing the bytes to the runtime. Browsers
+without `DecompressionStream` fall back to the uncompressed `.wasm`. The service
+worker caches and reuses the compressed response, while the offline byte
+estimate still describes the uncompressed size held in that cache. `npm run
+vendor` regenerates both files together and `npm run check:assets` verifies
+they match.
 
 ### `assets/js/workers/**` — off-main-thread execution
 

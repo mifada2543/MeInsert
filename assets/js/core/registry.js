@@ -11,9 +11,7 @@ const ADAPTER_LOADERS = {
   mp4: () => import('../formats/mp4.js'),
   office: () => import('../formats/office.js'),
 };
-const ADAPTER_IDS = Object.keys(ADAPTER_LOADERS);
 const adapterCache = new Map();
-
 export async function getAdapter(id) {
   const load = ADAPTER_LOADERS[id];
   if (!load) return null;
@@ -27,10 +25,6 @@ export async function getAdapter(id) {
     adapterCache.set(id, pending);
   }
   return adapterCache.get(id);
-}
-export async function allAdapters() {
-  const adapters = await Promise.all(ADAPTER_IDS.map((id) => getAdapter(id).catch(() => null)));
-  return adapters.filter(Boolean);
 }
 export async function adapterForDetection(detection) {
   return detection ? getAdapter(detection.id) : null;
