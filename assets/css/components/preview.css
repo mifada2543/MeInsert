@@ -163,7 +163,6 @@
 }
 .file-card--top .preview-frame {
   min-height: 0;
-  /* A finite cap keeps max-height interpolatable when the card collapses. */
   max-height: 720px;
   margin: 0;
   border-radius: 0;
@@ -517,8 +516,6 @@
   transform: translateY(-8px);
   pointer-events: none;
 }
-/* Media with a fixed intrinsic size must shrink in step with the grid row;
-   otherwise the 0fr track is pinned by min-content and the collapse stalls. */
 .file-card.is-collapsing .preview-frame--pdf {
   height: 0;
   min-height: 0;
@@ -629,7 +626,6 @@
     padding-bottom: 12px;
   }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .file-card--top .preview-frame,
   .file-card.is-minimized .preview-frame,

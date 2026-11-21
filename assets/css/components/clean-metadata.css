@@ -1,15 +1,10 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* Fase 3 — panel profil bersih + ringkasan sebelum/sesudah (editor satu file). */
-
-/* Home entry card — subtle privacy tint, tokens keep it themed in dark mode. */
 .mode-card-clean .mode-card-icon {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
   color: var(--accent-text);
 }
-
-/* Manual trigger in the editor action bar. */
 .clean-metadata-btn {
   display: inline-flex;
   align-items: center;
@@ -21,8 +16,6 @@
   height: 15px;
   color: var(--accent-text);
 }
-
-/* Dialog shell. */
 .clean-backdrop {
   position: fixed;
   inset: 0;

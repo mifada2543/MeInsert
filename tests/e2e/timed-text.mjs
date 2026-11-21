@@ -5,8 +5,9 @@
 // No upload: all media previews come from blob: URLs of the local file.
 import { getBrowser } from './harness.mjs';
 import { createStaticServer } from './server.mjs';
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
@@ -30,10 +31,9 @@ const context = await browser.newContext({ locale: 'id-ID', acceptDownloads: tru
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-const audio = '/tmp/opencode/timed-text.mp3';
-const video = '/tmp/opencode/timed-text.mp4';
-copyFileSync(join(root, 'tests/fixtures/tone.mp3'), audio);
-copyFileSync(join(root, 'tests/fixtures/clip.mp4'), video);
+const tempDir = mkdtempSync(join(tmpdir(), 'meinsert-timed-text-'));
+const audio = join(tempDir, 'tone.mp3');
+const video = join(tempDir, 'clip.mp4');
 async function open(file) {
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded' });
   await page.locator('#fileInput').setInputFiles(file);
@@ -43,6 +43,8 @@ async function open(file) {
   await page.locator('#timedTextDialog[open]').waitFor({ timeout: 10000 });
 }
 try {
+  copyFileSync(join(root, 'tests/fixtures/tone.mp3'), audio);
+  copyFileSync(join(root, 'tests/fixtures/clip.mp4'), video);
   await open(audio);
   const audioMode = await page.evaluate(() => ({
     mode: document.querySelector('#timedTextDialog')?.dataset.mode,
@@ -83,33 +85,39 @@ try {
 
   await page.locator('#timedTextStyleLyrics').click();
   const panel = page.locator('.timed-text__style-panel');
+  const confirm = page.locator('.timed-text__unsaved-notice');
   await panel.waitFor({ state: 'visible' });
+  if (await page.locator('.timed-text__style-backdrop').isHidden()) throw new Error('Backdrop preferensi tidak muncul.');
   if (!(await page.locator('.timed-text__rows').first().isHidden())) throw new Error('Panel preferensi tidak menimpa daftar baris.');
+  if ((await page.locator('#timedTextSave').innerText()).trim() !== 'Simpan preferensi') {
+    throw new Error('Tombol utama tidak berubah menjadi Simpan preferensi.');
+  }
   await panel.locator('[data-theme="yellow"]').click();
   const cueColor = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
   if (cueColor !== '#FFE066') throw new Error(`Pratinjau tidak mengikuti tema: ${cueColor}`);
-  console.log('PASS: panel preferensi menimpa editor dan pratinjau berubah', cueColor);
+  console.log('PASS: preferensi membuka card + backdrop, tombol utama jadi Simpan preferensi', cueColor);
+
+  await page.locator('#timedTextSave').click();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('meinsert-timed-text-style-v1') || '{}'));
+  if (saved.lyrics?.theme !== 'yellow') throw new Error(`Preferensi tidak tersimpan: ${JSON.stringify(saved)}`);
+  if (await panel.isHidden()) throw new Error('Panel tertutup setelah Simpan preferensi.');
+  console.log('PASS: tombol utama menyimpan preferensi dan panel tetap terbuka');
 
   await page.locator('#timedTextStyleLyrics').click();
-  const confirm = page.locator('.timed-text__unsaved-notice');
+  if ((await page.locator('#timedTextSave').innerText()).trim() !== 'Terapkan') {
+    throw new Error('Tombol utama tidak kembali menjadi Terapkan.');
+  }
+  await page.locator('#timedTextStyleLyrics').click();
+  await panel.locator('[data-theme="plain"]').click();
+  await page.locator('.timed-text__style-backdrop').click({ position: { x: 10, y: 200 } });
   await confirm.waitFor({ state: 'visible' });
   const confirmText = await confirm.innerText();
   if (!/belum tersimpan/i.test(confirmText)) throw new Error(`Konfirmasi salah: ${confirmText}`);
-  await confirm.locator('.timed-text__btn--save').click();
-  await confirm.waitFor({ state: 'hidden' });
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('meinsert-timed-text-style-v1') || '{}'));
-  if (saved.lyrics?.theme !== 'yellow') throw new Error(`Preferensi tidak tersimpan: ${JSON.stringify(saved)}`);
-  console.log('PASS: konfirmasi preferensi belum tersimpan -> Simpan');
-
-  await page.locator('#timedTextStyleLyrics').click();
-  await panel.locator('[data-theme="plain"]').click();
-  await page.locator('#timedTextStyleLyrics').click();
-  await confirm.waitFor({ state: 'visible' });
   await confirm.locator('.timed-text__btn:not(.timed-text__btn--save)').click();
   await confirm.waitFor({ state: 'hidden' });
   const reverted = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
   if (reverted !== '#FFE066') throw new Error(`Batalkan tidak mengembalikan preferensi: ${reverted}`);
-  console.log('PASS: Batalkan mengembalikan preferensi tersimpan');
+  console.log('PASS: klik di luar card meminta konfirmasi; Batalkan memulihkan preferensi');
 
   await page.locator('#timedTextSave').click();
   await page.locator('#timedTextDialog[open]').waitFor({ state: 'hidden' });
@@ -174,10 +182,26 @@ try {
   if (mobile.overflow > 1) throw new Error(`Horizontal scroll saat mobile: ${mobile.overflow}px`);
   if (mobile.columns !== 2 || !mobile.rotateHint) throw new Error(`Tampilan lanskap paksa gagal: ${JSON.stringify(mobile)}`);
   console.log('PASS: layout lanskap 2 kolom di HP portrait tanpa horizontal scroll', mobile);
+
+  await open(audio);
+  const reopened = await page.evaluate(() => ({
+    mode: document.querySelector('#timedTextDialog')?.dataset.mode,
+    styleMode: document.querySelector('#timedTextDialog')?.dataset.styleMode,
+    panelHidden: document.querySelector('.timed-text__style-panel')?.hidden,
+    backdropHidden: document.querySelector('.timed-text__style-backdrop')?.hidden,
+    primary: document.querySelector('#timedTextSave')?.textContent.trim(),
+  }));
+  if (reopened.mode !== 'lyrics' || reopened.styleMode !== 'false' || !reopened.panelHidden
+    || !reopened.backdropHidden || reopened.primary !== 'Terapkan') {
+    throw new Error(`Preferensi video terbawa ke audio: ${JSON.stringify(reopened)}`);
+  }
+  console.log('PASS: preferensi tidak terbawa saat membuka audio setelah video');
+
   if (errors.length) throw new Error(`Page errors: ${errors.join(' | ')}`);
   console.log('ALL timed-text editor scenarios passed');
 } finally {
   await context.close();
   await browser.close();
   server.close();
+  rmSync(tempDir, { recursive: true, force: true });
 }

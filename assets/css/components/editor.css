@@ -71,7 +71,6 @@
   background: var(--success-soft);
   color: var(--success);
 }
-/* Tombol urungkan/ulangkan: breathable di sebelah tab, tetap muat di layar sempit. */
 .editor-head-tools {
   display: inline-flex;
   align-items: center;

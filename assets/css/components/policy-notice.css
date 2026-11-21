@@ -84,8 +84,6 @@
     bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--policy-notice-edit-lift));
   }
 }
-/* While an Options panel is open it occupies the same lower area. Keep the
-   one-time notice out of the way until the panel is closed. */
 body.action-options-open .policy-notice,
 body.batch-options-open .policy-notice {
   opacity: 0;

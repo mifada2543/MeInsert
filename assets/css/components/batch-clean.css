@@ -2,7 +2,6 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Fase 3 — aksi bersihkan metadata pada mode batch + ringkasan per file. */
-
 .batch-clean-btn {
   white-space: nowrap;
 }
@@ -14,7 +13,6 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
-
 .batch-clean-backdrop {
   position: fixed;
   inset: 0;
@@ -42,7 +40,6 @@
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to { opacity: 1; transform: none; }
 }
-
 .batch-clean-head {
   display: flex;
   align-items: center;
@@ -84,7 +81,6 @@
   background: var(--surface-2);
   color: var(--ink-soft);
 }
-
 .batch-clean-profiles {
   display: grid;
   gap: 8px;
@@ -136,7 +132,6 @@
   font-size: 11px;
   line-height: 1.45;
 }
-
 .batch-clean-custom {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -154,7 +149,6 @@
   font-size: 12px;
   cursor: pointer;
 }
-
 .batch-clean-summary {
   display: flex;
   flex-direction: column;
@@ -246,7 +240,6 @@
   font-size: 11px;
   line-height: 1.5;
 }
-
 .batch-clean-actions {
   display: flex;
   justify-content: flex-end;
@@ -263,7 +256,6 @@
   cursor: not-allowed;
   opacity: 0.5;
 }
-
 @media (max-width: 700px) {
   .batch-clean-backdrop {
     padding: 16px;
@@ -285,7 +277,6 @@
     width: 100%;
   }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .batch-clean-card,
   .batch-clean-profile {

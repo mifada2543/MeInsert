@@ -175,6 +175,23 @@ function saveStyles(styles) {
 function stylesEqual(a, b) {
   return JSON.stringify(normalizeCueStyle(a)) === JSON.stringify(normalizeCueStyle(b));
 }
+function ensureTrack() {
+  if (!state) return null;
+  if (!state.data[state.mode]) {
+    state.data[state.mode] = state.mode === 'lyrics'
+      ? { lang: 'id', lines: [], style: normalizeCueStyle(CUE_STYLE_DEFAULTS) }
+      : { lang: 'id', cues: [], style: normalizeCueStyle(CUE_STYLE_DEFAULTS) };
+  }
+  return state.data[state.mode];
+}
+function updatePrimaryAction() {
+  if (!refs?.saveLabel) return;
+  refs.saveLabel.textContent = t(state?.styleMode ? 'ui.timedTextSavePreference' : 'ui.timedTextSave');
+}
+function onPrimaryAction() {
+  if (state?.styleMode) savePreference();
+  else applyChanges();
+}
 function currentStyle() {
   return normalizeCueStyle(state?.data?.[state.mode]?.style);
 }
@@ -199,7 +216,7 @@ function handleStyleChange(patch, replace = false) {
   if (!state) return;
   const base = replace ? (patch || {}) : { ...state.styleDraft, ...patch };
   state.styleDraft = normalizeCueStyle(base);
-  state.data[state.mode].style = state.styleDraft;
+  ensureTrack().style = state.styleDraft;
   refs.stylePanel.setStyle(state.styleDraft);
   applyStylePreview();
   scheduleDraftSave();
@@ -208,6 +225,7 @@ function savePreference() {
   if (!state) return;
   const styles = loadSavedStyles();
   styles[state.mode] = normalizeCueStyle(state.styleDraft);
+  ensureTrack().style = styles[state.mode];
   saveStyles(styles);
   state.styleBaseline = normalizeCueStyle(state.styleDraft);
   showToast(t('ui.timedTextStyleSaved'), 'success', 3200);
@@ -244,11 +262,13 @@ function exitStyleModeImmediate() {
   if (!state) return;
   state.styleMode = false;
   if (dialog) dialog.dataset.styleMode = 'false';
+  if (refs.styleBackdrop) refs.styleBackdrop.hidden = true;
+  updatePrimaryAction();
   refs.stylePanel.element.hidden = true;
   refs.body.hidden = false;
   refs.body.querySelectorAll('.timed-text__rows, .timed-text__hint').forEach((node) => { node.hidden = false; });
   const gear = state.mode === 'subtitles' ? refs.styleBtnSubtitles : refs.styleBtnLyrics;
-  gear.replaceChildren(icon('refresh'));
+  gear.replaceChildren(icon('settings'));
   const label = t('ui.timedTextStyleTitle');
   gear.title = label;
   gear.setAttribute('aria-label', label);
@@ -270,12 +290,16 @@ async function toggleStyleMode() {
     await exitStyleMode();
     return;
   }
+  const track = ensureTrack();
   const saved = loadSavedStyles()[state.mode];
-  const fromData = state.data[state.mode]?.style;
+  const fromData = track.style;
   state.styleDraft = normalizeCueStyle(saved || fromData || CUE_STYLE_DEFAULTS);
   state.styleBaseline = normalizeCueStyle(state.styleDraft);
   state.styleMode = true;
   if (dialog) dialog.dataset.styleMode = 'true';
+  if (refs.styleBackdrop) refs.styleBackdrop.hidden = false;
+  updatePrimaryAction();
+  track.style = state.styleDraft;
   refs.body.querySelectorAll('.timed-text__rows, .timed-text__hint').forEach((node) => { node.hidden = true; });
   refs.stylePanel.element.hidden = false;
   refs.stylePanel.setStyle(state.styleDraft);
@@ -470,7 +494,6 @@ function buildStylePanel(onChange) {
   const note = el('p', { className: 'timed-text__style-note' });
   bindText(note, () => t('ui.timedTextStyleNote'));
   const resetBtn = el('button', { type: 'button', className: 'timed-text__btn', id: 'timedTextStyleReset', on: { click: () => onChange(CUE_STYLE_DEFAULTS, true) } }, icon('refresh'), el('span', {}, translated(() => t('ui.timedTextStyleReset'))));
-  const saveBtn = el('button', { type: 'button', className: 'timed-text__btn timed-text__btn--save', id: 'timedTextSavePreference', on: { click: () => savePreference() } }, icon('check'), el('span', {}, translated(() => t('ui.timedTextSavePreference'))));
   const element = el('section', { className: 'timed-text__style-panel', hidden: true },
     el('div', { className: 'timed-text__style-head' },
       el('h3', { className: 'timed-text__style-title', textContent: translated(() => t('ui.timedTextStyleTitle')) }), resetBtn),
@@ -483,7 +506,6 @@ function buildStylePanel(onChange) {
     field('ui.timedTextPosition', positionRow),
     field('ui.timedTextAlign', alignRow),
     note,
-    saveBtn,
   );
   const setStyle = (style) => {
     const s = normalizeCueStyle(style);
@@ -625,7 +647,7 @@ function buildDialog() {
     title: translated(() => t('ui.timedTextStyleTitle')),
     'aria-label': translated(() => t('ui.timedTextStyleTitle')),
     on: { click: () => toggleStyleMode() },
-  }, icon('refresh'));
+  }, icon('settings'));
   const styleBtnLyrics = makeStyleBtn('timedTextStyleLyrics');
   const styleBtnSubtitles = makeStyleBtn('timedTextStyleSubtitles');
   const stylePanel = buildStylePanel(handleStyleChange);
@@ -669,7 +691,14 @@ function buildDialog() {
   draftLabel.hidden = true;
   const credit = el('p', { className: 'timed-text__credit' });
   bindText(credit, () => t('ui.timedTextCredit'));
-  const saveBtn = actionButton({ id: 'timedTextSave', iconName: 'check', labelKey: 'ui.timedTextSave', onClick: () => applyChanges(), primary: true });
+  const saveLabel = el('span', { className: 'timed-text__btn-label' });
+  const saveBtn = el('button', {
+    id: 'timedTextSave',
+    className: 'timed-text__btn timed-text__btn--save',
+    type: 'button',
+    on: { click: () => onPrimaryAction() },
+  }, icon('check'), saveLabel);
+  bindText(saveLabel, () => t(state?.styleMode ? 'ui.timedTextSavePreference' : 'ui.timedTextSave'));
   const actions = el('footer', { className: 'timed-text__actions' },
     el('div', { className: 'timed-text__actions-left' },
       importBtn, fileInput, exportVttBtn, exportLrcBtn, embedNote, draftLabel),
@@ -693,6 +722,7 @@ function buildDialog() {
       el('div', { className: 'timed-text__heading' }, modeBadge, title, rotateHint), closeBtn),
     el('div', { className: 'timed-text__workspace' }, screen,
       el('div', { className: 'timed-text__editor-pane' }, tablist, body, stylePanel.element)),
+    el('div', { className: 'timed-text__style-backdrop', hidden: true, on: { click: () => exitStyleMode() } }),
     actions,
   ));
   document.body.append(dialog);
@@ -700,7 +730,7 @@ function buildDialog() {
   window.addEventListener('resize', updateRotateHint);
   refs = {
     title, modeBadge, closeBtn, rotateHint, screen, player, videoFrame, karaoke, fullscreenBtn, compactBtn,
-    styleBtnLyrics, styleBtnSubtitles, stylePanel, body,
+    styleBtnLyrics, styleBtnSubtitles, stylePanel, styleBackdrop: dialog.querySelector('.timed-text__style-backdrop'), saveLabel, body,
     mediaWrap, overlay, overlayText, playBtn, backBtn, fwdBtn, seek, timeLabel,
     tabs, tablist, panels: { lyrics: lyricsPanel, subtitles: subtitlesPanel },
     rows: { lyrics: lyricsRows, subtitles: subtitlesRows },
@@ -1273,7 +1303,7 @@ function applyChanges() {
   const handler = state.onApply;
   const next = clone(state.data);
   clearDraft();
-  requestClose();
+  void onRequestClose();
   handler?.(next);
 }
 
@@ -1328,6 +1358,7 @@ function onGlobalKeydown(event) {
 export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   if (typeof document === 'undefined') return;
   cancelClose();
+  if (state?.styleMode) exitStyleModeImmediate();
   const instance = buildDialog();
   if (!instance.isConnected) document.body.append(instance);
   lastFocused = document.activeElement;
@@ -1359,9 +1390,11 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   state.styleMode = false;
   state.styleDraft = currentStyle();
   state.styleBaseline = currentStyle();
+  updatePrimaryAction();
 
   instance.dataset.mode = mode;
   instance.dataset.preview = 'full';
+  instance.dataset.styleMode = 'false';
   instance.dataset.fullscreen = 'false';
   instance.style.setProperty('--tt-video-ratio', '1.7777778');
   refs.compactBtn.hidden = mode !== 'subtitles';

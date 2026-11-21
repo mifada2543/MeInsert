@@ -1,8 +1,6 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* Fase 2 — toggle simpan cepat, petunjuk seret folder, dan pesan memori. */
-
 .quick-save-toggle {
   display: flex;
   flex: 0 1 auto;
@@ -53,7 +51,6 @@
   font-size: 10px;
   line-height: 1.35;
 }
-
 .drop-folder-hint {
   margin: 6px 0 0;
   color: var(--muted);
@@ -63,7 +60,6 @@
 .drop-card.is-dragging .drop-folder-hint {
   color: var(--accent-text);
 }
-
 .toast.is-error.is-memory p,
 .error-card.is-memory .error-body p {
   color: var(--ink-soft);
@@ -72,13 +68,11 @@
 .error-card.is-memory .error-icon {
   color: var(--warning);
 }
-
 @media (max-width: 700px) {
   .quick-save-toggle {
     flex: 1 1 100%;
   }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .quick-save-toggle,
   .drop-folder-hint {
