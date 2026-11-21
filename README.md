@@ -14,7 +14,7 @@ Tanpa server. Tanpa upload. Tanpa akun.
 [Demo langsung](https://meinsert.my.id/) · [Editor satu file](https://meinsert.my.id/single.html) · [Mode batch](https://meinsert.my.id/batch.html) · [Dokumentasi](#dokumentasi-lanjutan)
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
-[![Versi](https://img.shields.io/badge/version-v1.3.0-blue?style=flat-square)](./package.json)
+[![Versi](https://img.shields.io/badge/version-v1.4.0-blue?style=flat-square)](./package.json)
 [![Lisensi](https://img.shields.io/badge/Lisensi-AGPLv3-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#cara-memverifikasi-klaim-lokal)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)
@@ -224,6 +224,10 @@ Detail teknis dipisahkan dari README agar halaman ini tetap ringkas.
 
 | Dokumen | Isi |
 |---|---|
+| [Peta dokumentasi](docs/README.md) | Tempat mulai: dokumen, audiens, dan bahasanya. |
+| [Pemecahan masalah](docs/TROUBLESHOOTING.md) | Gejala umum, penyebab, dan tindakan aman. |
+| [Panduan pengujian](docs/TESTING.md) | Lapisan tes, perintah, dan variabel lingkungan. |
+| [Checklist rilis](docs/RELEASING.md) | Sinkronisasi versi dan cache untuk maintainer. |
 | [Arsitektur & struktur proyek](docs/ARCHITECTURE.md) | Alur kerja, modul, worker, dan WASM. |
 | [Keterbatasan & temuan kompatibilitas](docs/LIMITATIONS.md) | Batas per format, verifikasi, dan bukti harness. |
 | [Verifikasi klaim lokal](docs/security.md) | DevTools, mode pesawat, dan CSP. |

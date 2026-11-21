@@ -10,14 +10,25 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## Daftar isi
 
-- [Belum dirilis](#belum-dirilis)
+- [1.4.0 — 2026-11-21](#140--2026-11-21)
 - [1.3.0 — 2026-11-18](#130--2026-11-18)
 
-## [Belum dirilis]
+## [1.4.0] — 2026-11-21
 
-Perubahan berikut sudah berada di `main` tetapi belum diberi tag rilis, sehingga
-`package.json` dan badge README masih menampilkan `v1.3.0`. Daftar disusun dari
-yang terbaru ke yang terlama.
+Rilis ini merangkum seluruh perubahan yang sebelumnya tertunda di `main`.
+`package.json`, lock file, dan badge README ID/EN kini menunjukkan `v1.4.0`.
+Cache shell naik ke `meinsert-v57`; cache engine tetap `meinsert-engine-v1`.
+Daftar disusun dari yang terbaru ke yang terlama.
+
+### Dokumentasi
+
+- Menambah `docs/README.md` sebagai peta dokumentasi, `docs/TROUBLESHOOTING.md`,
+  `docs/TESTING.md`, dan `docs/RELEASING.md` sesuai panduan gaya di
+  `docs/STYLE-GUIDE.md`.
+- Menghubungkan keempat dokumen tersebut dari README ID/EN, `CONTRIBUTING.md`,
+  dan daftar dokumentasi; urutan heading dan tautan `docs/*.md` kedua README
+  tetap sinkron.
+- Menambah entri rilis ini dan memperbarui daftar isi `CHANGELOG.md`.
 
 ### Eksperimen 2 — gzip-only hardening
 

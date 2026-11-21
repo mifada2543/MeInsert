@@ -210,6 +210,11 @@ same heading-level sequence and link to the same `docs/*.md` pages
 (`tests/unit/readme-parity.test.js`), and generated policy pages must match
 their Markdown sources (`npm run check:policies`).
 
+Start with the [documentation map](docs/README.md). New contributors should
+also read the [testing guide](docs/TESTING.md) before adding coverage, and use
+the [troubleshooting guide](docs/TROUBLESHOOTING.md) when a local check fails.
+Maintainers follow the [release checklist](docs/RELEASING.md).
+
 ## Licensing
 
 By contributing you agree that your work is licensed under AGPL-3.0-or-later,
