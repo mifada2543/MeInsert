@@ -8,7 +8,7 @@ import { showToast } from '../ui/toast.js';
 import { openReviewDialog } from '../ui/review-dialog.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
 import { buildChangePlan } from '../core/change-plan.js';
-import { estimateForBatch } from '../core/memory-estimate.js';
+import { canProceedWithMemory, estimateForBatch } from '../core/memory-estimate.js';
 import { asArray, asString, fileExtension, sameValue } from '../core/tag-utils.js';
 import { validateSelection } from './batch-limits.js';
 import { makeCsvReport, makeJsonReport } from './batch-report.js';
@@ -227,6 +227,12 @@ export class BatchSaveFlow {
       return;
     }
     const lowMemory = typeof reviewResult === 'object' ? Boolean(reviewResult.lowMemory) : false;
+    const memoryDecision = canProceedWithMemory(this._batchMemory, { lowMemory });
+    if (!memoryDecision.allowed) {
+      this.setStatus('Pemrosesan diblokir oleh batas memori.', true);
+      showToast(t('ui.memoryBlockNotice'), 'error', 7000);
+      return;
+    }
     if (typeof reviewResult === 'object' && reviewResult.keepOriginalExt) {
       const used = new Set();
       for (const plan of plans) {

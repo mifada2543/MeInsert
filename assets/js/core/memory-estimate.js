@@ -32,7 +32,7 @@ export function estimateMemory({
     ? ''
     : level === 'warn'
       ? `Perkiraan memori tinggi (~${formatMemoryMb(peakBytes)}). Estimasi kasar; browser tidak memberi angka pasti.`
-      : `Perkiraan memori sangat tinggi (~${formatMemoryMb(peakBytes)}). Estimasi kasar; browser tidak memberi angka pasti. Pertimbangkan modus hemat memori.`;
+      : `Perkiraan memori sangat tinggi (~${formatMemoryMb(peakBytes)}). Estimasi kasar; browser tidak memberi angka pasti. Diperlukan konfirmasi tambahan atau modus hemat memori.`;
   return {
     level,
     estimatedBytes: Math.round(peakBytes),
@@ -41,6 +41,17 @@ export function estimateMemory({
     message,
     breakdown: { inputs, held, cover, copyFactor, engineOverheadMb, observedPeakMb: observed / (1024 * 1024) },
   };
+}
+/**
+ * Single source of truth for save-path enforcement. `warn` is dismissible;
+ * `block` requires either low-memory mode or an explicit acknowledgement.
+ */
+export function canProceedWithMemory(memory, { lowMemory = false, memoryOverride = false } = {}) {
+  if (!memory || memory.level === 'ok') return { allowed: true, reason: 'ok' };
+  if (memory.level === 'block' && !lowMemory && !memoryOverride) {
+    return { allowed: false, reason: 'blocked' };
+  }
+  return { allowed: true, reason: memory.level === 'block' ? 'acknowledged' : 'warn' };
 }
 export function estimateForSingle({ fileSize = 0, coverBytes = 0, observedPeakMb = 0 } = {}) {
   return estimateMemory({

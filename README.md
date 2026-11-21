@@ -165,7 +165,7 @@ Klik **Simpan**, tinjau seluruh perubahan, lalu konfirmasi. Hasil dibaca ulang d
 
 MeInsert menulis ulang metadata secara lokal dan memverifikasi hasilnya, tetapi sebagian data tidak dapat dipertahankan. Laporan integritas setelah penulisan adalah hasil otoritatif per file.
 
-- **Ukuran dan memori:** maks. 4 GB per file; estimasi memori puncak memunculkan peringatan dan, bila terlalu besar, memblokir penulisan.
+- **Ukuran dan memori:** maks. 4 GB per file; estimasi memori puncak memunculkan peringatan. Bila masuk kategori blok, penulisan hanya bisa dilanjutkan lewat mode hemat memori (batch) atau konfirmasi risiko eksplisit (satu file); quick-save tidak bisa melewatinya.
 - **Cakupan perubahan:** hanya field yang Anda ubah yang ditulis. Ini bukan janji bahwa semua tag yang tidak didukung tetap utuh.
 - **Tanda tangan digital:** mengedit PDF atau dokumen Office bertanda tangan membuat tanda tangannya tidak valid.
 - **Format tertentu:** chapter dan attachment MKV/WebM umumnya tidak ikut terbawa; FLAC-in-Ogg dan Speex tidak didukung; PDF terenkripsi tidak didukung dan Office terenkripsi ditolak.

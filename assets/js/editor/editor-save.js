@@ -7,7 +7,7 @@ import { openReviewDialog } from '../ui/review-dialog.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
 import { buildChangePlan } from '../core/change-plan.js';
 import { clearHistory } from '../core/history.js';
-import { estimateForSingle } from '../core/memory-estimate.js';
+import { canProceedWithMemory, estimateForSingle } from '../core/memory-estimate.js';
 import { verifyIntegrity } from '../core/integrity.js';
 import { preserveFailedWrite, allowResultDownload } from '../core/write-guard.js';
 import { asString } from '../core/tag-utils.js';
@@ -158,7 +158,7 @@ export async function saveMetadata(ctx) {
     return;
   }
   const wantsQuickSave = quickSaveEnabled();
-  const skipReview = wantsQuickSave && isQuickSaveEligible(plan);
+  const skipReview = wantsQuickSave && isQuickSaveEligible(plan) && memory.level !== 'block';
   let reviewResult = null;
   if (!skipReview) {
     if (wantsQuickSave) showToast(t('ui.reviewNeededForThisChange'), 'info', 5000);
@@ -166,6 +166,14 @@ export async function saveMetadata(ctx) {
     const confirmed = typeof reviewResult === 'object' && reviewResult !== null ? Boolean(reviewResult.confirmed) : Boolean(reviewResult);
     if (!confirmed) {
       setStatus(els, `${state.detection.label} · perubahan belum disimpan`);
+      return;
+    }
+    const memoryDecision = canProceedWithMemory(memory, {
+      memoryOverride: reviewResult?.memoryOverride,
+    });
+    if (!memoryDecision.allowed) {
+      setStatus(els, `${state.detection.label} · pemrosesan diblokir oleh batas memori`, true);
+      showToast(t('ui.memoryBlockNotice'), 'error', 7000);
       return;
     }
   }

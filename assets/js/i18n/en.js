@@ -860,6 +860,8 @@ export default {
   "ui.timedTextBackward": "Back 5 seconds",
   "ui.timedTextForward": "Forward 5 seconds",
   "ui.timedTextRemove": "Remove line",
+  "ui.memoryOverride": "I understand the risk and still want to continue",
+  "ui.memoryBlockNotice": "Processing is blocked until low-memory mode or risk acknowledgement is selected.",
   "ui.timedTextTitle": "Timed text",
   "ui.timedTextLyrics": "Lyrics",
   "ui.timedTextSubtitles": "Subtitles",

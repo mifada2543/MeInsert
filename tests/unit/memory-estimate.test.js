@@ -9,6 +9,7 @@ import {
   estimateMemory,
   estimateForSingle,
   estimateForBatch,
+  canProceedWithMemory,
 } from '../../assets/js/core/memory-estimate.js';
 
 test('estimateMemory keeps the original thresholds', () => {
@@ -26,6 +27,15 @@ test('observed peak raises the risk level without changing the rough inputs', ()
   assert.ok(observed.estimatedMb >= 500);
   assert.equal(observed.breakdown.observedPeakMb, 500);
   assert.equal(observed.breakdown.inputs, rough.breakdown.inputs);
+});
+
+test('canProceedWithMemory enforces the same policy on every save path', () => {
+  assert.deepEqual(canProceedWithMemory(null), { allowed: true, reason: 'ok' });
+  assert.deepEqual(canProceedWithMemory({ level: 'ok' }), { allowed: true, reason: 'ok' });
+  assert.deepEqual(canProceedWithMemory({ level: 'warn' }), { allowed: true, reason: 'warn' });
+  assert.deepEqual(canProceedWithMemory({ level: 'block' }), { allowed: false, reason: 'blocked' });
+  assert.deepEqual(canProceedWithMemory({ level: 'block' }, { lowMemory: true }), { allowed: true, reason: 'acknowledged' });
+  assert.deepEqual(canProceedWithMemory({ level: 'block' }, { memoryOverride: true }), { allowed: true, reason: 'acknowledged' });
 });
 
 test('single and batch helpers forward the observed peak', () => {

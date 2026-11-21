@@ -112,45 +112,123 @@ function rewriteFrameSize(frame, fromVersion, toVersion) {
   return out;
 }
 
+const TEXT_ENCODINGS = { 0: 'iso-8859-1', 1: 'utf-16le', 2: 'utf-16be', 3: 'utf-8' };
+function terminated(body, offset, encoding) {
+  const decoder = new TextDecoder(TEXT_ENCODINGS[encoding] || TEXT_ENCODINGS[0]);
+  if (encoding === 1 || encoding === 2) {
+    let end = offset;
+    while (end + 1 < body.length && !(body[end] === 0 && body[end + 1] === 0)) end += 2;
+    return { value: decoder.decode(body.slice(offset, end)), end: end + 2 };
+  }
+  let end = offset;
+  while (end < body.length && body[end] !== 0) end += 1;
+  return { value: decoder.decode(body.slice(offset, end)), end: end + 1 };
+}
+
 /**
- * Replace only the listed frame IDs from `generated` inside the source tag.
- * Every other frame is copied byte-for-byte, including unknown/binary frames.
- * Returns null when the source cannot be patched safely (caller falls back).
+ * Distinguishing key for multi-instance frame IDs. Returns null for IDs that
+ * are singleton by definition, so callers can preserve every other instance.
  */
-export function patchId3Tag(source, generated, editedIds) {
+export function frameIdentity(id, frameBytes) {
+  const body = frameBytes.slice(10);
+  if (!body.length) return null;
+  const encoding = body[0] || 0;
+  if (id === 'COMM' || id === 'USLT') {
+    if (body.length < 4) return null;
+    const language = String.fromCharCode(...body.slice(1, 4));
+    const description = terminated(body, 4, encoding);
+    return `${language}|${description.value}`;
+  }
+  if (id === 'TXXX') {
+    const description = terminated(body, 1, encoding);
+    return description.value;
+  }
+  if (id === 'APIC') {
+    const mime = terminated(body, 1, 0);
+    const type = body[mime.end];
+    const description = terminated(body, mime.end + 1, encoding);
+    return `${mime.value}|${type}|${description.value}`;
+  }
+  return null;
+}
+
+function isTarget(spec, frame, seen) {
+  if (spec.match === 'all') return true;
+  if (spec.match === 'first') {
+    if (seen.has(spec.id)) return false;
+    seen.add(spec.id);
+    return true;
+  }
+  if (spec.match === 'identity') return frameIdentity(spec.id, frame.bytes) === spec.identity;
+  if (typeof spec.match === 'function') return Boolean(spec.match(frame.bytes));
+  return false;
+}
+
+/**
+ * Patch the source tag with operation-aware frame edits.
+ *
+ * `edits` is either an array of frame IDs (legacy behaviour: replace every
+ * instance of those IDs) or an array of specs:
+ *   { id, match: 'all' | 'first' | 'identity' | fn, identity?, frames? }
+ * A spec with `frames: []` removes the targeted instance(s). Frames that are
+ * not targeted are copied byte-for-byte, including unknown/binary frames.
+ */
+export function patchId3Tag(source, generated, edits) {
   const bytes = source instanceof Uint8Array ? source : new Uint8Array(source || []);
   const src = parseId3Tag(bytes);
   const gen = parseId3Tag(generated);
   if (!src || !gen) return null;
-  const edited = new Set(editedIds || []);
+
   const generatedBy = new Map();
   for (const frame of gen.frames) {
     if (!generatedBy.has(frame.id)) generatedBy.set(frame.id, []);
     generatedBy.get(frame.id).push(rewriteFrameSize(frame.bytes, gen.version[0], src.version[0]));
   }
+  const specs = (Array.isArray(edits) ? edits : []).map((item) => {
+    if (typeof item === 'string') {
+      return { id: item, match: 'all', frames: generatedBy.get(item) || [] };
+    }
+    return {
+      id: item.id,
+      match: item.match || 'all',
+      identity: item.identity,
+      frames: item.frames || generatedBy.get(item.id) || [],
+    };
+  }).filter((spec) => /^[A-Z0-9]{4}$/.test(spec.id || ''));
+  const byId = new Map();
+  for (const spec of specs) {
+    if (!byId.has(spec.id)) byId.set(spec.id, []);
+    byId.get(spec.id).push(spec);
+  }
 
-  const inserted = new Set();
+  const consumed = new Set();
+  const seenFirst = new Set();
   const merged = [];
   for (const frame of src.frames) {
-    if (edited.has(frame.id)) {
-      if (!inserted.has(frame.id)) {
-        for (const bytes of generatedBy.get(frame.id) || []) merged.push(bytes);
-        inserted.add(frame.id);
-      }
+    const candidates = byId.get(frame.id) || [];
+    let target = null;
+    for (const spec of candidates) {
+      if (consumed.has(spec)) continue;
+      if (isTarget(spec, frame, seenFirst)) { target = spec; break; }
+    }
+    if (target) {
+      for (const replacement of target.frames) merged.push(replacement);
+      consumed.add(target);
       continue;
     }
+    // A frame may still be a "first" candidate for an unconsumed spec whose
+    // identity did not match; do not consume it, but do not duplicate it.
     merged.push(frame.bytes);
   }
-  for (const [id, list] of generatedBy) {
-    if (!edited.has(id) || inserted.has(id)) continue;
-    for (const bytes of list) merged.push(bytes);
+  for (const spec of specs) {
+    if (consumed.has(spec)) continue;
+    for (const replacement of spec.frames) merged.push(replacement);
   }
 
   let body = concat([...merged, new Uint8Array(Math.max(src.paddingLength, 1024))]);
   if (src.unsynchronisation) body = unsynchronise(body);
-  const header = Uint8Array.from(encoder.encode('ID3'));
   const fullHeader = new Uint8Array(10);
-  fullHeader.set(header, 0);
+  fullHeader.set(Uint8Array.from(encoder.encode('ID3')), 0);
   fullHeader[3] = src.version[0];
   fullHeader[4] = src.version[1];
   // Drop extended-header/footer/experimental bits; keep unsynchronisation.
@@ -159,4 +237,4 @@ export function patchId3Tag(source, generated, editedIds) {
   return concat([fullHeader, body, bytes.slice(src.tagEnd)]);
 }
 
-export default { parseId3Tag, patchId3Tag };
+export default { parseId3Tag, patchId3Tag, frameIdentity };

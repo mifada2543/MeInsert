@@ -782,6 +782,8 @@ export default {
   "ui.timedTextBackward": "Mundur 5 detik",
   "ui.timedTextForward": "Maju 5 detik",
   "ui.timedTextRemove": "Hapus baris",
+  "ui.memoryOverride": "Saya memahami risikonya dan tetap ingin melanjutkan",
+  "ui.memoryBlockNotice": "Pemrosesan diblokir sampai mode hemat memori atau konfirmasi risiko dipilih.",
   "ui.timedTextTitle": "Teks berirama",
   "ui.timedTextLyrics": "Lirik",
   "ui.timedTextSubtitles": "Subtitle",

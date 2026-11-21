@@ -7,11 +7,7 @@ import { coverFromTags } from '../core/image-utils.js';
 import { KNOWN_ID3 } from '../core/integrity-rules.js';
 import { toSyltPairs } from '../core/timed-text.js';
 import { readSylt, toWriterSylt } from '../core/id3-sylt.js';
-import { patchId3Tag } from '../core/id3-passthrough.js';
-const EDITED_ID3_FRAMES = [
-  'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
-  'TCOM', 'COMM', 'USLT', 'TCOP', 'TSSE', 'SYLT', 'APIC', 'TXXX',
-];
+import { parseId3Tag, patchId3Tag, frameIdentity } from '../core/id3-passthrough.js';
 export const meta = {
   id: 'mp3',
   engine: 'media',
@@ -159,6 +155,12 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     TCOP: 'copyright',
     TSSE: 'software',
   };
+  const FIELD_FRAME = {
+    title: 'TIT2', artist: 'TPE1', album: 'TALB', albumArtist: 'TPE2',
+    year: 'TYER', genre: 'TCON', track: 'TRCK', disc: 'TPOS',
+    composer: 'TCOM', comment: 'COMM', lyrics: 'USLT', copyright: 'TCOP',
+    software: 'TSSE',
+  };
   const rawRemove = (payload?.rawRemove || []).map((item) => asString(item).trim()).filter(Boolean);
   const removeCover = rawRemove.includes('APIC');
   const rawCustomRemove = new Set(payload?.customRemove || []);
@@ -191,77 +193,138 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   // back below — either from the editor sidecar or verbatim from the source.
   const existingSylt = await readSylt(file);
   const buffer = await file.arrayBuffer();
+  const canPatch = Boolean(parseId3Tag(buffer));
   const writer = new ID3Writer(buffer);
   writer.padding = 0;
-  const str = (id, frameId) => {
-    const value = asString(values[id]).trim();
-    if (value) writer.setFrame(frameId, value);
+  const firstComm = parseId3Tag(buffer)?.frames.find((frame) => frame.id === 'COMM');
+  const commParts = firstComm ? String(frameIdentity('COMM', firstComm.bytes) || '').split('|') : [];
+  const primaryComm = {
+    language: commParts[0] || 'eng',
+    description: commParts.slice(1).join('|'),
   };
-  const list = (id, frameId) => {
-    const value = asString(values[id]).trim();
-    if (value) writer.setFrame(frameId, [value]);
+  const specs = [];
+  const spec = (id, match = 'all', identity = undefined, removeFrame = false) => {
+    specs.push({ id, match, identity, removeFrame });
   };
-  str('title', 'TIT2');
-  list('artist', 'TPE1');
-  str('album', 'TALB');
-  str('albumArtist', 'TPE2');
-  const year = Number(values.year);
-  if (Number.isInteger(year) && year >= 1000) writer.setFrame('TYER', year);
-  list('genre', 'TCON');
-  str('track', 'TRCK');
-  str('disc', 'TPOS');
-  list('composer', 'TCOM');
-  if (asString(values.comment).trim()) {
-    writer.setFrame('COMM', { description: '', text: asString(values.comment) });
-  }
-  if (asString(values.lyrics).trim()) {
-    writer.setFrame('USLT', { description: '', lyrics: asString(values.lyrics) });
-  }
-  str('copyright', 'TCOP');
-  str('software', 'TSSE');
-  const syltLines = payload?.sidecar?.lyrics?.lines;
-  if (Array.isArray(syltLines) && syltLines.length) {
-    writer.setFrame('SYLT', {
-      type: 2,
-      timestampFormat: 2,
-      language: 'ind',
-      description: '',
-      text: toSyltPairs(syltLines),
-    });
-  } else if (existingSylt) {
-    const sylt = toWriterSylt(existingSylt);
-    if (sylt) writer.setFrame('SYLT', sylt);
-  }
-  const coverAction = removeCover ? 'remove' : (payload?.cover?.action || 'keep');
-  const writeCover = (imgData, name, kind) => {
-    writer.setFrame('APIC', {
-      description: name || 'cover',
-      data: imgData,
-      type: kind === 'coverBack' ? 4 : 3,
-    });
-  };
-  if (coverAction === 'set' && payload?.cover?.data) {
-    const data = payload.cover.data instanceof Uint8Array ? payload.cover.data : new Uint8Array(payload.cover.data);
-    writeCover(data, payload.cover.name, payload.cover.kind);
-  } else if (coverAction === 'keep') {
-    const image = tags.images?.[0];
-    if (image?.data) {
-      const data = image.data;
-      const copy = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-      writeCover(copy, image.description || image.name, image.kind);
+  const writeField = (field, value) => {
+    const text = asString(value).trim();
+    switch (field) {
+      case 'title': writer.setFrame('TIT2', text); break;
+      case 'artist': writer.setFrame('TPE1', [text]); break;
+      case 'album': writer.setFrame('TALB', text); break;
+      case 'albumArtist': writer.setFrame('TPE2', text); break;
+      case 'year': {
+        const year = Number(text);
+        if (Number.isInteger(year) && year >= 1000) writer.setFrame('TYER', year);
+        break;
+      }
+      case 'genre': writer.setFrame('TCON', [text]); break;
+      case 'track': writer.setFrame('TRCK', text); break;
+      case 'disc': writer.setFrame('TPOS', text); break;
+      case 'composer': writer.setFrame('TCOM', [text]); break;
+      case 'comment': writer.setFrame('COMM', {
+        language: primaryComm.language,
+        description: primaryComm.description,
+        text,
+      }); break;
+      case 'lyrics': writer.setFrame('USLT', { description: '', lyrics: text }); break;
+      case 'copyright': writer.setFrame('TCOP', text); break;
+      case 'software': writer.setFrame('TSSE', text); break;
+      default: break;
     }
-  }
-  const custom = [...(payload?.custom || [])];
-  const removedCustom = rawCustomRemove;
-  const existingCustom = customTags(tags);
-  const customMap = new Map(existingCustom.map((item) => [item.key, item.value]));
-  for (const key of removedCustom) customMap.delete(key);
-  for (const item of custom) {
-    const key = asString(item?.key).trim();
-    if (key) customMap.set(key, asString(item?.value));
-  }
-  for (const [description, value] of customMap) {
-    if (description && value) writer.setFrame('TXXX', { description, value });
+  };
+  const frameMatch = (id) => (id === 'COMM' ? 'first' : 'all');
+
+  if (canPatch) {
+    // Only write frames whose logical value actually changed. Every other
+    // frame — including additional COMM/APIC/TXXX instances — is copied
+    // verbatim by the byte-level patcher.
+    const changedFields = new Set([...Object.keys(set), ...remove]);
+    for (const field of changedFields) {
+      const frameId = FIELD_FRAME[field];
+      if (!frameId) continue;
+      const removing = remove.has(field) || !asString(set[field]).trim();
+      if (removing) spec(frameId, frameMatch(frameId), undefined, true);
+      else writeField(field, set[field]);
+      if (!removing) spec(frameId, frameMatch(frameId));
+    }
+    const existingCustom = customTags(tags);
+    for (const key of rawCustomRemove) spec('TXXX', 'identity', key, true);
+    for (const item of payload?.custom || []) {
+      const key = asString(item?.key).trim();
+      if (!key) continue;
+      const value = asString(item?.value);
+      if (existingCustom.some((entry) => entry.key === key && entry.value === value)) continue;
+      writer.setFrame('TXXX', { description: key, value });
+      spec('TXXX', 'identity', key);
+    }
+    for (const id of rawRemove) {
+      if (id === 'APIC' && removeCover) continue;
+      if (!FRAME_FIELDS[id] && /^[A-Z0-9]{4}$/.test(id)) spec(id, 'all', undefined, true);
+    }
+    const syltLines = payload?.sidecar?.lyrics?.lines;
+    if (Array.isArray(syltLines) && syltLines.length) {
+      writer.setFrame('SYLT', {
+        type: 2,
+        timestampFormat: 2,
+        language: 'ind',
+        description: '',
+        text: toSyltPairs(syltLines),
+      });
+      spec('SYLT');
+    }
+    const coverAction = removeCover ? 'remove' : (payload?.cover?.action || 'keep');
+    if (coverAction === 'set' && payload?.cover?.data) {
+      const data = payload.cover.data instanceof Uint8Array ? payload.cover.data : new Uint8Array(payload.cover.data);
+      writer.setFrame('APIC', {
+        description: payload.cover.name || 'cover',
+        data,
+        type: payload.cover.kind === 'coverBack' ? 4 : 3,
+      });
+      spec('APIC', 'first');
+    } else if (coverAction === 'remove') {
+      spec('APIC', 'first', undefined, true);
+    }
+  } else {
+    // No patchable tag: rebuild exactly as before so no known field is lost.
+    for (const [field, value] of Object.entries(values)) {
+      const text = asString(value).trim();
+      if (text) writeField(field, text);
+    }
+    if (existingSylt) {
+      const sylt = toWriterSylt(existingSylt);
+      if (sylt) writer.setFrame('SYLT', sylt);
+    }
+    const coverAction = removeCover ? 'remove' : (payload?.cover?.action || 'keep');
+    if (coverAction === 'set' && payload?.cover?.data) {
+      const data = payload.cover.data instanceof Uint8Array ? payload.cover.data : new Uint8Array(payload.cover.data);
+      writer.setFrame('APIC', {
+        description: payload.cover.name || 'cover',
+        data,
+        type: payload.cover.kind === 'coverBack' ? 4 : 3,
+      });
+    } else if (coverAction === 'keep') {
+      const image = tags.images?.[0];
+      if (image?.data) {
+        const data = image.data;
+        const copy = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+        writer.setFrame('APIC', {
+          description: image.description || image.name || 'cover',
+          data: copy,
+          type: image.kind === 'coverBack' ? 4 : 3,
+        });
+      }
+    }
+    const existingCustom = customTags(tags);
+    const customMap = new Map(existingCustom.map((item) => [item.key, item.value]));
+    for (const key of rawCustomRemove) customMap.delete(key);
+    for (const item of payload?.custom || []) {
+      const key = asString(item?.key).trim();
+      if (key) customMap.set(key, asString(item?.value));
+    }
+    for (const [description, value] of customMap) {
+      if (description && value) writer.setFrame('TXXX', { description, value });
+    }
   }
   let generated;
   try {
@@ -269,9 +332,19 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Tag ID3 gagal ditulis.', error.message || String(error));
   }
-  // Copy untouched ID3 frames verbatim instead of rebuilding the whole tag.
-  // Falls back to the generated tag only for unsupported/malformed sources.
-  const patched = patchId3Tag(buffer, generated, EDITED_ID3_FRAMES);
+  const generatedFrames = parseId3Tag(generated)?.frames || [];
+  const edits = canPatch
+    ? specs.map((item) => ({
+      id: item.id,
+      match: item.match,
+      identity: item.identity,
+      frames: item.removeFrame ? [] : generatedFrames
+        .filter((frame) => frame.id === item.id
+          && (!item.identity || frameIdentity(item.id, frame.bytes) === item.identity))
+        .map((frame) => frame.bytes),
+    }))
+    : generatedFrames.map((frame) => ({ id: frame.id, match: 'all', frames: [frame.bytes] }));
+  const patched = patchId3Tag(buffer, generated, edits);
   const out = patched || generated;
   const passThroughWarning = patched ? '' : 'Tag ID3 ditulis ulang penuh; frame yang tidak dikenal mungkin hilang.';
   const blob = new Blob([out], { type: 'audio/mpeg' });

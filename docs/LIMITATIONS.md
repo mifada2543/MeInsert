@@ -39,7 +39,11 @@ combination.
   can use an observed peak; it does not change processing. Payload buffers sent
   to workers are transferred rather than copied twice. The batch review dialog
   suggests the existing low-memory mode automatically when the peak reaches the
-  warning/block band.
+  warning/block band. A `block` classification is now enforced on every save
+  path: processing is disabled until low-memory mode (batch) or an explicit risk
+  acknowledgement (single file) is selected; quick-save cannot bypass it. `warn`
+  remains a dismissible warning. The estimated payload size is not a measurement
+  of browser JS heap or RSS.
 - **Loss scope** — only requested field changes are written. This is not a
   promise that every unsupported tag survives; review the integrity findings
   after each write. A `failed` integrity result is flagged to the user.
@@ -84,8 +88,11 @@ combination.
 
 - ID3v2.3/v2.4 tags are patched surgically (`core/id3-passthrough.js`): frames
   that are not edited are copied byte-for-byte, including unknown/binary frames
-  such as `PRIV`, `CHAP` and `CTOC`. Only the frames represented in the editor
-  (title, artist, cover, `TXXX`, `SYLT`, …) are replaced.
+  such as `PRIV`, `CHAP` and `CTOC`. Editing is operation-aware: an edit to
+  `TIT2` writes only `TIT2`, so unrelated `COMM`, `APIC` and `TXXX` frames are
+  never rebuilt. Multiple instances are distinguished by description/language
+  (`COMM`, `USLT`, `TXXX`) or MIME/type/description (`APIC`); editing or removing
+  a cover/comment targets only the primary instance and keeps the others.
 - ID3v2.2 tags and malformed tags cannot be patched safely; MeInsert falls back
   to a full tag rewrite and warns that unknown frames may be lost.
 

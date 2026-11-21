@@ -4,6 +4,7 @@
 import { t, translated } from '../i18n/index.js';
 import { el } from './dom.js';
 import { icon } from './icons.js';
+import { canProceedWithMemory } from '../core/memory-estimate.js';
 let current = null;
 let currentCleanup = null;
 let pendingResolve = null;
@@ -193,7 +194,9 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
   );
   const mismatches = plans.filter((plan) => plan?.extensionMismatch?.found);
   let lowMemoryInput = null;
+  let memoryOverrideInput = null;
   let extKeepInput = null;
+  const memoryBlocked = plans.some((plan) => plan?.memory?.level === 'block');
   if (mode === 'batch') {
     lowMemoryInput = el('input', { type: 'checkbox', id: 'reviewLowMemory' });
     // Suggest the existing streaming-output path automatically when the
@@ -209,6 +212,28 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
       ),
     );
   }
+  if (memoryBlocked && mode !== 'batch') {
+    memoryOverrideInput = el('input', { type: 'checkbox', id: 'reviewMemoryOverride' });
+    body.append(
+      el('label', { className: 'review-low-memory', for: 'reviewMemoryOverride' },
+        memoryOverrideInput,
+        el('span', {},
+          el('strong', { textContent: translated(() => t('ui.memoryBlockNotice')) }),
+          el('span', { textContent: translated(() => t('ui.memoryOverride')) }),
+        ),
+      ),
+    );
+  }
+  const updateMemoryGate = () => {
+    const decision = canProceedWithMemory(plans[0]?.memory, {
+      lowMemory: Boolean(lowMemoryInput?.checked),
+      memoryOverride: Boolean(memoryOverrideInput?.checked),
+    });
+    confirmButton.disabled = !decision.allowed;
+  };
+  lowMemoryInput?.addEventListener('change', updateMemoryGate);
+  memoryOverrideInput?.addEventListener('change', updateMemoryGate);
+  updateMemoryGate();
   if (mismatches.length) {
     const first = mismatches[0];
     const recommended = first.extensionMismatch.recommendedName || first.outputName || '';
@@ -315,6 +340,7 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
   confirmButton.addEventListener('click', () => finish({
     confirmed: true,
     lowMemory: Boolean(lowMemoryInput?.checked),
+    memoryOverride: Boolean(memoryOverrideInput?.checked),
     keepOriginalExt: extKeepInput ? Boolean(extKeepInput.checked) : null,
   }));
   backdrop.addEventListener('click', (event) => {

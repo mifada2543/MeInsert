@@ -36,9 +36,12 @@ dan badge README ID/EN menunjukkan `v1.4.1`. Cache shell naik ke
 
 ### Preservasi metadata & UX
 
-- Patch ID3v2.3/v2.4 tingkat byte: frame yang tidak diedit — termasuk `PRIV`,
-  `CHAP`, `CTOC`, dan frame biner tak dikenal — disalin apa adanya; fallback
-  disertai peringatan untuk tag v2.2/rusak.
+- Patch ID3v2.3/v2.4 tingkat byte yang **operation-aware**: hanya frame yang
+  benar-benar diedit yang ditulis ulang. Frame lain — termasuk `COMM`, `APIC`,
+  `TXXX` ganda, `PRIV`, `CHAP`, `CTOC`, dan frame biner tak dikenal — disalin apa
+  adanya; fallback disertai peringatan untuk tag v2.2/rusak.
+- Perbaikan regresi: mengubah hanya `TIT2` tidak lagi menggabungkan dua `COMM`
+  menjadi satu; mengubah satu cover/komentar tidak menghapus instance lain.
 - Comment header Ogg/Opus ditimpa per rentang `Blob.slice()` dan tetap
   diverifikasi penuh; fallback remux dipertahankan untuk kasus multi-page.
 - File picker satu file kini mencantumkan semua format Office seperti mode
@@ -50,8 +53,19 @@ dan badge README ID/EN menunjukkan `v1.4.1`. Cache shell naik ke
   memori memakai puncak teramati. Payload `ArrayBuffer` ditransfer, bukan
   disalin dua kali. Batch menyarankan mode hemat memori otomatis dan melepaskan
   snapshot setelah verifikasi integritas.
-- Validasi: **391 unit test**, `check:assets`/CSS/policy hijau, **48/48** kasus
-  kompatibilitas, E2E WASM/Service Worker, offline, i18n, dan editor teks.
+- Kebijakan memori kini konsisten di semua jalur simpan: `ok` normal, `warn`
+  peringatan yang bisa diabaikan, `block` memerlukan mode hemat memori (batch)
+  atau konfirmasi risiko eksplisit (satu file). Quick-save tidak bisa
+  melewatinya.
+
+### Verifikasi rilis
+
+- **402 unit test**, `check:assets`/CSS/policy hijau, **48/48** kasus
+  kompatibilitas, **18/18** suite E2E browser, offline Service Worker nyata,
+  validator independen audio/Office (0 kegagalan), dan audit independen 24/24.
+- Regression test baru untuk preservasi multi-instance ID3 mencakup `COMM`,
+  `APIC`, `TXXX`, frame tak dikenal, `PRIV`, edit selektif, v2.3/v2.4, siklus
+  berulang, dan fallback tag rusak.
 
 ## [1.4.0] — 2026-11-21
 

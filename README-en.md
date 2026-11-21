@@ -165,7 +165,7 @@ Select **Save**, review the changes, and confirm. The output is read again and v
 
 MeInsert rewrites metadata locally and verifies the result, but some data cannot be preserved. The integrity report shown after a write is the authoritative per-file result.
 
-- **Size and memory:** up to 4 GB per file; the estimated peak memory raises a warning and, when too high, blocks the write.
+- **Size and memory:** up to 4 GB per file; the estimated peak memory raises a warning. When it reaches the block band, writing can continue only via low-memory mode (batch) or explicit risk acknowledgement (single file); quick-save cannot bypass it.
 - **Change scope:** only the fields you change are written. This is not a promise that every unsupported tag survives.
 - **Digital signatures:** editing a signed PDF or Office document invalidates its signature.
 - **Specific formats:** MKV/WebM chapters and attachments are generally not carried over; FLAC-in-Ogg and Speex are unsupported; encrypted PDFs are unsupported and encrypted Office files are rejected.
