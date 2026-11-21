@@ -85,7 +85,10 @@ compatibility harness (`tests/compat/`) fails on any other browser request.
 
 One module per format: `image.js`, `pdf.js`, `mp3.js`, `flac.js`, `ogg.js`,
 `mkv.js`, `mp4.js`, with shared helpers `vorbis-common.js` and
-`vorbis-pictures.js`. Each module default-exports an adapter descriptor
+`vorbis-pictures.js`. MP3 writes use `core/id3-passthrough.js` to patch the
+existing ID3v2.3/v2.4 tag surgically, preserving untouched frames verbatim;
+`core/id3-sylt.js` handles synchronized-lyrics frames. Each module default-exports
+an adapter descriptor
 (`meta`, `fields`/`fieldsFor`, `sections`/`sectionsFor`, `read`, `write`, and
 optional `dispose`). See [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-new-format)
 for the exact exported shape.

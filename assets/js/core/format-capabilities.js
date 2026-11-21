@@ -45,7 +45,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'audio',
     labelKey: 'ui.offlineFeatureAudio',
-    bytes: 810_023,
+    bytes: 816_603,
     urls: [
       './assets/vendor/mediabunny.mjs',
       './assets/js/workers/media.worker.js',
@@ -58,6 +58,7 @@ export const OFFLINE_FEATURES = [
       './assets/js/core/ogg-comment.js',
       './assets/vendor/browser-id3-writer.mjs',
       './assets/js/core/id3-sylt.js',
+      './assets/js/core/id3-passthrough.js',
     ],
   },
   {

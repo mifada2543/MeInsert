@@ -130,6 +130,7 @@ const KNOWN_OPTIONAL_URLS = Object.freeze([
   './assets/js/core/ogg-comment.js',
   './assets/vendor/browser-id3-writer.mjs',
   './assets/js/core/id3-sylt.js',
+  './assets/js/core/id3-passthrough.js',
   './assets/vendor/exiftool-wasm/index.js',
   './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
   './assets/js/workers/exiftool.worker.js',

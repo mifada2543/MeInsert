@@ -7,6 +7,11 @@ import { coverFromTags } from '../core/image-utils.js';
 import { KNOWN_ID3 } from '../core/integrity-rules.js';
 import { toSyltPairs } from '../core/timed-text.js';
 import { readSylt, toWriterSylt } from '../core/id3-sylt.js';
+import { patchId3Tag } from '../core/id3-passthrough.js';
+const EDITED_ID3_FRAMES = [
+  'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
+  'TCOM', 'COMM', 'USLT', 'TCOP', 'TSSE', 'SYLT', 'APIC', 'TXXX',
+];
 export const meta = {
   id: 'mp3',
   engine: 'media',
@@ -79,12 +84,11 @@ function rawRows(tags) {
     })
     .filter((row) => row.value);
 }
-function warningsFor(tags) {
+function warningsFor(tags, { preserveUnknown = false } = {}) {
   const raw = tags?.raw || {};
   const unknown = Object.keys(raw).filter((id) => /^[A-Z0-9]{4}$/.test(id) && !KNOWN_ID3.has(id));
-  return unknown.length
-    ? [`${unknown.length} frame ID3 tidak didukung dan akan hilang saat metadata ditulis: ${unknown.slice(0, 8).join(', ')}${unknown.length > 8 ? '…' : ''}.`]
-    : [];
+  if (!unknown.length || preserveUnknown) return [];
+  return [`${unknown.length} frame ID3 tidak didukung dan akan hilang saat metadata ditulis: ${unknown.slice(0, 8).join(', ')}${unknown.length > 8 ? '…' : ''}.`];
 }
 async function mediaLib() {
   return import('../../vendor/mediabunny.mjs');
@@ -259,12 +263,17 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   for (const [description, value] of customMap) {
     if (description && value) writer.setFrame('TXXX', { description, value });
   }
-  let out;
+  let generated;
   try {
-    out = writer.addTag();
+    generated = writer.addTag();
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Tag ID3 gagal ditulis.', error.message || String(error));
   }
+  // Copy untouched ID3 frames verbatim instead of rebuilding the whole tag.
+  // Falls back to the generated tag only for unsupported/malformed sources.
+  const patched = patchId3Tag(buffer, generated, EDITED_ID3_FRAMES);
+  const out = patched || generated;
+  const passThroughWarning = patched ? '' : 'Tag ID3 ditulis ulang penuh; frame yang tidak dikenal mungkin hilang.';
   const blob = new Blob([out], { type: 'audio/mpeg' });
   report({ stage: 'Memverifikasi tag baru…', pct: 82 });
   let after;
@@ -279,7 +288,8 @@ export async function write(file, payload, _options = {}, report = () => {}) {
         warnings.push(`Field "${id}" tidak terbaca kembali persis seperti yang diminta.`);
       }
     }
-    warnings.push(...warningsFor(tags));
+    warnings.push(...warningsFor(tags, { preserveUnknown: Boolean(patched) }));
+    if (passThroughWarning) warnings.push(passThroughWarning);
     let info;
     try {
       info = (await read(outputFile)).info;

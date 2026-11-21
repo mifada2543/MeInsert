@@ -77,8 +77,12 @@ combination.
 
 ### MP3
 
-- Non-standard / unmapped ID3 frames are lost on write. The old ID3 tag is
-  replaced; only known `TXXX` custom tags are preserved.
+- ID3v2.3/v2.4 tags are patched surgically (`core/id3-passthrough.js`): frames
+  that are not edited are copied byte-for-byte, including unknown/binary frames
+  such as `PRIV`, `CHAP` and `CTOC`. Only the frames represented in the editor
+  (title, artist, cover, `TXXX`, `SYLT`, …) are replaced.
+- ID3v2.2 tags and malformed tags cannot be patched safely; MeInsert falls back
+  to a full tag rewrite and warns that unknown frames may be lost.
 
 ### MKV / WebM
 

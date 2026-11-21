@@ -116,7 +116,7 @@ export async function openFile(ctx, file) {
 }
 export function setupDropzone(ctx) {
   const { els } = ctx;
-  els.fileInput.accept = '.jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm';
+  els.fileInput.accept = '.jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm,.docx,.docm,.xlsx,.xlsm,.pptx,.pptm,.odt,.ods,.odp';
   const pick = () => els.fileInput.click();
   els.browseBtn.addEventListener('click', (event) => {
     event.stopPropagation();
