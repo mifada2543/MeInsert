@@ -225,7 +225,9 @@ Each stage in detail:
    validates the range against the media duration and `CUT_MODES` (`copy` is the
    safe default, `precise` may transcode). Line drafts autosave to `localStorage`
    keyed by file identity and are cleared on **Apply**; appearance preferences
-   persist separately in `meinsert-timed-text-style-v1`.
+   persist separately in `meinsert-timed-text-style-v1`. The preference panel
+   is a compact card inside the editor pane: the `+ Line` / gear / `Show: Subtitle`
+   toolbar stays visible above it, and the primary action remains **Save preference**.
    `ui/change-history.js#mountChangeHistory` opens the change-history panel
    (`.history-dialog`) from the editor head: it lists the current state plus
    the labelled entries from `core/history.js#historyEntries`, newest first.

@@ -17,9 +17,10 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## [1.5.0] — 2026-11-21
 
-Rilis ini menambahkan pemotongan rentang audio/video ke editor satu berkas.
+Rilis ini menambahkan pemotongan rentang audio/video, panel riwayat perubahan,
+dan penyempurnaan ikon serta kartu preferensi subtitle ke editor satu berkas.
 `package.json`, lock file, dan badge README ID/EN menunjukkan `v1.5.0`. Cache
-shell naik ke `meinsert-v59`; cache engine tetap `meinsert-engine-v1`.
+shell naik ke `meinsert-v61`; cache engine tetap `meinsert-engine-v1`.
 
 ### Fitur — potong audio/video
 
@@ -42,20 +43,43 @@ shell naik ke `meinsert-v59`; cache engine tetap `meinsert-engine-v1`.
   memakai `image`; mesin yang belum ter-cache menampilkan toast dan memblokir
   dialog saat offline.
 
+### Fitur — riwayat perubahan & kerapian ikon
+
+- Tombol **Riwayat perubahan** ditaruh di kepala kartu editor, berdampingan
+  dengan **Urungkan** / **Ulangkan**. Panel mencatat semua aksi yang masuk undo
+  (field, tag kustom, sampul, tag mentah, pembersihan metadata, lirik/subtitle,
+  potong, dan nama hasil) dengan label manusiawi dan waktu.
+- Memilih entri lalu **Kembali ke versi ini** meminta konfirmasi terlebih
+  dahulu. Rollback dapat dibatalkan dengan **Urungkan** (Ctrl+Z); riwayat
+  berlaku untuk sesi editing saat ini dan tidak disimpan lintas reload.
+- Tombol **Lirik & Subtitle** memakai ikon caption, tombol **Potong** memakai
+  ikon gunting. Keduanya berukuran 16×16, tidak berganti ikon mengikuti mode
+  berkas, sehingga tampil simetris dan mudah dibedakan.
+- Kartu pengaturan tampilan subtitle kini memakai kartu ringkas bergaya kartu
+  cue: toolbar **+ Baris** / gear / **Tampilkan: Subtitle** tetap terlihat,
+  semua kontrol (tema, warna teks/latar, opacity, ukuran, tebal/bayang, posisi,
+  perataan) dirapikan menjadi baris-baris kompak, dan tombol bawah tetap
+  **Simpan preferensi**.
+
 ### Dokumentasi & offline
 
-- `docs/ARCHITECTURE.md` mendokumentasikan `state.trim`, operasi potong, range
-  proof, dan kebijakan memori pada langkah pipeline 5/7/8.
+- `docs/ARCHITECTURE.md` mendokumentasikan `state.trim`, operasi potong, panel
+  riwayat, range proof, dan kebijakan memori pada langkah pipeline 5/7/8.
 - `docs/LIMITATIONS.md` menambahkan bagian "Cut audio/video" untuk keyframe,
   transcode, chapter/attachment, Xing/TLEN/CHAP/CTOC, dan memori.
 - `media-cut.js`, `mp3-cut.js`, dan dependensinya masuk ke manifest offline
   audio/image; `KNOWN_OPTIONAL_URLS` Service Worker mengikuti union manifest.
-- Skrip `test:cut` ditambahkan untuk suite E2E potong media.
+- Skrip `test:cut`, `test:history`, dan `test:timed-text` ditambahkan untuk
+  suite E2E potong media, riwayat perubahan, dan editor teks berirama.
 
 ### Verifikasi rilis
 
-- Build CSS dan validasi terarah (manifest offline, update Service Worker,
-  watermark, ESLint pada modul yang diubah) hijau.
+- ESLint 0 error, 439 unit test, `check:css`, `check:policies`, dan
+  `check:assets` hijau.
+- 20/20 suite E2E lolos dengan satu Chrome bersama, termasuk `cut-media`,
+  `change-history`, dan `timed-text`.
+- Audit `test:offline:real` lolos: shell terpasang offline, engine cache
+  dipertahankan saat pembaruan, dan tidak ada request keluar origin.
 
 ## [1.4.1] — 2026-11-21
 

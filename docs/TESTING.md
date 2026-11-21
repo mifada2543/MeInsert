@@ -59,6 +59,9 @@ npm run check:css         # CSS bundle matches its sources
 npm run check:policies    # policy HTML matches its Markdown sources
 npm run check:assets      # vendored asset size and SHA-256
 npm run test:e2e:all      # all E2E suites, requires Chrome
+npm run test:cut          # audio/video range-cut suite only
+npm run test:history      # change-history / rollback suite only
+npm run test:timed-text   # lyrics/subtitle editor suite only
 npm run test:compat       # real-file harness
 npm run fixtures:generate # regenerate optional fixtures
 ```
@@ -160,6 +163,9 @@ npm run check:css         # bundel CSS sesuai sumber
 npm run check:policies    # HTML kebijakan sesuai Markdown
 npm run check:assets      # ukuran dan SHA-256 aset vendor
 npm run test:e2e:all      # semua suite E2E, butuh Chrome
+npm run test:cut          # hanya suite potong audio/video
+npm run test:history      # hanya suite riwayat perubahan / rollback
+npm run test:timed-text   # hanya suite editor lirik/subtitle
 npm run test:compat       # harness file nyata
 npm run fixtures:generate # regenerasi fixture opsional
 ```

@@ -85,7 +85,10 @@ combination.
   while MP4 `wvtt` and browser-native players may ignore colours and
   backgrounds. Position/alignment settings are the most widely supported.
 - Appearance preferences are stored in `localStorage` separately from the
-  line draft. The draft is cleared when you press **Apply**.
+  line draft. The draft is cleared when you press **Apply**. The preference
+  card is compact and keeps the `+ Line` / gear / `Show: Subtitle` toolbar
+  visible; it stays in the right-hand editor pane rather than becoming a
+  separate centered dialog.
 
 ## Cut audio/video
 

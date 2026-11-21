@@ -157,6 +157,12 @@ try {
   const confirm = page.locator('.timed-text__unsaved-notice');
   await page.locator('#timedTextStyleSubtitles').click();
   await panel.waitFor({ state: 'visible' });
+  if (!(await page.locator('.timed-text__style-card').isVisible())) {
+    throw new Error('Kartu preferensi tidak tampil.');
+  }
+  if (!(await page.locator('#timedTextAddCue').isVisible()) || !(await page.locator('#timedTextStyleSubtitles').isVisible())) {
+    throw new Error('Toolbar + Baris/gear tidak tetap terlihat saat mode preferensi.');
+  }
   const backdropStyle = await page.locator('.timed-text__style-backdrop').evaluate((node) => getComputedStyle(node).backdropFilter);
   if (backdropStyle !== 'none') throw new Error(`Backdrop seharusnya hanya gelap, bukan blur: ${backdropStyle}`);
   if ((await page.locator('#timedTextSave').innerText()).trim() !== 'Simpan preferensi') {

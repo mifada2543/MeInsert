@@ -490,25 +490,32 @@ function buildStylePanel(onChange) {
     alignButtons.set(value, button);
     alignRow.append(button);
   }
-  const field = (labelKey, control) => el('label', { className: 'timed-text__style-field' },
+  const field = (labelKey, control, className = '') => el('label', { className: `timed-text__style-field${className ? ` ${className}` : ''}` },
     el('span', { className: 'timed-text__style-label' }, translated(() => t(labelKey))), control);
   const check = (labelKey, input) => el('label', { className: 'timed-text__style-check' }, input, el('span', {}, translated(() => t(labelKey))));
   const note = el('p', { className: 'timed-text__style-note' });
   bindText(note, () => t('ui.timedTextStyleNote'));
   const resetBtn = el('button', { type: 'button', className: 'timed-text__btn', id: 'timedTextStyleReset', on: { click: () => onChange(CUE_STYLE_DEFAULTS, true) } }, icon('refresh'), el('span', {}, translated(() => t('ui.timedTextStyleReset'))));
-  const element = el('section', { className: 'timed-text__style-panel', hidden: true },
+  const colorRow = el('div', { className: 'timed-text__style-grid timed-text__style-grid--two' },
+    field('ui.timedTextColorText', colorText),
+    field('ui.timedTextColorBg', colorBg),
+  );
+  const positionAlignRow = el('div', { className: 'timed-text__style-grid' },
+    field('ui.timedTextPosition', positionRow),
+    field('ui.timedTextAlign', alignRow),
+  );
+  const card = el('div', { className: 'timed-text__style-card' },
     el('div', { className: 'timed-text__style-head' },
       el('h3', { className: 'timed-text__style-title', textContent: translated(() => t('ui.timedTextStyleTitle')) }), resetBtn),
     field('ui.timedTextTheme', presetRow),
-    field('ui.timedTextColorText', colorText),
-    field('ui.timedTextColorBg', colorBg),
+    colorRow,
     field('ui.timedTextOpacity', el('div', { className: 'timed-text__opacity-row' }, opacity, opacityValue)),
     field('ui.timedTextSize', sizeRow),
     el('div', { className: 'timed-text__style-checks' }, check('ui.timedTextBold', bold), check('ui.timedTextOutline', outline)),
-    field('ui.timedTextPosition', positionRow),
-    field('ui.timedTextAlign', alignRow),
+    positionAlignRow,
     note,
   );
+  const element = el('section', { className: 'timed-text__style-panel', hidden: true }, card);
   const setStyle = (style) => {
     const s = normalizeCueStyle(style);
     for (const [key, button] of presetButtons) button.classList.toggle('is-active', s.theme === key);
