@@ -204,7 +204,9 @@ export class BatchSaveFlow {
       showToast(validation.messages[0], 'error', 7500);
       return;
     }
-    this._batchMemory = estimateForBatch(selected.map((item) => ({ file: item.file })));
+    this._batchMemory = estimateForBatch(selected.map((item) => ({ file: item.file })), {
+      observedPeakMb: this.client?.memoryStats?.().peakMb || 0,
+    });
     const usedNames = new Set();
     const plans = [];
     const skipped = [];

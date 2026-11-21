@@ -5,7 +5,7 @@ import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js
 import { AppError } from '../core/errors.js';
 import { applyCoverImages, coverFromTags, scrubPrimaryCoverRaw } from '../core/image-utils.js';
 import { commentPictures, editPictures, flacPictures, pictureBase64, repairFlacMetadata } from './vorbis-pictures.js';
-import { rewriteOggComment } from '../core/ogg-comment.js';
+import { rewriteOggCommentBlob } from '../core/ogg-comment.js';
 import { parseLrc, serializeLrc } from '../core/timed-text.js';
 
 // A single LRC timestamp such as [00:12.34] or [01:02:03.004]. The plain
@@ -228,11 +228,16 @@ export async function writeVorbis(file, payload, options, report, config) {
   if (rawPictures.length) raw.METADATA_BLOCK_PICTURE = rawPictures.map(pictureBase64);
   const outExt = options.extension || config.defaultExt;
   const mime = options.mime || config.mime;
-  const verifyOutput = async (bytes, initialWarnings = []) => {
-    const blob = new Blob([bytes], { type: mime });
+  // Accept either raw bytes (full-remux fallback) or an already assembled
+  // output Blob (range-based Ogg patch). In both cases verification reads the
+  // ENTIRE output back through the media engine from a File built from that
+  // Blob, so verification semantics are identical and the whole output never
+  // has to be materialized as a Uint8Array.
+  const verifyOutput = async (output, initialWarnings = []) => {
+    const blob = output instanceof Blob ? output : new Blob([output], { type: mime });
     report({ stage: 'Memverifikasi hasil…', pct: 82 });
     try {
-      const outputFile = new File([bytes], `output.${outExt}`, { type: mime });
+      const outputFile = new File([blob], `output.${outExt}`, { type: mime });
       const check = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
       const afterTags = await check.getMetadataTags();
       const checkFields = toFields(afterTags);
@@ -293,11 +298,12 @@ export async function writeVorbis(file, payload, options, report, config) {
         }
         changes[key.toUpperCase()] = values.length ? value : '';
       }
-      const patched = rewriteOggComment(new Uint8Array(await file.arrayBuffer()), {
+      const patched = await rewriteOggCommentBlob(file, {
         changes,
         vendor: raw.vendor,
+        mime,
       });
-      if (patched) return await verifyOutput(patched);
+      if (patched) return await verifyOutput(patched.blob);
       fallbackWarning = 'Comment header Ogg tidak bisa ditimpa langsung (tidak muat atau struktur tidak dikenali); container ditulis ulang via media engine.';
     } catch (error) {
       fallbackWarning = `Penulisan comment header Ogg langsung tidak aman (${error.message || error}); container ditulis ulang via media engine.`;

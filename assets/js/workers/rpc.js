@@ -2,11 +2,28 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { serializeError } from '../core/errors.js';
+function collectTransferables(value, found = new Set()) {
+  if (!value || typeof value !== 'object' || found.has(value)) return [...found];
+  found.add(value);
+  if (value instanceof ArrayBuffer) {
+    found.add(value);
+  } else if (ArrayBuffer.isView(value) && value.buffer instanceof ArrayBuffer) {
+    found.add(value.buffer);
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectTransferables(item, found);
+  } else {
+    for (const item of Object.values(value)) collectTransferables(item, found);
+  }
+  return [...found].filter((item) => item instanceof ArrayBuffer);
+}
 export function runWorker(adapters) {
   self.onmessage = async (event) => {
     const message = event.data || {};
     const { id, action, format, file, payload, options } = message;
-    const post = (data) => self.postMessage({ id, ...data });
+    const post = (data) => {
+      const payload = { id, ...data };
+      self.postMessage(payload, collectTransferables(payload.result));
+    };
     if (action === 'dispose') {
       try {
         await Promise.all(Object.values(adapters).map((item) => (

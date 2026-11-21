@@ -34,7 +34,12 @@ combination.
   roughly 900 MB estimated peak. Peak is computed from input + held output +
   cover bytes, a copy factor, and fixed engine overhead; WASM engines run in
   workers and are disposed after batch processing, after ~8 minutes idle, and
-  on page close. Actual usage depends on the browser and device.
+  on page close. Actual usage depends on the browser and device. The `?mem=1`
+  query flag records the largest worker message/result payloads so the estimate
+  can use an observed peak; it does not change processing. Payload buffers sent
+  to workers are transferred rather than copied twice. The batch review dialog
+  suggests the existing low-memory mode automatically when the peak reaches the
+  warning/block band.
 - **Loss scope** — only requested field changes are written. This is not a
   promise that every unsupported tag survives; review the integrity findings
   after each write. A `failed` integrity result is flagged to the user.
@@ -171,6 +176,10 @@ combination.
 - The Ogg `vendor` string may be rewritten by Mediabunny
   (`ENGINE_VENDOR_CHANGED`), an explicit warning limited to that
   format/tag/engine signature; loss of the `ENCODER` tag still fails.
+- When the Vorbis comment fits in a single leading Ogg page, writes patch only
+  that page via `Blob.slice()` instead of buffering the whole file. Multi-page
+  comments, chained streams and malformed pages fall back to a full remux with
+  an explicit warning; output is still read back and verified before download.
 
 ### FLAC / Ogg picture metadata
 

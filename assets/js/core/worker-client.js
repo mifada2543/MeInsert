@@ -3,6 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { t } from '../i18n/index.js';
 import { handleEngineProgress, scheduleEnginePrefetch } from '../ui/engine-loading.js';
+import { noteMessage, noteResult, memorySnapshot } from '../core/memory-meter.js';
 
 const WORKER_URLS = {
   exiftool: new URL('../workers/exiftool.worker.js', import.meta.url),
@@ -50,6 +51,40 @@ export function friendlyMemoryError(error) {
   return friendly;
 }
 
+// Clone the payload so transferring its buffers cannot detach editor state.
+function transferableMessage(message) {
+  const transfer = [];
+  let payload = message?.payload;
+  if (!payload || typeof payload !== 'object' || typeof structuredClone !== 'function') {
+    return { data: message, transfer };
+  }
+  try {
+    payload = structuredClone(payload);
+  } catch {
+    return { data: message, transfer };
+  }
+  const seen = new Set();
+  const collect = (value) => {
+    if (!value || typeof value !== 'object' || seen.has(value)) return;
+    seen.add(value);
+    if (value instanceof ArrayBuffer) {
+      transfer.push(value);
+      return;
+    }
+    if (ArrayBuffer.isView(value) && value.buffer instanceof ArrayBuffer) {
+      transfer.push(value.buffer);
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) collect(item);
+      return;
+    }
+    for (const item of Object.values(value)) collect(item);
+  };
+  collect(payload);
+  return { data: { ...message, payload }, transfer };
+}
+
 const liveClients = new Set();
 if (typeof globalThis.addEventListener === 'function') {
   globalThis.addEventListener('meinsert:engine-retry', (event) => {
@@ -93,6 +128,7 @@ class EngineWorker {
       }
       this.pending.delete(message.id);
       if (message.type === 'result') {
+        noteResult({ action: message.action }, message.result);
         pending.resolve(message.result);
       } else if (message.type === 'error') {
         const error = new Error(message.error?.message || 'Terjadi kesalahan di worker.');
@@ -153,7 +189,9 @@ class EngineWorker {
         timer,
       });
       try {
-        worker.postMessage({ id, ...message });
+        noteMessage(message);
+        const prepared = transferableMessage(message);
+        worker.postMessage({ id, ...prepared.data }, prepared.transfer);
       } catch (error) {
         clearTimeout(timer);
         this.pending.delete(id);
@@ -181,6 +219,9 @@ export class MetadataClient {
     this.idleTimeout = idleTimeout;
     this.idleTimer = null;
     liveClients.add(this);
+  }
+  memoryStats() {
+    return memorySnapshot();
   }
   workerFor(engine) {
     const url = WORKER_URLS[engine];

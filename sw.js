@@ -46,6 +46,7 @@ const SHELL_URLS = [
   './assets/js/core/integrity.js',
   './assets/js/core/media-proof.js',
   './assets/js/core/memory-estimate.js',
+  './assets/js/core/memory-meter.js',
   './assets/js/core/metadata-snapshot.js',
   './assets/js/core/offline-manifest.js',
   './assets/js/core/office-zip.js',

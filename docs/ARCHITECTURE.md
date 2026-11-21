@@ -67,11 +67,15 @@ compatibility harness (`tests/compat/`) fails on any other browser request.
   used to justify `MEDIA_RELOCATED` when container offsets change (TIFF strips,
   MP4 `mdat`).
 - `memory-estimate.js` — `estimateForSingle` / batch estimates that feed memory
-  warnings and blocks (`core/change-plan.js` attaches them as risks).
+  warnings and blocks (`core/change-plan.js` attaches them as risks). The
+  estimate now also considers an optional observed peak reported by the client.
+- `memory-meter.js` — opt-in (`?mem=1`) instrumentation that records the largest
+  message/result payloads crossing the worker boundary. Normal runs do no work.
 - `worker-client.js` — `MetadataClient` and `EngineWorker`: one module Worker
   per engine (`exiftool`, `media`, `pdf`), request/response with progress
   messages, per-action timeouts, watchdog restart of crashed/timed-out workers,
-  and an idle (~8 min) disposal timer.
+  and an idle (~8 min) disposal timer. Payload `ArrayBuffer`s are cloned and
+  **transferred** (not copied twice), so editor state is never detached.
 - `pwa.js` / `build.js` / `reload-guard.js` — service-worker registration and
   update flow, the `CURRENT_VERSION` marker (must equal the shell `CACHE_VERSION`
   in `sw.js`) plus the independent `ENGINE_VERSION` marker for optional engines,
@@ -85,7 +89,9 @@ compatibility harness (`tests/compat/`) fails on any other browser request.
 
 One module per format: `image.js`, `pdf.js`, `mp3.js`, `flac.js`, `ogg.js`,
 `mkv.js`, `mp4.js`, with shared helpers `vorbis-common.js` and
-`vorbis-pictures.js`. MP3 writes use `core/id3-passthrough.js` to patch the
+`vorbis-pictures.js`. OGG/Opus writes use `core/ogg-comment.js#rewriteOggCommentBlob`
+to patch only the leading comment pages via `Blob.slice()`; unsafe/multi-page
+comments fall back to a full remux. MP3 writes use `core/id3-passthrough.js` to patch the
 existing ID3v2.3/v2.4 tag surgically, preserving untouched frames verbatim;
 `core/id3-sylt.js` handles synchronized-lyrics frames. Each module default-exports
 an adapter descriptor

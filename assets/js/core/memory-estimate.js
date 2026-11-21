@@ -18,11 +18,14 @@ export function estimateMemory({
   coverBytes = 0,
   copyFactor = 1.5,
   engineOverheadMb = 30,
+  observedPeakMb = 0,
 } = {}) {
   const inputs = (inputSizes || []).reduce((s, v) => s + (Number(v) || 0), 0);
   const held = (heldOutputSizes || []).reduce((s, v) => s + (Number(v) || 0), 0);
   const cover = Number(coverBytes) || 0;
-  const peakBytes = inputs * Math.max(1, copyFactor) + held + cover + engineOverheadMb * 1024 * 1024;
+  const roughPeakBytes = inputs * Math.max(1, copyFactor) + held + cover + engineOverheadMb * 1024 * 1024;
+  const observed = Math.max(0, Number(observedPeakMb) || 0) * 1024 * 1024;
+  const peakBytes = Math.max(roughPeakBytes, observed);
   const peakMb = peakBytes / (1024 * 1024);
   const level = budgetFor(peakMb);
   const message = level === 'ok'
@@ -36,19 +39,20 @@ export function estimateMemory({
     estimatedMb: Math.round(peakMb),
     estimatedLabel: formatMemoryMb(peakBytes),
     message,
-    breakdown: { inputs, held, cover, copyFactor, engineOverheadMb },
+    breakdown: { inputs, held, cover, copyFactor, engineOverheadMb, observedPeakMb: observed / (1024 * 1024) },
   };
 }
-export function estimateForSingle({ fileSize = 0, coverBytes = 0 } = {}) {
+export function estimateForSingle({ fileSize = 0, coverBytes = 0, observedPeakMb = 0 } = {}) {
   return estimateMemory({
     inputSizes: [fileSize],
     heldOutputSizes: [fileSize],
     coverBytes,
     copyFactor: 1.2,
     engineOverheadMb: 30,
+    observedPeakMb,
   });
 }
-export function estimateForBatch(items = []) {
+export function estimateForBatch(items = [], { observedPeakMb = 0 } = {}) {
   const sizes = (items || []).map((item) => Number(item?.file?.size) || 0);
   return estimateMemory({
     inputSizes: sizes,
@@ -56,5 +60,6 @@ export function estimateForBatch(items = []) {
     coverBytes: 0,
     copyFactor: 1.15,
     engineOverheadMb: 32,
+    observedPeakMb,
   });
 }

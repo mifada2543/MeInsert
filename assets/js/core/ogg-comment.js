@@ -307,3 +307,93 @@ function growCommentPage(bytes, found, packet) {
   if (!rebuilt) return null;
   return concat([bytes.subarray(0, page.start), rebuilt, bytes.subarray(page.end)]);
 }
+function equalBytes(left, right) {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
+// How many leading pages we buffer while locating the comment packet. The
+// identification and comment packets live in the first pages of a real stream;
+// anything beyond this limit takes the full-remux path.
+const MAX_HEADER_PAGES = 64;
+/**
+ * Range-based counterpart of {@link rewriteOggComment}. Every Ogg page is
+ * walked once with bounded memory (structure, CRC and chain checks), but only
+ * the leading pages up to the comment page are buffered. The comment page is
+ * rebuilt with the exact same byte-level rewriter and the output Blob is
+ * assembled from `Blob.slice()` ranges, so the audio payload is never copied
+ * into one big Uint8Array.
+ *
+ * `patchedBytes` is the small rebuilt comment page (the only region whose
+ * bytes change); `blob` is the full, ready-to-write output.
+ *
+ * @param {Blob} file source Ogg/Opus file.
+ * @param {object} options same options as rewriteOggComment (an optional
+ *   `mime` is used as the output Blob's MIME type).
+ * @returns {Promise<{blob: Blob, patchedBytes: Uint8Array}|null>} patched
+ *   output, or null whenever a safe single-page range patch is not possible
+ *   (the caller then uses the existing full-remux fallback).
+ */
+export async function rewriteOggCommentBlob(file, options = {}) {
+  if (!file || typeof file.slice !== 'function') return null;
+  const read = async (start, end) => new Uint8Array(await file.slice(start, end).arrayBuffer());
+  let prefix = new Uint8Array(0);
+  let offset = 0;
+  let pageIndex = 0;
+  let found = null;
+  // Walk EVERY page once: validate framing and CRC, reject chained streams,
+  // and buffer only the leading pages up to the one holding the comment.
+  while (offset + 27 <= file.size) {
+    const head = await read(offset, offset + 27);
+    if (head.length < 27 || ascii(head, 0, 4) !== 'OggS' || head[4] !== 0) return null;
+    if (pageIndex > 0 && (head[5] & 0x02)) return null; // chained stream BOS page
+    const segments = head[26];
+    const headerLength = 27 + segments;
+    const withLacing = await read(offset, offset + headerLength);
+    if (withLacing.length < headerLength) return null;
+    let bodyLength = 0;
+    for (let index = 0; index < segments; index += 1) bodyLength += withLacing[27 + index];
+    const pageLength = headerLength + bodyLength;
+    const pageBytes = await read(offset, offset + pageLength);
+    if (pageBytes.length < pageLength) return null;
+    const crcOffset = 22;
+    if (view(pageBytes).getUint32(crcOffset, true) !== oggCrc32(pageBytes, 0, pageLength, crcOffset)) return null;
+    if (!found && pageIndex < MAX_HEADER_PAGES) {
+      const merged = new Uint8Array(prefix.length + pageLength);
+      merged.set(prefix, 0);
+      merged.set(pageBytes, prefix.length);
+      prefix = merged;
+      const inspected = inspectOggComment(prefix);
+      if (inspected) found = inspected;
+    }
+    offset += pageLength;
+    pageIndex += 1;
+  }
+  if (offset !== file.size || !found) return null;
+  const { page } = found;
+  // inspectOggComment's locateComment already rejects cross-page packets, so
+  // a positive match means the whole comment lives inside this single page.
+  if (found.start < page.bodyStart || found.end > page.end || page.start < 0 || page.end > file.size) return null;
+  // Reuse the byte rewriter on the buffered header prefix. This keeps vendor
+  // handling, comment count, framing bit, granule/sequence numbers and CRC
+  // recalculation byte-for-byte identical to the full-buffer path.
+  const patchedPrefix = rewriteOggComment(prefix, options);
+  if (!patchedPrefix || !inspectOggComment(patchedPrefix)) return null;
+  // rewriteOggComment only touches the comment page; derive its new length from
+  // the unchanged trailing bytes and require the surrounding bytes to match.
+  const beforeLength = page.start;
+  const afterLength = prefix.length - page.end;
+  const patchedPageLength = patchedPrefix.length - beforeLength - afterLength;
+  if (patchedPageLength <= 0) return null;
+  if (!equalBytes(prefix.subarray(0, beforeLength), patchedPrefix.subarray(0, beforeLength))) return null;
+  if (!equalBytes(prefix.subarray(page.end), patchedPrefix.subarray(beforeLength + patchedPageLength))) return null;
+  const patchedBytes = patchedPrefix.subarray(beforeLength, beforeLength + patchedPageLength);
+  const blob = new Blob([
+    file.slice(0, page.start),
+    patchedBytes,
+    file.slice(page.end),
+  ], { type: options.mime || file.type || '' });
+  return { blob, patchedBytes };
+}

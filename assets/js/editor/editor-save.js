@@ -127,6 +127,7 @@ export async function saveMetadata(ctx) {
   const memory = estimateForSingle({
     fileSize: state.file?.size || 0,
     coverBytes: state.coverChosen?.data?.byteLength || 0,
+    observedPeakMb: client.memoryStats().peakMb,
   });
   const plan = buildChangePlan({
     adapter: state.adapter,
