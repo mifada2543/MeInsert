@@ -7120,8 +7120,7 @@ h1 {
   position: absolute;
   inset: 0;
   z-index: 5;
-  background: rgba(10, 10, 16, .42);
-  backdrop-filter: blur(2px);
+  background: rgba(11, 11, 16, .62);
   cursor: pointer;
 }
 .timed-text__style-backdrop[hidden] {

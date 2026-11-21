@@ -83,41 +83,12 @@ try {
   if (restored !== 'Lirik uji coba') throw new Error(`Draf tidak dipulihkan: ${restored}`);
   console.log('PASS: draf dipulihkan setelah dialog ditutup');
 
-  await page.locator('#timedTextStyleLyrics').click();
-  const panel = page.locator('.timed-text__style-panel');
-  const confirm = page.locator('.timed-text__unsaved-notice');
-  await panel.waitFor({ state: 'visible' });
-  if (await page.locator('.timed-text__style-backdrop').isHidden()) throw new Error('Backdrop preferensi tidak muncul.');
-  if (!(await page.locator('.timed-text__rows').first().isHidden())) throw new Error('Panel preferensi tidak menimpa daftar baris.');
-  if ((await page.locator('#timedTextSave').innerText()).trim() !== 'Simpan preferensi') {
-    throw new Error('Tombol utama tidak berubah menjadi Simpan preferensi.');
-  }
-  await panel.locator('[data-theme="yellow"]').click();
-  const cueColor = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
-  if (cueColor !== '#FFE066') throw new Error(`Pratinjau tidak mengikuti tema: ${cueColor}`);
-  console.log('PASS: preferensi membuka card + backdrop, tombol utama jadi Simpan preferensi', cueColor);
-
-  await page.locator('#timedTextSave').click();
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('meinsert-timed-text-style-v1') || '{}'));
-  if (saved.lyrics?.theme !== 'yellow') throw new Error(`Preferensi tidak tersimpan: ${JSON.stringify(saved)}`);
-  if (await panel.isHidden()) throw new Error('Panel tertutup setelah Simpan preferensi.');
-  console.log('PASS: tombol utama menyimpan preferensi dan panel tetap terbuka');
-
-  await page.locator('#timedTextStyleLyrics').click();
+  const audioGear = await page.locator('#timedTextStyleLyrics').isVisible();
+  if (audioGear) throw new Error('Tombol preferensi masih muncul pada format audio/LRC.');
   if ((await page.locator('#timedTextSave').innerText()).trim() !== 'Terapkan') {
-    throw new Error('Tombol utama tidak kembali menjadi Terapkan.');
+    throw new Error('Tombol utama audio bukan Terapkan.');
   }
-  await page.locator('#timedTextStyleLyrics').click();
-  await panel.locator('[data-theme="plain"]').click();
-  await page.locator('.timed-text__style-backdrop').click({ position: { x: 10, y: 200 } });
-  await confirm.waitFor({ state: 'visible' });
-  const confirmText = await confirm.innerText();
-  if (!/belum tersimpan/i.test(confirmText)) throw new Error(`Konfirmasi salah: ${confirmText}`);
-  await confirm.locator('.timed-text__btn:not(.timed-text__btn--save)').click();
-  await confirm.waitFor({ state: 'hidden' });
-  const reverted = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
-  if (reverted !== '#FFE066') throw new Error(`Batalkan tidak mengembalikan preferensi: ${reverted}`);
-  console.log('PASS: klik di luar card meminta konfirmasi; Batalkan memulihkan preferensi');
+  console.log('PASS: audio/LRC tidak memiliki tombol preferensi warna');
 
   await page.locator('#timedTextSave').click();
   await page.locator('#timedTextDialog[open]').waitFor({ state: 'hidden' });
@@ -172,6 +143,43 @@ try {
   const overlayText = await page.locator('.timed-text__overlay-text').innerText();
   if (!overlayText) throw new Error('Overlay subtitle kosong.');
   console.log('PASS: overlay subtitle tampil di pratinjau', JSON.stringify(overlayText));
+
+  const panel = page.locator('.timed-text__style-panel');
+  const confirm = page.locator('.timed-text__unsaved-notice');
+  await page.locator('#timedTextStyleSubtitles').click();
+  await panel.waitFor({ state: 'visible' });
+  const backdropStyle = await page.locator('.timed-text__style-backdrop').evaluate((node) => getComputedStyle(node).backdropFilter);
+  if (backdropStyle !== 'none') throw new Error(`Backdrop seharusnya hanya gelap, bukan blur: ${backdropStyle}`);
+  if ((await page.locator('#timedTextSave').innerText()).trim() !== 'Simpan preferensi') {
+    throw new Error('Tombol utama tidak berubah menjadi Simpan preferensi.');
+  }
+  await panel.locator('[data-theme="yellow"]').click();
+  const cueColor = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
+  if (cueColor !== '#FFE066') throw new Error(`Pratinjau tidak mengikuti tema: ${cueColor}`);
+  console.log('PASS: preferensi subtitle membuka card + backdrop gelap', cueColor);
+
+  await page.locator('#timedTextSave').click();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('meinsert-timed-text-style-v1') || '{}'));
+  if (saved.subtitles?.theme !== 'yellow') throw new Error(`Preferensi tidak tersimpan: ${JSON.stringify(saved)}`);
+  if (await panel.isHidden()) throw new Error('Panel tertutup setelah Simpan preferensi.');
+  console.log('PASS: tombol utama menyimpan preferensi subtitle dan panel tetap terbuka');
+
+  await page.locator('#timedTextStyleSubtitles').click();
+  if ((await page.locator('#timedTextSave').innerText()).trim() !== 'Terapkan') {
+    throw new Error('Tombol utama tidak kembali menjadi Terapkan.');
+  }
+  await page.locator('#timedTextStyleSubtitles').click();
+  await panel.locator('[data-theme="plain"]').click();
+  const screenBox = await page.locator('.timed-text__screen').boundingBox();
+  await page.mouse.click(screenBox.x + screenBox.width / 2, screenBox.y + screenBox.height / 2);
+  await confirm.waitFor({ state: 'visible' });
+  if (!/belum tersimpan/i.test(await confirm.innerText())) throw new Error('Konfirmasi belum tersimpan tidak muncul.');
+  await confirm.locator('.timed-text__btn:not(.timed-text__btn--save)').click();
+  await confirm.waitFor({ state: 'hidden' });
+  const reverted = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
+  if (reverted !== '#FFE066') throw new Error(`Batalkan tidak mengembalikan preferensi: ${reverted}`);
+  console.log('PASS: klik di luar card meminta konfirmasi; Batalkan memulihkan preferensi');
+
   await page.setViewportSize({ width: 390, height: 844 });
   const mobile = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth - window.innerWidth,
@@ -190,9 +198,10 @@ try {
     panelHidden: document.querySelector('.timed-text__style-panel')?.hidden,
     backdropHidden: document.querySelector('.timed-text__style-backdrop')?.hidden,
     primary: document.querySelector('#timedTextSave')?.textContent.trim(),
+    gearHidden: document.querySelector('#timedTextStyleLyrics')?.hidden,
   }));
   if (reopened.mode !== 'lyrics' || reopened.styleMode !== 'false' || !reopened.panelHidden
-    || !reopened.backdropHidden || reopened.primary !== 'Terapkan') {
+    || !reopened.backdropHidden || reopened.primary !== 'Terapkan' || !reopened.gearHidden) {
     throw new Error(`Preferensi video terbawa ke audio: ${JSON.stringify(reopened)}`);
   }
   console.log('PASS: preferensi tidak terbawa saat membuka audio setelah video');

@@ -51,7 +51,9 @@ per-file result.
   `LYRICS`, but subtitle cues must be re-imported from a `.vtt` file.
 - Only one language per track is supported in this version.
 - Text colour, background colour/opacity, size, bold/shadow, position and
-  alignment are editable in the **Text appearance** panel. They are applied
+  alignment are editable in the **Text appearance** panel, which is offered
+  only for video subtitles: LRC lyrics carry no colour/background format.
+  They are applied
   exactly to the in-editor preview and to exported `.vtt` files. The same
   `STYLE` block and cue settings are written into the embedded WebVTT track,
   but player support varies: MKV/WebVTT players such as mpv/VLC usually honour

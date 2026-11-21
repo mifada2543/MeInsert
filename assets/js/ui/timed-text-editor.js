@@ -93,7 +93,8 @@ function normalizeLyrics(value) {
   if (Array.isArray(value)) return { lang: 'id', lines: value.map(normalizeLine) };
   const root = value && typeof value === 'object' ? (value.lyrics && typeof value.lyrics === 'object' ? value.lyrics : value) : {};
   const lines = Array.isArray(root.lines) ? root.lines : [];
-  return { lang: stringValue(root.lang, 'id'), lines: lines.map(normalizeLine), style: normalizeCueStyle(root.style) };
+  // LRC has no colour/background format, so lyrics never carry a cue style.
+  return { lang: stringValue(root.lang, 'id'), lines: lines.map(normalizeLine) };
 }
 
 function normalizeSubtitles(value) {
@@ -179,7 +180,7 @@ function ensureTrack() {
   if (!state) return null;
   if (!state.data[state.mode]) {
     state.data[state.mode] = state.mode === 'lyrics'
-      ? { lang: 'id', lines: [], style: normalizeCueStyle(CUE_STYLE_DEFAULTS) }
+      ? { lang: 'id', lines: [] }
       : { lang: 'id', cues: [], style: normalizeCueStyle(CUE_STYLE_DEFAULTS) };
   }
   return state.data[state.mode];
@@ -285,7 +286,8 @@ async function exitStyleMode() {
   return true;
 }
 async function toggleStyleMode() {
-  if (!state) return;
+  // Appearance preferences apply only to WebVTT subtitles, never to LRC lyrics.
+  if (!state || state.mode !== 'subtitles') return;
   if (state.styleMode) {
     await exitStyleMode();
     return;
@@ -1384,9 +1386,7 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   const draft = readDraft();
   if (draft?.data) state.data = normalizeSidecar(draft.data);
   const savedStyles = loadSavedStyles();
-  for (const item of ['lyrics', 'subtitles']) {
-    if (state.data[item] && savedStyles[item]) state.data[item].style = savedStyles[item];
-  }
+  if (state.data.subtitles && savedStyles.subtitles) state.data.subtitles.style = savedStyles.subtitles;
   state.styleMode = false;
   state.styleDraft = currentStyle();
   state.styleBaseline = currentStyle();
@@ -1399,6 +1399,8 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   instance.style.setProperty('--tt-video-ratio', '1.7777778');
   refs.compactBtn.hidden = mode !== 'subtitles';
   refs.fullscreenBtn.hidden = mode !== 'subtitles';
+  refs.styleBtnLyrics.hidden = true;
+  refs.styleBtnSubtitles.hidden = mode !== 'subtitles';
   refs.title.textContent = t(mode === 'subtitles' ? 'ui.timedTextTitleSubtitles' : 'ui.timedTextTitleLyrics');
   refs.modeBadge.textContent = t(mode === 'subtitles' ? 'ui.timedTextSubtitles' : 'ui.timedTextLyrics');
   refs.fileInput.accept = mode === 'subtitles' ? '.vtt,.srt' : '.lrc';
