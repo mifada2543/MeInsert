@@ -1,4 +1,4 @@
-# THIRD-PARTY LICENSES
+# Third-party licenses
 
 This project bundles the following third-party libraries in `assets/vendor/`
 and fonts in `assets/fonts/`. **This file is the authoritative attribution
@@ -13,6 +13,22 @@ Product names (ExifTool, Mediabunny, pdf-lib, IBM Plex, zeroperl, …)
 are trademarks of their respective owners. They are mentioned here
 only to identify the origin of the bundled code; no endorsement or
 sponsorship is implied.
+
+## Summary
+
+| Component | Version | License | Role |
+|---|---|---|---|
+| IBM Plex (Sans, Sans Condensed, Mono) | — | SIL OFL 1.1 | Fonts |
+| @colorhythm/exiftool-wasm | 1.0.5 | Apache-2.0 | ExifTool WebAssembly wrapper |
+| ExifTool | 13.60 | Perl Artistic License or GPL | Metadata engine (runs inside the wrapper) |
+| zeroperl | — | MIT | Perl-in-WASM runtime |
+| mediabunny | 1.65.0 | MPL-2.0 | Audio/video demux and mux |
+| pdf-lib | 1.17.1 | MIT | PDF metadata |
+| fflate | 0.8.3 | MIT | ZIP / gzip |
+| browser-id3-writer | 6.4.0 | MIT | ID3 tags |
+| MEeL (adapted source) | commit `95e4937` | AGPL-3.0-or-later | Lyrics/subtitle editor |
+
+The sections below are the authoritative entries.
 
 ## IBM Plex (Sans, Sans Condensed, Mono)
 - **License**: SIL Open Font License 1.1 (see `assets/fonts/OFL.txt`)

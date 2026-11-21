@@ -4,13 +4,25 @@
 
 # Limitations and known losses
 
+> **Short version:** MeInsert verifies every write, but it cannot promise that
+> every unsupported tag, signature, or container feature survives. The integrity
+> report shown after saving is the authoritative result for each file.
+
+## Contents
+
+- [Global limits](#global-limits)
+- [Timed text (lyrics & subtitles)](#timed-text-lyrics--subtitles)
+- [Format-specific caveats](#format-specific-caveats)
+- [Batch caveats](#batch-caveats)
+- [Compatibility-harness findings](#compatibility-harness-findings-context)
+
 MeInsert rewrites metadata locally and verifies the result, but some data cannot
-be preserved. This page consolidates the caveats from `README.md` /
-`README-en.md` ("Limitations") and the findings of the real-file compatibility
+be preserved. This page consolidates the caveats summarized in the "Keterbatasan" /
+"Limitations" sections of [`README.md`](../README.md) /
+[`README-en.md`](../README-en.md) and the findings of the real-file compatibility
 harness (`tests/compat/README.md`). These are bounded observations from a
 fixture matrix, not a guarantee for every file, codec, chapter, or tag
-combination. The integrity report shown after a write is the authoritative
-per-file result.
+combination.
 
 ## Global limits
 
@@ -51,91 +63,130 @@ per-file result.
   `LYRICS`, but subtitle cues must be re-imported from a `.vtt` file.
 - Only one language per track is supported in this version.
 - Text colour, background colour/opacity, size, bold/shadow, position and
-  alignment are editable in the **Text appearance** panel, which is offered
-  only for video subtitles: LRC lyrics carry no colour/background format.
-  They are applied
-  exactly to the in-editor preview and to exported `.vtt` files. The same
-  `STYLE` block and cue settings are written into the embedded WebVTT track,
-  but player support varies: MKV/WebVTT players such as mpv/VLC usually honour
-  them, while MP4 `wvtt` and browser-native players may ignore colours and
+  alignment are editable in the **Text appearance** panel, which is offered only
+  for video subtitles: LRC lyrics carry no colour/background format. They are
+  applied exactly to the in-editor preview and to exported `.vtt` files. The same
+  `STYLE` block and cue settings are written into the embedded WebVTT track, but
+  player support varies: MKV/WebVTT players such as mpv/VLC usually honour them,
+  while MP4 `wvtt` and browser-native players may ignore colours and
   backgrounds. Position/alignment settings are the most widely supported.
 - Appearance preferences are stored in `localStorage` separately from the
   line draft. The draft is cleared when you press **Apply**.
 
 ## Format-specific caveats
 
-- **MP3** — non-standard / unmapped ID3 frames are lost on write. The old ID3
-  tag is replaced; only known `TXXX` custom tags are preserved.
-- **MKV / WebM** — chapters and attachments are generally not preserved during
-  stream-copy remuxing. Writes are rejected when track count or packet timing
-  cannot be preserved (some audio inputs, variable-duration video, and
-  timestamps beyond the current muxer's capabilities). Mediabunny 1.65 drops
-  `DefaultDuration` on the Matroska copy path; the app restores a constant
-  positive default only after scanning for grid-aligned timestamps and then
-  re-verifies packet timing. Off-grid, variable-timing, and some AAC
-  audio-only/audio+video cases are safely rejected rather than remuxed.
-- **PDF** — encrypted PDFs are unsupported. **Editing a digitally signed PDF
-  invalidates its signature**: the CMS `Contents` bytes survive but the signed
-  byte ranges change. The harness reports this explicitly as `INVALIDATED`; a
-  green invariants cell means the warning/preservation assertions passed, not
-  that validity was kept. Malformed or unusual XMP is rewritten with a warning
-  and foreign properties may be lost in that case.
-- **Office (OOXML / ODF)** — supported subtypes: `docx`, `xlsx`, `pptx`, `docm`,
-  `xlsm`, `pptm` (OOXML) and `odt`, `ods`, `odp` (ODF). For ODF the `mimetype`
-  entry must remain the **first** ZIP entry and **uncompressed (stored)**; this
-  is asserted by the preservation suite. **Editing a digitally signed Office
-  document invalidates its signature** — a warning is shown in review, but the
-  user may still write deliberately. Macro-enabled files (`.docm`, `.xlsm`,
-  `.pptm`) keep their macro parts best-effort; running macros is the reader's
-  responsibility and is never executed by MeInsert. **Encrypted Office files
-  are rejected**, as are legacy binary formats (`.doc`, `.xls`, `.ppt`); only
-  the ZIP-based OOXML/ODF subtypes above are supported. Before any read or
-  write MeInsert validates package semantics: OOXML content types, root
-  relationships, and the main document part resolved from its relationship must
-  agree (Transitional and Strict namespaces are recognised); ODF validates the
-  manifest, `mimetype`, and `content.xml`. This is **structural and XML
-  validation, not full Office schema conformance** — a package can still fail
-  to open in a specific Office version for reasons MeInsert does not model.
-  Metadata XML is parsed namespace-aware, so arbitrary valid prefixes and
-  default namespaces work without creating unbound prefixes. Writes rewrite
-  only the metadata parts (`docProps/core.xml`, `docProps/app.xml`, `meta.xml`,
-  `docProps/custom.xml`); a SHA-256 ZIP-entry check verifies that every other
-  entry is byte-identical, and a failed check is surfaced as a `failed`
-  integrity result.
-- **Office preview** — the card shown for Office files is a summary of the
-  metadata already read (title, creator, available counts, signature/macro
-  status), plus an optional bounded text excerpt (up to ~280 characters from
-  the first paragraphs, sheet names, or first slide). It is deliberately
-  **not** a full-fidelity rendering of the document pages; use a document
-  reader if you need to inspect the contents.
-- **ZIP detection and decompression bounds** — detection never loads a whole
-  Office file: it reads only the EOCD tail (≤65,557 bytes), the central
-  directory (≤8 MiB) plus a small prefix window, and the stored `mimetype`
-  local record. During inspection only known metadata/preview parts are
-  inflated, each capped at 2 MiB; a larger preview part is reported as a
-  finding with empty data rather than an error, and media/other entries are
-  never decompressed. Duplicate names (after `./`, `\`, and percent-decode
-  normalization), path traversal/absolute paths, overlapping local or central
-  ranges, inconsistent EOCD counts, and malformed deflate/CRC are rejected.
-  ZIP64 archives are not classified during detection and cannot be written.
-- **PNG / WebP** — camera fields are written as XMP (`XMP-tiff:Make/Model`,
-  `XMP-aux:Lens`, `XMP-exif:DateTimeOriginal`), not binary EXIF; EXIF-only
-  readers may not show them.
-- **Ogg** — only Vorbis and Opus are supported; FLAC-in-Ogg and Speex are
-  rejected on both read and write. Not all players display Ogg/Opus cover art.
-  Ogg `vendor` may be rewritten by Mediabunny (`ENGINE_VENDOR_CHANGED`), an
-  explicit warning limited to that format/tag/engine signature; loss of the
-  `ENCODER` tag still fails.
-- **FLAC / Ogg picture metadata** — native picture blocks/comments are
-  preserved rather than regenerated, but the broader fixture matrix (multiple
-  picture types, Unicode descriptions, dimensions/depth/colors, back covers) is
-  what has been verified; it is not exhaustive for all encoders.
-- **MP4 / M4A / MOV cover** — the `covr` atom accepts JPEG/PNG/WebP only; GIF
-  and BMP covers are rejected by the picker policy. Cover bytes are read via an
-  extra Mediabunny pass because ExifTool WASM cannot return raw binary.
-- **Covers (general)** — JPEG/PNG/WebP up to 10 MB for all formats; GIF/BMP up
-  to 10 MB for MP3/FLAC/OGG/MKV only (not MP4 `covr`). Some players do not
-  display Ogg/Opus covers.
+### MP3
+
+- Non-standard / unmapped ID3 frames are lost on write. The old ID3 tag is
+  replaced; only known `TXXX` custom tags are preserved.
+
+### MKV / WebM
+
+- Chapters and attachments are generally not preserved during stream-copy
+  remuxing.
+- Writes are rejected when track count or packet timing cannot be preserved
+  (some audio inputs, variable-duration video, and timestamps beyond the current
+  muxer's capabilities).
+- Mediabunny 1.65 drops `DefaultDuration` on the Matroska copy path. The app
+  restores a constant positive default only after scanning for grid-aligned
+  timestamps, and then re-verifies packet timing.
+- Off-grid, variable-timing, and some AAC audio-only/audio+video cases are
+  safely rejected rather than remuxed.
+
+### PDF
+
+- Encrypted PDFs are unsupported.
+- **Editing a digitally signed PDF invalidates its signature**: the CMS
+  `Contents` bytes survive but the signed byte ranges change. The harness reports
+  this explicitly as `INVALIDATED`; a green invariants cell means the
+  warning/preservation assertions passed, not that validity was kept.
+- Malformed or unusual XMP is rewritten with a warning, and foreign properties
+  may be lost in that case.
+
+### Office (OOXML / ODF)
+
+- **Supported subtypes:** `docx`, `xlsx`, `pptx`, `docm`, `xlsm`, `pptm` (OOXML)
+  and `odt`, `ods`, `odp` (ODF). Only these ZIP-based subtypes are supported.
+- **ODF packaging:** the `mimetype` entry must remain the **first** ZIP entry
+  and **uncompressed (stored)**; this is asserted by the preservation suite.
+- **Signed documents:** editing a digitally signed Office document **invalidates
+  its signature**. A warning is shown in review, but the user may still write
+  deliberately.
+- **Macros:** macro-enabled files (`.docm`, `.xlsm`, `.pptm`) keep their macro
+  parts best-effort. Running macros is the reader's responsibility and is never
+  executed by MeInsert.
+- **Rejected inputs:** encrypted Office files and legacy binary formats (`.doc`,
+  `.xls`, `.ppt`).
+- **Validation before any read or write:** MeInsert validates package semantics.
+  OOXML content types, root relationships, and the main document part resolved
+  from its relationship must agree (Transitional and Strict namespaces are
+  recognised); ODF validates the manifest, `mimetype`, and `content.xml`. This is
+  **structural and XML validation, not full Office schema conformance** — a
+  package can still fail to open in a specific Office version for reasons
+  MeInsert does not model.
+- **Namespace handling:** metadata XML is parsed namespace-aware, so arbitrary
+  valid prefixes and default namespaces work without creating unbound prefixes.
+- **Write scope:** writes rewrite only the metadata parts
+  (`docProps/core.xml`, `docProps/app.xml`, `meta.xml`, `docProps/custom.xml`).
+  A SHA-256 ZIP-entry check verifies that every other entry is byte-identical,
+  and a failed check is surfaced as a `failed` integrity result.
+
+### Office preview
+
+- The card shown for Office files is a summary of the metadata already read
+  (title, creator, available counts, signature/macro status), plus an optional
+  bounded text excerpt (up to ~280 characters from the first paragraphs, sheet
+  names, or first slide).
+- It is deliberately **not** a full-fidelity rendering of the document pages;
+  use a document reader if you need to inspect the contents.
+
+### ZIP detection and decompression bounds
+
+- Detection never loads a whole Office file: it reads only the EOCD tail
+  (≤65,557 bytes), the central directory (≤8 MiB) plus a small prefix window, and
+  the stored `mimetype` local record.
+- During inspection only known metadata/preview parts are inflated, each capped
+  at 2 MiB. A larger preview part is reported as a finding with empty data rather
+  than an error, and media/other entries are never decompressed.
+- Rejected: duplicate names (after `./`, `\`, and percent-decode normalization),
+  path traversal/absolute paths, overlapping local or central ranges,
+  inconsistent EOCD counts, and malformed deflate/CRC.
+- ZIP64 archives are not classified during detection and cannot be written.
+
+### PNG / WebP
+
+- Camera fields are written as XMP (`XMP-tiff:Make/Model`, `XMP-aux:Lens`,
+  `XMP-exif:DateTimeOriginal`), not binary EXIF; EXIF-only readers may not show
+  them.
+
+### Ogg
+
+- Only Vorbis and Opus are supported; FLAC-in-Ogg and Speex are rejected on both
+  read and write.
+- Not all players display Ogg/Opus cover art.
+- The Ogg `vendor` string may be rewritten by Mediabunny
+  (`ENGINE_VENDOR_CHANGED`), an explicit warning limited to that
+  format/tag/engine signature; loss of the `ENCODER` tag still fails.
+
+### FLAC / Ogg picture metadata
+
+- Native picture blocks/comments are preserved rather than regenerated, but the
+  broader fixture matrix (multiple picture types, Unicode descriptions,
+  dimensions/depth/colors, back covers) is what has been verified; it is not
+  exhaustive for all encoders.
+
+### MP4 / M4A / MOV cover
+
+- The `covr` atom accepts JPEG/PNG/WebP only; GIF and BMP covers are rejected by
+  the picker policy.
+- Cover bytes are read via an extra Mediabunny pass because ExifTool WASM cannot
+  return raw binary.
+
+### Covers (general)
+
+- JPEG/PNG/WebP up to 10 MB for all formats; GIF/BMP up to 10 MB for
+  MP3/FLAC/OGG/MKV only (not MP4 `covr`).
+- Some players do not display Ogg/Opus covers.
 
 ## Batch caveats
 

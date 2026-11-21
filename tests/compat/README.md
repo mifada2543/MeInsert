@@ -1,5 +1,17 @@
 # Real-file compatibility harness
 
+End-to-end checks that read, edit, write, re-read, and verify **real files**
+through the production Workers and WASM engines, with no mocks.
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Architecture and assertions](#architecture-and-assertions)
+- [Repair results (2026-11-15)](#repair-results-2026-11-15)
+- [Wiring](#wiring)
+
+## Quick start
+
 ```sh
 npm ci
 CHROME_BIN=/usr/bin/google-chrome npm run test:compat

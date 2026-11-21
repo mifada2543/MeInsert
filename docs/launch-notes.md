@@ -4,9 +4,17 @@
 
 # Launch notes (drafts for the owner)
 
+> [!NOTE]
 > **These are drafts only.** The owner performs all posting, sets the GitHub
 > repository description and topics, and configures the social preview image
 > manually. Nothing here is published by the project or by CI.
+
+## Contents
+
+- [GitHub repository description](#github-repository-description)
+- [Suggested GitHub topics](#suggested-github-topics)
+- [Show HN — draft (English)](#show-hn--draft-english)
+- [Show HN — draft (Bahasa Indonesia)](#show-hn--draft-bahasa-indonesia)
 
 ## GitHub repository description
 
@@ -37,7 +45,9 @@ file list in `assets/THIRD_PARTY_LICENSES.md`.
 
 ## Show HN — draft (English)
 
-> Honest, low-key, and factual. Confirm the live URL and version before posting.
+> [!TIP]
+> Keep the tone honest, low-key, and factual. Confirm the live URL and version
+> before posting.
 
 **Show HN: MeInsert — edit file metadata in your browser, no upload**
 
@@ -74,7 +84,8 @@ trade-offs.
 
 ## Show HN — draft (Bahasa Indonesia)
 
-> Draft, belum dipublikasikan. Konfirmasi URL live dan versi sebelum memposting.
+> [!TIP]
+> Draf, belum dipublikasikan. Konfirmasi URL live dan versi sebelum memposting.
 
 **Show HN: MeInsert — edit metadata file di browser, tanpa upload**
 

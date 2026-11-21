@@ -1,5 +1,4 @@
-MeInsert — NOTICE
-==================
+# MeInsert — Notice
 
 Copyright (C) 2026 mifada2543
 
@@ -18,23 +17,22 @@ terms of any applicable license. When redistributing MeInsert, preserve this fil
 the LICENSE file, and all other copyright and license notices included with the
 corresponding work.
 
-THIRD-PARTY SOFTWARE AND TECHNOLOGIES
---------------------------------------
+## Third-party software and technologies
 
 MeInsert bundles the following independent software in `assets/vendor/` and
 `assets/fonts/`:
 
-* ExifTool 13.60 — by Phil Harvey — https://exiftool.org/
+- ExifTool 13.60 — by Phil Harvey — https://exiftool.org/
   (Perl Artistic License or GPL; runs inside the WebAssembly build)
-* @colorhythm/exiftool-wasm v1.0.5 — https://github.com/6over3/exiftool (Apache-2.0)
-* zeroperl — https://github.com/6over3/zeroperl (MIT — Perl-in-WebAssembly runtime)
-* Mediabunny v1.65.0 — https://github.com/Vanilagy/mediabunny (MPL-2.0)
-* pdf-lib v1.17.1 — https://github.com/Hopding/pdf-lib (MIT)
-* fflate v0.8.3 — https://github.com/101arrowz/fflate (MIT)
-* browser-id3-writer v6.4.0 — https://github.com/egoroof/browser-id3-writer (MIT)
-* IBM Plex fonts (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
+- @colorhythm/exiftool-wasm v1.0.5 — https://github.com/6over3/exiftool (Apache-2.0)
+- zeroperl — https://github.com/6over3/zeroperl (MIT — Perl-in-WebAssembly runtime)
+- Mediabunny v1.65.0 — https://github.com/Vanilagy/mediabunny (MPL-2.0)
+- pdf-lib v1.17.1 — https://github.com/Hopding/pdf-lib (MIT)
+- fflate v0.8.3 — https://github.com/101arrowz/fflate (MIT)
+- browser-id3-writer v6.4.0 — https://github.com/egoroof/browser-id3-writer (MIT)
+- IBM Plex fonts (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
   (SIL Open Font License 1.1)
-* MEeL — LRC editor & timed-text helpers (adapted source) — © 2026 Mifada
+- MEeL — LRC editor & timed-text helpers (adapted source) — © 2026 Mifada
   (mifada2543) — https://github.com/mifada2543/MEeL-HUB (AGPL-3.0-or-later)
   Source files used (MEeL repo, commit `95e4937c74c3929977a907a463a415dcea50d2da`):
   - `assets/js/music/lrc-editor.js` — LRC parser, tap-to-timestamp, player controls
@@ -72,30 +70,29 @@ the project author, you are responsible for including the applicable license
 texts and attribution notices required by those works. Please review the license
 and notice files shipped with each dependency before redistribution.
 
-AGPLv3 NETWORK COPYLEFT AND MONETIZATION
-----------------------------------------
+## AGPLv3 network copyleft and monetization
 
 MeInsert may be monetized (paid product, paid hosting, premium services). AGPLv3
 is a network copyleft license, so the obligations are:
 
-* You may charge for distribution, support, or services.
-* When conveying covered software, provide Corresponding Source as required
+- You may charge for distribution, support, or services.
+- When conveying covered software, provide Corresponding Source as required
   by the applicable provisions of AGPLv3.
-* If you modify the Program and your version supports remote network
+- If you modify the Program and your version supports remote network
   interaction, AGPLv3 section 13 requires prominently offering all users
   interacting with it remotely an opportunity to receive the Corresponding
   Source of your version, at no charge, through a standard or customary means.
-* Private modifications alone do not require public publication. These
+- Private modifications alone do not require public publication. These
   obligations apply to the covered work, not automatically to independent
   software used alongside it.
-* Third-party components above remain under their own licenses; AGPLv3 does not
+- Third-party components above remain under their own licenses; AGPLv3 does not
   change them.
 
-In short: monetization is allowed; applicable source-sharing duties remain. The text of the
-`LICENSE` file is binding; this paragraph is only a plain-language summary.
+In short: monetization is allowed; applicable source-sharing duties remain. The
+text of the `LICENSE` file is binding; this paragraph is only a plain-language
+summary.
 
-USER-PROVIDED CONTENT AND EXTERNAL SERVICES
--------------------------------------------
+## User-provided content and external services
 
 MeInsert reads and writes metadata tags (EXIF, XMP, IPTC, ID3, Vorbis Comment,
 Matroska, PDF Info Dictionary) in files that stay on your own device. The tool
@@ -115,8 +112,7 @@ MeInsert performs no analytics, no telemetry, and no profiling. The application
 requests no network resource other than the files it serves from its own origin
 (the app shell, fonts, libraries, and the optional ExifTool WebAssembly module).
 
-TRADEMARKS
-----------
+## Trademarks
 
 MeInsert and the MeInsert name and logo are used to identify this project. They
 may not be used to imply endorsement of modified or redistributed versions
@@ -125,10 +121,9 @@ IBM Plex, and zeroperl are trademarks of their respective owners; they are
 mentioned only to identify the origin of the bundled code, not as endorsement or
 sponsorship.
 
-CONTACT
--------
+## Contact
 
-Project: https://github.com/mifada2543/meinsert
-Live:    https://meinsert.my.id/
-Author:  mifada2543
-Email:   mifada2543@gmail.com
+- Project: https://github.com/mifada2543/meinsert
+- Live: https://meinsert.my.id/
+- Author: mifada2543
+- Email: mifada2543@gmail.com

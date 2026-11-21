@@ -1,4 +1,17 @@
-# Fixture pengujian / compatibility fixtures
+# Test fixtures / Fixture pengujian
+
+Synthetic, purpose-built files used by the unit, E2E, and compatibility suites.
+
+## Contents
+
+- [Regenerate](#regenerate)
+- [Files](#files)
+- [Office fixtures (OOXML + ODF)](#office-fixtures-ooxml--odf)
+- [EXIF construction](#exif-construction)
+- [Signature provenance and limitations](#signature-provenance-and-limitations)
+- [Supplemental timing / picture corpus](#supplemental-timing--picture-corpus)
+
+## Overview
 
 All media is purpose-built for MeInsert: synthetic gradients, solid-color frames,
 440 Hz tones, and a one-page test document. No personal metadata or third-party
@@ -67,7 +80,7 @@ outputs in memory, not changes to these source fixtures.
 | `signed.docx` | 2161 | `sample.docx` plus a mock `_xmlsignatures/origin.sigs` part | Warn on signed-package detection; marker only, NOT a real signature |
 | `encrypted.docx` | 512 | Mock OLE2-like header (`D0 CF 11 E0 A1 B1 1A E1`) + synthetic bytes | Exercise the unsupported/encrypted error path; NOT a real encrypted document |
 
-### Office fixtures (OOXML + ODF)
+## Office fixtures (OOXML + ODF)
 
 Run `node tests/fixtures/office-generate.mjs` from the repository root to
 regenerate all eleven Office fixtures. This generator uses only Node built-ins
@@ -82,7 +95,7 @@ content starts at byte 38; the generator verifies this. `signed.docx` is a
 marker-only mock (folder presence triggers the adapter warning) and
 `encrypted.docx` is a mock header, not a genuine signed or encrypted document.
 
-### EXIF construction
+## EXIF construction
 
 `generate.mjs` constructs a little-endian TIFF with IFD0 Artist, Software,
 ImageDescription, XPTitle and XPKeywords, plus an ExifIFD pointer to
@@ -104,7 +117,7 @@ root to regenerate it byte-for-byte. The Fase 3 clean-metadata E2E tests use it
 to verify that location/identity/software tags are removed while orientation is
 kept, and that no data is fetched from the network.
 
-### Signature provenance and limitations
+## Signature provenance and limitations
 
 The generator reserves a PDF signature `Contents`, patches a fixed-width
 `ByteRange`, signs the exact covered bytes with `openssl cms -sign -binary`, and
@@ -129,7 +142,7 @@ Some external players do not display Ogg/Opus covers even when embedded and
 readable. The compatibility harness checks actual embedded image bytes, not
 player UI behavior.
 
-### Supplemental timing / picture corpus
+## Supplemental timing / picture corpus
 
 `mkv-generate.mjs` generates an isolated temporary corpus without touching the
 stored fixtures: 0.3s/1.1s reordered B-frame video, no-B-frame video, nonzero
