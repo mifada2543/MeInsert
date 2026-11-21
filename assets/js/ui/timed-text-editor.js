@@ -1440,6 +1440,7 @@ export function mountTimedTextButton({ container, ctx } = {}) {
   const buttonIcon = el('span', { className: 'timed-text-btn__icon' }, icon('audio'));
   const buttonLabel = el('span', { className: 'timed-text-btn__label' });
   bindText(buttonLabel, () => t(mediaModeForFile(ctx.state?.file) === 'subtitles' ? 'ui.timedTextOpenVideo' : 'ui.timedTextOpenAudio'));
+  const supportsFile = (file) => TIMED_TEXT_EXTS.has(String(file?.name || '').toLowerCase().split('.').pop());
   const button = el('button', {
     type: 'button',
     id: 'timedTextBtn',
@@ -1447,8 +1448,12 @@ export function mountTimedTextButton({ container, ctx } = {}) {
     title: translated(() => t('ui.timedTextOpen')),
     'aria-label': translated(() => t('ui.timedTextOpen')),
   }, buttonIcon, buttonLabel);
-  // Keep the button icon in sync with the format of the currently open file.
+  button.hidden = !supportsFile(ctx.state?.file);
+  // Only audio/video files can carry timed text; hide it for images, PDFs,
+  // Office documents and other formats.
   window.addEventListener('meinsert:fileReady', () => {
+    button.hidden = !supportsFile(ctx.state?.file);
+    if (button.hidden) return;
     const mode = mediaModeForFile(ctx.state?.file);
     buttonIcon.replaceChildren(icon(mode === 'subtitles' ? 'video' : 'audio'));
     buttonLabel.textContent = t(mode === 'subtitles' ? 'ui.timedTextOpenVideo' : 'ui.timedTextOpenAudio');

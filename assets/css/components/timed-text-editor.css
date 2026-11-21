@@ -6,6 +6,9 @@
  * Source: assets/js/music/lrc-editor.js, assets/js/music/watch/karaoke.js, assets/css/music/lrc-editor.css
  * Modified for MeInsert: dialog instead of PHP page, object-URL preview, editor state instead of localStorage, MeInsert tokens, watermark added. */
 /* Synchronized lyrics / subtitle editor. Tokens only, theme-aware, no external icons. */
+.timed-text-btn[hidden] {
+  display: none !important;
+}
 .timed-text [hidden] {
   display: none !important;
 }

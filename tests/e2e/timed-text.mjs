@@ -21,6 +21,7 @@ const contentTypes = new Map([
   ['.js', 'text/javascript; charset=utf-8'], ['.mjs', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'], ['.wasm', 'application/wasm'],
   ['.gz', 'application/gzip'], ['.mp3', 'audio/mpeg'], ['.mp4', 'video/mp4'],
+  ['.png', 'image/png'],
 ]);
 const server = await createStaticServer({ root, contentTypes, traversalStatus: 403 });
 const { port } = server.address();
@@ -33,6 +34,7 @@ page.on('pageerror', (error) => errors.push(error.message));
 const tempDir = mkdtempSync(join(tmpdir(), 'meinsert-timed-text-'));
 const audio = join(tempDir, 'tone.mp3');
 const video = join(tempDir, 'clip.mp4');
+const image = join(tempDir, 'pattern.png');
 async function open(file) {
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded' });
   await page.locator('#fileInput').setInputFiles(file);
@@ -44,6 +46,16 @@ async function open(file) {
 try {
   copyFileSync(join(root, 'tests/fixtures/tone.mp3'), audio);
   copyFileSync(join(root, 'tests/fixtures/clip.mp4'), video);
+  copyFileSync(join(root, 'tests/fixtures/pattern.png'), image);
+  await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded' });
+  await page.locator('#fileInput').setInputFiles(image);
+  await page.waitForFunction(() => /tag terbaca/.test(document.querySelector('#readStatus')?.textContent || ''),
+    null, { timeout: 120000 });
+  if (!(await page.locator('#timedTextBtn').isHidden())) {
+    throw new Error('Tombol Song lyrics masih muncul untuk berkas gambar.');
+  }
+  console.log('PASS: tombol Song lyrics tersembunyi untuk format bukan audio/video');
+
   await open(audio);
   const audioMode = await page.evaluate(() => ({
     mode: document.querySelector('#timedTextDialog')?.dataset.mode,
