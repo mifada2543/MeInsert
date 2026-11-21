@@ -226,6 +226,11 @@ Each stage in detail:
    safe default, `precise` may transcode). Line drafts autosave to `localStorage`
    keyed by file identity and are cleared on **Apply**; appearance preferences
    persist separately in `meinsert-timed-text-style-v1`.
+   `ui/change-history.js#mountChangeHistory` opens the change-history panel
+   (`.history-dialog`) from the editor head: it lists the current state plus
+   the labelled entries from `core/history.js#historyEntries`, newest first.
+   Rolling back calls `core/history.js#rollbackTo` after confirmation, then
+   re-syncs the action bar and workspace; the rollback itself is undoable.
    `editor/editor-changes.js#collectChanges` gathers the payload including the
    `sidecar` and the pending `trim`, and
    `core/change-plan.js#buildChangePlan` produces the minimal operation list and

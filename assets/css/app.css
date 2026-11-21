@@ -38,6 +38,7 @@
 @import "./components/offline-settings.css";
 @import "./components/timed-text-editor.css";
 @import "./components/media-cut-editor.css";
+@import "./components/change-history.css";
 @import "./components/mobile-menu.css";
 @import "./pages/about.css";
 @import "./components/policy-notice.css";

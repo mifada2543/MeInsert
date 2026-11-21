@@ -1437,7 +1437,7 @@ export function mountTimedTextButton({ container, ctx } = {}) {
   if (!host) return null;
   const existing = qs('#timedTextBtn', host);
   if (existing) return existing;
-  const buttonIcon = el('span', { className: 'timed-text-btn__icon' }, icon('audio'));
+  const buttonIcon = el('span', { className: 'timed-text-btn__icon' }, icon('caption'));
   const buttonLabel = el('span', { className: 'timed-text-btn__label' });
   bindText(buttonLabel, () => t(mediaModeForFile(ctx.state?.file) === 'subtitles' ? 'ui.timedTextOpenVideo' : 'ui.timedTextOpenAudio'));
   const supportsFile = (file) => TIMED_TEXT_EXTS.has(String(file?.name || '').toLowerCase().split('.').pop());
@@ -1455,7 +1455,6 @@ export function mountTimedTextButton({ container, ctx } = {}) {
     button.hidden = !supportsFile(ctx.state?.file);
     if (button.hidden) return;
     const mode = mediaModeForFile(ctx.state?.file);
-    buttonIcon.replaceChildren(icon(mode === 'subtitles' ? 'video' : 'audio'));
     buttonLabel.textContent = t(mode === 'subtitles' ? 'ui.timedTextOpenVideo' : 'ui.timedTextOpenAudio');
     button.title = buttonLabel.textContent;
     button.setAttribute('aria-label', buttonLabel.textContent);
@@ -1471,7 +1470,7 @@ export function mountTimedTextButton({ container, ctx } = {}) {
       file: editorState.file,
       sidecar: editorState.sidecar,
       onApply: (next) => {
-        beginChange(editorState.history, 'sidecar');
+        beginChange(editorState.history, 'sidecar', t('ui.changeHistorySidecar'));
         setSidecar(editorState, next);
         endChange(editorState.history);
         syncActionBar(ctx.els, editorState);

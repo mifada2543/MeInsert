@@ -52,6 +52,10 @@ combination.
   acknowledgment (`meinsert.policyAck`, valid for 30 days) live only in this
   browser's `localStorage`. They are never uploaded, and clearing site data
   resets them (the policy notice then appears again).
+- **Change history** — the change-history panel can roll the editor back to an
+  earlier entry, and the rollback itself is undoable with **Undo** (Ctrl+Z).
+  The history lives only in the current editor session: reloading the page or
+  opening another file clears it, and it never contains a previously saved file.
 
 ## Timed text (lyrics & subtitles)
 

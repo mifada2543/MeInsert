@@ -316,7 +316,7 @@ export function openCleanPanel(ctx) {
 }
 function applyCleaning(ctx, payload) {
   const { els, state } = ctx;
-  beginChange(state.history, 'clean-metadata');
+  beginChange(state.history, 'clean-metadata', t('ui.changeHistoryClean'));
   for (const [id, value] of Object.entries(payload.set || {})) {
     state.values[id] = value;
     state.removedFields.delete(id);

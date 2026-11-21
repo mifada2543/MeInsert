@@ -29,6 +29,7 @@ export function createShell() {
     saveLabel: qs('#saveLabel'),
     undoBtn: qs('#undoBtn'),
     redoBtn: qs('#redoBtn'),
+    historyBtn: qs('#historyBtn'),
     progress: qs('#progress'),
     progressBar: qs('#progressBar'),
     progressLabel: qs('#progressLabel'),
@@ -40,8 +41,10 @@ export function setIcons() {
   qs('#saveBtn .icon')?.replaceChildren(icon('download'));
   qs('#undoBtn .icon')?.replaceChildren(icon('undo'));
   qs('#redoBtn .icon')?.replaceChildren(icon('redo'));
+  qs('#historyBtn .icon')?.replaceChildren(icon('history'));
   const undoBtn = qs('#undoBtn');
   const redoBtn = qs('#redoBtn');
+  const historyBtn = qs('#historyBtn');
   if (undoBtn) {
     bindTranslation(undoBtn, 'aria-label', () => (t('ui.undoLastChange')));
     bindTranslation(undoBtn, 'title', () => (t('ui.undoLastChange')));
@@ -49,6 +52,10 @@ export function setIcons() {
   if (redoBtn) {
     bindTranslation(redoBtn, 'aria-label', () => (t('ui.redoLastChange')));
     bindTranslation(redoBtn, 'title', () => (t('ui.redoLastChange')));
+  }
+  if (historyBtn) {
+    bindTranslation(historyBtn, 'aria-label', () => (t('ui.changeHistoryOpen')));
+    bindTranslation(historyBtn, 'title', () => (t('ui.changeHistoryOpen')));
   }
   bindTranslation(qs('#year'), 'textContent', () => (String(new Date().getFullYear())));
 }

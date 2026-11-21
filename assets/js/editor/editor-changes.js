@@ -123,6 +123,7 @@ export function syncActionBar(els, state) {
   els.outputBase.disabled = state.processing;
   if (els.undoBtn) els.undoBtn.disabled = state.processing || !canUndo(state.history);
   if (els.redoBtn) els.redoBtn.disabled = state.processing || !canRedo(state.history);
+  if (els.historyBtn) els.historyBtn.disabled = state.processing || !canUndo(state.history);
   if (state.detection) {
     els.outputBase.value = state.outputBase;
     els.outputExt.textContent = `.${state.detection.ext}`;

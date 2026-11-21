@@ -15,6 +15,14 @@ import { normalizeRawTag } from '../core/metadata-snapshot.js';
 import { isCommittedResult } from '../core/write-guard.js';
 import { cloneRows } from './editor-state.js';
 import { beginChange, redo, undo } from '../core/history.js';
+import { t } from '../i18n/index.js';
+
+/** Label manusiawi untuk sebuah field, jatuh ke id bila label tidak ada. */
+function fieldLabel(state, id) {
+  const field = state.adapter?.fields?.find((item) => item.id === id);
+  return field?.label || id;
+}
+
 export function previewUrlFor(file, detection) {
   if (!file || !detection) return null;
   const previewable = ['image', 'pdf', 'mp3', 'flac', 'ogg', 'mp4', 'mkv'];
@@ -209,7 +217,7 @@ export function renderWorkspace(ctx) {
 export function resetChanges(ctx) {
   const { els, state } = ctx;
   if (state.processing) return;
-  beginChange(state.history);
+  beginChange(state.history, null, t('ui.changeHistoryCurrent'));
   state.values = { ...state.originalValues };
   state.removedFields.clear();
   state.rawRemove.clear();
@@ -246,19 +254,19 @@ export function createHandlers(ctx) {
   const { els, state } = ctx;
   return {
     onFieldChange(id, value) {
-      beginChange(state.history, `field:${id}`);
+      beginChange(state.history, `field:${id}`, t('ui.changeHistoryField', { v0: fieldLabel(state, id) }));
       state.values[id] = value;
       state.removedFields.delete(id);
       syncActionBar(els, state);
     },
     onFieldClear(id) {
-      beginChange(state.history);
+      beginChange(state.history, null, t('ui.changeHistoryField', { v0: fieldLabel(state, id) }));
       state.values[id] = '';
       state.removedFields.add(id);
       syncActionBar(els, state);
     },
     onAddCustom() {
-      beginChange(state.history);
+      beginChange(state.history, null, t('ui.changeHistoryCurrent'));
       state.customRows.push({
         uid: ++state.customUid,
         key: '',
@@ -271,14 +279,17 @@ export function createHandlers(ctx) {
     onCustomChange(uid, part, value) {
       const row = state.customRows.find((item) => item.uid === uid);
       if (!row) return;
-      beginChange(state.history, `custom:${uid}:${part}`);
+      beginChange(state.history, `custom:${uid}:${part}`, t('ui.changeHistoryCustom', {
+        v0: part === 'key' ? value : row.key,
+      }));
       row[part] = value;
       syncActionBar(els, state);
     },
     onCustomDelete(uid) {
       const index = state.customRows.findIndex((item) => item.uid === uid);
       if (index < 0) return;
-      beginChange(state.history);
+      const rowKey = state.customRows[index].key;
+      beginChange(state.history, null, t('ui.changeHistoryCustom', { v0: rowKey }));
       const [row] = state.customRows.splice(index, 1);
       if (row.originalKey) state.removedCustom.add(row.originalKey);
       syncActionBar(els, state);
@@ -298,7 +309,7 @@ export function createHandlers(ctx) {
           showToast(`Format gambar tidak didukung. Gunakan ${coverFormatsLabelFor(detectionId)}.`, 'error', 6000);
           return;
         }
-        beginChange(state.history);
+        beginChange(state.history, null, t('ui.changeHistoryCover'));
         state.coverChosen = { data: u8, mimeType: file.type || mimeOf(u8), name: file.name };
         state.coverAction = 'set';
         refreshCoverPreview(state);
@@ -307,7 +318,7 @@ export function createHandlers(ctx) {
       })().catch((error) => showToast(`Gagal membaca gambar: ${error?.message || error}`, 'error', 6000));
     },
     onCoverRemove() {
-      beginChange(state.history);
+      beginChange(state.history, null, t('ui.changeHistoryCover'));
       state.coverAction = 'remove';
       state.coverChosen = null;
       refreshCoverPreview(state);
@@ -315,7 +326,7 @@ export function createHandlers(ctx) {
       syncActionBar(els, state);
     },
     onCoverUndo() {
-      beginChange(state.history);
+      beginChange(state.history, null, t('ui.changeHistoryCover'));
       state.coverAction = 'keep';
       state.coverChosen = null;
       refreshCoverPreview(state);

@@ -6,6 +6,42 @@
  * Source: assets/js/music/lrc-editor.js, assets/js/music/watch/karaoke.js, assets/css/music/lrc-editor.css
  * Modified for MeInsert: dialog instead of PHP page, object-URL preview, editor state instead of localStorage, MeInsert tokens, watermark added. */
 /* Synchronized lyrics / subtitle editor. Tokens only, theme-aware, no external icons. */
+/* Shared action-option button geometry: caption (timed text) and scissors (cut)
+   keep identical icon size, spacing and label baseline on every file mode. */
+.timed-text-btn,
+.cut-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 10px;
+}
+.timed-text-btn__icon,
+.cut-btn__icon {
+  display: inline-flex;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+.timed-text-btn__icon .icon,
+.cut-btn__icon .icon {
+  display: inline-flex;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+.timed-text-btn__icon .icon svg,
+.cut-btn__icon .icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+.timed-text-btn__label,
+.cut-btn__label {
+  white-space: nowrap;
+  line-height: 1;
+}
 .timed-text-btn[hidden] {
   display: none !important;
 }

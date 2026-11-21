@@ -453,7 +453,6 @@ export function mountCutButton({ container, ctx } = {}) {
     button.hidden = !supportsFile(ctx.state?.file);
     if (button.hidden) return;
     const mode = cutModeForFile(ctx.state?.file);
-    buttonIcon.replaceChildren(icon(mode === 'video' ? 'video' : 'audio'));
     buttonLabel.textContent = t(mode === 'video' ? 'ui.cutOpenVideo' : 'ui.cutOpenAudio');
     button.title = buttonLabel.textContent;
     button.setAttribute('aria-label', buttonLabel.textContent);
@@ -471,7 +470,7 @@ export function mountCutButton({ container, ctx } = {}) {
       file,
       trim: editorState.trim,
       onApply: (next) => {
-        beginChange(editorState.history, 'trim');
+        beginChange(editorState.history, 'trim', t('ui.changeHistoryCut', { v0: formatTime(next.start), v1: formatTime(next.end) }));
         setTrim(editorState, next);
         endChange(editorState.history);
         syncActionBar(ctx.els, editorState);
