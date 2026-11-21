@@ -66,6 +66,9 @@ compatibility harness (`tests/compat/`) fails on any other browser request.
 - `media-proof.js` — bounded-memory SHA-256 proofs over media payload ranges;
   used to justify `MEDIA_RELOCATED` when container offsets change (TIFF strips,
   MP4 `mdat`).
+- `media-cut.js` / `mp3-cut.js` — trim contract helpers: `normalizeTrim()`,
+  `conversionCutOptions()`, `expectedCutDuration()`, and `mediaRangeProof()`;
+  `mp3-cut.js` slices whole MPEG frames while keeping ID3 bytes verbatim.
 - `memory-estimate.js` — `estimateForSingle` / batch estimates that feed memory
   warnings and blocks (`core/change-plan.js` attaches them as risks). The
   estimate now also considers an optional observed peak reported by the client.
@@ -213,12 +216,18 @@ Each stage in detail:
    cover, and warnings. Audio/video adapters may also return a `sidecar`
    (synchronized lyrics/subtitle cues). A baseline snapshot is created
    (`core/metadata-snapshot.js#createSnapshot`) and the form is rendered.
-5. **Edit & plan** — the user changes fields or opens the timed-text editor
-   (`ui/timed-text-editor.js`, ported from MEeL — see third-party attributions).
-   Line drafts autosave to `localStorage` keyed by file identity and are cleared
-   on **Apply**; appearance preferences persist separately in
-   `meinsert-timed-text-style-v1`. `editor/editor-changes.js#collectChanges`
-   gathers the payload including the `sidecar`, and
+5. **Edit & plan** — the user changes fields, opens the timed-text editor
+   (`ui/timed-text-editor.js`, ported from MEeL — see third-party attributions),
+   or opens the trim dialog (`ui/media-cut-editor.js`). The trim dialog stages a
+   `trim` range (`{ start, end, mode }`, seconds) in `state.trim` through
+   `editor/editor-state.js#setTrim`; it never decodes media bytes and is recorded
+   as a `trim` history change. `normalizeTrim()` from `core/media-cut.js`
+   validates the range against the media duration and `CUT_MODES` (`copy` is the
+   safe default, `precise` may transcode). Line drafts autosave to `localStorage`
+   keyed by file identity and are cleared on **Apply**; appearance preferences
+   persist separately in `meinsert-timed-text-style-v1`.
+   `editor/editor-changes.js#collectChanges` gathers the payload including the
+   `sidecar` and the pending `trim`, and
    `core/change-plan.js#buildChangePlan` produces the minimal operation list and
    write payload, attaching risk warnings.
 6. **Review** — `ui/review-dialog.js#openReviewDialog` shows exactly what will
@@ -226,14 +235,26 @@ Each stage in detail:
    until the user confirms.
 7. **Write in a worker** — `editor/editor-save.js#saveMetadata` calls
    `MetadataClient.write`; the adapter applies `plan.payload` through its engine
-   and returns a new `Blob` plus a re-read of its own output. For timed text,
-   `mkv.js`/`mp4.js` add a WebVTT track containing the `STYLE` block from
-   `core/timed-text.js`, and verify A/V packet equivalence before releasing the
-   result.
+   and returns a new `Blob` plus a re-read of its own output. When `state.trim`
+   is present, the write path performs a **cut operation**: `core/media-cut.js`
+   supplies `conversionCutOptions()` (copy-forced vs. precise/boundary-shrink)
+   and `expectedCutDuration()`, while MP3 uses `core/mp3-cut.js#sliceMp3Range`
+   to emit only whole frames inside the window and copy ID3v2 bytes verbatim.
+   For timed text, `mkv.js`/`mp4.js` add a WebVTT track containing the `STYLE`
+   block from `core/timed-text.js`, and verify A/V packet equivalence before
+   releasing the result. Cut output that would exceed the memory policy is
+   treated like any other large write: `warn` is dismissible, `block` requires
+   low-memory mode or explicit acknowledgement, and worker payloads are
+   transferred rather than copied.
 8. **Verify** — `core/integrity.js#verifyIntegrity` compares the output snapshot
    against the plan and the original baseline for fields, custom tags, raw
-   tags, XMP, cover, structure, and payload proofs. The result is shown to the
-   user (`ok`, `warning`, or `failed`).
+   tags, XMP, cover, structure, and payload proofs. For a cut, the retained
+   media packets are checked with the bounded-memory **range proof**
+   (`core/media-cut.js#mediaRangeProof`, `av-range-v1`): it hashes encoded
+   packets inside `[start, end)` together with their durations, so a container
+   rewrite that keeps the compressed samples still verifies. The same memory
+   policy applies to verification buffers, and the result is shown to the user
+   (`ok`, `warning`, or `failed`).
 9. **Download** — `editor/editor-save.js#downloadResult` creates an object URL
    for the *new* file. The original file is never overwritten.
 

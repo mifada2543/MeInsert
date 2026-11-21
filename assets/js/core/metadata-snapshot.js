@@ -164,6 +164,9 @@ export function createSnapshot({ adapter, detection, readResult } = {}) {
     // Container rewrites that embed a timed-text track legitimately move the
     // A/V bytes; the packet-level proof releases those writes safely.
     packetProof: readResult?.packetProof || null,
+    // Byte-range proof captured for a media cut; integrity compares it with
+    // the proof produced after writing to guard the cut range.
+    rangeProof: readResult?.rangeProof || null,
     warnings: [...(readResult?.warnings || [])],
     counts: {
       fields: Object.values(fields).filter((field) => field.normalized).length,

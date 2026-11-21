@@ -14,7 +14,7 @@ Tanpa server. Tanpa upload. Tanpa akun.
 [Demo langsung](https://meinsert.my.id/) · [Editor satu file](https://meinsert.my.id/single.html) · [Mode batch](https://meinsert.my.id/batch.html) · [Dokumentasi](#dokumentasi-lanjutan)
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
-[![Versi](https://img.shields.io/badge/version-v1.4.1-blue?style=flat-square)](./package.json)
+[![Versi](https://img.shields.io/badge/version-v1.5.0-blue?style=flat-square)](./package.json)
 [![Lisensi](https://img.shields.io/badge/Lisensi-AGPLv3-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#cara-memverifikasi-klaim-lokal)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)

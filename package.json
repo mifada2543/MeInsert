@@ -1,6 +1,6 @@
 {
   "name": "meinsert",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Insert and edit file metadata locally in your browser.",
@@ -23,6 +23,7 @@
     "test:engine": "node tests/e2e/engine-loading.mjs",
     "test:wasm-integrity": "node tests/e2e/wasm-integrity.mjs",
     "test:timed-text": "node tests/e2e/timed-text.mjs",
+    "test:cut": "node tests/e2e/cut-media.mjs",
     "test:quick-save": "node tests/e2e/quick-save.mjs",
     "test:clean": "node tests/e2e/clean-metadata.mjs",
     "test:clean:batch": "node tests/e2e/batch-clean.mjs",

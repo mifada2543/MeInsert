@@ -10,9 +10,52 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## Daftar isi
 
+- [1.5.0 — 2026-11-21](#150--2026-11-21)
 - [1.4.1 — 2026-11-21](#141--2026-11-21)
 - [1.4.0 — 2026-11-21](#140--2026-11-21)
 - [1.3.0 — 2026-11-18](#130--2026-11-18)
+
+## [1.5.0] — 2026-11-21
+
+Rilis ini menambahkan pemotongan rentang audio/video ke editor satu berkas.
+`package.json`, lock file, dan badge README ID/EN menunjukkan `v1.5.0`. Cache
+shell naik ke `meinsert-v59`; cache engine tetap `meinsert-engine-v1`.
+
+### Fitur — potong audio/video
+
+- Tombol **Potong audio/video** muncul di panel opsi action bar hanya untuk
+  MP3, FLAC, OGG/Opus, MP4/M4A, MOV, MKV, dan WebM; mode (audio/video) dikunci
+  dari ekstensi berkas dan diperbarui saat berkas selesai dibuka.
+- Dialog potong dua kolom menampilkan pratinjau `blob:` berbasis `<audio>` /
+  `<video>`, input waktu `mm:ss.mmm`, tombol tandai mulai/selesai dari posisi
+  putar, putar rentang, atur ulang, terapkan, dan batal. Pratinjau dan URL
+  objek dilepaskan saat dialog ditutup.
+- Dua mode: **Salin** (default, stream-copy bila keyframe mengizinkan) dan
+  **Presisi** (batas waktu eksak, dapat melakukan transcode). Ringkasan durasi
+  hasil, rencana rentang, dan peringatan keyframe/transcode/bab/Xing/memori
+  ditampilkan sebelum penerapan.
+- Rentang divalidasi dengan `core/media-cut.js#normalizeTrim` terhadap durasi
+  media; rentang tidak valid ditolak dengan toast dan pesan status. Penerapan
+  masuk ke undo/redo sebagai perubahan `trim` melalui `setTrim()` dan
+  `syncActionBar()`.
+- Guard offline dipulihkan: fitur audio memakai paket offline `audio`, video
+  memakai `image`; mesin yang belum ter-cache menampilkan toast dan memblokir
+  dialog saat offline.
+
+### Dokumentasi & offline
+
+- `docs/ARCHITECTURE.md` mendokumentasikan `state.trim`, operasi potong, range
+  proof, dan kebijakan memori pada langkah pipeline 5/7/8.
+- `docs/LIMITATIONS.md` menambahkan bagian "Cut audio/video" untuk keyframe,
+  transcode, chapter/attachment, Xing/TLEN/CHAP/CTOC, dan memori.
+- `media-cut.js`, `mp3-cut.js`, dan dependensinya masuk ke manifest offline
+  audio/image; `KNOWN_OPTIONAL_URLS` Service Worker mengikuti union manifest.
+- Skrip `test:cut` ditambahkan untuk suite E2E potong media.
+
+### Verifikasi rilis
+
+- Build CSS dan validasi terarah (manifest offline, update Service Worker,
+  watermark, ESLint pada modul yang diubah) hijau.
 
 ## [1.4.1] — 2026-11-21
 

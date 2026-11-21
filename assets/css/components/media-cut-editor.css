@@ -1,0 +1,323 @@
+/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
+/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+/* Compact two-column trim dialog. Tokens only, theme-aware, no external icons. */
+.cut-btn[hidden],
+.cut-dialog [hidden] {
+  display: none !important;
+}
+.cut-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 121;
+  width: min(760px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(720px, calc(100vh - 32px));
+  max-height: min(720px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--ink);
+}
+.cut-dialog::backdrop {
+  background: rgba(11, 11, 16, 0.62);
+  backdrop-filter: blur(2px);
+}
+.cut-dialog[open] {
+  animation: cut-dialog-in 200ms cubic-bezier(.2, .7, .2, 1) both;
+}
+.cut-dialog.is-closing {
+  animation: cut-dialog-out 160ms cubic-bezier(.2, .7, .2, 1) forwards;
+  pointer-events: none;
+}
+@keyframes cut-dialog-in {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cut-dialog-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(6px) scale(.98); }
+}
+.cut-dialog__panel {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-drop);
+}
+.cut-dialog__head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.cut-dialog__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cut-dialog__badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: .72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cut-dialog__title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.18rem;
+  font-weight: 600;
+}
+.cut-dialog__close {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.cut-dialog__close:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.cut-dialog__body {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, .9fr) minmax(300px, 1.1fr);
+  gap: 18px;
+  min-height: 0;
+  padding: 18px 20px;
+  overflow: auto;
+}
+.cut-dialog__pane {
+  min-width: 0;
+}
+.cut-dialog__pane--preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cut-dialog__pane-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.cut-dialog__preview {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+.cut-dialog__media {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #000;
+}
+.cut-dialog__offline-note,
+.cut-dialog__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: .76rem;
+  line-height: 1.4;
+}
+.cut-dialog__pane--form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cut-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.cut-dialog__label {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 600;
+}
+.cut-dialog__time-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.cut-dialog__time {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: .95rem;
+  letter-spacing: .04em;
+}
+.cut-dialog__time:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.cut-dialog__time-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cut-dialog__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: .82rem;
+  cursor: pointer;
+}
+.cut-dialog__btn:hover {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.cut-dialog__btn--apply {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 600;
+}
+.cut-dialog__btn--apply:hover {
+  background: var(--brand-hover);
+  color: var(--brand-ink);
+}
+.cut-dialog__modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.cut-dialog__modes .cut-dialog__label {
+  flex: 1 0 100%;
+}
+.cut-dialog__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .84rem;
+  cursor: pointer;
+}
+.cut-dialog__modes .cut-dialog__hint {
+  flex: 1 0 100%;
+}
+.cut-dialog__summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.cut-dialog__summary .cut-dialog__hint {
+  grid-column: 2;
+}
+.cut-dialog__duration {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.cut-dialog__plan {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: .78rem;
+}
+.cut-dialog__risks {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--warning);
+  font-size: .76rem;
+  line-height: 1.4;
+}
+.cut-dialog__risk::marker {
+  color: var(--warning);
+}
+.cut-dialog__status {
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--muted);
+  font-size: .78rem;
+}
+.cut-dialog__status[data-kind="error"] {
+  color: var(--danger);
+}
+.cut-dialog__status[data-kind="warn"] {
+  color: var(--warning);
+}
+.cut-dialog__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+}
+.cut-dialog__actions-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 700px) {
+  .cut-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+  .cut-dialog__body {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px 16px;
+  }
+  .cut-dialog__media {
+    max-height: 180px;
+  }
+  .cut-dialog__head,
+  .cut-dialog__actions {
+    padding: 12px 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cut-dialog[open],
+  .cut-dialog.is-closing {
+    animation: none;
+  }
+}

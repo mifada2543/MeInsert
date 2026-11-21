@@ -2,6 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { normalizeCustomKey, normalizeFieldValue, normalizeRawTag, normalizeText } from './metadata-snapshot.js';
+import { expectedCutDuration } from './media-cut.js';
 import { sameMediaProof } from './media-proof.js';
 import {
   isCoverRaw,
@@ -122,6 +123,10 @@ export function verifyIntegrity(plan, afterSnapshot) {
   const after = afterSnapshot;
   const rules = rulesFor(plan?.format?.id || before.format?.id);
   const targets = expectedRawTags(plan);
+  const hasTrimProof = Boolean(plan?.payload?.trim && plan?.trimProof);
+  const cutFormatId = plan?.format?.id || before.format?.id;
+  const cutDerivedRaw = /^(compatiblebrands|createdate|duration|mediadatasize|timescale)$/i;
+  const isCutDerivedRaw = (tag) => cutFormatId === 'mp4' && cutDerivedRaw.test(tag);
   const add = (finding) => {
     findings.push(finding);
     if (finding.code === 'METADATA_LOST' || finding.code === 'FIELD_LOST' || finding.code === 'CUSTOM_LOST') {
@@ -131,6 +136,21 @@ export function verifyIntegrity(plan, afterSnapshot) {
     } else if (finding.severity === 'error') {
       summary.changed += 1;
     }
+  };
+  const addKnown = (message, code, target, beforeValue, afterValue) => {
+    const entry = { code, message, target };
+    if (!knownLoss.some((item) => item.code === code && item.target === target)) {
+      knownLoss.push(entry);
+      summary.knownLoss += 1;
+    }
+    findings.push({
+      severity: 'warning',
+      code,
+      target,
+      message,
+      before: beforeValue ?? '',
+      after: afterValue ?? '',
+    });
   };
   if (!after) {
     return {
@@ -201,6 +221,18 @@ export function verifyIntegrity(plan, afterSnapshot) {
         before: field.value,
         after: '',
       });
+      continue;
+    }
+    // Writing a cut container makes the engine fill an empty date field.
+    if (hasTrimProof && id === 'date' && !beforeNormalized && afterNormalized) {
+      addKnown(
+        'Tanggal diisi engine saat container dipotong.',
+        'CUT_CONTAINER_METADATA',
+        `field:${id}`,
+        field.value,
+        actual?.value || '',
+      );
+      summary.preserved += 1;
       continue;
     }
     if (beforeNormalized !== afterNormalized) {
@@ -280,27 +312,15 @@ export function verifyIntegrity(plan, afterSnapshot) {
   const targetRaw = new Set((plan?.operations || []).filter((op) => op.kind === 'raw').map((op) => normalizeRawTag(op.tag)));
   const byteProofRelocated = sameMediaProof(before.mediaProof, after.mediaProof);
   const packetProofRelocated = sameMediaProof(before.packetProof, after.packetProof);
-  const relocatedPayload = byteProofRelocated || packetProofRelocated;
+  // A media cut legitimately rewrites payload bytes. The range proof captured
+  // before the write vouches for the cut window, so suppress only
+  // MEDIA_PAYLOAD_CHANGED in this case.
+  const relocatedPayload = byteProofRelocated || packetProofRelocated || hasTrimProof;
   if (before.mediaProof?.valid && !relocatedPayload) {
     add({ severity: 'error', code: 'MEDIA_PAYLOAD_CHANGED', target: 'media',
       message: 'Payload media berubah atau tidak bisa diverifikasi setelah penulisan.',
       before: before.mediaProof.kind, after: after.mediaProof?.valid ? 'changed' : 'unverified' });
   }
-  const addKnown = (message, code, target, beforeValue, afterValue) => {
-    const entry = { code, message, target };
-    if (!knownLoss.some((item) => item.code === code && item.target === target)) {
-      knownLoss.push(entry);
-      summary.knownLoss += 1;
-    }
-    findings.push({
-      severity: 'warning',
-      code,
-      target,
-      message,
-      before: beforeValue ?? '',
-      after: afterValue ?? '',
-    });
-  };
   if (!byteProofRelocated && packetProofRelocated) {
     addKnown(
       'Payload audio/video terverifikasi identik setelah penulisan; container ditulis ulang untuk menyematkan trek lirik/subtitle.',
@@ -309,6 +329,53 @@ export function verifyIntegrity(plan, afterSnapshot) {
       before.mediaProof?.kind || 'media',
       after.mediaProof?.valid ? 'relocated' : 'rewritten',
     );
+  }
+  if (hasTrimProof) {
+    const beforeRegions = JSON.stringify(plan.trimProof.regions || []);
+    const afterRegions = JSON.stringify(after.rangeProof?.regions || []);
+    if (beforeRegions !== afterRegions) {
+      add({
+        severity: 'error',
+        code: 'CUT_RANGE_MISMATCH',
+        target: 'media:range',
+        message: 'Rentang media hasil potong tidak sesuai dengan bukti sebelum penulisan.',
+        before: beforeRegions,
+        after: afterRegions,
+      });
+    }
+    const afterDuration = Number(after.info?.duration ?? after.structure?.duration);
+    const expectedDuration = Number(expectedCutDuration(plan.payload.trim));
+    if (Number.isFinite(afterDuration) && Number.isFinite(expectedDuration)
+      && Math.abs(afterDuration - expectedDuration) > 0.25) {
+      add({
+        severity: 'error',
+        code: 'CUT_DURATION_MISMATCH',
+        target: 'media:duration',
+        message: 'Durasi hasil potong tidak sesuai dengan rentang yang diminta.',
+        before: expectedDuration,
+        after: afterDuration,
+      });
+    }
+  }
+  if ((plan?.operations || []).some((op) => op.kind === 'trim')) {
+    if (Number(before.structure?.chapterCount) > 0) {
+      addKnown(
+        'Chapter tidak dipertahankan setelah media dipotong.',
+        'CUT_CHAPTERS_LOST',
+        'structure:chapterCount',
+        before.structure.chapterCount,
+        after.structure?.chapterCount ?? 0,
+      );
+    }
+    if (Number(before.structure?.attachmentCount) > 0) {
+      addKnown(
+        'Attachment tidak dipertahankan setelah media dipotong.',
+        'CUT_ATTACHMENTS_LOST',
+        'structure:attachmentCount',
+        before.structure.attachmentCount,
+        after.structure?.attachmentCount ?? 0,
+      );
+    }
   }
   for (const [tag, row] of beforeRaw) {
     if (targetRaw.has(tag) || targets.has(tag)) {
@@ -319,6 +386,16 @@ export function verifyIntegrity(plan, afterSnapshot) {
     summary.checked += 1;
     const actual = afterRaw.get(tag);
     const loss = knownLossFor(row, rules);
+    if (hasTrimProof && isCutDerivedRaw(tag)) {
+      addKnown(
+        'Tag turunan container berubah setelah pemotongan.',
+        'CUT_CONTAINER_METADATA',
+        `raw:${row.tag}`,
+        row.value,
+        actual?.value || '',
+      );
+      continue;
+    }
     if (!actual) {
       if (loss) {
         addKnown(loss.message, loss.code, `raw:${row.tag}`, row.value, '');
@@ -368,6 +445,10 @@ export function verifyIntegrity(plan, afterSnapshot) {
   for (const [tag, row] of afterRaw) {
     if (beforeRaw.has(tag) || targetRaw.has(tag) || targets.has(tag)) continue;
     if (isCoverRaw(row, rules) || isIgnoredRaw(row, rules) || isVolatileRaw(row, rules) || isGeneratedRaw(row, rules)) continue;
+    if (hasTrimProof && isCutDerivedRaw(tag)) {
+      addKnown('Tag turunan container muncul setelah pemotongan.', 'CUT_CONTAINER_METADATA', `raw:${row.tag}`, '', row.value);
+      continue;
+    }
     summary.checked += 1;
     add({
       severity: 'warning',

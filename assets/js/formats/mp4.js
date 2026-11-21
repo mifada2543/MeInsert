@@ -13,6 +13,7 @@ import { AppError } from '../core/errors.js';
 import { coverFromTags } from '../core/image-utils.js';
 import { parseLrc, serializeLrc, serializeVtt } from '../core/timed-text.js';
 import { mediaProof, mediaPacketProof, sameMediaProof } from '../core/media-proof.js';
+import { conversionCutOptions, expectedCutDuration, mediaRangeProof } from '../core/media-cut.js';
 const LRC_LIKE_RE = /\[\d{1,3}:\d{2}[.,:]\d{1,3}\]/;
 const WVTT_MARKER = new TextEncoder().encode('wvtt');
 function containsMarker(bytes, marker) {
@@ -347,7 +348,45 @@ async function embedSidecar(baseFile, payload, report) {
   }
   return new Uint8Array(output.target.buffer);
 }
+// Copy the requested A/V range into a fresh MP4 container before any tag or
+// sidecar pass runs. All later steps operate on the cut file, never the source.
+async function cutMp4(file, trim, report) {
+  const {
+    Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion, Mp4OutputFormat,
+  } = await import('../../vendor/mediabunny.mjs');
+  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+  const output = new Output({ format: new Mp4OutputFormat(), target: new BufferTarget() });
+  try {
+    const conversion = await Conversion.init({
+      input,
+      output,
+      ...conversionCutOptions(trim, { mode: 'forced' }),
+      showWarnings: false,
+    });
+    if (!conversion.isValid) {
+      const reasons = (conversion.discardedTracks || []).map((track) => track.reason).filter(Boolean).join(', ');
+      throw new Error(reasons || 'Track A/V tidak bisa disalin tanpa transcode.');
+    }
+    conversion.onProgress = (progress) => {
+      report({ stage: `Memotong media… ${Math.round(progress * 100)}%`, pct: 20 + progress * 25 });
+    };
+    await conversion.execute();
+    // A non-composable conversion finalizes the output itself; guard the
+    // explicit finalize so a second call does not emit a stray warning.
+    if (output.state !== 'finalized') await output.finalize();
+  } finally {
+    input.dispose?.();
+  }
+  return new Uint8Array(output.target.buffer);
+}
 export async function write(file, payload, options = {}, report = () => {}) {
+  const trim = payload?.trim || null;
+  let sourceFile = file;
+  if (trim) {
+    report({ stage: 'Memotong media…', pct: 10 });
+    const cutBytes = await cutMp4(file, trim, report);
+    sourceFile = new File([cutBytes], 'cut.mp4', { type: file.type || 'video/mp4' });
+  }
   const tags = {};
   for (const [id, tag] of Object.entries(WRITE_MAP)) {
     if ((payload?.remove || []).includes(id)) {
@@ -378,7 +417,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const hasExifTags = Object.keys(tags).length > 0;
   const sidecar = payload?.sidecar;
   const needsSidecarPass = payload?.set?.lyrics != null || Boolean(sidecar?.lyrics || sidecar?.subtitles);
-  if (!hasExifTags && !needsSidecarPass) {
+  if (!hasExifTags && !needsSidecarPass && !trim) {
     throw new AppError('NO_CHANGES', 'Tidak ada metadata yang perlu ditulis.');
   }
   let bytes;
@@ -386,23 +425,27 @@ export async function write(file, payload, options = {}, report = () => {}) {
     report({ stage: 'Menulis metadata ke media…', pct: 35 });
     const { writeTags } = await import('../engines/exiftool.js');
     try {
-      bytes = await writeTags(safeName(file, options.extension), tags);
+      bytes = await writeTags(safeName(sourceFile, options.extension), tags);
     } catch (error) {
       throw new AppError('WRITE_FAILED', 'Gagal menulis metadata MP4.', error.message || String(error));
     }
   } else {
-    bytes = new Uint8Array(await file.arrayBuffer());
+    bytes = new Uint8Array(await sourceFile.arrayBuffer());
   }
   if (needsSidecarPass) {
     report({ stage: 'Menyematkan lirik/subtitle…', pct: 55 });
-    const baseFile = new File([bytes], `input.${options.extension || 'mp4'}`, { type: file.type || 'video/mp4' });
+    const baseFile = new File([bytes], `input.${options.extension || 'mp4'}`, { type: sourceFile.type || 'video/mp4' });
     bytes = await embedSidecar(baseFile, payload, report);
   }
   report({ stage: 'Memverifikasi hasil…', pct: 78 });
   const mime = options.mime || file.type || 'video/mp4';
   const blob = new Blob([bytes], { type: mime });
   const output = new File([bytes], `output.${options.extension || 'mp4'}`, { type: mime });
+  // Cut output is rebased to [0, duration), while the source proof used
+  // [start, end); hashing only packet bytes/durations makes them comparable.
+  const rangeProof = trim ? await mediaRangeProof(output, 0, expectedCutDuration(trim)) : null;
   const warnings = [];
+  if (trim) warnings.push('Container MP4 ditulis ulang untuk pemotongan; payload A/V diverifikasi terhadap hasil pemotongan.');
   const finalPacketProof = await mediaPacketProof(output);
   let fields;
   let infoAfter;
@@ -410,7 +453,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
   let coverAfter = null;
   let coverBytesAfter = null;
   if (needsSidecarPass) {
-    const originalProof = await mediaPacketProof(file);
+    const originalProof = await mediaPacketProof(sourceFile);
     if (!sameMediaProof(originalProof, finalPacketProof)) {
       throw new AppError('WRITE_FAILED', 'Payload A/V berubah saat menyematkan lirik/subtitle MP4.');
     }
@@ -470,6 +513,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
     cover: coverAfter,
     coverBytes: coverBytesAfter,
     warnings,
+    ...(trim ? { rangeProof } : {}),
   };
 }
 async function dispose() {

@@ -5,6 +5,7 @@ import { asString, rawValue, sameValue, toDateInput } from '../core/tag-utils.js
 import { AppError } from '../core/errors.js';
 import { coverFromTags, applyCoverImages, scrubPrimaryCoverRaw } from '../core/image-utils.js';
 import { parseLrc, serializeLrc, serializeVtt } from '../core/timed-text.js';
+import { conversionCutOptions, expectedCutDuration, mediaRangeProof } from '../core/media-cut.js';
 const LRC_LIKE_RE = /\[\d{1,3}:\d{2}[.,:]\d{1,3}\]/;
 const WEBVTT_MARKER = new TextEncoder().encode('S_TEXT/WEBVTT');
 function containsMarker(bytes, marker) {
@@ -125,7 +126,7 @@ async function preserveDefaultDurations(conversion, output, EncodedPacketSink) {
     if (target.type === 'video' && constant && duration > 0) target.metadata.frameRate = 1 / duration;
   }
 }
-async function verifyPacketTiming(before, after, EncodedPacketSink) {
+async function verifyPacketTiming(before, after, EncodedPacketSink, trim = null) {
   // The output also carries the embedded WebVTT track, which mediabunny's
   // demuxer does not expose; compare only copied A/V tracks.
   const isAv = (track) => track.type === 'video' || track.type === 'audio';
@@ -133,21 +134,58 @@ async function verifyPacketTiming(before, after, EncodedPacketSink) {
   const copiedTracks = (await after.getTracks()).filter(isAv);
   if (copiedTracks.length !== sourceTracks.length) throw new Error('Track count changed during Matroska copy.');
   const tick = 0.001000001;
+  const start = trim ? Number(trim.start) || 0 : 0;
+  const end = trim ? Number(trim.end) : Infinity;
   for (let i = 0; i < sourceTracks.length; i++) {
     if (sourceTracks[i].type !== copiedTracks[i].type) throw new Error('Track type changed during Matroska copy.');
     const original = new EncodedPacketSink(sourceTracks[i]).packets(undefined, undefined, { metadataOnly: true });
     const copied = new EncodedPacketSink(copiedTracks[i]).packets(undefined, undefined, { metadataOnly: true });
+    // A cut keeps only the packets inside [start, end] and rebases their
+    // timestamps to zero, so keep one buffered source packet and compare with
+    // the start offset applied. Without a cut the buffer stays empty and the
+    // original packet-for-packet comparison is unchanged.
+    let carry = null;
+    let exhausted = false;
+    const nextOriginal = async () => {
+      if (carry) {
+        const value = carry;
+        carry = null;
+        return { done: false, value };
+      }
+      if (exhausted) return { done: true };
+      const result = await original.next();
+      if (result.done) exhausted = true;
+      return result;
+    };
     try {
+      if (trim) {
+        for (;;) {
+          const a = await nextOriginal();
+          if (a.done) break;
+          if (a.value.timestamp >= start - tick) {
+            carry = a.value;
+            break;
+          }
+        }
+      }
       for (;;) {
-        const a = await original.next(), b = await copied.next();
-        if (a.done !== b.done) throw new Error('Packet count changed during Matroska copy.');
-        if (a.done) break;
+        const b = await copied.next();
+        if (b.done) break;
+        const a = await nextOriginal();
+        if (a.done) throw new Error('Packet count changed during Matroska copy.');
+        if (trim && a.value.timestamp > end + tick) throw new Error('Packet count changed during Matroska copy.');
+        const expected = trim ? a.value.timestamp - start : a.value.timestamp;
         if (!Number.isFinite(a.value.timestamp) || !Number.isFinite(b.value.timestamp)
           || !Number.isFinite(a.value.duration) || !Number.isFinite(b.value.duration)
-          || Math.abs(a.value.timestamp - b.value.timestamp) > tick
+          || Math.abs(expected - b.value.timestamp) > tick
           || Math.abs(a.value.duration - b.value.duration) > tick) {
           throw new Error('Packet timing changed during Matroska copy; output withheld.');
         }
+      }
+      for (;;) {
+        const a = await nextOriginal();
+        if (a.done) break;
+        if (!trim || a.value.timestamp <= end + tick) throw new Error('Packet count changed during Matroska copy.');
       }
     } finally {
       await original.return();
@@ -202,6 +240,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
   } = await mediaLib();
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
+  const trim = payload?.trim || null;
   report({ stage: 'Membaca tag Matroska lama…', pct: 12 });
   let input;
   let tags;
@@ -316,8 +355,9 @@ export async function write(file, payload, options = {}, report = () => {}) {
     conversion = await Conversion.init({
       input,
       output,
-      copy: { mode: 'forced' },
-      trim: { start: 0 },
+      ...(trim
+        ? conversionCutOptions(trim, { mode: 'forced' })
+        : { copy: { mode: 'forced' }, trim: { start: 0 } }),
       composable: true,
       showWarnings: false,
     });
@@ -348,20 +388,29 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const extension = options.subtype === 'webm' ? 'webm' : 'mkv';
   const blob = new Blob([bytes], { type: mime });
   const outputFile = new File([bytes], `output.${extension}`, { type: mime });
+  // Output timestamps are rebased to [0, duration) by the cut conversion.
+  const rangeProof = trim ? await mediaRangeProof(outputFile, 0, expectedCutDuration(trim)) : null;
   if (textTracks.length && !await hasBytes(outputFile, WEBVTT_MARKER)) {
     throw new AppError('WRITE_FAILED', 'Trek subtitle tidak ditemukan pada container MKV/WebM hasil.');
   }
   report({ stage: 'Memverifikasi hasil…', pct: 82 });
   const check = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
-  try {
-    await verifyPacketTiming(await input.getTracks(), check, EncodedPacketSink);
-  } catch (error) {
-    throw new AppError('WRITE_FAILED', 'Timing MKV/WebM tidak bisa dipertahankan tanpa transcode.', error.message || String(error));
+  // Precise cuts may transcode, so packet-by-packet equality no longer applies.
+  // The trimmed range proof and duration check below cover that path instead.
+  if (!(trim && trim.mode === 'precise')) {
+    try {
+      await verifyPacketTiming(await input.getTracks(), check, EncodedPacketSink, trim);
+    } catch (error) {
+      throw new AppError('WRITE_FAILED', 'Timing MKV/WebM tidak bisa dipertahankan tanpa transcode.', error.message || String(error));
+    }
   }
   try {
     const afterTags = await check.getMetadataTags();
     const fields = toFields(afterTags);
     const warnings = ['Container ditulis ulang; chapter/attachment mungkin tidak dipertahankan.'];
+    if (trim?.mode === 'precise') {
+      warnings.push('Mode presisi melakukan transcoding; rentang hasil diverifikasi melalui proof, bukan kesamaan paket.');
+    }
     if (textTracks.length) {
       warnings.push('Trek lirik/subtitle tersemat tidak bisa dibaca ulang sebagai teks oleh engine, tetapi dipertahankan di container hasil salinan.');
     }
@@ -382,9 +431,16 @@ export async function write(file, payload, options = {}, report = () => {}) {
       info = { kind: 'video', hasCover: Boolean(afterTags.images?.length), rewrite: true };
       warnings.push(`Info media tidak bisa dibaca ulang setelah penulisan: ${infoError.message || infoError}`);
     }
-    return { blob, fields, custom: customFrom(afterTags), raw: rawRows(afterTags), info, ...coverFromTags(afterTags), warnings };
+    return {
+      blob, fields, custom: customFrom(afterTags), raw: rawRows(afterTags), info,
+      ...coverFromTags(afterTags), warnings, ...(trim ? { rangeProof } : {}),
+    };
   } catch (error) {
-    return { blob, fields: {}, custom: [], raw: [], info: {}, warnings: [`File sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`] };
+    return {
+      blob, fields: {}, custom: [], raw: [], info: {},
+      warnings: [`File sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`],
+      ...(trim ? { rangeProof } : {}),
+    };
   }
 }
 export default { meta, sections, fields, read, write };
