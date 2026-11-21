@@ -297,7 +297,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
   output.setMetadataTags(merged);
   const textTracks = [];
   if (timedLyrics.length) {
-    textTracks.push({ name: 'Lirik', vtt: serializeVtt(lyricCues(timedLyrics), sidecar.lyrics?.style), primary: !cues.length });
+    textTracks.push({ name: 'Lirik', vtt: serializeVtt(lyricCues(timedLyrics)), primary: !cues.length });
   }
   if (cues.length) {
     textTracks.push({ name: 'Subtitle', vtt: serializeVtt(cues, sidecar.subtitles?.style), primary: true });

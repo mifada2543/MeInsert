@@ -143,8 +143,9 @@ Download everything), `format-chips.js` and `core/format-capabilities.js`
 (format capability labels), `scroll-reveal.js` (scroll entrance animation), and
 `clean-metadata.js` (privacy profiles), and `timed-text-editor.js` (synchronized
 lyrics/subtitles editor: extension-driven audio/video mode, two-column preview,
-karaoke view, per-line timestamping, inline appearance preferences and local
-draft saving). The standalone `about.html` page uses
+karaoke view, per-line timestamping, a video-only floating appearance card with
+a dark (non-blurred) backdrop (click outside to close), a context-switching
+primary button (**Apply** / **Save preference**) and local draft saving). The standalone `about.html` page uses
 `assets/css/pages/about.css` and is part of the precached app shell.
 `review-dialog.js` is the confirmation step: it renders planned operations,
 unchanged counts, and risk warnings before any write is authorized.

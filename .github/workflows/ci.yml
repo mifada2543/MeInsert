@@ -28,7 +28,6 @@ jobs:
       run: npm run lint
     - name: Unit test
       run: npm test
-
   e2e:
     name: Browser suites ${{ matrix.shard }}/4
     runs-on: ubuntu-latest

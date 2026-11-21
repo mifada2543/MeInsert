@@ -45,7 +45,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'audio',
     labelKey: 'ui.offlineFeatureAudio',
-    bytes: 810_046,
+    bytes: 810_023,
     urls: [
       './assets/vendor/mediabunny.mjs',
       './assets/js/workers/media.worker.js',
@@ -63,7 +63,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 9_364_137,
+    bytes: 9_364_104,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
       './assets/vendor/fflate.mjs',

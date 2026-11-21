@@ -87,7 +87,6 @@
   opacity: 0;
   transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
 }
-
 .field:hover .field-clear,.field:focus-within .field-clear {
   opacity: 1;
 }
