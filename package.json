@@ -15,7 +15,7 @@
     "lint": "eslint assets/js sw.js scripts tests",
     "serve": "python3 -m http.server 8000",
     "pretest": "npm run vendor",
-    "test": "node --test tests/unit/*.test.js",
+    "test": "node --import ./tests/unit/setup.mjs --test tests/unit/*.test.js",
     "test:e2e": "node tests/e2e/smoke.mjs",
     "test:undo": "node tests/e2e/single-undo-redo.mjs",
     "test:undo:batch": "node tests/e2e/batch-undo-redo.mjs",

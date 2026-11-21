@@ -12,6 +12,7 @@ import { coverFormatsLabelFor, isSupportedCover, mimeOf } from '../core/image-ut
 import { setEditorBadge, skeletonPanel, errorCard } from './editor-shell.js';
 import { syncActionBar } from './editor-changes.js';
 import { normalizeRawTag } from '../core/metadata-snapshot.js';
+import { isCommittedResult } from '../core/write-guard.js';
 import { cloneRows } from './editor-state.js';
 import { beginChange, redo, undo } from '../core/history.js';
 export function previewUrlFor(file, detection) {
@@ -152,10 +153,7 @@ export function renderReadError(ctx) {
 }
 export function renderWorkspace(ctx) {
   const { els, state } = ctx;
-  // After a save, readResult is re-read from the written file, so raw tags
-  // queued for removal no longer exist. Drop those stale entries so the dirty
-  // indicator settles instead of offering a no-op save.
-  if (state.result && state.rawRemove.size) {
+  if (isCommittedResult(state.result) && state.rawRemove.size) {
     const present = new Set((state.readResult?.raw || []).map((row) => normalizeRawTag(row?.tag)));
     for (const tag of [...state.rawRemove]) {
       if (!present.has(normalizeRawTag(tag))) state.rawRemove.delete(tag);
@@ -211,7 +209,6 @@ export function renderWorkspace(ctx) {
 export function resetChanges(ctx) {
   const { els, state } = ctx;
   if (state.processing) return;
-  // Recorded before the discard so the discard itself can be undone.
   beginChange(state.history);
   state.values = { ...state.originalValues };
   state.removedFields.clear();
@@ -227,8 +224,6 @@ export function resetChanges(ctx) {
   syncActionBar(els, state);
   showToast('Perubahan dibatalkan.', 'info', 2800);
 }
-
-/** Restore the state before the last change and rebuild the workspace. */
 export function undoChange(ctx) {
   const { els, state } = ctx;
   if (state.processing) return false;
@@ -238,8 +233,6 @@ export function undoChange(ctx) {
   syncActionBar(els, state);
   return true;
 }
-
-/** Re-apply the change that was undone last. */
 export function redoChange(ctx) {
   const { els, state } = ctx;
   if (state.processing) return false;
@@ -305,8 +298,6 @@ export function createHandlers(ctx) {
           showToast(`Format gambar tidak didukung. Gunakan ${coverFormatsLabelFor(detectionId)}.`, 'error', 6000);
           return;
         }
-        // Recorded once the image is accepted, right before the cover state
-        // changes, so the snapshot still describes the previous cover.
         beginChange(state.history);
         state.coverChosen = { data: u8, mimeType: file.type || mimeOf(u8), name: file.name };
         state.coverAction = 'set';

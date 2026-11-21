@@ -9,6 +9,7 @@ import { buildChangePlan } from '../core/change-plan.js';
 import { clearHistory } from '../core/history.js';
 import { estimateForSingle } from '../core/memory-estimate.js';
 import { verifyIntegrity } from '../core/integrity.js';
+import { preserveFailedWrite, allowResultDownload } from '../core/write-guard.js';
 import { asString } from '../core/tag-utils.js';
 import { t } from '../i18n/index.js';
 import { isQuickSaveEligible, quickSaveEnabled } from '../ui/quick-save.js';
@@ -92,9 +93,14 @@ export function applyOutput(ctx, result) {
   };
   state.outputName = result.filename || state.outputName;
   if (state.detection) els.outputExt.textContent = `.${state.detection.ext}`;
-  // The saved file is now the baseline, so the undo stack of the previous
-  // state would only replay changes that are already written to the file.
   clearHistory(state.history);
+}
+export function recordWriteResult(ctx, result, afterSnapshot) {
+  const { state } = ctx;
+  if (preserveFailedWrite(state, result)) return false;
+  applyOutput(ctx, result);
+  state.baselineSnapshot = afterSnapshot;
+  return true;
 }
 export async function saveMetadata(ctx) {
   const { client, els, state } = ctx;
@@ -153,8 +159,6 @@ export async function saveMetadata(ctx) {
   const wantsQuickSave = quickSaveEnabled();
   const skipReview = wantsQuickSave && isQuickSaveEligible(plan);
   let reviewResult = null;
-  // Quick save skips only the confirmation step: the write path and integrity
-  // verification below are identical, and failures are still reported.
   if (!skipReview) {
     if (wantsQuickSave) showToast(t('ui.reviewNeededForThisChange'), 'info', 5000);
     reviewResult = await openReviewDialog({ plans: [plan], mode: 'single' });
@@ -205,8 +209,7 @@ export async function saveMetadata(ctx) {
       readResult: result,
     });
     result.integrity = verifyIntegrity(plan, afterSnapshot);
-    applyOutput(ctx, result);
-    state.baselineSnapshot = afterSnapshot;
+    recordWriteResult(ctx, result, afterSnapshot);
     state.processing = false;
     state.status = 'ready';
     state.saveError = null;
@@ -215,10 +218,10 @@ export async function saveMetadata(ctx) {
     showProgress(els, false);
     const integrityStatus = result.integrity?.status;
     setStatus(els, integrityStatus === 'failed'
-      ? `${state.detection.label} · perlu diperiksa`
+      ? `${state.detection.label} · hasil ditahan (integritas gagal)`
       : `${state.detection.label} · metadata diperbarui`);
     if (integrityStatus === 'failed') {
-      showToast('File tersimpan, tetapi ada metadata yang perlu diperiksa. Buka laporan integritas.', 'error', 9000);
+      showToast('Integritas gagal: file asli tetap dipakai. Periksa laporan sebelum mengunduh hasil.', 'error', 9000);
     } else if (integrityStatus === 'warning' || result.warnings?.length) {
       showToast('Metadata tersimpan dengan catatan. Periksa laporan integritas.', 'info', 9000);
     } else {
@@ -242,7 +245,8 @@ export async function saveMetadata(ctx) {
 }
 export function downloadResult(ctx) {
   const { state } = ctx;
-  if (!state.result?.blob) return;
+  if (!state.result?.blob) return false;
+  if (!allowResultDownload(state.result, (message) => window.confirm(message))) return false;
   const url = URL.createObjectURL(state.result.blob);
   const link = el('a', {
     href: url,
@@ -252,4 +256,5 @@ export function downloadResult(ctx) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return true;
 }

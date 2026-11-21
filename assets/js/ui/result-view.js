@@ -10,9 +10,9 @@ function integrityCopy(integrity) {
   }
   if (integrity.status === 'failed') {
     return {
-      title: 'Metadata tersimpan, tetapi perlu diperiksa',
+      title: 'Integritas gagal — file asli dipertahankan',
       tone: 'failed',
-      note: 'Ada metadata yang berubah atau hilang di luar rencana. Periksa laporan sebelum mengunduh.',
+      note: 'Hasil tidak dijadikan file kerja. Periksa laporan; unduhan berisiko memerlukan konfirmasi.',
     };
   }
   if (integrity.status === 'warning') {
@@ -79,7 +79,7 @@ export function renderResultCard(result, { onDownload }) {
     type: 'button',
     on: {
       click: () => {
-        onDownload();
+        if (onDownload() === false) return;
         button.classList.add('is-done');
         button.replaceChildren(icon('check'), translatedNode(() => t('ui.downloaded')));
       },
