@@ -60,6 +60,7 @@ const SHELL_URLS = [
   './assets/js/core/tag-utils.js',
   './assets/js/core/timed-text.js',
   './assets/js/core/worker-client.js',
+  './assets/js/core/write-guard.js',
   './assets/js/ui/batch-clean.js',
   './assets/js/ui/clean-metadata.js',
   './assets/js/ui/confirm.js',

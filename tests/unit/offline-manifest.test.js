@@ -161,6 +161,26 @@ test('offline byte estimates match the actual asset sizes on disk', async () => 
   }
   assert.deepEqual(mismatches, [], `Offline estimates drifted from the shipped assets: ${mismatches.join(', ')}`);
 });
+test('static imports of precached shell modules are also precached', async () => {
+  const shell = await shellUrls();
+  const optional = new Set(OFFLINE_FEATURES.flatMap((feature) => feature.urls));
+  const staticSpecifiers = (source) => [
+    ...[...source.matchAll(/\bfrom\s*(['"])([^'"]+)\1/g)].map((match) => match[2]),
+    ...[...source.matchAll(/\bimport\s*(['"])([^'"]+)\1/g)].map((match) => match[2]),
+  ].filter((specifier) => specifier.startsWith('.'));
+  const missing = [];
+  for (const url of shell) {
+    if (!/^\.\/assets\/js\/.*\.js$/.test(url)) continue;
+    const diskPath = toDiskPath(url);
+    if (!(await exists(diskPath))) continue;
+    for (const specifier of staticSpecifiers(await read(diskPath))) {
+      const imported = `./${resolveImport(diskPath, specifier)}`;
+      if (isVendored(toDiskPath(imported)) || shell.has(imported) || optional.has(imported)) continue;
+      missing.push(`${url} → ${specifier}`);
+    }
+  }
+  assert.deepEqual(missing, [], `shell module import is not available offline: ${missing.join(', ')}`);
+});
 test('worker entry points are part of the precached shell', async () => {
   const shell = await shellUrls();
   const missing = OFFLINE_FEATURES

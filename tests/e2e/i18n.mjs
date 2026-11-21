@@ -156,16 +156,36 @@ try {
   const filename = await page.locator('.result-copy > p').first().innerText();
   await change('id');
   assert.equal(await page.locator('.result-copy > p').first().innerText(), filename);
+  const expectedConfirm = await page.evaluate(async () => (await import('/assets/js/i18n/index.js')).t('ui.failedIntegrityDownloadConfirm'));
+  let seenDialog;
+  const dialogHandled = new Promise((resolve) => {
+    page.once('dialog', async (dialog) => {
+      seenDialog = { type: dialog.type(), message: dialog.message() };
+      await dialog.accept();
+      resolve();
+    });
+  });
   const downloadPromise = page.waitForEvent('download');
   await page.locator('.result-download').click();
+  await dialogHandled;
+  assert.equal(seenDialog.type, 'confirm');
+  assert.equal(seenDialog.message, expectedConfirm);
   const download = await downloadPromise;
   assert.match(download.suggestedFilename(), /\.pdf$/);
   await change('en');
+  const [expectedTitle, expectedNote] = await page.evaluate(async () => {
+    const { t } = await import('/assets/js/i18n/index.js');
+    return [t('ui.integrityFailedTitle'), t('ui.integrityFailedNote')];
+  });
+  assert.equal((await page.locator('.result-card h2').innerText()).trim(), expectedTitle);
+  assert.equal((await page.locator('.result-card .result-warnings').first().innerText()).trim(), expectedNote);
   assert.equal((await page.locator('.result-download').innerText()).trim(), 'Downloaded');
   await page.locator('#newFileBtn').click();
+  await page.locator('#confirmTitle').waitFor();
+  await page.locator('.confirm-btn-confirm').click();
   await change('id');
   assert.equal(await page.locator('#landing').isVisible(), true);
-  console.log('PASS: live lightbox preserves zoom and raw caption; save, verified result, download and reset survive language changes');
+  console.log('PASS: live lightbox preserves zoom and raw caption; save, guarded download and reset survive language changes');
   await page.evaluate(async () => {
     const { openReviewDialog } = await import('/assets/js/ui/review-dialog.js');
     void openReviewDialog({ mode: 'batch', plans: [{
