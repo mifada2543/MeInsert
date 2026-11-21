@@ -4,16 +4,29 @@
 
 # Changelog
 
-Semua perubahan penting dicatat di sini. Versi mengikuti SemVer.
+Semua perubahan penting pada proyek ini dicatat di sini. Format mengacu pada
+[Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/) dan penomoran versi
+mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
-## [Experiment 2 — gzip-only hardening]
+## Daftar isi
+
+- [Belum dirilis](#belum-dirilis)
+- [1.3.0 — 2026-11-18](#130--2026-11-18)
+
+## [Belum dirilis]
+
+Perubahan berikut sudah berada di `main` tetapi belum diberi tag rilis, sehingga
+`package.json` dan badge README masih menampilkan `v1.3.0`. Daftar disusun dari
+yang terbaru ke yang terlama.
+
+### Eksperimen 2 — gzip-only hardening
 
 - Decoder wajib cocok ukuran WASM upstream dan SHA-256 jika Web Crypto tersedia; fallback tanpa Web Crypto memvalidasi struktur WASM.
 - Profil gambar mencakup fflate; estimasi gabungan tidak menghitung aset bersama dua kali. Indikator kesiapan diperbarui ketika status cache berubah.
 - Service Worker v55 memigrasikan WASM lama yang lolos SHA-256 ke key gzip tanpa download; jika CompressionStream tidak tersedia, cache menyimpan respons raw terverifikasi pada key baru. Aset production tetap gzip-only.
 - Regression test menggunakan binary upstream asli dari gzip, bukan header WASM sintetis. Test browser tidak memerlukan aset raw di checkout.
 
-## [Local hardening — build #17]
+### Hardening lokal — build #17
 
 - XML Office menolak prefix tidak terikat, entity ilegal, atribut duplikat berdasarkan namespace, teks di luar root, dan tag penutup rusak; resolusi prefix mengikuti scope aktif.
 - Validasi part utama Office dipisah dari batas preview 2 MiB dan mengikuti relationship package; batas keamanan ZIP dan parser tetap berlaku.
@@ -22,11 +35,13 @@ Semua perubahan penting dicatat di sini. Versi mengikuti SemVer.
 - Kompresi aset `assets/img/`: WebP (FFmpeg q90) menggantikan ikon PWA, WebP lossless menggantikan logo, JPEG q85 menggantikan OG; PNG tetap hanya untuk `apple-touch-icon` dan `favicon` yang memang butuh kompatibilitas luas. Total **513.437 → 56.814 byte (-88,9%)** untuk 7 file (dulu 7 file 513 KB, sempat 9 file 185 KB karena turunan WebP disimpan ganda). Tidak ada format duplikat lagi. Ikon PWA kini ikut di-precache shell. Shell `meinsert-v54`, engine tetap `meinsert-engine-v1`.
 - QA release validation: 313 unit, E2E/offline-real dengan Service Worker nyata, verifikasi independen Office/Media (LibreOffice, FFmpeg/FFprobe, xmllint), fuzz deterministik 240 kasus, dan pengukuran memori/transfer. Tidak ada defect produk yang terkonfirmasi; 2 kasus Ogg multi-page Vorbis **BLOCKED** karena FFprobe tidak dapat mendecode fixture buatan (adapter menolak aman).
 
-## [main — setelah v1.3.0]
+### Setelah v1.3.0 (di `main`)
 
-Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec19`); `git pull` dari remote sudah mengambil semuanya. Yang belum ada hanyalah tag/versi rilis baru, sehingga `package.json` dan badge README masih `v1.3.0`. Shell cache `meinsert-v52` dan engine cache `meinsert-engine-v1` kini memiliki siklus hidup terpisah.
+Perubahan ini sudah ter-push ke `mifada2543/main` (komit `7f519a9`–`94cec19`).
+Shell cache `meinsert-v52` dan engine cache `meinsert-engine-v1` kini memiliki
+siklus hidup terpisah.
 
-### Pengalaman pengguna
+#### Pengalaman pengguna
 - Halaman **Tentang MeInsert** (`about.html`) merangkum prinsip, format, dan tautan kebijakan untuk pengguna baru.
 - Pemberitahuan kebijakan sekali konfirmasi (**Mengerti**, disimpan 30 hari) di beranda, editor satu file, dan batch.
 - Menu ☰ di layar ≤700px: tombol tema, ID/EN, dan **Penyimpanan & Offline** pindah ke menu; ikon menu berubah menjadi ✕ saat terbuka dan ikon tiap aksi dibedakan.
@@ -37,10 +52,10 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - Pratinjau Office: kartu ringkasan dari metadata yang sudah dibaca (judul, pembuat, jumlah halaman/slide/kata, status tanda tangan/makro) di editor tunggal dan batch — tanpa renderer berat dan tanpa menyesatkan sebagai tampilan isi halaman.
 - Halaman About desktop disusun ulang: hero penuh lebar dan kartu tersebar dalam tiga kolom; ikon "Banyak file" kini dua lembar bertumpuk.
 
-### Keandalan & infrastruktur
+#### Keandalan dan infrastruktur
 - Perbaikan Ctrl+R: registrasi SW dengan `updateViaCache: 'none'`, navigasi network-first + fallback cache; shell `meinsert-v52` (`CACHE_VERSION` = `CURRENT_VERSION`) dan engine `meinsert-engine-v1` yang dipertahankan lintas update aplikasi.
 
-### Hardening hasil audit lanjutan
+#### Hardening hasil audit lanjutan
 - Deteksi Office memakai **ZIP central directory** (modul `core/zip-directory.js`), sehingga arsip ber-prefix tetap dikenali dari isi; ZIP biasa yang diganti nama `.docx` ditolak sebagai `NOT_OFFICE_PACKAGE`.
 - Parser metadata Office **namespace-aware**: prefix alternatif (`d:` untuk `dc:`) tetap terbaca dan ditulis tanpa menambah elemen ber-prefix tak terdeklarasi.
 - Validasi struktur package OOXML/ODF, deteksi tanda tangan ODF, serta proteksi ZIP bomb (batas entri, ukuran, rasio kompresi, dan central directory) sebelum dekompresi.
@@ -50,7 +65,7 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - `write` pada adapter audio/video mengembalikan `info` hasil baca ulang blob output, menghilangkan `STRUCTURE_LOST` palsu untuk sample rate/channel.
 - Offline: dependency engine diverifikasi dengan test closure statis; E2E Service Worker nyata mengukur request/cache (frugal, MP3, selektif, penuh, offline, update, uninstall) dan security test memeriksa method/body/query selain origin.
 
-### Hardening fase II (root cause)
+#### Hardening fase II (akar masalah)
 - XML Office diproses oleh parser namespace-aware mandiri (`core/office-xml.js`) yang bekerja di Worker tanpa `DOMParser`: resolusi URI + local name, prefix alternatif/default, shadowing, entitas numerik, Unicode, DTD/entitas eksternal ditolak. Edit bersifat bedah sehingga atribut (`xsi:type`), komentar, dan elemen asing tetap utuh.
 - Validasi paket semantik (`core/office-package.js`): `[Content_Types].xml`, `_rels/.rels`, part dokumen utama dari relationship, content type, akar XML, dan namespace harus konsisten; ODF memvalidasi manifest, mimetype, dan `content.xml`. Ini adalah validasi **struktural/XML**, bukan klaim konformitas skema Office penuh.
 - Deteksi ZIP kini hanya membaca tail EOCD, central directory, dan `mimetype` lewat `Blob.slice()` (tidak `file.arrayBuffer()`); dekompresi hanya untuk part metadata/preview dengan batas aktual memakai buffer `out` fflate, bukan hanya ukuran yang dideklarasikan.
@@ -62,12 +77,12 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - Offline: closure dependency kini memindai import statis **dan dinamis** (`browser-id3-writer.mjs`, `engines/exiftool.js`, `office-xml.js`, `office-package.js` termasuk); `cacheOptional` memakai cache yang sudah valid, dedup konkuren, job id, dan timeout inactivity 60 detik yang di-reset oleh progress (bukan timeout total 30 detik). Pesan SW divalidasi terhadap allowlist 26 URL; URL arbitrari/blob/data ditolak.
 - Perbaikan hang CI `offline-real`: precache shell memakai `AbortController` 15 detik per URL sehingga `registration.update()` tidak menunggu fetch yang macet; simulasi update di E2E dibatasi 60 detik dengan log stage dan `SKIP` eksplisit bila update tidak teramati; job CI diberi `timeout-minutes: 15`.
 
-### Verifikasi hardening fase II
+#### Verifikasi hardening fase II
 - 292 unit test (termasuk fuzz namespace/ZIP deterministik), lint, `check:css`, `check:policies`.
 - 9 dokumen Office hasil edit: **53/53 bagian XML lolos `xmllint --noout`**; **9/9 dikonversi LibreOffice headless** tanpa error.
 - Compat **48/48**; deteksi ZIP hanya **131.420 byte** dari file 2.101.785 byte (~6,25%), `file.arrayBuffer()` = 0.
 
-### Verifikasi hardening
+#### Verifikasi hardening
 - 250 unit test, lint, `check:css`, `check:policies`.
 - Audit mandiri 24/24: 16 roundtrip format, prefix namespace, padded ZIP, generic ZIP rejection, ODF signature, integritas Ogg/Opus/MP3/MKV.
 - FFprobe/FFmpeg development-only: durasi `0.250000` (Vorbis) dan `0.256500` (Opus) identik sebelum/sesudah; decoded MD5 identik (`af0c2520…` dan `8f1304dd…`).
@@ -76,10 +91,13 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - Satu proses Chrome bersama untuk seluruh suite E2E lewat CDP; CI membagi 16 suite ke 4 runner paralel dan melewati `apt-get` bila ffmpeg/openssl sudah tersedia.
 - Dokumentasi disegarkan: fitur bersihkan metadata tidak lagi ditandai "segera hadir", README ID/EN lebih ramah pemula, arsitektur SW dan daftar script diperbarui.
 
-### Verifikasi tahap UI
+#### Verifikasi tahap UI
 - 218 unit test, 16/16 suite E2E, 48/48 kasus kompatibilitas, lint, `check:css`, `check:policies`.
 
 ## [1.3.0] — 2026-11-18
+
+Rilis stabil pertama dengan fitur bersihkan metadata, hardening keamanan, dan
+perbaikan pengalaman pengguna.
 
 ### Fase 0 — Kebersihan repositori
 - Hapus `probe-tmp.mjs` (skrip debug dengan path Chrome hardcode; tidak ada referensi).
@@ -92,7 +110,7 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - Template `scripts/build-policies.mjs` juga memuat CSP agar halaman kebijakan hasil generate tetap konsisten.
 - `tests/e2e/security.mjs` membuktikan tidak ada request non-same-origin saat open → edit → save di mode single maupun batch.
 - Tambah `SECURITY.md`, `.well-known/security.txt`, `_headers`, `docs/security.md`, `docs/deployment.md`.
-- Keputusan: beacon Cloudflare Web Analytics **sengaja diblokir** CSP. Pengendali trafic (WAF/rate limiting/cache) tidak terpengaruh karena berjalan di edge; angka kunjungan diambil dari Cloudflare Dashboard → Analytics → Traffic. Klaim "tanpa analytics" tetap benar.
+- Keputusan: beacon Cloudflare Web Analytics **sengaja diblokir** CSP. Pengendali trafik (WAF/rate limiting/cache) tidak terpengaruh karena berjalan di edge; angka kunjungan diambil dari Cloudflare Dashboard → Analytics → Traffic. Klaim "tanpa analytics" tetap benar.
 
 ### Fase 2 — Pengalaman & performa
 - Progres unduh ExifTool WASM melalui opsi `fetch` yang sudah didukung library vendor (tanpa mengubah `assets/vendor/**`), dengan status error + tombol coba lagi.
@@ -103,7 +121,7 @@ Perubahan ini **sudah ter-push** ke `mifada2543/main` (komit `7f519a9`–`94cec1
 - Perbaikan aksesibilitas: target skip link, fokus dialog, navigasi panah tablist, nama/deskripsi toggle yang terakses.
 
 ### Fase 3 — Bersihkan metadata
-- Enti baru di halaman home (`?clean=1`) dan tombol manual di editor: profil **Privasi**, **Hapus semua yang aman**, dan **Kustom** per kategori.
+- Entri baru di halaman home (`?clean=1`) dan tombol manual di editor: profil **Privasi**, **Hapus semua yang aman**, dan **Kustom** per kategori.
 - Ringkasan **sebelum → sesudah** per kategori, daftar tag sensitif (termasuk koordinat GPS), dan daftar tag yang sengaja dipertahankan.
 - Klasifier murni `assets/js/core/privacy-categories.js` menghasilkan payload standar yang dipahami `buildChangePlan` — **tidak ada jalur tulis paralel**.
 - Tag yang dipertahankan: orientasi gambar, struktur/durasi/stream, format, serta tag sistem/generated. "Hapus semua" adalah allowlist penghapusan aman, bukan hapus segalanya.

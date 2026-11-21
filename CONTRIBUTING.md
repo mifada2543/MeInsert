@@ -6,7 +6,19 @@
 
 MeInsert is a 100% client-side metadata editor: vanilla ES modules, no runtime
 bundler or framework, WASM engines in Web Workers, and an installable PWA. User
-files never leave the browser. Read the hard rules below before opening a PR.
+files never leave the browser. Read the [hard rules](#hard-rules) below before
+opening a pull request.
+
+## Contents
+
+- [Setup](#setup)
+- [npm scripts](#npm-scripts)
+- [Hard rules](#hard-rules)
+- [The "reference build" marker](#the-reference-build-marker)
+- [Adding a new format](#adding-a-new-format)
+- [Adding a dependency](#adding-a-dependency)
+- [Documentation](#documentation)
+- [Licensing](#licensing)
 
 ## Setup
 
@@ -40,7 +52,7 @@ no build step and already ships the vendored files. See
 | `npm test` | Run the unit tests (`node --test tests/unit/*.test.js`). |
 | `npm run test:fast` | Fast local gate: unit + lint + CSS + policy checks, no browser (~3s). |
 | `npm run test:e2e` | Browser smoke test (requires Chrome/Chromium; override with `CHROME_BIN`). |
-| `npm run test:e2e:all` | All 16 E2E suites in one shared Chrome process (CDP). Set `MEINSERT_E2E_SHARD=1/4` to run a quarter of them. |
+| `npm run test:e2e:all` | All 18 E2E suites in one shared Chrome process (CDP). Set `MEINSERT_E2E_SHARD=1/4` to run a quarter of them. |
 | `npm run test:undo` | Single-file undo/redo end-to-end test. |
 | `npm run test:undo:batch` | Batch undo/redo end-to-end test. |
 | `npm run test:i18n` | Indonesian/English UI end-to-end test. |
@@ -81,9 +93,13 @@ them will not be merged.
 - **CSS is authored modularly** under `assets/css/`, then committed as the single
   bundle via `npm run build:css`. Do not edit `assets/css/app.bundle.css` by
   hand; run `npm run check:css` to confirm it is current.
-- **Policy Markdown changes require `npm run build:policies`.** Edit the `*.md`
-  policy sources (`PRIVACY`, `TERMS`, `NOTICE`, including `-en` variants), then
-  regenerate the HTML pages and verify with `npm run check:policies`.
+- **Policy Markdown changes require `npm run build:policies`.** `PRIVACY.md` and
+  `TERMS.md` (including the `-en` variants) are the sources of the generated
+  `privacy.html` and `Terms.html`. Edit the Markdown, regenerate, and verify with
+  `npm run check:policies`. The renderer is deliberately small and supports only
+  `##` headings, paragraphs, `-`/`1.` lists, links, **bold**, and `code`; do not
+  use tables, blockquotes, or HTML in those four files. `NOTICE*.md` are served
+  as plain text and need no regeneration.
 - **Offline files must be listed in `sw.js`.** Add any new offline asset to
   `SHELL_URLS`, and bump `CACHE_VERSION` in `sw.js` together with
   `CURRENT_VERSION` in `assets/js/core/build.js` to the same value. The manifest
@@ -164,8 +180,35 @@ with a bulk search-and-replace). Keep it on every new source file.
    exercised with an actual browser/WASM round trip.
 
 6. **Document it.** Update the format tables and notes in `README.md` and
-   `README-en.md` (another owner handles those in this release), and add the
-   format's known-loss/compatibility caveats to `docs/LIMITATIONS.md`.
+   `README-en.md`, and add the format's known-loss/compatibility caveats to
+   `docs/LIMITATIONS.md`.
+
+## Adding a dependency
+
+Runtime libraries are vendored, never imported from `node_modules`.
+
+1. Add the library to `devDependencies` in `package.json` with an **exact pinned
+   version**.
+2. Add a `[source, destination]` pair for its bundle **and** its license file to
+   the `copies` list in `scripts/vendor.mjs`.
+3. Run `npm run vendor`. It does not touch the hand-maintained notices already in
+   `assets/vendor/licenses/` (ExifTool, zeroperl, pdf-lib dependencies); do not
+   delete that directory wholesale.
+4. Add an entry to `assets/THIRD_PARTY_LICENSES.md` and to both `NOTICE.md` and
+   `NOTICE-en.md`.
+5. If the library is needed offline, register its URL in `sw.js` and
+   `assets/js/core/format-capabilities.js` as described in the hard rules.
+6. Run the full local gate before opening the pull request.
+
+## Documentation
+
+Markdown files follow the conventions in the
+[documentation style guide](docs/STYLE-GUIDE.md): one H1 per file, language
+sections kept separate in bilingual pages, and no decorative emoji in headings.
+Two rules are enforced by tests: `README.md` and `README-en.md` must keep the
+same heading-level sequence and link to the same `docs/*.md` pages
+(`tests/unit/readme-parity.test.js`), and generated policy pages must match
+their Markdown sources (`npm run check:policies`).
 
 ## Licensing
 

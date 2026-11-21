@@ -4,6 +4,20 @@
 
 # Architecture
 
+> A map of how MeInsert is organized: source layout, the single-file pipeline,
+> and the offline strategy. For user-facing behavior see the
+> [README](../README-en.md); for per-format caveats see
+> [LIMITATIONS.md](LIMITATIONS.md).
+
+## Contents
+
+- [Overview](#overview)
+- [Source map](#source-map)
+- [The single-file pipeline](#the-single-file-pipeline)
+- [Service worker / offline strategy](#service-worker--offline-strategy)
+
+## Overview
+
 MeInsert is a static, 100% client-side application. There is no server-side
 component: the browser loads ES modules directly and does all reading, writing,
 verification, and ZIP assembly locally. The three HTML entry points are
@@ -136,19 +150,25 @@ via the File System Access API when available, otherwise in memory (fflate).
 `result-view.js`, `file-card.js`, `review-dialog.js`, `confirm.js`,
 `lightbox.js`, `media-session.js`, `editing-navigation.js`, and `policy-toc.js`.
 
-Newer shell/utility modules: `mobile-menu.js` (responsive ☰ menu that morphs
-into an X), `action-bar.js` and `batch-action-bar.js` (compact pinned action
-bars with an **Options** panel), `offline-settings.js` (Frugal / Mostly ready /
-Download everything), `format-chips.js` and `core/format-capabilities.js`
-(format capability labels), `scroll-reveal.js` (scroll entrance animation), and
-`clean-metadata.js` (privacy profiles), and `timed-text-editor.js` (synchronized
-lyrics/subtitles editor: extension-driven audio/video mode, two-column preview,
-karaoke view, per-line timestamping, a video-only floating appearance card with
-a dark (non-blurred) backdrop (click outside to close), a context-switching
-primary button (**Apply** / **Save preference**) and local draft saving). The standalone `about.html` page uses
-`assets/css/pages/about.css` and is part of the precached app shell.
-`review-dialog.js` is the confirmation step: it renders planned operations,
-unchanged counts, and risk warnings before any write is authorized.
+Newer shell and utility modules:
+
+- `mobile-menu.js` — responsive ☰ menu that morphs into an ✕.
+- `action-bar.js` and `batch-action-bar.js` — compact pinned action bars with an
+  **Options** panel.
+- `offline-settings.js` — Frugal / Mostly ready / Download everything.
+- `format-chips.js` and `core/format-capabilities.js` — format capability labels.
+- `scroll-reveal.js` — scroll entrance animation.
+- `clean-metadata.js` — privacy profiles.
+- `timed-text-editor.js` — synchronized lyrics/subtitles editor: extension-driven
+  audio/video mode, two-column preview, karaoke view, per-line timestamping, a
+  video-only floating appearance card with a dark (non-blurred) backdrop (click
+  outside to close), a context-switching primary button (**Apply** /
+  **Save preference**), and local draft saving.
+
+The standalone `about.html` page uses `assets/css/pages/about.css` and is part of
+the precached app shell. `review-dialog.js` is the confirmation step: it renders
+planned operations, unchanged counts, and risk warnings before any write is
+authorized.
 
 ### `assets/js/i18n/**` — localization
 
@@ -158,6 +178,20 @@ Indonesian and English dictionaries. Every UI string must be present in both.
 ## The single-file pipeline
 
 The path a file takes from selection to download (all in the browser):
+
+```mermaid
+flowchart LR
+    A[Select / drop] --> B[Detect]
+    B --> C[Resolve adapter]
+    C --> D[Read in Worker]
+    D --> E[Edit & plan]
+    E --> F[Review]
+    F --> G[Write in Worker]
+    G --> H[Verify]
+    H --> I[Download new file]
+```
+
+Each stage in detail:
 
 1. **Select / drop** — `editor/editor-file.js#openFile` rejects files over
    `MAX_FILE_SIZE` (4 GB), then calls `core/detector.js#detectFile`.

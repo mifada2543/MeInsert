@@ -1,5 +1,4 @@
-MeInsert — PEMBERITAHUAN
-=======================
+# MeInsert — Pemberitahuan
 
 Hak Cipta (C) 2026 mifada2543
 
@@ -19,23 +18,22 @@ atau menambahkan ketentuan pada lisensi yang berlaku. Saat mendistribusikan ulan
 MeInsert, pertahankan file ini, file LICENSE, serta seluruh pemberitahuan hak cipta
 dan lisensi lain yang disertakan pada karya terkait.
 
-PERANGKAT LUNAK DAN TEKNOLOGI PIHAK KETIGA
-------------------------------------------
+## Perangkat lunak dan teknologi pihak ketiga
 
 MeInsert membundel perangkat lunak independen berikut di `assets/vendor/` dan
 `assets/fonts/`:
 
-* ExifTool 13.60 — oleh Phil Harvey — https://exiftool.org/
+- ExifTool 13.60 — oleh Phil Harvey — https://exiftool.org/
   (Perl Artistic License atau GPL; berjalan di dalam build WebAssembly)
-* @colorhythm/exiftool-wasm v1.0.5 — https://github.com/6over3/exiftool (Apache-2.0)
-* zeroperl — https://github.com/6over3/zeroperl (MIT — runtime Perl-di-WebAssembly)
-* Mediabunny v1.65.0 — https://github.com/Vanilagy/mediabunny (MPL-2.0)
-* pdf-lib v1.17.1 — https://github.com/Hopding/pdf-lib (MIT)
-* fflate v0.8.3 — https://github.com/101arrowz/fflate (MIT)
-* browser-id3-writer v6.4.0 — https://github.com/egoroof/browser-id3-writer (MIT)
-* Font IBM Plex (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
+- @colorhythm/exiftool-wasm v1.0.5 — https://github.com/6over3/exiftool (Apache-2.0)
+- zeroperl — https://github.com/6over3/zeroperl (MIT — runtime Perl-di-WebAssembly)
+- Mediabunny v1.65.0 — https://github.com/Vanilagy/mediabunny (MPL-2.0)
+- pdf-lib v1.17.1 — https://github.com/Hopding/pdf-lib (MIT)
+- fflate v0.8.3 — https://github.com/101arrowz/fflate (MIT)
+- browser-id3-writer v6.4.0 — https://github.com/egoroof/browser-id3-writer (MIT)
+- Font IBM Plex (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
   (SIL Open Font License 1.1)
-* MEeL — editor LRC & helper teks berirama (kode yang diadaptasi) — © 2026 Mifada
+- MEeL — editor LRC & helper teks berirama (kode yang diadaptasi) — © 2026 Mifada
   (mifada2543) — https://github.com/mifada2543/MEeL-HUB (AGPL-3.0-or-later)
   Sumber yang dipakai (repo MEeL, commit `95e4937c74c3929977a907a463a415dcea50d2da`):
   - `assets/js/music/lrc-editor.js` — parser LRC, tap-to-timestamp, kontrol player
@@ -74,31 +72,28 @@ lisensi dan pemberitahuan atribusi yang diwajibkan oleh karya tersebut. Tinjau
 file lisensi dan file pemberitahuan yang disertakan setiap dependensi sebelum
 redistribusi.
 
-AGPLv3, COPYLEFT JARINGAN, DAN MONETISASI
-------------------------------------------
+## AGPLv3, copyleft jaringan, dan monetisasi
 
 MeInsert boleh dimonetisasi (produk berbayar, hosting berbayar, layanan premium).
 AGPLv3 bersifat copyleft jaringan, sehingga kewajiban yang berlaku adalah:
 
-* Anda boleh mengenakan biaya atas distribusi, dukungan, atau layanan.
-* Saat mendistribusikan perangkat lunak yang tercakup, sediakan Corresponding
+- Anda boleh mengenakan biaya atas distribusi, dukungan, atau layanan.
+- Saat mendistribusikan perangkat lunak yang tercakup, sediakan Corresponding
   Source sesuai ketentuan AGPLv3 yang berlaku.
-* Jika Anda memodifikasi Program dan versi Anda mendukung interaksi jaringan
+- Jika Anda memodifikasi Program dan versi Anda mendukung interaksi jaringan
   jarak jauh, pasal 13 AGPLv3 mewajibkan penawaran yang jelas kepada semua
   pengguna yang berinteraksi dengannya dari jarak jauh untuk memperoleh
   Corresponding Source versi tersebut secara gratis melalui cara yang lazim.
-* Modifikasi privat saja tidak mewajibkan publikasi ke umum. Kewajiban tersebut
+- Modifikasi privat saja tidak mewajibkan publikasi ke umum. Kewajiban tersebut
   berlaku pada karya yang tercakup, bukan otomatis pada perangkat lunak
   independen yang digunakan bersamanya.
-* Komponen pihak ketiga di atas tetap tunduk pada lisensinya masing-masing;
+- Komponen pihak ketiga di atas tetap tunduk pada lisensinya masing-masing;
   AGPLv3 tidak mengubahnya.
 
 Ringkasnya: monetisasi boleh; kewajiban berbagi sumber yang berlaku tetap harus
-dipenuhi. Teks `LICENSE` yang
-mengikat; paragraf ini hanya penjelasan bahasa sederhana.
+dipenuhi. Teks `LICENSE` yang mengikat; paragraf ini hanya penjelasan bahasa sederhana.
 
-KONTEN PENGGUNA DAN LAYANAN EKSTERNAL
--------------------------------------
+## Konten pengguna dan layanan eksternal
 
 MeInsert membaca dan menulis tag metadata (EXIF, XMP, IPTC, ID3, Vorbis Comment,
 Matroska, Info Dictionary PDF) pada berkas yang tetap berada di perangkat Anda.
@@ -120,8 +115,7 @@ tidak meminta sumber daya jaringan apa pun selain berkas yang disajikan dari
 origin miliknya sendiri (app shell, font, pustaka, dan modul WebAssembly ExifTool
 opsional).
 
-MEREK DAGANG
-------------
+## Merek dagang
 
 MeInsert serta nama dan logo MeInsert digunakan untuk mengidentifikasi proyek ini.
 Nama dan logo tersebut tidak boleh digunakan untuk menyiratkan dukungan terhadap
@@ -130,10 +124,9 @@ Mediabunny, pdf-lib, fflate, browser-id3-writer, IBM Plex, dan zeroperl adalah
 merek dagang pemiliknya masing-masing; penyebutan di sini hanya untuk
 identifikasi asal kode yang dibundel, bukan dukungan atau sponsor.
 
-KONTAK
-------
+## Kontak
 
-Proyek: https://github.com/mifada2543/meinsert
-Live:   https://meinsert.my.id/
-Penulis: mifada2543
-Email:   mifada2543@gmail.com
+- Proyek: https://github.com/mifada2543/meinsert
+- Live: https://meinsert.my.id/
+- Penulis: mifada2543
+- Email: mifada2543@gmail.com
