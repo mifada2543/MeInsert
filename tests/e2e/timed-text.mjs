@@ -9,7 +9,6 @@ import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const chrome = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser']
   .filter(Boolean).find((candidate) => existsSync(candidate));
@@ -89,7 +88,6 @@ try {
     throw new Error('Tombol utama audio bukan Terapkan.');
   }
   console.log('PASS: audio/LRC tidak memiliki tombol preferensi warna');
-
   await page.locator('#timedTextSave').click();
   await page.locator('#timedTextDialog[open]').waitFor({ state: 'hidden' });
   console.log('PASS: Apply menutup dialog dan mengembalikan state ke editor');
@@ -143,7 +141,6 @@ try {
   const overlayText = await page.locator('.timed-text__overlay-text').innerText();
   if (!overlayText) throw new Error('Overlay subtitle kosong.');
   console.log('PASS: overlay subtitle tampil di pratinjau', JSON.stringify(overlayText));
-
   const panel = page.locator('.timed-text__style-panel');
   const confirm = page.locator('.timed-text__unsaved-notice');
   await page.locator('#timedTextStyleSubtitles').click();
@@ -157,13 +154,11 @@ try {
   const cueColor = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
   if (cueColor !== '#FFE066') throw new Error(`Pratinjau tidak mengikuti tema: ${cueColor}`);
   console.log('PASS: preferensi subtitle membuka card + backdrop gelap', cueColor);
-
   await page.locator('#timedTextSave').click();
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('meinsert-timed-text-style-v1') || '{}'));
   if (saved.subtitles?.theme !== 'yellow') throw new Error(`Preferensi tidak tersimpan: ${JSON.stringify(saved)}`);
   if (await panel.isHidden()) throw new Error('Panel tertutup setelah Simpan preferensi.');
   console.log('PASS: tombol utama menyimpan preferensi subtitle dan panel tetap terbuka');
-
   await page.locator('#timedTextStyleSubtitles').click();
   if ((await page.locator('#timedTextSave').innerText()).trim() !== 'Terapkan') {
     throw new Error('Tombol utama tidak kembali menjadi Terapkan.');
@@ -179,18 +174,21 @@ try {
   const reverted = await page.locator('.timed-text__video-frame').evaluate((node) => node.style.getPropertyValue('--tt-cue-color'));
   if (reverted !== '#FFE066') throw new Error(`Batalkan tidak mengembalikan preferensi: ${reverted}`);
   console.log('PASS: klik di luar card meminta konfirmasi; Batalkan memulihkan preferensi');
-
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => (
+    globalThis.matchMedia?.('(orientation: portrait)')?.matches
+    && !document.querySelector('.timed-text__rotate-hint')?.hidden
+  ), null, { timeout: 5000 });
   const mobile = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth - window.innerWidth,
     dialogWidth: document.querySelector('.timed-text')?.getBoundingClientRect().width || 0,
     columns: getComputedStyle(document.querySelector('.timed-text__workspace')).gridTemplateColumns.trim().split(/\s+/).length,
+    portrait: globalThis.matchMedia?.('(orientation: portrait)')?.matches || false,
     rotateHint: !document.querySelector('.timed-text__rotate-hint')?.hidden,
   }));
   if (mobile.overflow > 1) throw new Error(`Horizontal scroll saat mobile: ${mobile.overflow}px`);
   if (mobile.columns !== 2 || !mobile.rotateHint) throw new Error(`Tampilan lanskap paksa gagal: ${JSON.stringify(mobile)}`);
   console.log('PASS: layout lanskap 2 kolom di HP portrait tanpa horizontal scroll', mobile);
-
   await open(audio);
   const reopened = await page.evaluate(() => ({
     mode: document.querySelector('#timedTextDialog')?.dataset.mode,
@@ -205,7 +203,6 @@ try {
     throw new Error(`Preferensi video terbawa ke audio: ${JSON.stringify(reopened)}`);
   }
   console.log('PASS: preferensi tidak terbawa saat membuka audio setelah video');
-
   if (errors.length) throw new Error(`Page errors: ${errors.join(' | ')}`);
   console.log('ALL timed-text editor scenarios passed');
 } finally {
