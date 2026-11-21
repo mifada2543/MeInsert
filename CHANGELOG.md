@@ -10,8 +10,48 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## Daftar isi
 
+- [1.4.1 — 2026-11-21](#141--2026-11-21)
 - [1.4.0 — 2026-11-21](#140--2026-11-21)
 - [1.3.0 — 2026-11-18](#130--2026-11-18)
+
+## [1.4.1] — 2026-11-21
+
+Rilis ini menambahkan editor teks berirama, memperketat preservasi metadata,
+dan menurunkan puncak memori pada alur baca/tulis. `package.json`, lock file,
+dan badge README ID/EN menunjukkan `v1.4.1`. Cache shell naik ke
+`meinsert-v58`; cache engine tetap `meinsert-engine-v1`.
+
+### Fitur — lirik & subtitle
+
+- Editor dua kolom berbasis ekstensi: audio membuka editor lirik dengan
+  pratinjau karaoke, video membuka editor subtitle dengan tata lanskap paksa,
+  pratinjau layar penuh, serta tombol ciutkan/buka pratinjau.
+- Tombol aksi hanya muncul untuk format audio/video. Teks tersinkron ditulis ke
+  `SYLT` (MP3), komentar `LYRICS` (FLAC/OGG/Opus), `©lyr` + WebVTT (MP4), dan
+  track WebVTT (MKV/WebM); file `.vtt` tetap bisa diekspor.
+- Preferensi tampilan warna/latar/ukuran/posisi hanya tersedia untuk subtitle
+  video (LRC tidak menyimpan warna), tersimpan di `localStorage`, dengan kartu
+  pengaturan, overlay gelap, dan konfirmasi saat belum disimpan.
+- Draf baris tersimpan otomatis dan dihapus setelah **Terapkan**.
+
+### Preservasi metadata & UX
+
+- Patch ID3v2.3/v2.4 tingkat byte: frame yang tidak diedit — termasuk `PRIV`,
+  `CHAP`, `CTOC`, dan frame biner tak dikenal — disalin apa adanya; fallback
+  disertai peringatan untuk tag v2.2/rusak.
+- Comment header Ogg/Opus ditimpa per rentang `Blob.slice()` dan tetap
+  diverifikasi penuh; fallback remux dipertahankan untuk kasus multi-page.
+- File picker satu file kini mencantumkan semua format Office seperti mode
+  Batch; regression test menjaga kedua daftar tetap sinkron.
+
+### Performa & verifikasi
+
+- Instrumentasi opsional `?mem=1` mencatat puncak payload worker; estimasi
+  memori memakai puncak teramati. Payload `ArrayBuffer` ditransfer, bukan
+  disalin dua kali. Batch menyarankan mode hemat memori otomatis dan melepaskan
+  snapshot setelah verifikasi integritas.
+- Validasi: **391 unit test**, `check:assets`/CSS/policy hijau, **48/48** kasus
+  kompatibilitas, E2E WASM/Service Worker, offline, i18n, dan editor teks.
 
 ## [1.4.0] — 2026-11-21
 

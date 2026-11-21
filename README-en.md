@@ -14,7 +14,7 @@ No backend. No uploads. No account.
 [Live demo](https://meinsert.my.id/) · [Single-file editor](https://meinsert.my.id/single.html) · [Batch mode](https://meinsert.my.id/batch.html) · [Documentation](#further-documentation)
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v1.4.0-blue?style=flat-square)](./package.json)
+[![Version](https://img.shields.io/badge/version-v1.4.1-blue?style=flat-square)](./package.json)
 [![License](https://img.shields.io/badge/License-AGPLv3-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#how-to-verify-the-local-only-claim)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)

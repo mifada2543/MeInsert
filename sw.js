@@ -6,7 +6,7 @@
 // must never throw away engines the user already downloaded. ENGINE_VERSION is
 // mirrored by core/build.js (this worker is a classic script, so it cannot use
 // a static import); tests/unit/service-worker-update.test.js keeps them in sync.
-const CACHE_VERSION = 'meinsert-v57';
+const CACHE_VERSION = 'meinsert-v58';
 const ENGINE_VERSION = 'meinsert-engine-v1';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
 const INSTALL_FETCH_TIMEOUT_MS = 15_000;
