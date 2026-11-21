@@ -189,11 +189,25 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     if (id in values) values[id] = '';
   }
   report({ stage: 'Menulis ulang tag ID3…', pct: 45 });
-  // SYLT is dropped by a normal ID3 rewrite, so capture it up front and put it
-  // back below — either from the editor sidecar or verbatim from the source.
   const existingSylt = await readSylt(file);
   const buffer = await file.arrayBuffer();
-  const canPatch = Boolean(parseId3Tag(buffer));
+  const sourceTag = parseId3Tag(buffer);
+  const id3Header = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 10));
+  const complexId3 = id3Header.length === 10
+    && id3Header[0] === 0x49 && id3Header[1] === 0x44 && id3Header[2] === 0x33
+    && (id3Header[3] === 3 || id3Header[3] === 4)
+    && Boolean(id3Header[5] & (id3Header[3] === 4 ? 0x50 : 0x40));
+  if (complexId3 && !sourceTag) {
+    throw new AppError('WRITE_FAILED',
+      'Extended header atau footer ID3 tidak valid dan tidak aman ditulis ulang.',
+      'File asli tidak diubah.');
+  }
+  if (sourceTag?.unsupportedExtendedHeader) {
+    throw new AppError('WRITE_FAILED',
+      'Tag ID3 memiliki CRC atau batasan extended header yang belum aman untuk diubah.',
+      `${sourceTag.unsupportedExtendedHeader}; file asli tidak diubah.`);
+  }
+  const canPatch = Boolean(sourceTag);
   const writer = new ID3Writer(buffer);
   writer.padding = 0;
   const firstComm = parseId3Tag(buffer)?.frames.find((frame) => frame.id === 'COMM');
@@ -236,9 +250,6 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   const frameMatch = (id) => (id === 'COMM' ? 'first' : 'all');
 
   if (canPatch) {
-    // Only write frames whose logical value actually changed. Every other
-    // frame — including additional COMM/APIC/TXXX instances — is copied
-    // verbatim by the byte-level patcher.
     const changedFields = new Set([...Object.keys(set), ...remove]);
     for (const field of changedFields) {
       const frameId = FIELD_FRAME[field];
@@ -286,7 +297,6 @@ export async function write(file, payload, _options = {}, report = () => {}) {
       spec('APIC', 'first', undefined, true);
     }
   } else {
-    // No patchable tag: rebuild exactly as before so no known field is lost.
     for (const [field, value] of Object.entries(values)) {
       const text = asString(value).trim();
       if (text) writeField(field, text);

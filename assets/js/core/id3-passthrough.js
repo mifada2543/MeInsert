@@ -3,7 +3,6 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Byte-level ID3v2 patching: keep untouched frames verbatim so an edit to one
 // field cannot silently drop the rest of the tag. Pure JS, no dependencies.
-
 const encoder = new TextEncoder();
 function concat(parts) {
   const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
@@ -45,34 +44,47 @@ function unsynchronise(bytes) {
   }
   return Uint8Array.from(out);
 }
-
-/** Parse an ID3v2.3/2.4 tag. Returns null for missing, v2.2 or malformed tags. */
 export function parseId3Tag(input) {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input || []);
   if (bytes.length < 10 || bytes[0] !== 0x49 || bytes[1] !== 0x44 || bytes[2] !== 0x33) return null;
   const version = bytes[3];
   const revision = bytes[4];
-  // ID3 header stores the version major directly: 3 = v2.3, 4 = v2.4.
   if (version !== 3 && version !== 4) return null;
   const flags = bytes[5];
   const tagSize = syncSafeToInt(bytes, 6);
   const tagEnd = 10 + tagSize;
   if (tagSize < 0 || tagEnd > bytes.length) return null;
-
-  const rawBody = bytes.slice(10, tagEnd);
+  const hasFooter = version === 4 && Boolean(flags & 0x10);
+  if (hasFooter && tagSize < 10) return null;
+  const footer = hasFooter ? bytes.slice(tagEnd - 10, tagEnd) : null;
+  if (footer && (String.fromCharCode(...footer.slice(0, 3)) !== '3DI'
+    || footer[3] !== version || footer[4] !== revision || footer[5] !== flags
+    || footer.some((value, index) => index >= 6 && value !== bytes[index]))) return null;
+  const rawBody = bytes.slice(10, tagEnd - (hasFooter ? 10 : 0));
   const unsynchronisation = Boolean(flags & 0x80);
   const body = unsynchronisation ? deunsynchronise(rawBody) : rawBody;
   let offset = 0;
+  let extendedHeader = null;
+  let unsupportedExtendedHeader = null;
   if (flags & 0x40) {
+    if (body.length < 6) return null;
     if (version === 3) {
-      if (body.length < 4) return null;
-      offset = 4 + ((body[0] << 24) | (body[1] << 16) | (body[2] << 8) | body[3]);
+      const extSize = ((body[0] << 24) | (body[1] << 16) | (body[2] << 8) | body[3]) >>> 0;
+      offset = 4 + extSize;
+      if (extSize < 6 || offset > body.length) return null;
+      const extFlags = (body[4] << 8) | body[5];
+      if (extFlags & 0x8000) unsupportedExtendedHeader = 'ID3v2.3 extended-header CRC';
+      if (extFlags & ~0x8000) unsupportedExtendedHeader = 'ID3v2.3 extended-header flags';
     } else {
       offset = syncSafeToInt(body, 0);
+      if (offset < 6 || offset > body.length || body[4] !== 1) return null;
+      const extFlags = body[5];
+      if (extFlags & 0x20) unsupportedExtendedHeader = 'ID3v2.4 extended-header CRC';
+      if (extFlags & 0x10) unsupportedExtendedHeader = 'ID3v2.4 tag restrictions';
+      if (extFlags & ~0x30) unsupportedExtendedHeader = 'ID3v2.4 extended-header flags';
     }
-    if (offset < 0 || offset > body.length) return null;
+    extendedHeader = body.slice(0, offset);
   }
-
   const frames = [];
   while (offset + 10 <= body.length) {
     const id = String.fromCharCode(...body.slice(offset, offset + 4));
@@ -92,9 +104,11 @@ export function parseId3Tag(input) {
     paddingStart: offset,
     paddingLength: Math.max(0, body.length - offset),
     unsynchronisation,
+    extendedHeader,
+    unsupportedExtendedHeader,
+    footer,
   };
 }
-
 function rewriteFrameSize(frame, fromVersion, toVersion) {
   if (fromVersion === toVersion) return frame;
   const out = frame.slice();
@@ -111,7 +125,6 @@ function rewriteFrameSize(frame, fromVersion, toVersion) {
   out[9] = 0;
   return out;
 }
-
 const TEXT_ENCODINGS = { 0: 'iso-8859-1', 1: 'utf-16le', 2: 'utf-16be', 3: 'utf-8' };
 function terminated(body, offset, encoding) {
   const decoder = new TextDecoder(TEXT_ENCODINGS[encoding] || TEXT_ENCODINGS[0]);
@@ -124,11 +137,6 @@ function terminated(body, offset, encoding) {
   while (end < body.length && body[end] !== 0) end += 1;
   return { value: decoder.decode(body.slice(offset, end)), end: end + 1 };
 }
-
-/**
- * Distinguishing key for multi-instance frame IDs. Returns null for IDs that
- * are singleton by definition, so callers can preserve every other instance.
- */
 export function frameIdentity(id, frameBytes) {
   const body = frameBytes.slice(10);
   if (!body.length) return null;
@@ -151,7 +159,6 @@ export function frameIdentity(id, frameBytes) {
   }
   return null;
 }
-
 function isTarget(spec, frame, seen) {
   if (spec.match === 'all') return true;
   if (spec.match === 'first') {
@@ -163,22 +170,12 @@ function isTarget(spec, frame, seen) {
   if (typeof spec.match === 'function') return Boolean(spec.match(frame.bytes));
   return false;
 }
-
-/**
- * Patch the source tag with operation-aware frame edits.
- *
- * `edits` is either an array of frame IDs (legacy behaviour: replace every
- * instance of those IDs) or an array of specs:
- *   { id, match: 'all' | 'first' | 'identity' | fn, identity?, frames? }
- * A spec with `frames: []` removes the targeted instance(s). Frames that are
- * not targeted are copied byte-for-byte, including unknown/binary frames.
- */
 export function patchId3Tag(source, generated, edits) {
   const bytes = source instanceof Uint8Array ? source : new Uint8Array(source || []);
   const src = parseId3Tag(bytes);
   const gen = parseId3Tag(generated);
   if (!src || !gen) return null;
-
+  if (src.unsupportedExtendedHeader) return null;
   const generatedBy = new Map();
   for (const frame of gen.frames) {
     if (!generatedBy.has(frame.id)) generatedBy.set(frame.id, []);
@@ -200,7 +197,6 @@ export function patchId3Tag(source, generated, edits) {
     if (!byId.has(spec.id)) byId.set(spec.id, []);
     byId.get(spec.id).push(spec);
   }
-
   const consumed = new Set();
   const seenFirst = new Set();
   const merged = [];
@@ -216,25 +212,32 @@ export function patchId3Tag(source, generated, edits) {
       consumed.add(target);
       continue;
     }
-    // A frame may still be a "first" candidate for an unconsumed spec whose
-    // identity did not match; do not consume it, but do not duplicate it.
     merged.push(frame.bytes);
   }
   for (const spec of specs) {
     if (consumed.has(spec)) continue;
     for (const replacement of spec.frames) merged.push(replacement);
   }
-
-  let body = concat([...merged, new Uint8Array(Math.max(src.paddingLength, 1024))]);
+  const padding = new Uint8Array(Math.max(src.paddingLength, 1024));
+  const extendedHeader = src.extendedHeader?.slice() || new Uint8Array();
+  if (extendedHeader.length && src.version[0] === 3) {
+    const length = padding.length;
+    extendedHeader[6] = (length >>> 24) & 0xff;
+    extendedHeader[7] = (length >>> 16) & 0xff;
+    extendedHeader[8] = (length >>> 8) & 0xff;
+    extendedHeader[9] = length & 0xff;
+  }
+  let body = concat([extendedHeader, ...merged, padding]);
   if (src.unsynchronisation) body = unsynchronise(body);
   const fullHeader = new Uint8Array(10);
   fullHeader.set(Uint8Array.from(encoder.encode('ID3')), 0);
   fullHeader[3] = src.version[0];
   fullHeader[4] = src.version[1];
-  // Drop extended-header/footer/experimental bits; keep unsynchronisation.
-  fullHeader[5] = src.unsynchronisation ? 0x80 : 0;
-  intToSyncSafe(body.length, fullHeader, 6);
-  return concat([fullHeader, body, bytes.slice(src.tagEnd)]);
+  fullHeader[5] = src.flags;
+  const tagSize = body.length + (src.footer ? 10 : 0);
+  intToSyncSafe(tagSize, fullHeader, 6);
+  const footer = src.footer?.slice();
+  if (footer) footer.set(fullHeader.slice(3, 10), 3);
+  return concat([fullHeader, body, ...(footer ? [footer] : []), bytes.slice(src.tagEnd)]);
 }
-
 export default { parseId3Tag, patchId3Tag, frameIdentity };
