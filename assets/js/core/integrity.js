@@ -168,6 +168,7 @@ export function verifyIntegrity(plan, afterSnapshot) {
     };
   }
   const afterFields = after.fields || {};
+  const sidecarLyricRewrite = (plan?.operations || []).some((op) => op.kind === 'sidecar' && op.lyricLines > 0);
   const targetFieldIds = new Set();
   for (const op of plan?.operations || []) {
     if (op.kind !== 'field') continue;
@@ -227,6 +228,17 @@ export function verifyIntegrity(plan, afterSnapshot) {
       addKnown(
         'Tanggal diisi engine saat container dipotong.',
         'CUT_CONTAINER_METADATA',
+        `field:${id}`,
+        field.value,
+        actual?.value || '',
+      );
+      summary.preserved += 1;
+      continue;
+    }
+    if (sidecarLyricRewrite && id === 'lyrics' && beforeNormalized !== afterNormalized) {
+      addKnown(
+        'Lirik ditulis ulang dari editor lirik berwaktu.',
+        'SIDECAR_LYRICS_REWRITTEN',
         `field:${id}`,
         field.value,
         actual?.value || '',
@@ -309,6 +321,18 @@ export function verifyIntegrity(plan, afterSnapshot) {
   const beforeRaw = new Map((before.raw || []).map((row) => [row.canonicalTag, row]));
   const afterRaw = new Map((after.raw || []).map((row) => [row.canonicalTag, row]));
   const targetRaw = new Set((plan?.operations || []).filter((op) => op.kind === 'raw').map((op) => normalizeRawTag(op.tag)));
+  const rawUnverifiable = beforeRaw.size > 0 && afterRaw.size === 0
+    && (plan?.operations || []).some((op) => op.kind === 'sidecar' || op.kind === 'trim');
+  if (rawUnverifiable) {
+    summary.unverified += 1;
+    addKnown(
+      'Container ditulis ulang; daftar tag mentah hasil tidak tersedia, jadi tag lama tidak bisa dibandingkan.',
+      'RAW_UNVERIFIED',
+      'raw',
+      '',
+      '',
+    );
+  }
   const byteProofRelocated = sameMediaProof(before.mediaProof, after.mediaProof);
   const packetProofRelocated = sameMediaProof(before.packetProof, after.packetProof);
   const relocatedPayload = byteProofRelocated || packetProofRelocated || hasTrimProof;
@@ -377,6 +401,7 @@ export function verifyIntegrity(plan, afterSnapshot) {
     }
   }
   for (const [tag, row] of beforeRaw) {
+    if (rawUnverifiable) continue;
     if (targetRaw.has(tag) || targets.has(tag)) {
       summary.checked += 1;
       continue;
@@ -411,6 +436,16 @@ export function verifyIntegrity(plan, afterSnapshot) {
       continue;
     }
     if (actual.value !== row.value) {
+      if (sidecarLyricRewrite && (tag === 'lyrics' || tag === 'uslt' || tag === '©lyr')) {
+        addKnown(
+          'Tag lirik ditulis ulang dari editor lirik berwaktu.',
+          'SIDECAR_LYRICS_REWRITTEN',
+          `raw:${row.tag}`,
+          row.value,
+          actual.value,
+        );
+        continue;
+      }
       const format = plan?.format?.id || before.format?.id;
       const relocationTag = (format === 'image' && before.format?.subtype === 'tiff' && /^ifd\d+:(stripoffsets|tileoffsets)$/.test(tag))
         || (format === 'mp4' && tag === 'quicktime:mediadataoffset');
@@ -442,6 +477,7 @@ export function verifyIntegrity(plan, afterSnapshot) {
     summary.preserved += 1;
   }
   for (const [tag, row] of afterRaw) {
+    if (rawUnverifiable) continue;
     if (beforeRaw.has(tag) || targetRaw.has(tag) || targets.has(tag)) continue;
     if (isCoverRaw(row, rules) || isIgnoredRaw(row, rules) || isVolatileRaw(row, rules) || isGeneratedRaw(row, rules)) continue;
     if (hasTrimProof && isCutDerivedRaw(tag)) {
@@ -459,7 +495,7 @@ export function verifyIntegrity(plan, afterSnapshot) {
     });
   }
   for (const op of plan?.operations || []) {
-    if (op.kind !== 'raw') continue;
+    if (op.kind !== 'raw' || rawUnverifiable) continue;
     summary.checked += 1;
     if (afterRaw.has(normalizeRawTag(op.tag))) {
       add({

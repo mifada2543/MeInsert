@@ -292,8 +292,8 @@ async function embedSidecar(baseFile, payload, report) {
   const timedLyrics = Array.isArray(lyricLines) ? lyricLines : [];
   const cues = Array.isArray(payload?.sidecar?.subtitles?.cues) ? payload.sidecar.subtitles.cues : [];
   let lyricsValue;
-  if (Array.isArray(lyricLines)) lyricsValue = serializeLrc(lyricLines);
-  else if (payload?.set?.lyrics != null) lyricsValue = asString(payload.set.lyrics);
+  if (payload?.set?.lyrics != null) lyricsValue = asString(payload.set.lyrics);
+  else if (Array.isArray(lyricLines)) lyricsValue = serializeLrc(lyricLines);
   if (lyricsValue !== undefined) output.setMetadataTags({ ...mediaTags, lyrics: lyricsValue });
   else output.setMetadataTags(mediaTags);
   const tracks = [];

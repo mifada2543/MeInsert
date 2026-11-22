@@ -128,7 +128,9 @@ export async function writeVorbis(file, payload, options, report, config) {
   const trim = payload?.trim || null;
   const sidecarLines = payload?.sidecar?.lyrics?.lines;
   const hasSidecarLyrics = Array.isArray(sidecarLines) && sidecarLines.length > 0;
-  const effectiveSet = hasSidecarLyrics ? { ...set, lyrics: serializeLrc(sidecarLines) } : set;
+  const effectiveSet = hasSidecarLyrics && set.lyrics == null
+    ? { ...set, lyrics: serializeLrc(sidecarLines) }
+    : set;
   const remove = new Set(payload?.remove || []);
   report({ stage: 'Membaca tag lama…', pct: 12 });
   let input;

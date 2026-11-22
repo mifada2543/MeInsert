@@ -38,6 +38,7 @@ export function createEditorState() {
     detectionWarning: '',
     sideSignature: '',
     sidecar: null,
+    originalSidecar: null,
     trim: null,
     coverOriginal: null,
     coverOriginalBytes: null,

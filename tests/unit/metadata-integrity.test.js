@@ -179,6 +179,84 @@ test('verifyIntegrity fails when a requested field is not written', () => {
   assert.equal(result.status, 'failed');
   assert.ok(result.findings.some((finding) => finding.code === 'REQUEST_NOT_APPLIED' && finding.target === 'field:title'));
 });
+const lyricAdapter = {
+  meta: { id: 'flac', label: 'FLAC' },
+  fields: [{ id: 'lyrics', label: 'Lirik', type: 'textarea', native: 'LYRICS' }],
+};
+const lyricDetection = { id: 'flac', subtype: 'flac', label: 'FLAC' };
+const OLD_LYRICS = '[00:00.00] Lama';
+const NEW_LYRICS = '[00:00.00] Baru';
+const lyricSidecar = { lyrics: { lang: 'id', lines: [{ time: 0, text: 'Baru' }] }, subtitles: null };
+function lyricReadResult(lyrics) {
+  return readResult({
+    fields: { lyrics },
+    custom: [],
+    raw: [{ group: 'Vorbis', tag: 'LYRICS', value: lyrics }],
+  });
+}
+test('a planned sidecar lyric rewrite is not reported as an unexpected field or raw change', () => {
+  const baseline = createSnapshot({ adapter: lyricAdapter, detection: lyricDetection, readResult: lyricReadResult(OLD_LYRICS) });
+  const plan = buildChangePlan({
+    adapter: lyricAdapter,
+    detection: lyricDetection,
+    baseline,
+    payload: { set: { lyrics: NEW_LYRICS }, sidecar: lyricSidecar },
+    outputName: 'lagu-meinsert.flac',
+  });
+  assert.ok(plan.operations.some((op) => op.kind === 'field' && op.id === 'lyrics'));
+  const after = createSnapshot({ adapter: lyricAdapter, detection: lyricDetection, readResult: lyricReadResult(NEW_LYRICS) });
+  const result = verifyIntegrity(plan, after);
+  assert.equal(result.findings.some((finding) => finding.code === 'FIELD_CHANGED_UNEXPECTED'), false);
+  assert.equal(result.findings.some((finding) => finding.code === 'METADATA_CHANGED_UNEXPECTED'), false);
+  assert.notEqual(result.status, 'failed');
+});
+test('a sidecar-only lyric payload downgrades lyric findings to known notes', () => {
+  const baseline = createSnapshot({ adapter: lyricAdapter, detection: lyricDetection, readResult: lyricReadResult(OLD_LYRICS) });
+  const plan = buildChangePlan({
+    adapter: lyricAdapter,
+    detection: lyricDetection,
+    baseline,
+    payload: { sidecar: lyricSidecar },
+    outputName: 'lagu-meinsert.flac',
+  });
+  assert.ok(plan.operations.some((op) => op.kind === 'sidecar' && op.lyricLines === 1));
+  const after = createSnapshot({ adapter: lyricAdapter, detection: lyricDetection, readResult: lyricReadResult(NEW_LYRICS) });
+  const result = verifyIntegrity(plan, after);
+  assert.equal(result.findings.some((finding) => finding.severity === 'error'), false);
+  assert.ok(result.findings.some((finding) => finding.code === 'SIDECAR_LYRICS_REWRITTEN'));
+  assert.equal(result.status, 'warning');
+});
+test('a rewritten container without a raw inventory is unverified, not a mass metadata loss', () => {
+  const mp4Adapter = {
+    meta: { id: 'mp4', label: 'MP4' },
+    fields: [{ id: 'title', label: 'Judul', type: 'text', native: 'Title' }],
+  };
+  const mp4Detection = { id: 'mp4', subtype: 'mp4', label: 'MP4' };
+  const beforeRead = {
+    fields: { title: 'Judul' },
+    custom: [],
+    raw: [{ group: 'ItemList', tag: 'ItemList:Title', value: 'Judul' }],
+    info: { kind: 'video' },
+    warnings: [],
+  };
+  const baseline = createSnapshot({ adapter: mp4Adapter, detection: mp4Detection, readResult: beforeRead });
+  const plan = buildChangePlan({
+    adapter: mp4Adapter,
+    detection: mp4Detection,
+    baseline,
+    payload: { sidecar: { lyrics: null, subtitles: { lang: 'id', cues: [{ id: '1', start: 0, end: 900, text: 'Halo', settings: '' }] } } },
+    outputName: 'klip-meinsert.mp4',
+  });
+  const after = createSnapshot({
+    adapter: mp4Adapter,
+    detection: mp4Detection,
+    readResult: { ...beforeRead, raw: [] },
+  });
+  const result = verifyIntegrity(plan, after);
+  assert.equal(result.findings.some((finding) => finding.code === 'METADATA_LOST'), false);
+  assert.ok(result.findings.some((finding) => finding.code === 'RAW_UNVERIFIED'));
+  assert.notEqual(result.status, 'failed');
+});
 const rereadCases = [
   { name: 'tone.ogg', adapter: ogg, detection: { id: 'ogg', subtype: 'vorbis', ext: 'ogg', mime: 'audio/ogg' }, options: {} },
   { name: 'tone.opus', adapter: ogg, detection: { id: 'ogg', subtype: 'opus', ext: 'opus', mime: 'audio/opus' }, options: { extension: 'opus', mime: 'audio/opus' } },

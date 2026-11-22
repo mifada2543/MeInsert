@@ -329,6 +329,12 @@ try {
     assert.ok((await page.locator('.result-download').count()) === 1, 'offline save must produce a result');
     await assertNoUserFilesCached(page, 'offline edit');
     console.log('PASS: (e) offline reload + MP3 edit + save worked from the real SW cache, no external request');
+    await page.locator('#cutBtn').click();
+    await page.waitForFunction(() => document.getElementById('cutDialog')?.open === true, null, { timeout: 30_000 });
+    assert.equal(await page.locator('.toast.is-error').count(), 0, 'offline cut must not report a missing engine');
+    await page.locator('#cutCancel').click();
+    await page.waitForFunction(() => document.getElementById('cutDialog')?.open === false, null, { timeout: 30_000 });
+    console.log('PASS: (e2) offline cut opens from the engine cache after a fresh reload');
     await context.setOffline(false);
     await page.evaluate((key) => localStorage.removeItem(key), PROFILE_KEY);
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });

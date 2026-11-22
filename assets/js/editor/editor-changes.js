@@ -3,6 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { bindTranslation, t } from '../i18n/index.js';
 import { asArray, asString, isXmpOnlyImageSubtype, validateCustomKey } from '../core/tag-utils.js';
+import { serializeLrc } from '../core/timed-text.js';
 import { canRedo, canUndo } from '../core/history.js';
 import { PDF_STANDARD_KEYS, cloneSidecar, cloneTrim } from './editor-state.js';
 import { setEditingNavigation, singleEditing } from '../ui/editing-navigation.js';
@@ -33,6 +34,14 @@ export function collectChanges(state, { validate = false } = {}) {
     } else {
       set[field.id] = field.type === 'tags' ? asArray(current) : current;
     }
+  }
+  const sidecar = cloneSidecar(state.sidecar);
+  const sidecarChanged = JSON.stringify(sidecar) !== JSON.stringify(state.originalSidecar ?? null);
+  if (sidecarChanged && Array.isArray(sidecar?.lyrics?.lines)
+    && fields.some((field) => field.id === 'lyrics')) {
+    set.lyrics = serializeLrc(sidecar.lyrics.lines);
+    const removed = remove.indexOf('lyrics');
+    if (removed >= 0) remove.splice(removed, 1);
   }
   const custom = [];
   const customRemove = new Set(state.removedCustom);
@@ -92,8 +101,7 @@ export function collectChanges(state, { validate = false } = {}) {
       if (!/^XMP[-.]/i.test(name)) errors.push(t('ui.unsupportedTagRemove', { v0: name }));
     }
   }
-  const sidecar = cloneSidecar(state.sidecar);
-  const sidecarCount = sidecar ? 1 : 0;
+  const sidecarCount = sidecarChanged ? 1 : 0;
   const trim = cloneTrim(state.trim);
   const trimCount = trim ? 1 : 0;
   const count = Object.keys(set).length + new Set(remove).size + custom.length + customRemove.size + rawRemove.length + coverCount + sidecarCount + trimCount;

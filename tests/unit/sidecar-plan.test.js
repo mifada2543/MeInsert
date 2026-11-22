@@ -51,6 +51,36 @@ test('sidecar is included in collectChanges and produces a sidecar operation', (
   assert.equal(sidecarOps[0].subtitleCues, 1);
   assert.deepEqual(plan.payload.sidecar, SAMPLE);
 });
+test('edited sidecar lyrics become a planned lyrics field change', () => {
+  const state = createEditorState();
+  state.adapter = {
+    meta: { id: 'ogg', engine: 'media' },
+    fields: [{ id: 'lyrics', type: 'textarea', native: 'LYRICS' }],
+    fieldsFor: () => [{ id: 'lyrics', type: 'textarea', native: 'LYRICS' }],
+  };
+  state.detection = { id: 'ogg', ext: 'ogg', subtype: null, mime: 'audio/ogg' };
+  state.values = { lyrics: '[00:00.00] Lama' };
+  state.originalValues = { lyrics: '[00:00.00] Lama' };
+  setSidecar(state, { lyrics: { lang: 'id', lines: [{ time: 0, text: 'Lama' }] }, subtitles: null });
+  state.originalSidecar = cloneSidecar(state.sidecar);
+  setSidecar(state, { lyrics: { lang: 'id', lines: [{ time: 0, text: 'Baru' }] }, subtitles: null });
+  const changes = collectChanges(state);
+  assert.equal(changes.payload.set.lyrics, '[00:00.00] Baru');
+  assert.equal(changes.count, 2);
+});
+test('an unchanged sidecar is not counted as a pending change', () => {
+  const state = createEditorState();
+  const ctx = context();
+  state.adapter = ctx.adapter;
+  state.detection = ctx.detection;
+  state.values = { title: 'Judul' };
+  state.originalValues = { title: 'Judul' };
+  setSidecar(state, SAMPLE);
+  state.originalSidecar = cloneSidecar(state.sidecar);
+  const changes = collectChanges(state);
+  assert.equal(changes.count, 0);
+  assert.deepEqual(changes.payload.sidecar, SAMPLE);
+});
 test('no sidecar means no sidecar key in the final payload', () => {
   const state = createEditorState();
   const ctx = context();

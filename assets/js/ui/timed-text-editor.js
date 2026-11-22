@@ -12,6 +12,7 @@ import { showToast } from './toast.js';
 import { beginChange, endChange } from '../core/history.js';
 import { setSidecar } from '../editor/editor-state.js';
 import { syncActionBar } from '../editor/editor-changes.js';
+import { renderWorkspace } from '../editor/editor-view.js';
 import {
   CUE_STYLE_DEFAULTS,
   CUE_STYLE_THEMES,
@@ -1384,8 +1385,12 @@ export function mountTimedTextButton({ container, ctx } = {}) {
       onApply: (next) => {
         beginChange(editorState.history, 'sidecar', t('ui.changeHistorySidecar'));
         setSidecar(editorState, next);
+        if (next?.lyrics && Array.isArray(next.lyrics.lines)) {
+          editorState.values.lyrics = serializeLrc(next.lyrics.lines);
+        }
         endChange(editorState.history);
         syncActionBar(ctx.els, editorState);
+        renderWorkspace(ctx);
       },
     });
   });

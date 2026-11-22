@@ -78,6 +78,7 @@ export function applyOutput(ctx, result) {
   if (result?.sidecar !== undefined) {
     state.sidecar = cloneSidecar(result.sidecar);
   }
+  state.originalSidecar = cloneSidecar(state.sidecar);
   const warnings = [...new Set([state.detection?.warning, ...(result.warnings || [])].filter(Boolean))];
   state.readResult = {
     ...(state.readResult || {}),

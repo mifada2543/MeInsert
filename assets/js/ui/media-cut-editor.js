@@ -421,7 +421,7 @@ export function mountCutButton({ container, ctx } = {}) {
     button.title = buttonLabel.textContent;
     button.setAttribute('aria-label', buttonLabel.textContent);
   });
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
     const editorState = ctx.state;
     const file = editorState?.file;
     if (!file || editorState.status !== 'ready' || !supportsFile(file)) {
@@ -429,7 +429,7 @@ export function mountCutButton({ container, ctx } = {}) {
       return;
     }
     const feature = cutModeForFile(file) === 'audio' ? 'audio' : 'image';
-    if (!ensureFeatureOffline(feature)) return;
+    if (!(await ensureFeatureOffline(feature))) return;
     openCutEditor({
       file,
       trim: editorState.trim,

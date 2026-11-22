@@ -20,6 +20,7 @@ const EXIT_MS = 160;
 const EXIT_SAFETY_MS = EXIT_MS + 100;
 const INACTIVITY_MS = 60_000;
 const TERMINAL_STATES = new Set(['cached', 'failed', 'cancelled']);
+const ENGINE_HEADER = 'x-meinsert-engine-version';
 let trigger = null;
 let dialog = null;
 let refs = null;
@@ -57,11 +58,37 @@ function featureReady(feature) {
 function cachedFeature(feature) {
   return Boolean(feature?.urls?.length) && feature.urls.every((url) => cachedUrls.has(absoluteUrl(url)));
 }
-export function ensureFeatureOffline(featureId) {
+async function refreshCachedUrls() {
+  try {
+    if (typeof caches === 'undefined') return;
+    const cache = await caches.open(ENGINE_VERSION);
+    const found = new Set();
+    for (const feature of features()) {
+      for (const url of feature.urls) {
+        const absolute = absoluteUrl(url);
+        if (found.has(absolute)) continue;
+        let response = null;
+        try { response = await cache.match(absolute); } catch { /* unreadable entry */ }
+        if (response?.ok
+          && (!response.headers.has(ENGINE_HEADER) || response.headers.get(ENGINE_HEADER) === ENGINE_VERSION)) {
+          found.add(absolute);
+        }
+      }
+    }
+    if (download.active) return;
+    cachedUrls.clear();
+    for (const url of found) rememberCached(url);
+    render();
+  } catch {
+    // Cache Storage unavailable — keep whatever the service worker already reported.
+  }
+}
+export async function ensureFeatureOffline(featureId) {
   try {
     const feature = featureFor(featureId);
     if (!feature) return false;
     if (globalThis.navigator?.onLine !== false) return true;
+    if (!cachedFeature(feature)) await refreshCachedUrls();
     if (cachedFeature(feature)) return true;
     showToast(t('ui.offlineMissingEngine'), 'error');
     return false;
@@ -152,6 +179,10 @@ function postToSw(message) {
 }
 function askOptionalStatus() {
   postToSw({ type: 'OPTIONAL_STATUS', version: ENGINE_VERSION });
+}
+function hydrateCacheState() {
+  askOptionalStatus();
+  void refreshCachedUrls();
 }
 function setStatus(message, kind = 'info') {
   if (!refs) return;
@@ -521,6 +552,13 @@ export function initOfflineSettings() {
       download.jobId = '';
     });
     document.addEventListener('keydown', onGlobalKeydown);
+    hydrateCacheState();
+    const sw = globalThis.navigator?.serviceWorker;
+    if (sw) {
+      const ready = sw.ready?.then?.(hydrateCacheState);
+      ready?.catch?.(() => {});
+      sw.addEventListener?.('controllerchange', hydrateCacheState);
+    }
   }
   const page = document.body?.dataset?.page;
   if (page && !PAGES.has(page)) return;

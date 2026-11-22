@@ -9,7 +9,7 @@ import { fileBaseName, safeOutputName } from '../core/tag-utils.js';
 import { showToast } from '../ui/toast.js';
 import { confirmNavigation } from '../ui/confirm.js';
 import { clear } from '../ui/dom.js';
-import { MAX_FILE_SIZE, cloneRows, makeRows, setSidecar, valuesFromFields } from './editor-state.js';
+import { MAX_FILE_SIZE, cloneRows, cloneSidecar, makeRows, setSidecar, valuesFromFields } from './editor-state.js';
 import { setStatus, setProgress, showProgress, setEditorBadge } from './editor-shell.js';
 import { syncActionBar } from './editor-changes.js';
 import {
@@ -58,6 +58,7 @@ export async function openFile(ctx, file) {
   state.customBaseline = [];
   state.removedCustom.clear();
   setSidecar(state, null);
+  state.originalSidecar = null;
   state.outputBase = `${safeOutputName(fileBaseName(file.name), 'file')}-meinsert`;
   state.outputName = `${state.outputBase}.${detection.ext}`;
   els.outputBase.value = state.outputBase;
@@ -93,6 +94,7 @@ export async function openFile(ctx, file) {
     state.removedFields.clear();
     state.removedCustom.clear();
     setSidecar(state, result?.sidecar || null);
+    state.originalSidecar = cloneSidecar(state.sidecar);
     state.saveError = null;
     applyReadCover(state, result);
     state.status = 'ready';

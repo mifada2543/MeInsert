@@ -272,6 +272,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
       case 'comment': merged.comment = asString(value); assignRaw('COMMENT', asString(value)); break;
       case 'copyright': assignRaw('COPYRIGHT', asString(value)); break;
       case 'software': assignRaw('ENCODER', asString(value)); break;
+      case 'lyrics': merged.lyrics = asString(value); assignRaw('LYRICS', asString(value)); break;
       default: break;
     }
   }
@@ -286,6 +287,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
       case 'comment': assign('comment', ''); assignRaw('COMMENT', ''); break;
       case 'copyright': assignRaw('COPYRIGHT', ''); break;
       case 'software': assignRaw('ENCODER', ''); break;
+      case 'lyrics': assign('lyrics', ''); assignRaw('LYRICS', ''); break;
       default: break;
     }
   }
@@ -311,7 +313,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const lyricLines = sidecar?.lyrics?.lines;
   const timedLyrics = Array.isArray(lyricLines) ? lyricLines : [];
   const cues = Array.isArray(sidecar?.subtitles?.cues) ? sidecar.subtitles.cues : [];
-  if (Array.isArray(lyricLines)) {
+  if (Array.isArray(lyricLines) && set.lyrics == null && !remove.has('lyrics')) {
     const value = serializeLrc(lyricLines);
     if (value) {
       merged.lyrics = value;
