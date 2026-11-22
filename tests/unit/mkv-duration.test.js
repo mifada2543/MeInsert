@@ -7,7 +7,6 @@ import { readFileSync } from 'node:fs';
 import { read, write } from '../../assets/js/formats/mkv.js';
 import { Input, ALL_FORMATS, BlobSource, EncodedPacketSink } from '../../assets/vendor/mediabunny.mjs';
 import { createHash } from 'node:crypto';
-
 test('Matroska reordered B-frame copy preserves duration, packet count, payload hashes and timestamps', async () => {
   const original = new File([readFileSync('tests/fixtures/clip.mkv')], 'clip.mkv');
   const before = await read(original);
@@ -24,7 +23,6 @@ test('Matroska reordered B-frame copy preserves duration, packet count, payload 
   };
   assert.deepEqual(await packets(output), await packets(original));
 });
-
 test('DefaultDuration survives a second edit (not merely a duration read workaround)', async () => {
   let file = new File([readFileSync('tests/fixtures/clip.mkv')], 'clip.mkv');
   for (let i = 0; i < 2; i++) {

@@ -22,7 +22,6 @@ dan lisensi lain yang disertakan pada karya terkait.
 
 MeInsert membundel perangkat lunak independen berikut di `assets/vendor/` dan
 `assets/fonts/`:
-
 - ExifTool 13.60 — oleh Phil Harvey — https://exiftool.org/
   (Perl Artistic License atau GPL; berjalan di dalam build WebAssembly)
 - @colorhythm/exiftool-wasm v1.0.5 — https://github.com/6over3/exiftool (Apache-2.0)

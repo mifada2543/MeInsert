@@ -118,10 +118,8 @@ try {
           CSS.supports("animation-timeline: scroll()"),
       }));
       console.log(`revealPath view=${timeline.view} scroll=${timeline.scroll}`);
-
       const count = await page.locator(".mode-card").count();
       if (count !== 3) throw new Error(`Expected 3 mode cards, got ${count}`);
-
       const before = await cardOpacities(page);
       console.log("cardsBeforeScroll", JSON.stringify(before));
       if (!before.some((value) => value < 0.9)) {
@@ -130,7 +128,6 @@ try {
         );
       }
       console.log("PASS: mode cards start hidden with motion allowed");
-
       for (let index = 0; index < count; index += 1) {
         await moveToCenter(page, ".mode-card", index);
         const after = await cardOpacities(page);
@@ -227,7 +224,6 @@ try {
       });
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.waitForTimeout(120);
-
       await moveToCenter(page, ".mode-card", 0);
       const marker = await page
         .locator(".mode-card")
@@ -241,7 +237,6 @@ try {
       console.log(
         "PASS: IntersectionObserver adds .is-visible when timelines are unsupported",
       );
-
       const barTransform = await page.evaluate(
         () => document.querySelector(".scroll-progress")?.style.transform || "",
       );
@@ -250,7 +245,6 @@ try {
       console.log(
         `PASS: passive scroll + rAF fallback drives progress (${barTransform})`,
       );
-
       if (errors.length) throw new Error(`Page errors:\n${errors.join("\n")}`);
       console.log("PASS: no page errors (fallback path)");
     } finally {

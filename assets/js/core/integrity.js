@@ -223,7 +223,6 @@ export function verifyIntegrity(plan, afterSnapshot) {
       });
       continue;
     }
-    // Writing a cut container makes the engine fill an empty date field.
     if (hasTrimProof && id === 'date' && !beforeNormalized && afterNormalized) {
       addKnown(
         'Tanggal diisi engine saat container dipotong.',

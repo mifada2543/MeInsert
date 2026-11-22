@@ -91,10 +91,6 @@ export async function mediaProof(file, kind) {
     return { valid: false, kind, error: String(error.message || error) };
   }
 }
-// Container rewrites (for example, embedding a subtitle track) change the
-// bytes of mdat while leaving the compressed A/V samples untouched. This
-// proof hashes each encoded packet's payload together with its duration, so
-// packet reordering/absolute timestamps and track ids do not matter.
 export async function mediaPacketProof(file) {
   try {
     const {

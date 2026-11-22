@@ -13,7 +13,6 @@ import {
   redo,
   undo,
 } from '../../assets/js/core/history.js';
-
 function seededState() {
   const state = createEditorState();
   state.values = { title: 'Asli', artist: 'Artis' };
@@ -29,7 +28,6 @@ function seededState() {
   state.file = { name: 'file.mp3', size: 3 };
   return state;
 }
-
 test('editor state exposes an empty undo/redo history', () => {
   const state = createEditorState();
   assert.ok(state.history);
@@ -42,7 +40,6 @@ test('editor state exposes an empty undo/redo history', () => {
   assert.deepEqual(state.history.pastTimes, []);
   assert.deepEqual(state.history.futureTimes, []);
 });
-
 test('snapshot keeps every editable value and restore writes them back', () => {
   const state = seededState();
   state.removedFields = new Set(['artist']);
@@ -50,7 +47,6 @@ test('snapshot keeps every editable value and restore writes them back', () => {
   state.coverAction = 'set';
   state.coverChosen = { data: new Uint8Array([9]), mimeType: 'image/png', name: 'new.png' };
   state.outputBase = 'lain';
-
   const snapshot = state.history.snapshot();
   assert.deepEqual(snapshot.values, { title: 'Asli', artist: 'Artis' });
   assert.deepEqual(snapshot.removedFields, ['artist']);
@@ -59,7 +55,6 @@ test('snapshot keeps every editable value and restore writes them back', () => {
   assert.equal(snapshot.coverAction, 'set');
   assert.equal(snapshot.coverChosen.name, 'new.png');
   assert.equal(snapshot.outputBase, 'lain');
-
   state.values = { title: 'Ubah' };
   state.removedFields = new Set();
   state.customRows = [];
@@ -67,7 +62,6 @@ test('snapshot keeps every editable value and restore writes them back', () => {
   state.coverAction = 'keep';
   state.coverChosen = null;
   state.outputBase = 'rusak';
-
   state.history.restore(snapshot);
   assert.deepEqual(state.values, { title: 'Asli', artist: 'Artis' });
   assert.ok(state.removedFields instanceof Set);
@@ -80,7 +74,6 @@ test('snapshot keeps every editable value and restore writes them back', () => {
   assert.equal(state.coverChosen.name, 'new.png');
   assert.equal(state.outputBase, 'lain');
 });
-
 test('snapshot and restore never touch the baselines or the loaded file', () => {
   const state = seededState();
   const snapshot = state.history.snapshot();
@@ -100,7 +93,6 @@ test('snapshot and restore never touch the baselines or the loaded file', () => 
   assert.equal(state.detection.id, 'mp3');
   assert.equal(state.adapter.meta.id, 'mp3');
 });
-
 test('restored rows and sets are copies, not shared references', () => {
   const state = seededState();
   const snapshot = state.history.snapshot();
@@ -111,7 +103,6 @@ test('restored rows and sets are copies, not shared references', () => {
   state.customRows[0].value = 'Ubah lagi';
   assert.equal(snapshot.customRows[0].value, 'Calm');
 });
-
 test('consecutive edits with the same key collapse into one history entry', () => {
   const state = seededState();
   beginChange(state.history, 'field:title');
@@ -124,7 +115,6 @@ test('consecutive edits with the same key collapse into one history entry', () =
   assert.equal(undo(state.history), true);
   assert.equal(state.values.title, 'Asli');
 });
-
 test('a different key starts a new history entry', () => {
   const state = seededState();
   beginChange(state.history, 'field:title');
@@ -136,7 +126,6 @@ test('a different key starts a new history entry', () => {
   assert.equal(state.values.artist, 'Artis');
   assert.equal(state.values.title, 'a');
 });
-
 test('endChange closes the coalescing run so the next edit is recorded again', () => {
   const state = seededState();
   beginChange(state.history, 'field:title');
@@ -150,7 +139,6 @@ test('endChange closes the coalescing run so the next edit is recorded again', (
   assert.equal(undo(state.history), true);
   assert.equal(state.values.title, 'Asli');
 });
-
 test('undo and redo walk the changes in order', () => {
   const state = seededState();
   beginChange(state.history, 'field:title');
@@ -160,7 +148,6 @@ test('undo and redo walk the changes in order', () => {
   beginChange(state.history, 'cover:set');
   state.coverAction = 'set';
   state.coverChosen = { name: 'a.png' };
-
   assert.equal(canUndo(state.history), true);
   assert.equal(canRedo(state.history), false);
   assert.equal(undo(state.history), true);
@@ -172,7 +159,6 @@ test('undo and redo walk the changes in order', () => {
   assert.equal(undo(state.history), true);
   assert.equal(state.values.title, 'Asli');
   assert.equal(undo(state.history), false);
-
   assert.equal(redo(state.history), true);
   assert.equal(state.values.title, 'satu');
   assert.equal(redo(state.history), true);
@@ -182,7 +168,6 @@ test('undo and redo walk the changes in order', () => {
   assert.equal(state.coverChosen.name, 'a.png');
   assert.equal(redo(state.history), false);
 });
-
 test('a new change drops the redo stack', () => {
   const state = seededState();
   beginChange(state.history, 'field:title');
@@ -194,7 +179,6 @@ test('a new change drops the redo stack', () => {
   assert.equal(canRedo(state.history), false);
   assert.equal(state.history.future.length, 0);
 });
-
 test('clearHistory empties both stacks', () => {
   const state = seededState();
   beginChange(state.history, 'field:title');
@@ -208,7 +192,6 @@ test('clearHistory empties both stacks', () => {
   assert.equal(state.history.past.length, 0);
   assert.equal(state.history.future.length, 0);
 });
-
 test('editor history keeps label and timestamp arrays in sync with undo and clear', () => {
   const state = seededState();
   beginChange(state.history, 'field:title', 'Edit Judul');
@@ -217,36 +200,29 @@ test('editor history keeps label and timestamp arrays in sync with undo and clea
   assert.deepEqual(state.history.pastLabels, ['Edit Judul']);
   assert.equal(state.history.pastTimes.length, 1);
   assert.equal(typeof state.history.pastTimes[0], 'number');
-
   assert.equal(undo(state.history), true);
   assert.equal(state.values.title, 'Asli');
   assert.deepEqual(state.history.pastLabels, []);
   assert.deepEqual(state.history.futureLabels, ['Edit Judul']);
   assert.equal(state.history.futureTimes.length, 1);
-
   clearHistory(state.history);
   assert.deepEqual(state.history.pastLabels, []);
   assert.deepEqual(state.history.futureLabels, []);
   assert.deepEqual(state.history.pastTimes, []);
   assert.deepEqual(state.history.futureTimes, []);
 });
-
 test('trim and sidecar are copied into and restored from the snapshot', () => {
   const state = seededState();
   state.trim = { start: 1.5, end: 4.5, mode: 'keep' };
   state.sidecar = { cues: [{ start: 0, end: 1, text: 'halo' }], nested: { v: 2 } };
-
   const snapshot = state.history.snapshot();
   assert.deepEqual(snapshot.trim, { start: 1.5, end: 4.5, mode: 'keep' });
   assert.deepEqual(snapshot.sidecar, { cues: [{ start: 0, end: 1, text: 'halo' }], nested: { v: 2 } });
-
   state.trim = null;
   state.sidecar = null;
   state.history.restore(snapshot);
   assert.deepEqual(state.trim, { start: 1.5, end: 4.5, mode: 'keep' });
   assert.deepEqual(state.sidecar, { cues: [{ start: 0, end: 1, text: 'halo' }], nested: { v: 2 } });
-
-  // Salinan, bukan referensi bersama dengan snapshot.
   state.sidecar.cues[0].text = 'diubah';
   state.trim.start = 99;
   assert.equal(snapshot.sidecar.cues[0].text, 'halo');

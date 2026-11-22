@@ -8,9 +8,6 @@ import {
   captureMediaSession,
   restoreMediaSession,
 } from '../../assets/js/ui/media-session.js';
-
-// A tiny stand-in for <video>/<audio>: the module only touches a handful of
-// properties plus addEventListener/play, so a plain object is enough.
 function createFakeMedia(overrides = {}) {
   const listeners = [];
   const media = {
@@ -39,11 +36,9 @@ function createFakeMedia(overrides = {}) {
   media.listenerCount = (type) => listeners.filter(([name]) => name === type).length;
   return media;
 }
-
 function createRoot(media) {
   return { querySelector: () => media };
 }
-
 test('a failed seek does not prevent playback from resuming', () => {
   const media = createFakeMedia({ currentTime: 3, paused: false });
   const session = captureMediaSession(createRoot(media));
@@ -56,7 +51,6 @@ test('a failed seek does not prevent playback from resuming', () => {
   assert.equal(media.playCalls, 1);
   assert.equal(media.paused, false);
 });
-
 test('captureMediaSession reads the live media element', () => {
   const media = createFakeMedia({
     currentTime: 12.5,
@@ -75,19 +69,16 @@ test('captureMediaSession reads the live media element', () => {
   assert.equal(session.playbackRate, 1.5);
   assert.equal(session.wasPlaying, true);
 });
-
 test('captureMediaSession returns null when the page has no media element', () => {
   assert.equal(captureMediaSession({ querySelector: () => null }), null);
   assert.equal(captureMediaSession({}), null);
   assert.equal(captureMediaSession(null), null);
 });
-
 test('captureMediaSession falls back to the element src property', () => {
   const media = createFakeMedia({ getAttribute: () => null, src: 'blob:fallback' });
   const session = captureMediaSession(createRoot(media));
   assert.equal(session.src, 'blob:fallback');
 });
-
 test('captureMediaSession marks a paused element as not playing', () => {
   const media = createFakeMedia({ paused: true, currentTime: 0 });
   const session = captureMediaSession(createRoot(media));
@@ -95,7 +86,6 @@ test('captureMediaSession marks a paused element as not playing', () => {
   assert.equal(session.wasPlaying, false);
   assert.equal(session.currentTime, 0);
 });
-
 test('canReuseMedia only accepts the very same source', () => {
   const media = createFakeMedia();
   const session = captureMediaSession(createRoot(media));
@@ -106,7 +96,6 @@ test('canReuseMedia only accepts the very same source', () => {
   assert.equal(canReuseMedia({ element: media, src: '' }, 'blob:preview'), false);
   assert.equal(canReuseMedia({ element: null, src: 'blob:preview' }, 'blob:preview'), false);
 });
-
 test('restoreMediaSession re-applies the settings and resumes playback', () => {
   const media = createFakeMedia({
     currentTime: 30,
@@ -116,14 +105,12 @@ test('restoreMediaSession re-applies the settings and resumes playback', () => {
     playbackRate: 2,
   });
   const session = captureMediaSession(createRoot(media));
-
   media.currentTime = 0;
   media.muted = false;
   media.volume = 1;
   media.playbackRate = 1;
   media.paused = true;
   media.playCalls = 0;
-
   restoreMediaSession(session, { src: 'blob:preview' });
   assert.equal(media.currentTime, 30);
   assert.equal(media.muted, true);
@@ -131,34 +118,28 @@ test('restoreMediaSession re-applies the settings and resumes playback', () => {
   assert.equal(media.playbackRate, 2);
   assert.equal(media.playCalls, 1);
 });
-
 test('restoreMediaSession leaves a paused session paused', () => {
   const media = createFakeMedia({ currentTime: 12, paused: true });
   const session = captureMediaSession(createRoot(media));
   media.currentTime = 0;
   media.playCalls = 0;
-
   restoreMediaSession(session, { src: 'blob:preview' });
   assert.equal(media.currentTime, 12);
   assert.equal(media.playCalls, 0);
 });
-
 test('restoreMediaSession waits for loadedmetadata when metadata is not ready', () => {
   const media = createFakeMedia({ currentTime: 30, paused: false, readyState: 0 });
   const session = captureMediaSession(createRoot(media));
   media.currentTime = 0;
   media.playCalls = 0;
-
   restoreMediaSession(session, { src: 'blob:preview' });
   assert.equal(media.currentTime, 0);
   assert.equal(media.playCalls, 0);
   assert.equal(media.listenerCount('loadedmetadata'), 1);
-
   media.fire('loadedmetadata');
   assert.equal(media.currentTime, 30);
   assert.equal(media.playCalls, 1);
 });
-
 test('restoreMediaSession applies the settings but does not resume a different source', () => {
   const media = createFakeMedia({
     currentTime: 30,
@@ -173,7 +154,6 @@ test('restoreMediaSession applies the settings but does not resume a different s
   media.volume = 1;
   media.playbackRate = 1;
   media.playCalls = 0;
-
   restoreMediaSession(session, { src: 'blob:lain' });
   assert.equal(media.muted, true);
   assert.equal(media.volume, 0.3);
@@ -181,7 +161,6 @@ test('restoreMediaSession applies the settings but does not resume a different s
   assert.equal(media.currentTime, 0);
   assert.equal(media.playCalls, 0);
 });
-
 test('a rejected play() promise is swallowed without an unhandled rejection', async () => {
   const rejections = [];
   const onUnhandled = (reason) => { rejections.push(reason); };
@@ -204,7 +183,6 @@ test('a rejected play() promise is swallowed without an unhandled rejection', as
     process.off('unhandledRejection', onUnhandled);
   }
 });
-
 test('restoreMediaSession attaches a catch handler to the play() promise', () => {
   let catchCalls = 0;
   const media = createFakeMedia({
@@ -220,7 +198,6 @@ test('restoreMediaSession attaches a catch handler to the play() promise', () =>
   restoreMediaSession(session, { src: 'blob:preview' });
   assert.equal(catchCalls, 1);
 });
-
 test('restoreMediaSession clamps currentTime to a known shorter duration', () => {
   const media = createFakeMedia({ currentTime: 30, paused: true, duration: 10 });
   const session = captureMediaSession(createRoot(media));
@@ -229,16 +206,13 @@ test('restoreMediaSession clamps currentTime to a known shorter duration', () =>
   restoreMediaSession(session, { src: 'blob:preview' });
   assert.equal(media.currentTime, 10);
 });
-
 test('restoreMediaSession keeps the position when the duration is unknown', () => {
   const media = createFakeMedia({ currentTime: 30, paused: true, duration: Infinity });
   const session = captureMediaSession(createRoot(media));
   media.currentTime = 0;
-
   restoreMediaSession(session, { src: 'blob:preview' });
   assert.equal(media.currentTime, 30);
 });
-
 test('restoreMediaSession ignores a session without an element', () => {
   assert.equal(restoreMediaSession(null, { src: 'blob:preview' }), undefined);
   assert.equal(restoreMediaSession({ element: null }, { src: 'blob:preview' }), undefined);

@@ -53,7 +53,6 @@ function sliceInto(bytes, size) {
   }
   return chunks;
 }
-// A Vorbis comment packet large enough to need multiple lacing segments.
 function syntheticComment() {
   const vendor = new Uint8Array(400).fill(65);
   const title = encoder.encode('TITLE=ok');
@@ -65,10 +64,9 @@ function syntheticComment() {
 function buildSyntheticOgg(splitComment) {
   const ident = concat([Uint8Array.of(1), encoder.encode('vorbis'), new Uint8Array(23)]);
   const page0 = buildPage([ident], { headerType: 0x02, sequence: 0 });
-  const chunks = sliceInto(syntheticComment(), 255); // [255, 172]
+  const chunks = sliceInto(syntheticComment(), 255);
   assert.equal(chunks[0].length, 255, 'setup: first comment segment forces a continuation');
   if (!splitComment) return concat([page0, buildPage(chunks, { sequence: 1, headerType: 0x04 })]);
-  // First page ends with a 255 lacing value: the packet continues on page 2.
   const page1 = buildPage([chunks[0]], { sequence: 1 });
   const page2 = buildPage(chunks.slice(1), { sequence: 2, headerType: 0x04 });
   return concat([page0, page1, page2]);
@@ -80,7 +78,6 @@ async function readTagsViaMedia(blob, name) {
   const tags = await input.getMetadataTags();
   return Object.fromEntries(Object.entries(tags.raw || {}));
 }
-
 test('range rewrite is byte-identical to the full-buffer path for Vorbis and Opus', async () => {
   for (const name of ['tone.ogg', 'tone.opus']) {
     const original = bytesOf(name);
@@ -99,7 +96,6 @@ test('range rewrite is byte-identical to the full-buffer path for Vorbis and Opu
     );
   }
 });
-
 test('verification of the patched output yields the same tags as the full-buffer path', async () => {
   for (const name of ['tone.ogg', 'tone.opus']) {
     const original = bytesOf(name);
@@ -113,7 +109,6 @@ test('verification of the patched output yields the same tags as the full-buffer
     assert.deepEqual(mediaTags, expectedMediaTags, `${name}: read-back matches the full-buffer path`);
   }
 });
-
 test('audio payload bytes after the comment header are byte-identical (shrink and grow)', async () => {
   for (const name of ['tone.ogg', 'tone.opus']) {
     const original = bytesOf(name);
@@ -129,7 +124,6 @@ test('audio payload bytes after the comment header are byte-identical (shrink an
       const patched = await rewriteOggCommentBlob(new File([original], name), { changes });
       assert.ok(patched, `${name}: rewrite must succeed`);
       const output = new Uint8Array(await patched.blob.arrayBuffer());
-      // Leading pages and all trailing audio pages are copied verbatim.
       assert.ok(identical(output.subarray(0, inspected.page.start),
         original.subarray(0, inspected.page.start)), `${name}: leading pages unchanged`);
       assert.ok(identical(output.subarray(output.length - tailLength),
@@ -137,7 +131,6 @@ test('audio payload bytes after the comment header are byte-identical (shrink an
     }
   }
 });
-
 test('a synthetic single-page comment is patched; a multi-page comment returns null', async () => {
   const single = buildSyntheticOgg(false);
   const singlePatched = await rewriteOggCommentBlob(new File([single], 'single.ogg'), {
@@ -145,7 +138,6 @@ test('a synthetic single-page comment is patched; a multi-page comment returns n
   });
   assert.ok(singlePatched, 'single-page synthetic comment is patchable');
   assert.equal(mapOf(inspectOggComment(new Uint8Array(await singlePatched.blob.arrayBuffer())).comments).TITLE, 'ok2');
-
   const multi = buildSyntheticOgg(true);
   assert.equal(inspectOggComment(multi), null, 'setup: cross-page comment is rejected by the rewriter');
   assert.equal(rewriteOggComment(multi, { changes: { TITLE: 'ok2' } }), null);
@@ -155,7 +147,6 @@ test('a synthetic single-page comment is patched; a multi-page comment returns n
     'multi-page comment must return null so the full-remux fallback runs',
   );
 });
-
 test('corrupt, truncated, chained and non-Vorbis/Opus inputs all return null (fall back)', async () => {
   const options = { changes: { TITLE: 'x' } };
   const original = bytesOf('tone.ogg');
@@ -170,12 +161,10 @@ test('corrupt, truncated, chained and non-Vorbis/Opus inputs all return null (fa
   for (const name of ['reject-flac.ogg', 'reject-speex.ogg']) {
     assert.equal(await rewriteOggCommentBlob(new File([bytesOf(name)], name), options), null, `${name}: unsupported stream`);
   }
-  // Needs more than 255 lacing segments: both paths must decline.
   const huge = { changes: { TITLE: 'X'.repeat(200000) } };
   assert.equal(rewriteOggComment(original, huge), null);
   assert.equal(await rewriteOggCommentBlob(new File([original], 'tone.ogg'), huge), null);
 });
-
 test('ogg.write uses the range path without a fallback warning for a feasible edit', async () => {
   for (const name of ['tone.ogg', 'tone.opus']) {
     const options = name.endsWith('opus') ? { extension: 'opus', mime: 'audio/opus' } : {};

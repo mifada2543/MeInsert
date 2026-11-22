@@ -23,7 +23,6 @@ function containsMarker(bytes, marker) {
   }
   return false;
 }
-// Bounded scan so a large video never has to be materialized in memory twice.
 async function hasBytes(file, marker) {
   const CHUNK = 1024 * 1024;
   let carry = new Uint8Array(0);
@@ -39,8 +38,6 @@ async function hasBytes(file, marker) {
   }
   return false;
 }
-// LRC lines carry only a start time; give each line the next line's timestamp
-// as its end so WebVTT gets a non-zero duration.
 function lyricCues(lines) {
   const sorted = (Array.isArray(lines) ? lines : [])
     .filter((line) => line && typeof line === 'object')
@@ -278,8 +275,6 @@ export async function read(file, options = {}) {
     warnings,
   };
 }
-// Composable mediabunny pass: copy A/V verbatim, write the ©lyr tag and add
-// WebVTT subtitle tracks. The text sources must be filled only after start().
 async function embedSidecar(baseFile, payload, report) {
   const {
     Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion,
@@ -348,8 +343,6 @@ async function embedSidecar(baseFile, payload, report) {
   }
   return new Uint8Array(output.target.buffer);
 }
-// Copy the requested A/V range into a fresh MP4 container before any tag or
-// sidecar pass runs. All later steps operate on the cut file, never the source.
 async function cutMp4(file, trim, report) {
   const {
     Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion, Mp4OutputFormat,
@@ -371,8 +364,6 @@ async function cutMp4(file, trim, report) {
       report({ stage: `Memotong media… ${Math.round(progress * 100)}%`, pct: 20 + progress * 25 });
     };
     await conversion.execute();
-    // A non-composable conversion finalizes the output itself; guard the
-    // explicit finalize so a second call does not emit a stray warning.
     if (output.state !== 'finalized') await output.finalize();
   } finally {
     input.dispose?.();
@@ -399,7 +390,7 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
   for (const item of payload?.custom || []) {
     const key = asString(item?.key).trim();
-    if (!key || /^(?:[\w-]+:)?(?:lyrics|©lyr)$/i.test(key)) continue; // ©lyr is written by the mediabunny pass
+    if (!key || /^(?:[\w-]+:)?(?:lyrics|©lyr)$/i.test(key)) continue;
     tags[key] = asString(item?.value);
   }
   for (const key of payload?.customRemove || []) {
@@ -441,8 +432,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const mime = options.mime || file.type || 'video/mp4';
   const blob = new Blob([bytes], { type: mime });
   const output = new File([bytes], `output.${options.extension || 'mp4'}`, { type: mime });
-  // Cut output is rebased to [0, duration), while the source proof used
-  // [start, end); hashing only packet bytes/durations makes them comparable.
   const rangeProof = trim ? await mediaRangeProof(output, 0, expectedCutDuration(trim)) : null;
   const warnings = [];
   if (trim) warnings.push('Container MP4 ditulis ulang untuk pemotongan; payload A/V diverifikasi terhadap hasil pemotongan.');

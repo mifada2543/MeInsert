@@ -1,7 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* Fase 3 — aksi "Bersihkan metadata" pada mode batch. */
+/* aksi "Bersihkan metadata" pada mode batch. */
 import { bindTranslation, getLanguage, t, translated } from '../i18n/index.js';
 import { el } from './dom.js';
 import { icon } from './icons.js';
@@ -13,7 +13,6 @@ import {
   summarizeCleaning,
   buildCleanPayload,
 } from '../core/privacy-categories.js';
-
 const CATEGORY_KEYS = {
   location: 'ui.cleanCategoryLocation',
   device: 'ui.cleanCategoryDevice',
@@ -28,13 +27,11 @@ const PROFILE_KEYS = [
   ['custom', 'ui.cleanProfileCustom', 'ui.cleanProfileCustomHint'],
 ];
 const SAMPLE_LIMIT = 6;
-
 function readyTargets(controller) {
   return (controller?.items || []).filter((item) => item?.readResult
     && !item.excluded
     && !['queued', 'scanning', 'reading', 'error'].includes(item.status));
 }
-
 function resolveTargets(controller) {
   const selected = typeof controller.selectedItems === 'function' ? controller.selectedItems() : [];
   const usableSelected = selected.filter((item) => item?.readResult && !['queued', 'scanning', 'reading', 'error'].includes(item.status));
@@ -42,7 +39,6 @@ function resolveTargets(controller) {
   const targets = fallback ? readyTargets(controller) : usableSelected;
   return { targets, fallback };
 }
-
 function snapshotTargets(targets) {
   return targets.map((item) => {
     const snapshot = createSnapshot({
@@ -53,12 +49,6 @@ function snapshotTargets(targets) {
     return { item, snapshot, summary: summarizeCleaning(snapshot) };
   });
 }
-
-/**
- * Rencana bersih untuk satu profil. Payload dibangun per kategori supaya
- * kategori yang hanya bisa dibersihkan lewat cover (tidak didukung mode batch)
- * bisa dikecualikan secara presisi tanpa mengubah kategori lain.
- */
 function planCleaning(snapshots, categories) {
   const perItem = [];
   const categoryCounts = Object.fromEntries(CLEAN_CATEGORIES.map((category) => [category, 0]));
@@ -66,7 +56,6 @@ function planCleaning(snapshots, categories) {
   const unsupported = new Set();
   let keptCount = 0;
   let total = 0;
-
   for (const target of snapshots) {
     const { item, snapshot, summary } = target;
     const group = (controllerGroup(item));
@@ -76,11 +65,8 @@ function planCleaning(snapshots, categories) {
     const removedCategories = [];
     const itemCategoryCounts = {};
     let itemCount = 0;
-
     for (const category of categories) {
       const payload = buildCleanPayload(snapshot, [category]) || {};
-      // Mode batch belum memiliki state penghapusan cover. Kategori yang
-      // hasilnya bergantung pada cover dilewati, bukan dipalsukan.
       if (payload.cover?.action === 'remove') {
         unsupported.add(category);
         continue;
@@ -95,7 +81,6 @@ function planCleaning(snapshots, categories) {
       itemCategoryCounts[category] = count;
       itemCount += count;
     }
-
     for (const row of summary?.sensitive || []) {
       if (!categories.includes(row.category) || unsupported.has(row.category)) continue;
       if (samples.length >= SAMPLE_LIMIT) break;
@@ -114,7 +99,6 @@ function planCleaning(snapshots, categories) {
       count: itemCount,
     });
   }
-
   return {
     perItem,
     categoryCounts,
@@ -126,8 +110,6 @@ function planCleaning(snapshots, categories) {
     fileCount: snapshots.length,
   };
 }
-
-// Diisi oleh mount(); dipakai planCleaning untuk mencari grup sebuah item.
 let currentController = null;
 function controllerGroup(item) {
   const map = currentController?.groupMap;
@@ -135,12 +117,10 @@ function controllerGroup(item) {
     || (currentController?.groups || []).find((group) => group.key === item.groupKey)
     || null;
 }
-
 function categoryLabel(category) {
   const key = CATEGORY_KEYS[category] || category;
   return translated(() => t(key));
 }
-
 function renderPlan(container, confirmButton, plan) {
   container.replaceChildren();
   const summaryTitle = el('h3', {
@@ -148,7 +128,6 @@ function renderPlan(container, confirmButton, plan) {
     textContent: translated(() => t('ui.cleanSummary')),
   });
   container.append(summaryTitle);
-
   const rows = el('div', { className: 'batch-clean-rows' });
   let hasRows = false;
   for (const category of CLEAN_CATEGORIES) {
@@ -168,7 +147,6 @@ function renderPlan(container, confirmButton, plan) {
     }));
   }
   container.append(rows);
-
   if (plan.samples.length) {
     const samples = el('ul', { className: 'batch-clean-samples' });
     for (const row of plan.samples) {
@@ -182,7 +160,6 @@ function renderPlan(container, confirmButton, plan) {
       samples,
     );
   }
-
   const kept = el('div', { className: 'batch-clean-kept' },
     el('strong', { textContent: translated(() => t('ui.cleanKept')) }),
     el('span', { textContent: translated(() => t('ui.cleanKeptHint')) }),
@@ -191,7 +168,6 @@ function renderPlan(container, confirmButton, plan) {
     kept.append(el('span', { className: 'batch-clean-kept-count', textContent: translated(() => t('ui.cleanTagCount', { v0: plan.keptCount })) }));
   }
   container.append(kept);
-
   if (plan.unsupported.length) {
     const labels = plan.unsupported.map((category) => translated(() => t(CATEGORY_KEYS[category] || category)).read()).join(', ');
     const note = getLanguage() === 'en'
@@ -202,22 +178,17 @@ function renderPlan(container, confirmButton, plan) {
       textContent: translated(() => note),
     }));
   }
-
   bindTranslation(confirmButton, 'textContent', () => t('ui.cleanConfirm', { v0: plan.total, v1: plan.fileCount }));
   confirmButton.disabled = plan.total === 0;
 }
-
-/** Terapkan payload hasil perencanaan ke state batch yang sudah ada. */
 function applyPlan(controller, plan, snapshots) {
   let changedFiles = 0;
   const byItem = new Map(plan.perItem.map((entry) => [entry.item, entry]));
-
   for (const target of snapshots) {
     const entry = byItem.get(target.item);
     if (!entry) continue;
     const { item, group } = entry;
     let changed = false;
-
     if (group && entry.remove.length) {
       const additions = entry.remove.filter((id) => !group.remove.has(id));
       if (additions.length) {
@@ -227,19 +198,13 @@ function applyPlan(controller, plan, snapshots) {
         changed = true;
       }
     }
-
-    // Batch tidak punya state penghapusan custom khusus; satu-satunya jalur
-    // tulis yang ada adalah item.removeRaw (lihat collectGroupPayload).
     const rawKeys = [...entry.rawRemove, ...entry.customRemove];
     if (rawKeys.length) {
       if (!item.removeRaw) item.removeRaw = new Set();
       for (const key of rawKeys) item.removeRaw.add(key);
       changed = true;
     }
-
     if (changed) changedFiles += 1;
-
-    // Data ringkas untuk laporanJSON/CSV — tanpa nilai mentah atau isi file.
     item.cleanSummary = {
       categories: Object.fromEntries(entry.removedCategories.map((category) => [
         category,
@@ -251,10 +216,8 @@ function applyPlan(controller, plan, snapshots) {
       unsupported: [...plan.unsupported],
     };
   }
-
   return changedFiles;
 }
-
 function buildDialog(state, onClose) {
   const backdrop = el('div', { className: 'batch-clean-backdrop' });
   const cancelButton = el('button', {
@@ -288,7 +251,6 @@ function buildDialog(state, onClose) {
       for: input.id,
     }, input, el('span', { textContent: categoryLabel(category) })));
   }
-
   const profileInputs = new Map();
   const profileBox = el('div', { className: 'batch-clean-profiles', role: 'radiogroup' });
   for (const [value, labelKey, hintKey] of PROFILE_KEYS) {
@@ -315,7 +277,6 @@ function buildDialog(state, onClose) {
       ),
     ));
   }
-
   const scope = el('p', { className: 'batch-clean-scope' });
   const card = el('div', {
     className: 'batch-clean-card',
@@ -344,12 +305,10 @@ function buildDialog(state, onClose) {
     el('div', { className: 'batch-clean-actions' }, cancelButton, confirmButton),
   );
   backdrop.append(card);
-
   function currentCategories() {
     if (state.profile === 'custom') return [...state.customCategories];
     return [...(CLEAN_PROFILE_CATEGORIES[state.profile] || [])];
   }
-
   function refresh() {
     customBox.hidden = state.profile !== 'custom';
     for (const [category, input] of checkboxes) input.checked = state.customCategories.has(category);
@@ -357,7 +316,6 @@ function buildDialog(state, onClose) {
     state.plan = planCleaning(state.snapshots, currentCategories());
     renderPlan(summaryBox, confirmButton, state.plan);
   }
-
   let cleanup = null;
   const close = () => { if (typeof cleanup === 'function') cleanup(); };
   cleanup = onClose(backdrop, {
@@ -370,12 +328,10 @@ function buildDialog(state, onClose) {
   refresh();
   return { backdrop, scope, close, refresh };
 }
-
 export function mountBatchCleanAction({ controller, container } = {}) {
   if (typeof document === 'undefined' || !controller) return null;
   const host = container || document.querySelector('.batch-head-actions');
   if (!host || host.querySelector('#batchCleanBtn')) return null;
-
   const button = el('button', {
     className: 'button ghost batch-clean-btn',
     id: 'batchCleanBtn',
@@ -387,17 +343,14 @@ export function mountBatchCleanAction({ controller, container } = {}) {
     el('span', { textContent: translated(() => t('ui.cleanMetadata')) }),
   );
   host.insertBefore(button, host.firstChild);
-
   let openState = null;
   let openCleanup = null;
-
   function closeDialog() {
     const cleanup = openCleanup;
     openCleanup = null;
     openState = null;
     if (typeof cleanup === 'function') cleanup();
   }
-
   function open() {
     if (button.disabled || typeof controller.busy === 'function' && controller.busy()) return;
     closeDialog();
@@ -418,7 +371,6 @@ export function mountBatchCleanAction({ controller, container } = {}) {
     const focusBefore = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-
     let trap = null;
     const cleanup = () => {
       document.removeEventListener('keydown', trap, true);
@@ -471,11 +423,9 @@ export function mountBatchCleanAction({ controller, container } = {}) {
       document.addEventListener('keydown', trap, true);
       return cleanup;
     });
-
     openState = dialog;
     openCleanup = cleanup;
     document.body.append(dialog.backdrop);
-
     bindTranslation(dialog.scope, 'textContent', () => (fallback
       ? (getLanguage() === 'en'
         ? `No files selected — cleaning all ${targets.length} ready file(s).`
@@ -483,19 +433,15 @@ export function mountBatchCleanAction({ controller, container } = {}) {
       : (getLanguage() === 'en'
         ? `Cleaning ${targets.length} selected file(s).`
         : `Membersihkan ${targets.length} file yang dipilih.`)));
-
     dialog.backdrop.querySelector('.batch-clean-profile-input:checked')?.focus();
   }
-
   button.addEventListener('click', open);
-
   function sync() {
     const busy = typeof controller.busy === 'function' && controller.busy();
     const hasReady = readyTargets(controller).length > 0;
     button.disabled = Boolean(busy) || !hasReady;
   }
   sync();
-
   return {
     button,
     open,

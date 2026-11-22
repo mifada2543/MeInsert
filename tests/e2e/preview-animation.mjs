@@ -94,7 +94,6 @@ try {
     console.log(`PASS: ${fixture} collapses without a blank box`);
     await typeContext.close();
   }
-
   assert.deepEqual(errors, [], 'no page errors');
   console.log('PASS: preview animation suite finished with no page errors');
 } finally {

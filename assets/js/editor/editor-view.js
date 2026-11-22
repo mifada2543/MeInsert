@@ -16,13 +16,10 @@ import { isCommittedResult } from '../core/write-guard.js';
 import { cloneRows } from './editor-state.js';
 import { beginChange, redo, undo } from '../core/history.js';
 import { t } from '../i18n/index.js';
-
-/** Label manusiawi untuk sebuah field, jatuh ke id bila label tidak ada. */
 function fieldLabel(state, id) {
   const field = state.adapter?.fields?.find((item) => item.id === id);
   return field?.label || id;
 }
-
 export function previewUrlFor(file, detection) {
   if (!file || !detection) return null;
   const previewable = ['image', 'pdf', 'mp3', 'flac', 'ogg', 'mp4', 'mkv'];

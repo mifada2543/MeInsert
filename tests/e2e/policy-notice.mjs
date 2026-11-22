@@ -7,11 +7,9 @@ import { createStaticServer } from './server.mjs';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const ACK_KEY = 'meinsert.policyAck';
 const DAY = 86400000;
-
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -26,11 +24,9 @@ const contentTypes = {
   '.pdf': 'application/pdf',
   '.woff2': 'font/woff2',
 };
-
 function serve() {
   return createStaticServer({ root, contentTypes, traversalStatus: 404 });
 }
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -43,12 +39,10 @@ function findChrome() {
   if (!found) throw new Error('Chrome/Chromium not found. Set CHROME_BIN to the browser executable path.');
   return found;
 }
-
 function intersects(a, b) {
   if (!a || !b) return false;
   return a.x < b.right && a.right > b.x && a.y < b.bottom && a.bottom > b.y;
 }
-
 const server = await serve();
 const address = server.address();
 if (!address || typeof address === 'string') {
@@ -65,10 +59,7 @@ const context = await browser.newContext({ locale: 'id-ID', serviceWorkers: 'blo
 const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
-// The editor guards unsaved work with beforeunload; accept the prompt so that
-// navigating away from an editing page between scenarios is possible.
 page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
-
 const card = page.locator('.policy-notice');
 const ackButton = page.locator('.policy-notice__ack');
 const visible = async () => (await page.locator('.policy-notice:visible').count()) > 0;
@@ -79,9 +70,7 @@ const cardColors = () => card.evaluate((node) => {
   const title = getComputedStyle(node.querySelector('.policy-notice__title'));
   return { background: style.backgroundColor, color: style.color, titleColor: title.color };
 });
-
 try {
-  // --- Only index/single/batch show the notice -----------------------------
   await page.goto(`${base}/index.html`);
   await card.waitFor({ state: 'visible', timeout: 15000 });
   assert.equal(await card.getAttribute('role'), 'region');
@@ -100,8 +89,6 @@ try {
     assert.equal(await card.count(), 0, `${name} must never mount the notice`);
   }
   console.log('PASS: notice appears on index/single/batch but never on privacy/Terms, with region role, title, two policy links and ack button');
-
-  // --- One acknowledgement is shared across pages -------------------------
   await page.goto(`${base}/index.html`);
   await card.waitFor({ state: 'visible' });
   await ackButton.click();
@@ -112,13 +99,9 @@ try {
     assert.equal(await visible(), false, `${name} must not show the notice after acknowledgement`);
   }
   console.log('PASS: acknowledging on index hides the notice on single and batch in the same context');
-
-  // --- Persistence across reload ------------------------------------------
   await page.goto(`${base}/index.html`);
   assert.equal(await visible(), false);
   console.log('PASS: the acknowledgement survives a reload of index');
-
-  // --- Expiry after 31 days ------------------------------------------------
   await setAck(String(Date.now() - 31 * DAY));
   await page.goto(`${base}/single.html`);
   await card.waitFor({ state: 'visible' });
@@ -126,14 +109,10 @@ try {
   await card.waitFor({ state: 'detached' });
   assert.equal(await visible(), false);
   console.log('PASS: a 31-day-old acknowledgement brings the notice back and can be acknowledged again');
-
-  // --- Corrupt value -------------------------------------------------------
   await setAck('garbage');
   await page.goto(`${base}/single.html`);
   await card.waitFor({ state: 'visible' });
   console.log('PASS: a corrupt acknowledgement value shows the notice without breaking the page');
-
-  // --- Bilingual button ----------------------------------------------------
   assert.equal((await ackButton.innerText()).trim(), 'Mengerti');
   await changeLanguage('en');
   await page.waitForFunction(() => document.querySelector('.policy-notice__ack')?.textContent.trim() === 'Got it');
@@ -141,8 +120,6 @@ try {
   await changeLanguage('id');
   await page.waitForFunction(() => document.querySelector('.policy-notice__ack')?.textContent.trim() === 'Mengerti');
   console.log('PASS: ack button translates live between ID "Mengerti" and EN "Got it", then restores ID');
-
-  // --- Theme ---------------------------------------------------------------
   const initialTheme = await page.evaluate(() => document.documentElement.dataset.theme);
   const before = await cardColors();
   await page.locator('#themeToggle').click();
@@ -157,8 +134,6 @@ try {
     'card colors must follow the theme',
   );
   console.log(`PASS: notice stays visible and readable across themes (${initialTheme} -> ${await page.evaluate(() => document.documentElement.dataset.theme)}); background/color follow the theme`);
-
-  // --- Mobile layout -------------------------------------------------------
   await page.setViewportSize({ width: 390, height: 844 });
   await card.waitFor({ state: 'visible' });
   const boxes = await page.evaluate(() => {
@@ -174,7 +149,6 @@ try {
   assert.ok(boxes.card.width <= 390, 'card must fit the mobile viewport');
   assert.equal(intersects(boxes.card, boxes.nav), false, 'card must not cover the bottom navigation');
   assert.equal(intersects(boxes.ack, boxes.nav), false, 'ack button must not be covered by the bottom navigation');
-
   await page.locator('#fileInput').setInputFiles(join(root, 'tests/fixtures/document.pdf'));
   await page.waitForFunction(() => document.body.classList.contains('is-editing'));
   await card.waitFor({ state: 'visible' });
@@ -193,7 +167,6 @@ try {
   assert.equal(editing.hitIsCard, true, `card center must not be covered by the sticky action bar (hit: ${editing.hitClass})`);
   assert.equal(intersects(editing.card, editing.bar), false, 'card must not overlap the sticky action bar');
   console.log('PASS: mobile card is left aligned, clear of the bottom nav, and stays clickable above the sticky action bar while editing');
-
   assert.deepEqual(errors, [], `unexpected page errors: ${errors.join('; ')}`);
   console.log('PASS: no page errors during any policy notice scenario');
 } catch (error) {

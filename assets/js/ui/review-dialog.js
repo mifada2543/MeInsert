@@ -199,8 +199,6 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
   const memoryBlocked = plans.some((plan) => plan?.memory?.level === 'block');
   if (mode === 'batch') {
     lowMemoryInput = el('input', { type: 'checkbox', id: 'reviewLowMemory' });
-    // Suggest the existing streaming-output path automatically when the
-    // observed or estimated peak is already in the warning/block band.
     lowMemoryInput.checked = (plans || []).some((plan) => ['warn', 'block'].includes(plan?.memory?.level));
     body.append(
       el('label', { className: 'review-low-memory', for: 'reviewLowMemory' },

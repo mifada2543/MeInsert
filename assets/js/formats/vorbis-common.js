@@ -128,9 +128,6 @@ export async function writeVorbis(file, payload, options, report, config) {
   const trim = payload?.trim || null;
   const sidecarLines = payload?.sidecar?.lyrics?.lines;
   const hasSidecarLyrics = Array.isArray(sidecarLines) && sidecarLines.length > 0;
-  // When the editor sends timed lyrics, the plain LYRICS comment and the
-  // structured sidecar must agree. Both the write and the post-write check
-  // therefore use the same LRC serialization of the sidecar lines.
   const effectiveSet = hasSidecarLyrics ? { ...set, lyrics: serializeLrc(sidecarLines) } : set;
   const remove = new Set(payload?.remove || []);
   report({ stage: 'Membaca tag lama…', pct: 12 });
@@ -230,15 +227,9 @@ export async function writeVorbis(file, payload, options, report, config) {
   if (rawPictures.length) raw.METADATA_BLOCK_PICTURE = rawPictures.map(pictureBase64);
   const outExt = options.extension || config.defaultExt;
   const mime = options.mime || config.mime;
-  // Accept either raw bytes (full-remux fallback) or an already assembled
-  // output Blob (range-based Ogg patch). In both cases verification reads the
-  // ENTIRE output back through the media engine from a File built from that
-  // Blob, so verification semantics are identical and the whole output never
-  // has to be materialized as a Uint8Array.
   const verifyOutput = async (output, initialWarnings = [], trim = null) => {
     const blob = output instanceof Blob ? output : new Blob([output], { type: mime });
     const outputFile = new File([blob], `output.${outExt}`, { type: mime });
-    // Rebased output timestamps start at zero after the cut conversion.
     const rangeProof = trim ? await mediaRangeProof(outputFile, 0, expectedCutDuration(trim)) : null;
     report({ stage: 'Memverifikasi hasil…', pct: 82 });
     try {
@@ -287,8 +278,6 @@ export async function writeVorbis(file, payload, options, report, config) {
     }
   };
   let fallbackWarning = null;
-  // An in-place comment patch cannot change the media duration, so a trim
-  // must always go through the remux path instead.
   if (config.formatClass === 'OggOutputFormat' && !trim) {
     try {
       const changes = {};

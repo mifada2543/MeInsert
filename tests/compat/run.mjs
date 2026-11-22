@@ -4,7 +4,6 @@
 import { fork } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import { jobs, concurrency } from './jobs.mjs';
-
 const args = process.argv.slice(2);
 let parallel = concurrency(process.env.COMPAT_CONCURRENCY || Math.min(2, availableParallelism()));
 let formats;

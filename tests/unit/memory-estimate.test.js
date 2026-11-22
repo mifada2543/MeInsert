@@ -12,14 +12,12 @@ import {
   estimateForBatch,
   canProceedWithMemory,
 } from '../../assets/js/core/memory-estimate.js';
-
 test('estimateMemory keeps the original thresholds', () => {
   assert.equal(MEMORY_WARN_MB, 350);
   assert.equal(MEMORY_BLOCK_MB, 900);
   assert.equal(estimateMemory({ inputSizes: [64 * 1024 * 1024] }).level, 'ok');
   assert.equal(estimateMemory({ inputSizes: [1024 * 1024 * 1024] }).level, 'block');
 });
-
 test('observed peak raises the risk level without changing the rough inputs', () => {
   const rough = estimateMemory({ inputSizes: [10 * 1024 * 1024] });
   const observed = estimateMemory({ inputSizes: [10 * 1024 * 1024], observedPeakMb: 500 });
@@ -29,7 +27,6 @@ test('observed peak raises the risk level without changing the rough inputs', ()
   assert.equal(observed.breakdown.observedPeakMb, 500);
   assert.equal(observed.breakdown.inputs, rough.breakdown.inputs);
 });
-
 test('canProceedWithMemory enforces the same policy on every save path', () => {
   assert.deepEqual(canProceedWithMemory(null), { allowed: true, reason: 'ok' });
   assert.deepEqual(canProceedWithMemory({ level: 'ok' }), { allowed: true, reason: 'ok' });
@@ -38,7 +35,6 @@ test('canProceedWithMemory enforces the same policy on every save path', () => {
   assert.deepEqual(canProceedWithMemory({ level: 'block' }, { lowMemory: true }), { allowed: true, reason: 'acknowledged' });
   assert.deepEqual(canProceedWithMemory({ level: 'block' }, { memoryOverride: true }), { allowed: true, reason: 'acknowledged' });
 });
-
 test('estimateForCut holds two buffers when an intermediate file is involved', () => {
   const direct = estimateForCut({ fileSize: 100 * 1024 * 1024 });
   const intermediate = estimateForCut({ fileSize: 100 * 1024 * 1024, intermediate: true, observedPeakMb: 400 });
@@ -48,7 +44,6 @@ test('estimateForCut holds two buffers when an intermediate file is involved', (
   assert.equal(intermediate.breakdown.observedPeakMb, 400);
   assert.ok(intermediate.estimatedMb > direct.estimatedMb);
 });
-
 test('single and batch helpers forward the observed peak', () => {
   const single = estimateForSingle({ fileSize: 1024, observedPeakMb: 400 });
   const batch = estimateForBatch([{ file: { size: 1024 } }], { observedPeakMb: 950 });

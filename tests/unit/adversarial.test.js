@@ -44,7 +44,7 @@ test('seeded namespace/prefix fuzz produces well-formed, namespace-valid XML', a
         ? `xmlns:cp="${NS.cp}" xmlns:${prefix}="${NS.dc}"`
         : `xmlns:cp="${NS.cp}" xmlns:dc="${NS.dc}" xmlns:${prefix}="${NS.dc}"`);
     const value = pick(random, VALUES);
-    if (!value && !hasTitle) continue; // nothing to write: adapter correctly reports NO_CHANGES
+    if (!value && !hasTitle) continue;
     const core = `${DECL}<cp:coreProperties ${rootAttrs}>`
       + (hasTitle ? `<${prefix}:title>Seed</${prefix}:title>` : '')
       + '</cp:coreProperties>';

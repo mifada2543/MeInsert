@@ -1,9 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-// Trim helpers shared by precise/copy conversion paths. The configuration is
-// deliberately normalized into a small, serializable shape: no decoders are
-// invoked here and no bytes are ever uploaded.
+// Trim helpers shared by precise/copy conversion paths. The configuration is deliberately normalized into a small, serializable shape: no decoders are invoked here and no bytes are ever uploaded.
 import { mp3FrameRangeProof } from './mp3-cut.js';
 export const CUT_MODES = Object.freeze({ COPY: 'copy', PRECISE: 'precise' });
 const hex = (bytes) => Array.from(new Uint8Array(bytes), (value) => value.toString(16).padStart(2, '0')).join('');

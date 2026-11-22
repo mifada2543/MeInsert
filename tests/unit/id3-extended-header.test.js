@@ -8,7 +8,6 @@ import { readFileSync } from 'node:fs';
 import { ID3Writer } from '../../assets/vendor/browser-id3-writer.mjs';
 import { parseId3Tag, patchId3Tag } from '../../assets/js/core/id3-passthrough.js';
 import { write as writeMp3 } from '../../assets/js/formats/mp3.js';
-
 function concat(parts) {
   const result = new Uint8Array(parts.reduce((n, part) => n + part.length, 0));
   let offset = 0;
@@ -90,16 +89,14 @@ for (const [name, fixture] of [
     await assert.rejects(() => writeMp3(new File([source], 'crc.mp3', { type: 'audio/mpeg' }), { set: { title: 'Changed' } }), /extended header|CRC/i);
   });
 }
-
 test('direct patch API refuses unsupported extended-header CRC', () => {
   const source = withExtendedV23(true);
   assert.equal(patchId3Tag(source, baseTag(), ['TIT2']), null);
 });
-
 test('malformed extended header is rejected rather than full-rewritten', async () => {
   const source = withExtendedV23();
   const damaged = source.slice();
-  damaged.set([0x7f, 0xff, 0xff, 0xff], 10); // impossible extended-header length
+  damaged.set([0x7f, 0xff, 0xff, 0xff], 10);
   assert.equal(parseId3Tag(damaged), null);
   await assert.rejects(() => writeMp3(new File([damaged], 'broken.mp3', { type: 'audio/mpeg' }), { set: { title: 'Changed' } }), /extended header|footer/i);
 });

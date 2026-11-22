@@ -47,9 +47,6 @@ export class BatchGroupsView {
     const order = { image: 0, pdf: 1, mp3: 2, flac: 2, ogg: 2, mp4: 3, mkv: 3 };
     this.groups = [...map.values()].sort((a, b) => (order[a.detection?.id] ?? 9) - (order[b.detection?.id] ?? 9) || a.label.localeCompare(b.label));
     this.groupMap = map;
-    // Grup yang hilang (mis. setelah reset) tidak boleh menyisakan riwayat
-    // basi; grup yang masih ada tetap memakai objek grup yang sama, jadi
-    // riwayatnya tetap konsisten.
     for (const key of [...(this.groupHistories?.keys() || [])]) {
       if (!map.has(key)) this.groupHistories.delete(key);
     }
@@ -204,7 +201,6 @@ export class BatchGroupsView {
         type: 'button',
         on: {
           click: () => {
-            // Catat state SEBELUM dikosongkan supaya undo bisa mengembalikannya.
             this.groupHistoryController.end(group.key);
             this.groupHistoryController.begin(group.key, groupResetChangeKey(group.key));
             for (const field of group.fields) group.values[field.id] = '';
@@ -291,18 +287,12 @@ export class BatchGroupsView {
     syncDisabled();
     return wrapper;
   }
-  /** Stack undo/redo milik satu grup format (dibuat saat pertama dipakai). */
   groupHistory(key) {
     return this.groupHistoryController.history(key);
   }
-  /** Seksi DOM grup format yang sedang tampil. */
   groupSection(group) {
     return this.els.batchGroups?.querySelector(`[data-group-key="${CSS.escape(group.key)}"]`) || null;
   }
-  /**
-   * Perbarui status nonaktif tombol undo/redo milik satu grup. Dipanggil
-   * setiap kali header grup dibangun ulang maupun setiap ada perubahan.
-   */
   updateGroupHistoryButtons(group) {
     const section = this.groupSection(group);
     if (!section) return;
@@ -312,16 +302,11 @@ export class BatchGroupsView {
     if (undoBtn) undoBtn.disabled = busy || !this.groupHistoryController.canUndo(group.key);
     if (redoBtn) redoBtn.disabled = busy || !this.groupHistoryController.canRedo(group.key);
   }
-  /**
-   * Render ulang HANYA form milik grup ini — daftar grup lain (dan fokus
-   * caret di dalamnya) tidak boleh ikut tersentuh.
-   */
   refreshGroupForm(group) {
     const section = this.groupSection(group);
     const oldForm = section?.querySelector('.batch-group-form');
     oldForm?.replaceWith(this.renderGroupForm(group));
   }
-  /** Batalkan perubahan terakhir pada grup ini saja. */
   undoGroup(group) {
     if (!group || this.busy()) return false;
     if (!this.groupHistoryController.undo(group.key)) return false;
@@ -330,7 +315,6 @@ export class BatchGroupsView {
     this.syncApply();
     return true;
   }
-  /** Ulangi perubahan yang dibatalkan pada grup ini saja. */
   redoGroup(group) {
     if (!group || this.busy()) return false;
     if (!this.groupHistoryController.redo(group.key)) return false;

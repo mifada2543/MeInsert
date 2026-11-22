@@ -1,8 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-// Real Service Worker: validates magic-byte decoding, double-gzip handling,
-// engine-cache reuse and offline decoding of the only distributed WASM asset.
+// Real Service Worker: validates magic-byte decoding, double-gzip handling, and integrity checks for the WASM engine. No upload.
 import { getBrowser } from './harness.mjs';
 import { createStaticServer } from './server.mjs';
 import { existsSync, readFileSync } from 'node:fs';

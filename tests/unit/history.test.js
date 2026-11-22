@@ -15,8 +15,6 @@ import {
   rollbackTo,
   undo,
 } from '../../assets/js/core/history.js';
-
-// A minimal editor state: one editable field plus a log of every restore call.
 function createEditor(initial = 'awal') {
   const state = { value: initial, restored: [] };
   const history = createHistory({
@@ -28,7 +26,6 @@ function createEditor(initial = 'awal') {
   });
   return { state, history };
 }
-
 test('beginChange records the state before the change, not after it', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title');
@@ -37,7 +34,6 @@ test('beginChange records the state before the change, not after it', () => {
   assert.deepEqual(history.past[0], { value: 'awal' });
   assert.notDeepEqual(history.past[0], { value: 'baru' });
 });
-
 test('consecutive changes sharing one key coalesce into a single entry', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title');
@@ -48,7 +44,6 @@ test('consecutive changes sharing one key coalesce into a single entry', () => {
   assert.equal(history.past.length, 1);
   assert.deepEqual(history.past[0], { value: 'awal' });
 });
-
 test('a different key starts a new history entry', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title');
@@ -59,7 +54,6 @@ test('a different key starts a new history entry', () => {
   assert.equal(history.past.length, 3);
   assert.deepEqual(history.past.map((snap) => snap.value), ['awal', 'satu', 'dua']);
 });
-
 test('endChange closes the run so the same key starts a new entry', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title');
@@ -69,55 +63,46 @@ test('endChange closes the run so the same key starts a new entry', () => {
   assert.equal(history.past.length, 2);
   assert.deepEqual(history.past.map((snap) => snap.value), ['awal', 'satu']);
 });
-
 test('endChange records nothing on its own', () => {
   const { history } = createEditor('awal');
   endChange(history);
   assert.equal(history.past.length, 0);
   assert.equal(history.future.length, 0);
 });
-
 test('undo restores the earlier snapshot and pushes the current state to redo', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title');
   state.value = 'satu';
   beginChange(history, 'artist');
   state.value = 'dua';
-
   assert.equal(undo(history), true);
   assert.equal(state.value, 'satu');
   assert.equal(history.past.length, 1);
   assert.equal(history.future.length, 1);
   assert.deepEqual(history.future[0], { value: 'dua' });
-
   assert.equal(undo(history), true);
   assert.equal(state.value, 'awal');
   assert.equal(history.past.length, 0);
   assert.equal(history.future.length, 2);
 });
-
 test('redo restores the undone state again', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title');
   state.value = 'satu';
   beginChange(history, 'artist');
   state.value = 'dua';
-
   undo(history);
   undo(history);
   assert.equal(state.value, 'awal');
-
   assert.equal(redo(history), true);
   assert.equal(state.value, 'satu');
   assert.equal(history.past.length, 1);
   assert.equal(history.future.length, 1);
-
   assert.equal(redo(history), true);
   assert.equal(state.value, 'dua');
   assert.equal(history.past.length, 2);
   assert.equal(history.future.length, 0);
 });
-
 test('undo and redo report false when there is nothing to undo or redo', () => {
   const { history } = createEditor('awal');
   assert.equal(canUndo(history), false);
@@ -127,22 +112,18 @@ test('undo and redo report false when there is nothing to undo or redo', () => {
   assert.equal(history.past.length, 0);
   assert.equal(history.future.length, 0);
 });
-
 test('canUndo and canRedo follow the stack contents', () => {
   const { state, history } = createEditor('awal');
   assert.equal(canUndo(history), false);
   assert.equal(canRedo(history), false);
-
   beginChange(history, 'title');
   assert.equal(canUndo(history), true);
   assert.equal(canRedo(history), false);
-
   state.value = 'satu';
   undo(history);
   assert.equal(canUndo(history), false);
   assert.equal(canRedo(history), true);
 });
-
 test('clearHistory empties both stacks and resets the coalescing key', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title');
@@ -152,7 +133,6 @@ test('clearHistory empties both stacks and resets the coalescing key', () => {
   undo(history);
   assert.equal(history.past.length, 1);
   assert.equal(history.future.length, 1);
-
   clearHistory(history);
   assert.equal(history.past.length, 0);
   assert.equal(history.future.length, 0);
@@ -160,18 +140,15 @@ test('clearHistory empties both stacks and resets the coalescing key', () => {
   assert.equal(canUndo(history), false);
   assert.equal(canRedo(history), false);
 });
-
 test('clearHistory lets the same key start a fresh entry', () => {
   const { history } = createEditor('awal');
   beginChange(history, 'title');
   beginChange(history, 'title');
   assert.equal(history.past.length, 1);
-
   clearHistory(history);
   beginChange(history, 'title');
   assert.equal(history.past.length, 1);
 });
-
 test('a null snapshot records nothing', () => {
   const history = createHistory({ snapshot: () => null, restore: () => {} });
   beginChange(history, 'title');
@@ -179,7 +156,6 @@ test('a null snapshot records nothing', () => {
   assert.equal(canUndo(history), false);
   assert.equal(undo(history), false);
 });
-
 test('a history without callbacks records nothing and stays inert', () => {
   const history = createHistory();
   beginChange(history, 'title');
@@ -187,7 +163,6 @@ test('a history without callbacks records nothing and stays inert', () => {
   assert.equal(undo(history), false);
   assert.equal(redo(history), false);
 });
-
 test('the history stack is capped at 120 entries', () => {
   const { state, history } = createEditor('v0');
   for (let i = 1; i <= 130; i += 1) {
@@ -197,12 +172,10 @@ test('the history stack is capped at 120 entries', () => {
   assert.equal(history.past.length, 120);
   assert.equal(history.past[0].value, 'v11');
   assert.equal(history.past[119].value, 'v130');
-  // Label dan waktu ikut tergeser bersama snapshot saat trim.
   assert.equal(history.pastLabels.length, 120);
   assert.equal(history.pastTimes.length, 120);
   assert.ok(history.pastTimes.every((time) => typeof time === 'number'));
 });
-
 test('createHistory exposes the new label and timestamp arrays', () => {
   const { history } = createEditor();
   assert.deepEqual(history.pastLabels, []);
@@ -210,7 +183,6 @@ test('createHistory exposes the new label and timestamp arrays', () => {
   assert.deepEqual(history.pastTimes, []);
   assert.deepEqual(history.futureTimes, []);
 });
-
 test('beginChange stores an optional label next to the snapshot', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title', 'Edit Judul');
@@ -221,61 +193,51 @@ test('beginChange stores an optional label next to the snapshot', () => {
   beginChange(history, 'artist');
   assert.deepEqual(history.pastLabels, ['Edit Judul', null]);
 });
-
 test('labels and timestamps follow their snapshots through undo and redo', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title', 'Edit Judul');
   state.value = 'satu';
   beginChange(history, 'artist', 'Edit Artis');
   state.value = 'dua';
-
   assert.deepEqual(history.pastLabels, ['Edit Judul', 'Edit Artis']);
   const timesAtStart = [...history.pastTimes];
-
   assert.equal(undo(history), true);
   assert.equal(state.value, 'satu');
   assert.deepEqual(history.pastLabels, ['Edit Judul']);
   assert.deepEqual(history.futureLabels, ['Edit Artis']);
   assert.equal(history.futureTimes.length, 1);
   assert.equal(history.futureTimes[0], timesAtStart[1]);
-
   assert.equal(undo(history), true);
   assert.equal(state.value, 'awal');
   assert.deepEqual(history.pastLabels, []);
   assert.deepEqual(history.futureLabels, ['Edit Artis', 'Edit Judul']);
   assert.equal(history.futureTimes.length, 2);
-
   assert.equal(redo(history), true);
   assert.equal(state.value, 'satu');
   assert.deepEqual(history.pastLabels, ['Edit Judul']);
   assert.deepEqual(history.futureLabels, ['Edit Artis']);
-
   assert.equal(redo(history), true);
   assert.equal(state.value, 'dua');
   assert.deepEqual(history.pastLabels, ['Edit Judul', 'Edit Artis']);
   assert.deepEqual(history.futureLabels, []);
   assert.deepEqual(history.futureTimes, []);
 });
-
 test('historyEntries lists past snapshots oldest to newest with index, label and time', () => {
   const { state, history } = createEditor('a');
   beginChange(history, 'x', 'Pertama');
   state.value = 'b';
   beginChange(history, 'y', 'Kedua');
   state.value = 'c';
-
   const entries = historyEntries(history);
   assert.deepEqual(entries.map((entry) => entry.index), [0, 1]);
   assert.deepEqual(entries.map((entry) => entry.label), ['Pertama', 'Kedua']);
   assert.deepEqual(entries.map((entry) => entry.snapshot.value), ['a', 'b']);
   assert.ok(entries[0].at > 0);
   assert.ok(entries[1].at >= entries[0].at);
-
   undo(history);
   assert.deepEqual(historyEntries(history).map((entry) => entry.label), ['Pertama']);
   assert.deepEqual(historyEntries({ past: [], pastLabels: [], pastTimes: [] }), []);
 });
-
 test('rollbackTo restores an older snapshot, clears redo and stays undoable', () => {
   const { state, history } = createEditor('v0');
   beginChange(history, 'a', 'Ubah A');
@@ -284,8 +246,6 @@ test('rollbackTo restores an older snapshot, clears redo and stays undoable', ()
   state.value = 'v2';
   beginChange(history, 'c', 'Ubah C');
   state.value = 'v3';
-  // past = [v0, v1, v2], state = v3
-
   assert.equal(rollbackTo(history, 0), true);
   assert.equal(state.value, 'v0');
   assert.equal(history.future.length, 0);
@@ -293,15 +253,12 @@ test('rollbackTo restores an older snapshot, clears redo and stays undoable', ()
   assert.deepEqual(history.futureTimes, []);
   assert.equal(history.lastKey, null);
   assert.deepEqual(history.past.map((snap) => snap.value), ['v0', 'v1', 'v2', 'v3']);
-
   const entries = historyEntries(history);
   assert.equal(entries.length, 4);
   assert.equal(entries[3].snapshot.value, 'v3');
   assert.equal(typeof entries[3].label, 'string');
   assert.ok(entries[3].label.includes('Ubah A'), `rollback label: ${entries[3].label}`);
   assert.equal(typeof entries[3].at, 'number');
-
-  // Undo setelah rollback mengembalikan state sebelum rollback.
   assert.equal(undo(history), true);
   assert.equal(state.value, 'v3');
   assert.equal(history.past.length, 3);
@@ -309,7 +266,6 @@ test('rollbackTo restores an older snapshot, clears redo and stays undoable', ()
   assert.equal(redo(history), true);
   assert.equal(state.value, 'v0');
 });
-
 test('rollbackTo rejects invalid indices without touching the stack', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title', 'Edit Judul');
@@ -321,7 +277,6 @@ test('rollbackTo rejects invalid indices without touching the stack', () => {
   assert.equal(history.past.length, 1);
   assert.deepEqual(history.pastLabels, ['Edit Judul']);
 });
-
 test('clearHistory empties the label and timestamp arrays too', () => {
   const { state, history } = createEditor('awal');
   beginChange(history, 'title', 'Edit Judul');

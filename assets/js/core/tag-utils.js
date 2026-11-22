@@ -72,7 +72,6 @@ export function validateCustomKey(key) {
 }
 export function safeOutputName(name, fallback = 'file') {
   const base = String(name || fallback)
-    // eslint-disable-next-line no-control-regex -- Remove control characters from filenames.
     .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-')
     .replace(/\s+/g, ' ')
     .trim()

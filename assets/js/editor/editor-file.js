@@ -40,8 +40,6 @@ export async function openFile(ctx, file) {
   cleanupUrls(state);
   state.readToken += 1;
   const token = state.readToken;
-  // A new file starts a fresh undo history: the previous edits belong to
-  // another file and must never be replayed on this one.
   clearHistory(state.history);
   state.file = file;
   state.detection = detection;

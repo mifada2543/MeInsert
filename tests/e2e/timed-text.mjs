@@ -1,8 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-// Editor lirik/subtitle: add, mark, seek, preview, export and mobile layout.
-// No upload: all media previews come from blob: URLs of the local file.
+// Editor lirik/subtitle: add, mark, seek, preview, export and mobile layout; No upload.
 import { getBrowser } from './harness.mjs';
 import { createStaticServer } from './server.mjs';
 import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
@@ -55,7 +54,6 @@ try {
     throw new Error('Tombol Song lyrics masih muncul untuk berkas gambar.');
   }
   console.log('PASS: tombol Song lyrics tersembunyi untuk format bukan audio/video');
-
   await open(audio);
   const audioMode = await page.evaluate(() => ({
     mode: document.querySelector('#timedTextDialog')?.dataset.mode,

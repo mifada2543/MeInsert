@@ -162,7 +162,6 @@ export class BatchProcessor {
         item.stage = integrity.status === 'failed'
           ? 'Selesai · perlu diperiksa'
           : integrity.status === 'warning' ? 'Selesai · ada catatan' : 'Selesai';
-        // The snapshot is only needed for the integrity check above.
         item.baselineSnapshot = null;
         if (lowMemory && onOutput) {
           try {

@@ -6,17 +6,14 @@
 // update handler waits for a safe moment (or asks the user to reload).
 const reasons = new Set();
 const listeners = new Set();
-
 export function setReloadUnsafe(reason, value = true) {
   if (value) reasons.add(reason);
   else reasons.delete(reason);
   for (const listener of listeners) listener(isReloadSafe());
 }
-
 export function isReloadSafe() {
   return reasons.size === 0;
 }
-
 export function onReloadSafeChange(listener) {
   listeners.add(listener);
   return () => listeners.delete(listener);

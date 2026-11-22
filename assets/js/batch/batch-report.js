@@ -15,11 +15,6 @@ function operationsOf(item) {
     custom: ops.custom || 0,
   };
 }
-/**
- * Ringkasan aksi "Bersihkan metadata" yang ditempelkan saat Membersihkan.
- * Sengaja hanya berisi nama kategori dan jumlah — bukan nilai tag mentah atau
- * isi file — supaya laporan tetap aman dibagikan.
- */
 function cleaningOf(item) {
   const clean = item?.cleanSummary || {};
   return {
@@ -78,7 +73,6 @@ export function makeReport(items) {
       warnings: item.warnings || [],
       error: item.error?.message || item.error || '',
       outputName: item.outputName || '',
-      // Kolom baru diletakkan di akhir agar laporan lama tetap kompatibel.
       removedCategories: cleaning.removedCategories,
       removedTagCount: cleaning.removedTagCount,
     };

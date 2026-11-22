@@ -21,7 +21,6 @@ corresponding work.
 
 MeInsert bundles the following independent software in `assets/vendor/` and
 `assets/fonts/`:
-
 - ExifTool 13.60 — by Phil Harvey — https://exiftool.org/
   (Perl Artistic License or GPL; runs inside the WebAssembly build)
 - @colorhythm/exiftool-wasm v1.0.5 — https://github.com/6over3/exiftool (Apache-2.0)

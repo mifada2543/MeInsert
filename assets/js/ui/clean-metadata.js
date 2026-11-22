@@ -309,7 +309,6 @@ export function openCleanPanel(ctx) {
     finish(true);
     applyCleaning(ctx, payload);
   });
-
   current = backdrop;
   cancelButton.focus();
   return promise;

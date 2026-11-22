@@ -422,7 +422,7 @@ function sameBytes(a, b) {
 }
 function centralIdentity(entry) {
   const copy = entry.centralBytes.slice();
-  writeU32(copy, 42, 0); // the local-header offset is expected to move
+  writeU32(copy, 42, 0);
   return copy;
 }
 export async function verifyZipPreserved(beforeBytes, afterBytes, allowedNames) {

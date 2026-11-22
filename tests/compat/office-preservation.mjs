@@ -7,16 +7,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { unzipSync } from '../../assets/vendor/fflate.mjs';
-
 const TITLE = 'Office preservation title';
 const OOXML = ['sample.docx', 'sample.xlsx', 'sample.pptx', 'sample.docm', 'sample.xlsm', 'sample.pptm'];
 const ODF = ['sample.odt', 'sample.ods', 'sample.odp'];
-// Only these metadata parts may change; every other ZIP entry must be identical.
 const ALLOWED = new Set(['docProps/core.xml', 'docProps/app.xml', 'meta.xml']);
-
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
-
-/** The first ZIP local file header — used for the ODF mimetype rule. */
 function firstLocalEntry(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (bytes.length < 30 || view.getUint32(0, true) !== 0x04034b50) return null;
@@ -25,11 +20,6 @@ function firstLocalEntry(bytes) {
   const name = new TextDecoder().decode(bytes.subarray(30, 30 + nameLength));
   return { name, method };
 }
-
-/**
- * Write dc:title through the production adapter, then prove with an independent
- * Node-side ZIP hash that no entry other than the metadata parts changed.
- */
 export async function checkOfficePreservation(write, name, kind) {
   const path = join('tests/fixtures', name);
   const source = new Uint8Array(readFileSync(path));
@@ -37,12 +27,10 @@ export async function checkOfficePreservation(write, name, kind) {
   const result = await write(new File([source], name), { set: { title: TITLE } }, { subtype });
   assert.ok(result?.blob, `${name}: the adapter returned a blob`);
   const output = new Uint8Array(await result.blob.arrayBuffer());
-
   const before = unzipSync(source);
   const after = unzipSync(output);
   const beforeNames = Object.keys(before).sort();
   const afterNames = Object.keys(after).sort();
-
   const changed = [];
   for (const entry of beforeNames) {
     if (ALLOWED.has(entry)) continue;
@@ -55,14 +43,11 @@ export async function checkOfficePreservation(write, name, kind) {
   const added = afterNames.filter((entry) => !ALLOWED.has(entry) && !beforeNames.includes(entry));
   assert.deepEqual(changed, [], `${name}: non-metadata ZIP entries were modified: ${changed.join(', ')}`);
   assert.deepEqual(added, [], `${name}: unexpected ZIP entries were added: ${added.join(', ')}`);
-
-  // The metadata part that holds dc:title must exist and carry the new value.
   const metadataEntry = kind === 'odf' ? 'meta.xml' : 'docProps/core.xml';
   const metadataBytes = after[metadataEntry];
   assert.ok(metadataBytes, `${name}: ${metadataEntry} is present in the output`);
   const metadataText = new TextDecoder().decode(metadataBytes);
   assert.ok(metadataText.includes(TITLE), `${name}: dc:title was written into ${metadataEntry}`);
-
   if (kind === 'odf') {
     const first = firstLocalEntry(output);
     assert.ok(first, `${name}: the output has a ZIP local file header`);
@@ -71,11 +56,9 @@ export async function checkOfficePreservation(write, name, kind) {
     assert.match(new TextDecoder().decode(after.mimetype), /^application\/vnd\.oasis\.opendocument\./,
       `${name}: the mimetype entry carries the ODF media type`);
   }
-
   const intact = beforeNames.filter((entry) => !ALLOWED.has(entry)).length;
   console.log(`office-preservation ${name} ... ok (${intact} entries byte-identical)`);
 }
-
 export async function runOfficePreservationChecks() {
   const all = [...OOXML.map((name) => [name, 'ooxml']), ...ODF.map((name) => [name, 'odf'])];
   const present = all.filter(([name]) => existsSync(join('tests/fixtures', name)));
@@ -83,7 +66,6 @@ export async function runOfficePreservationChecks() {
     console.log('SKIP: no Office fixtures are present in tests/fixtures; office-preservation did not run.');
     return;
   }
-
   let write;
   try {
     ({ write } = await import('../../assets/js/formats/office.js'));
@@ -92,7 +74,6 @@ export async function runOfficePreservationChecks() {
     return;
   }
   assert.equal(typeof write, 'function', 'the office adapter exports write()');
-
   const failures = [];
   for (const [name, kind] of present) {
     try {
@@ -108,5 +89,4 @@ export async function runOfficePreservationChecks() {
   assert.deepEqual(failures, [], `office-preservation failures:\n${failures.join('\n')}`);
   console.log(`office-preservation ... ok (${present.length} fixture${present.length === 1 ? '' : 's'} verified)`);
 }
-
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await runOfficePreservationChecks();

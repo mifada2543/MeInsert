@@ -4,7 +4,6 @@
 import { t } from '../i18n/index.js';
 import { handleEngineProgress, scheduleEnginePrefetch } from '../ui/engine-loading.js';
 import { noteMessage, noteResult, memorySnapshot } from '../core/memory-meter.js';
-
 const WORKER_URLS = {
   exiftool: new URL('../workers/exiftool.worker.js', import.meta.url),
   media: new URL('../workers/media.worker.js', import.meta.url),
@@ -20,11 +19,8 @@ export function retryableReadError(error) {
   const code = error?.code;
   return code === 'WATCHDOG_TIMEOUT' || code === 'WORKER_CRASH';
 }
-
 const MEMORY_MESSAGE = /out of memory|allocation failed|invalid array length|array buffer allocation failed|memory limit|maximum call stack/i;
 const MEMORY_CODES = new Set(['OOM', 'OUT_OF_MEMORY', 'ALLOCATION_FAILED', 'RANGE_ERROR', 'MEMORY_LIMIT']);
-
-/** Kenali kegagalan alokasi tanpa mengubah error lain menjadi error memori. */
 export function isMemoryError(error) {
   if (!error) return false;
   if (error instanceof RangeError) return true;
@@ -32,12 +28,6 @@ export function isMemoryError(error) {
   if (MEMORY_CODES.has(String(error.code || '').toUpperCase())) return true;
   return MEMORY_MESSAGE.test(String(error.message || ''));
 }
-
-/**
- * Beri pesan ramah pengguna untuk kegagalan memori, tetapi pertahankan kode,
- * detail, dan pesan asli untuk log serta pengujian. Error lain dikembalikan apa
- * adanya (referensi yang sama).
- */
 export function friendlyMemoryError(error) {
   if (!isMemoryError(error)) return error;
   const keys = ['ui.memoryLimitFriendly', 'ui.memoryLimitAdvice'];
@@ -50,8 +40,6 @@ export function friendlyMemoryError(error) {
   friendly.isMemoryLimit = true;
   return friendly;
 }
-
-// Clone the payload so transferring its buffers cannot detach editor state.
 function transferableMessage(message) {
   const transfer = [];
   let payload = message?.payload;
@@ -84,7 +72,6 @@ function transferableMessage(message) {
   collect(payload);
   return { data: { ...message, payload }, transfer };
 }
-
 const liveClients = new Set();
 if (typeof globalThis.addEventListener === 'function') {
   globalThis.addEventListener('meinsert:engine-retry', (event) => {
@@ -100,7 +87,6 @@ if (typeof globalThis.addEventListener === 'function') {
 if (typeof document !== 'undefined') {
   try { scheduleEnginePrefetch(); } catch { /* prefetch bersifat opsional */ }
 }
-
 class EngineWorker {
   constructor(url, engine = '') {
     this.url = url;

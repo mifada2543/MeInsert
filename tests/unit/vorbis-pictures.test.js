@@ -4,7 +4,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { commentPictures, editPictures, flacPictures, pictureBase64, repairFlacMetadata, serializePicture } from '../../assets/js/formats/vorbis-pictures.js';
-
 function picture(type = 3) {
   const block = serializePicture({ mimeType: 'image/png', kind: 'coverFront', description: '日本語 cover', data: Uint8Array.of(1, 2, 3) });
   new DataView(block.buffer).setUint32(0, type);

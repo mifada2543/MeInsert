@@ -8,12 +8,10 @@ import { extname, resolve, sep, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { jobs } from './jobs.mjs';
-
 const job = jobs.find((entry) => entry.id === process.argv[2]);
 if (!job) throw new Error('Unknown compatibility job');
 const started = performance.now();
 let localBytes = 0, localRequests = 0;
-
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const types = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.html': 'text/html', '.wasm': 'application/wasm', '.css': 'text/css' };
 const server = createServer((req, res) => {
@@ -24,8 +22,6 @@ const server = createServer((req, res) => {
   res.writeHead(200, { 'content-type': types[extname(path)] || 'application/octet-stream', 'cache-control': 'no-store' });
   createReadStream(path).pipe(res);
 });
-
-// Verify genuine detached CMS against the ORIGINAL PDF, independently of pdf-lib.
 function verifySignature(pdf) {
   const text = pdf.toString('latin1');
   const range = /\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/.exec(text)?.slice(1).map(Number);
@@ -46,7 +42,6 @@ function verifySignature(pdf) {
     } catch { return false; }
   } finally { rmSync(temp, { recursive: true }); }
 }
-
 if (job.id === 'pdf') {
   if (!verifySignature(readFileSync(join(root, 'tests/fixtures/signed.pdf')))) throw new Error('Original signed PDF signature invalid');
   console.log('Original signed.pdf: detached CMS signature verified (self-signed; trust not asserted).');
@@ -137,7 +132,6 @@ try {
   rows.push(...await page.evaluate(async (options) => (await import('/tests/compat/browser.mjs')).coverPolicy(options),
     { names: job.covers || [], mp4Policy: job.mp4Policy || false }));
   await page.evaluate(async () => (await import('/tests/compat/browser.mjs')).dispose());
-  // UI integration: detector-owned default extension, review, save and download.
   if (job.locale) {
   const suffix = job.locale.startsWith('id') ? 'ID' : 'EN';
   const uiRow = { fixture: `UI mislabeled PNG download (${suffix})`, invariants: 'FAIL' };

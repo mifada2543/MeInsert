@@ -11,7 +11,6 @@ import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const chrome = [process.env.CHROME_BIN, process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
   '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser']
@@ -51,7 +50,6 @@ const audio = join(tempDir, 'tone.mp3');
 const video = join(tempDir, 'clip.mp4');
 const longVideo = join(tempDir, 'clip-long-cover.mp4');
 const webm = join(tempDir, 'clip.webm');
-
 async function openActionOptions() {
   const toggle = page.locator('#actionOptionsToggle');
   if (await toggle.count() && await toggle.isVisible()
@@ -60,7 +58,6 @@ async function openActionOptions() {
     await toggle.click();
   }
 }
-
 async function loadFile(file) {
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.locator('#fileInput').setInputFiles(file);
@@ -69,14 +66,11 @@ async function loadFile(file) {
   await openActionOptions();
   await page.locator('#cutBtn').waitFor({ state: 'visible', timeout: 15000 });
 }
-
 async function openCut(file) {
   await loadFile(file);
   await page.locator('#cutBtn').click();
   await page.locator('#cutDialog[open]').waitFor({ timeout: 10000 });
 }
-
-// mm:ss.mmm — the exact format required by the cut dialog contract.
 async function setRange(start, end) {
   await page.locator('#cutStart').fill(start);
   await page.locator('#cutStart').blur();
@@ -84,12 +78,10 @@ async function setRange(start, end) {
   await page.locator('#cutEnd').blur();
   assert.ok(await page.locator('#cutDuration').count(), 'cut duration readout is present');
 }
-
 async function applyCut() {
   await page.locator('#cutApply').click();
   await page.locator('#cutDialog[open]').waitFor({ state: 'hidden', timeout: 15000 });
 }
-
 async function dirtyCount() {
   return page.locator('#dirtyState').evaluate((node) => {
     const raw = `${node.getAttribute('data-count') || ''} ${node.textContent || ''}`;
@@ -97,7 +89,6 @@ async function dirtyCount() {
     return match ? Number(match[0]) : 0;
   });
 }
-
 async function waitForDirtyChange(previous, direction) {
   await page.waitForFunction(({ value, sign }) => {
     const node = document.querySelector('#dirtyState');
@@ -107,7 +98,6 @@ async function waitForDirtyChange(previous, direction) {
     return sign > 0 ? current > value : current < value;
   }, { value: previous, sign: direction }, { timeout: 15000 });
 }
-
 async function saveAndDownload(label, { expectReview = false } = {}) {
   const downloadPromise = page.waitForEvent('download', { timeout: 120000 }).catch(() => null);
   await page.locator('#saveBtn').click();
@@ -125,8 +115,6 @@ async function saveAndDownload(label, { expectReview = false } = {}) {
     await page.waitForTimeout(500);
   }
   await resultLink.waitFor({ state: 'visible', timeout: 120000 });
-  // The sticky preview thumbnail can intercept pointer events for the result
-  // card; dispatch the click directly so the test measures the cut result, not layout.
   await resultLink.evaluate((node) => node.click());
   const download = await downloadPromise;
   if (!download) {
@@ -139,21 +127,17 @@ async function saveAndDownload(label, { expectReview = false } = {}) {
   await download.saveAs(saved);
   return saved;
 }
-
 async function inspect(path) {
   const input = new Input({ source: new BlobSource(new Blob([readFileSync(path)])), formats: ALL_FORMATS });
   const duration = await input.computeDuration();
   const tags = await input.getMetadataTags();
   return { duration, title: tags.title };
 }
-
 try {
   copyFileSync(join(root, 'tests/fixtures/tone.mp3'), audio);
   copyFileSync(join(root, 'tests/fixtures/clip.mp4'), video);
   copyFileSync(join(root, 'tests/fixtures/clip-long-cover.mp4'), longVideo);
   copyFileSync(join(root, 'tests/fixtures/clip.webm'), webm);
-
-  // 1. Audio MP3 — copy-mode trim, review confirm, readable duration and title.
   await openCut(audio);
   await setRange('00:00.000', '00:00.150');
   await applyCut();
@@ -163,9 +147,6 @@ try {
   assert.ok(typeof audioResult.title === 'string' && audioResult.title.trim().length > 0,
     'audio title metadata is still readable');
   console.log(`PASS: MP3 cut 0–0.15 → ${audioResult.duration.toFixed(3)}s, title="${audioResult.title}"`);
-
-  // 2. Video MP4 — trim a 20s source to 1s, no raw .wasm fetch, result still decodable.
-  // clip.mp4 has only three B-reordered frames, so use the longer fixture for a meaningful cut.
   await openCut(longVideo);
   await setRange('00:00.000', '00:01.000');
   await applyCut();
@@ -174,8 +155,6 @@ try {
     `video cut duration out of range: ${videoResult.duration}`);
   assert.deepEqual(rawWasmRequests, [], `raw .wasm requested: ${rawWasmRequests.join(', ')}`);
   console.log(`PASS: MP4 cut 0–1 → ${videoResult.duration.toFixed(3)}s, no raw WASM request`);
-
-  // 3. Precise mode on WebM — the review must disclose the transcode risk.
   await openCut(webm);
   await page.locator('input[name="cutMode"][value="precise"]').check();
   await setRange('00:00.000', '00:00.200');
@@ -194,8 +173,6 @@ try {
     throw new Error(`precise WebM cut produced no result; status=${status}; toasts=${toast.join(' | ')}; errors=${errors.join(' | ') || '(none)'}`);
   }
   console.log('PASS: WebM precise cut warns about transcoding in review');
-
-  // 4. Undo/redo — keyboard shortcuts remove and restore the applied cut.
   await openCut(video);
   const beforeCut = await dirtyCount();
   await setRange('00:00.000', '00:00.150');
@@ -209,8 +186,6 @@ try {
   await page.keyboard.press('Control+Shift+z');
   await waitForDirtyChange(afterUndo, 1);
   console.log(`PASS: cut undo/redo dirty count ${beforeCut} → ${afterCut} → ${afterUndo} → ${await dirtyCount()}`);
-
-  // 5. Offline guard — the action stays visible but must not open the dialog.
   await loadFile(audio);
   await context.setOffline(true);
   assert.equal(await page.locator('#cutBtn').isVisible(), true, 'cut button remains visible offline');
@@ -222,7 +197,6 @@ try {
     `offline cut toast is missing: ${toastText}`);
   await context.setOffline(false);
   console.log('PASS: offline cut click is blocked with an offline toast');
-
   if (errors.length) throw new Error(`Page errors: ${errors.join(' | ')}`);
   console.log('ALL cut-media scenarios passed');
 } finally {

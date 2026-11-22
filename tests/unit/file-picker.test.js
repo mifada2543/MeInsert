@@ -4,7 +4,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-
 const OFFICE = ['.docx', '.docm', '.xlsx', '.xlsm', '.pptx', '.pptm', '.odt', '.ods', '.odp'];
 function exts(value) {
   return new Set(String(value || '').split(',').map((item) => item.trim().toLowerCase()).filter(Boolean));

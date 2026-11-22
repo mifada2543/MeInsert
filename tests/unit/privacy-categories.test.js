@@ -13,7 +13,6 @@ import {
 } from '../../assets/js/core/privacy-categories.js';
 import { createSnapshot } from '../../assets/js/core/metadata-snapshot.js';
 import { buildChangePlan } from '../../assets/js/core/change-plan.js';
-
 const jpeg = {
   meta: { id: 'jpeg', label: 'JPEG' },
   fields: [
@@ -51,7 +50,6 @@ const vorbis = {
   meta: { id: 'ogg', label: 'OGG' },
   fields: [{ id: 'artist', label: 'Artis', native: 'ARTIST' }],
 };
-
 function snapshot(adapter, readResult = {}) {
   return createSnapshot({
     adapter,
@@ -61,14 +59,12 @@ function snapshot(adapter, readResult = {}) {
     },
   });
 }
-
 test('exports the exact shared category and profile contract', () => {
   assert.deepEqual(CLEAN_CATEGORIES, ['location', 'device', 'identity', 'software', 'thumbnail', 'history']);
   assert.deepEqual(CLEAN_PROFILE_CATEGORIES.privacy, CLEAN_CATEGORIES);
   assert.deepEqual(CLEAN_PROFILE_CATEGORIES.all, CLEAN_CATEGORIES);
   assert.deepEqual(CLEAN_PROFILE_CATEGORIES.custom, []);
 });
-
 test('location tags are detected in images, video, audio, and PDF', () => {
   assert.equal(categorizeRawTag('jpeg', 'EXIF:GPSLatitude'), 'location');
   assert.equal(categorizeRawTag('jpeg', 'XMP-iptcExt:LocationCreatedCity'), 'location');
@@ -77,7 +73,6 @@ test('location tags are detected in images, video, audio, and PDF', () => {
   assert.equal(categorizeRawTag('ogg', 'LOCATION'), 'location');
   assert.equal(categorizeRawTag('pdf', 'XMP-iptcExt:LocationCreatedCountryName'), 'location');
 });
-
 test('device tags are detected in images, video, audio, and PDF', () => {
   assert.equal(categorizeRawTag('jpeg', 'EXIF:BodySerialNumber'), 'device');
   assert.equal(categorizeRawTag('jpeg', 'EXIF:CameraOwnerName'), 'device');
@@ -86,7 +81,6 @@ test('device tags are detected in images, video, audio, and PDF', () => {
   assert.equal(categorizeRawTag('mp4', 'QuickTime:SerialNumber'), 'device');
   assert.equal(categorizeRawTag('ogg', 'SERIALNUMBER'), 'device');
 });
-
 test('identity tags are detected in images, PDF, MP3, and audio containers', () => {
   assert.equal(categorizeRawTag('jpeg', 'EXIF:Artist'), 'identity');
   assert.equal(categorizeRawTag('jpeg', 'EXIF:OwnerName'), 'identity');
@@ -97,7 +91,6 @@ test('identity tags are detected in images, PDF, MP3, and audio containers', () 
   assert.equal(categorizeRawTag('mp3', 'TPE2'), 'identity');
   assert.equal(categorizeRawTag('ogg', 'ARTIST'), 'identity');
 });
-
 test('software tags are detected in images, PDF, MP3, and audio containers', () => {
   assert.equal(categorizeRawTag('jpeg', 'EXIF:Software'), 'software');
   assert.equal(categorizeRawTag('jpeg', 'XMP-xmp:CreatorTool'), 'software');
@@ -106,7 +99,6 @@ test('software tags are detected in images, PDF, MP3, and audio containers', () 
   assert.equal(categorizeRawTag('ogg', 'ENCODER'), 'software');
   assert.equal(categorizeRawTag('mkv', 'ENCODER'), 'software');
 });
-
 test('thumbnail and history tags are detected across formats', () => {
   assert.equal(categorizeRawTag('jpeg', 'EXIF:ThumbnailOffset'), 'thumbnail');
   assert.equal(categorizeRawTag('jpeg', 'File:PreviewImage'), 'thumbnail');
@@ -117,7 +109,6 @@ test('thumbnail and history tags are detected across formats', () => {
   assert.equal(categorizeRawTag('mp4', 'XMP-xmp:MetadataDate'), 'history');
   assert.equal(categorizeRawTag('mkv', 'XMP-xmpMM:History'), 'history');
 });
-
 test('orientation, generated tags, and structural tags are never cleanable', () => {
   for (const tag of [
     'EXIF:Orientation', 'QuickTime:Rotate', 'XMP-tiff:Orientation',
@@ -132,7 +123,6 @@ test('orientation, generated tags, and structural tags are never cleanable', () 
   assert.equal(isCleanableField('mkv', 'duration'), false);
   assert.equal(isCleanableField('mp3', 'title'), false);
 });
-
 test('isCleanableField only clears clear identity/software field names', () => {
   assert.equal(isCleanableField('jpeg', 'creator'), true);
   assert.equal(isCleanableField('jpeg', 'software'), true);
@@ -145,7 +135,6 @@ test('isCleanableField only clears clear identity/software field names', () => {
     assert.equal(isCleanableField('jpeg', id), false, `unexpected cleanable field ${id}`);
   }
 });
-
 test('summarizeCleaning buckets sensitive tags and records preserved tags with reasons', () => {
   const direct = {
     format: { id: 'jpeg' },
@@ -166,7 +155,7 @@ test('summarizeCleaning buckets sensitive tags and records preserved tags with r
     cover: { present: false },
   };
   const result = summarizeCleaning(direct);
-  assert.equal(result.categories.location.count, 2); // custom key + deduplicated raw GPS tag
+  assert.equal(result.categories.location.count, 2);
   assert.equal(result.categories.software.count, 1);
   assert.equal(result.categories.identity.count, 1);
   assert.equal(result.total, 4);
@@ -177,13 +166,12 @@ test('summarizeCleaning buckets sensitive tags and records preserved tags with r
     assert.ok(Array.isArray(result.categories[category].tags), `missing tags array for ${category}`);
   }
 });
-
 test('buildCleanPayload emits a deduplicated standard payload and an accurate count', () => {
   const base = snapshot(jpeg, {
     fields: { creator: 'Jane Doe', software: 'Editor', title: 'Sunset' },
     raw: [
       { group: 'EXIF', tag: 'EXIF:GPSLatitude', value: '-6.2' },
-      { group: 'EXIF', tag: 'EXIF:GPSLatitude', value: '-6.2' }, // duplicate tag
+      { group: 'EXIF', tag: 'EXIF:GPSLatitude', value: '-6.2' },
       { group: 'EXIF', tag: 'EXIF:GPSLongitude', value: '106.8' },
       { group: 'EXIF', tag: 'EXIF:Orientation', value: '6' },
       { group: 'EXIF', tag: 'EXIF:Software', value: 'Editor' },
@@ -194,12 +182,11 @@ test('buildCleanPayload emits a deduplicated standard payload and an accurate co
     ],
     custom: [
       { key: 'Owner', value: 'Jane Doe' },
-      { key: 'Owner', value: 'Jane Doe' }, // duplicate key, same canonical
+      { key: 'Owner', value: 'Jane Doe' },
       { key: 'MOOD', value: 'Calm' },
     ],
     info: { hasCover: true },
   });
-
   const payload = buildCleanPayload(base, CLEAN_PROFILE_CATEGORIES.privacy);
   assert.deepEqual(payload.set, {});
   assert.deepEqual(payload.custom, []);
@@ -216,11 +203,9 @@ test('buildCleanPayload emits a deduplicated standard payload and an accurate co
   assert.equal(payload.rawRemove.includes('EXIF:Orientation'), false);
   assert.equal(payload.rawRemove.includes('File:FileName'), false);
   assert.equal(payload.count, payload.remove.length + payload.rawRemove.length + payload.customRemove.length + 1);
-
   const summary = summarizeCleaning(base);
   assert.equal(summary.total, payload.count);
 });
-
 test('payload produced by buildCleanPayload is accepted by buildChangePlan', () => {
   const base = snapshot(mp3, {
     fields: { artist: 'Jane Doe', title: 'Lagu' },
@@ -244,7 +229,6 @@ test('payload produced by buildCleanPayload is accepted by buildChangePlan', () 
   assert.equal(plan.operations.some((op) => op.kind === 'raw' && op.tag === 'TENC'), true);
   assert.equal(plan.operations.some((op) => op.tag === 'TIT2'), false);
 });
-
 test('custom profile selects no categories, privacy and all select every category', () => {
   const base = snapshot(jpeg, {
     fields: { creator: 'Jane Doe', software: 'Editor' },
@@ -261,7 +245,6 @@ test('custom profile selects no categories, privacy and all select every categor
   assert.deepEqual(custom.rawRemove, []);
   assert.equal(custom.cover, null);
 });
-
 test('empty and unknown snapshots are safe', () => {
   for (const value of [undefined, null, {}, { format: { id: 'unknown' } }]) {
     const summary = summarizeCleaning(value);
@@ -279,7 +262,6 @@ test('empty and unknown snapshots are safe', () => {
     assert.equal(payload.cover, null);
   }
 });
-
 test('each category is exercised across at least two format families through snapshots', () => {
   const families = [
     snapshot(jpeg, {

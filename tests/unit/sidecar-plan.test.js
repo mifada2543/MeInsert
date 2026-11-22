@@ -7,7 +7,6 @@ import { createEditorState, setSidecar, cloneSidecar } from '../../assets/js/edi
 import { collectChanges } from '../../assets/js/editor/editor-changes.js';
 import { buildChangePlan } from '../../assets/js/core/change-plan.js';
 import { beginChange, endChange, undo, redo } from '../../assets/js/core/history.js';
-
 const SAMPLE = {
   lyrics: { lang: 'id', lines: [{ time: 1200, text: 'Baris satu' }] },
   subtitles: { lang: 'id', cues: [{ id: '1', start: 500, end: 1200, text: 'Halo', settings: '' }] },
@@ -20,7 +19,6 @@ const context = () => ({
   },
   detection: { id: 'mp3', ext: 'mp3', subtype: null, mime: 'audio/mpeg' },
 });
-
 test('setSidecar clones its payload so callers cannot mutate editor state', () => {
   const state = createEditorState();
   setSidecar(state, SAMPLE);

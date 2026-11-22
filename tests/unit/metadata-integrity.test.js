@@ -214,8 +214,6 @@ test('write re-reads its own blob so media info matches read and integrity keeps
       `${name}: unexpected STRUCTURE_LOST for sampleRate/channels`);
     assert.notEqual(result.status, 'failed', `${name}: ${JSON.stringify(result.findings)}`);
     if (testAdapter.meta.id === 'ogg') {
-      // Targeted comment-header rewrite keeps the original vendor and media
-      // structure; the engine's vendor warning must no longer be triggered.
       assert.equal(result.findings.some((finding) => finding.code === 'ENGINE_VENDOR_CHANGED'), false,
         `${name}: targeted rewrite must preserve the vendor`);
       const vendorBefore = before.raw.find((row) => row.tag === 'vendor')?.value;
