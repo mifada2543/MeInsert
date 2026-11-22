@@ -72,7 +72,7 @@ export function validateCustomKey(key) {
 }
 export function safeOutputName(name, fallback = 'file') {
   const base = String(name || fallback)
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-')
+    .replace(new RegExp(`[\\\\/:*?"<>|${String.fromCharCode(0)}-${String.fromCharCode(31)}]`, 'g'), '-')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 120);

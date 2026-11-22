@@ -18,11 +18,17 @@ export const meta = {
   engine: 'exiftool',
   label: 'Gambar',
   description: 'JPG, PNG, WebP, dan TIFF',
-  extensions: ['jpg', 'jpeg', 'png', 'webp', 'tif', 'tiff'],
+  extensions: ['jpg', 'jpeg', 'png', 'webp', 'tif', 'tiff', 'heic', 'heif', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf'],
   mime: 'image/*',
 };
+const XMP_ONLY_SUBTYPES = new Set([
+  'png', 'webp', 'heic', 'heif', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf',
+]);
+export function xmpOnly(subtype) {
+  return XMP_ONLY_SUBTYPES.has(String(subtype || '').toLowerCase());
+}
 function xmpCamera(subtype) {
-  return subtype === 'png' || subtype === 'webp';
+  return xmpOnly(subtype);
 }
 export function sectionsFor(subtype) {
   const base = [
@@ -39,6 +45,11 @@ export function sectionsFor(subtype) {
       ? 'Field XMP opsional (tanpa EXIF biner). Kosongkan jika tidak ingin mengubahnya.'
       : 'Field EXIF opsional. Kosongkan jika tidak ingin mengubahnya.',
   });
+  base.push({
+    id: 'lokasi',
+    title: 'Metadata GPS',
+    description: 'Disimpan sebagai EXIF GPS; tidak ditulis ke field lain.',
+  });
   return base;
 }
 export function fieldsFor(subtype) {
@@ -50,6 +61,19 @@ export function fieldsFor(subtype) {
     { id: 'rights', section: 'umum', label: 'Hak cipta', type: 'text', native: 'XMP-dc:Rights + EXIF:Copyright', placeholder: '© 2026 Nama Anda', maxLength: 300 },
     { id: 'date', section: 'umum', label: 'Tanggal dibuat', type: 'date', native: 'XMP-xmp:CreateDate' },
     { id: 'software', section: 'umum', label: 'Perangkat lunak', type: 'text', native: 'XMP-xmp:CreatorTool + EXIF:Software', placeholder: 'MeInsert', maxLength: 200 },
+    { id: 'gpsLatitude', section: 'lokasi', label: 'Lintang', type: 'text', native: 'GPS:GPSLatitude/GPSLatitudeRef', placeholder: 'Contoh: -6.2088', helper: 'Desimal derajat; negatif untuk selatan.', maxLength: 32 },
+    { id: 'gpsLongitude', section: 'lokasi', label: 'Bujur', type: 'text', native: 'GPS:GPSLongitude/GPSLongitudeRef', placeholder: 'Contoh: 106.8456', helper: 'Desimal derajat; negatif untuk barat.', maxLength: 32 },
+    { id: 'gpsAltitude', section: 'lokasi', label: 'Ketinggian', type: 'text', native: 'GPS:GPSAltitude', placeholder: 'Contoh: 12.5', maxLength: 32 },
+    { id: 'gpsDate', section: 'lokasi', label: 'Tanggal GPS', type: 'date', native: 'GPS:GPSDateStamp' },
+    { id: 'credit', section: 'umum', label: 'Kredit', type: 'text', native: 'XMP-photoshop:Credit', placeholder: 'Nama kredit', maxLength: 200 },
+    { id: 'source', section: 'umum', label: 'Sumber', type: 'text', native: 'XMP-iptcCore:Source + XMP-photoshop:Source', placeholder: 'Sumber gambar', maxLength: 200 },
+    { id: 'captionWriter', section: 'umum', label: 'Penulis caption', type: 'text', native: 'XMP-photoshop:CaptionWriter', placeholder: 'Nama penulis caption', maxLength: 200 },
+    { id: 'jobTitle', section: 'umum', label: 'Jabatan penulis', type: 'text', native: 'XMP-iptcCore:AuthorsPosition + XMP-photoshop:AuthorsPosition', placeholder: 'Contoh: Fotografer', maxLength: 200 },
+    { id: 'copyrightOwner', section: 'umum', label: 'Pemilik hak cipta', type: 'text', native: 'XMP-iptcExt:CopyrightOwner + XMP-plus:CopyrightOwnerName', placeholder: 'Nama pemilik', maxLength: 200 },
+    { id: 'rating', section: 'umum', label: 'Peringkat', type: 'text', native: 'Xmp.xmp.Rating + XMP-xmp:Rating', placeholder: '0–5', maxLength: 8 },
+    { id: 'label', section: 'umum', label: 'Label', type: 'text', native: 'Xmp.xmp.Label + XMP-xmp:Label', placeholder: 'Contoh: Pilihan', maxLength: 100 },
+    { id: 'identifier', section: 'umum', label: 'Identifikator', type: 'text', native: 'XMP-dc:Identifier', placeholder: 'ID unik', maxLength: 200 },
+    { id: 'location', section: 'umum', label: 'Lokasi', type: 'text', native: 'XMP-iptcCore:Location', placeholder: 'Contoh: Jakarta', maxLength: 200 },
   ];
   const camera = xmpCamera(subtype)
     ? [
@@ -64,7 +88,7 @@ export function fieldsFor(subtype) {
         { id: 'lens', section: 'kamera', label: 'Lensa', type: 'text', native: 'EXIF:LensModel', placeholder: 'RF 24-70mm F2.8 L IS USM', maxLength: 150 },
         { id: 'dateTaken', section: 'kamera', label: 'Tanggal pengambilan', type: 'date', native: 'EXIF:DateTimeOriginal' },
       ];
-  if (subtype === 'png' || subtype === 'webp') return [...common, ...camera];
+  if (xmpOnly(subtype)) return [...common, ...camera];
   const withComment = [
     ...common,
     { id: 'comment', section: 'umum', label: 'Komentar', type: 'textarea', native: 'EXIF:UserComment', placeholder: 'Catatan tambahan…', maxLength: 2000 },
@@ -86,16 +110,91 @@ const READ_MAP = {
   model: ['EXIF:Model', 'IFD0:Model', 'XMP-tiff:Model'],
   lens: ['EXIF:LensModel', 'ExifIFD:LensModel', 'XMP-aux:Lens'],
   dateTaken: ['EXIF:DateTimeOriginal', 'ExifIFD:DateTimeOriginal', 'XMP-exif:DateTimeOriginal'],
+  gpsLatitude: ['GPS:GPSLatitude', 'GPS:GPSLatitudeRef', 'EXIF:GPSLatitude', 'ExifIFD:GPSLatitude', 'Composite:GPSLatitude'],
+  gpsLongitude: ['GPS:GPSLongitude', 'GPS:GPSLongitudeRef', 'EXIF:GPSLongitude', 'ExifIFD:GPSLongitude', 'Composite:GPSLongitude'],
+  gpsAltitude: ['GPS:GPSAltitude', 'EXIF:GPSAltitude', 'Composite:GPSAltitude'],
+  gpsDate: ['GPS:GPSDateStamp', 'EXIF:GPSDateStamp'],
+  credit: ['XMP-photoshop:Credit', 'IPTC:Credit'],
+  source: ['XMP-iptcCore:Source', 'XMP-photoshop:Source', 'IPTC:Source'],
+  captionWriter: ['XMP-photoshop:CaptionWriter', 'IPTC:CaptionWriter', 'IPTC:Writer'],
+  jobTitle: ['XMP-iptcCore:AuthorsPosition', 'XMP-photoshop:AuthorsPosition', 'IPTC:AuthorsPosition'],
+  copyrightOwner: ['XMP-iptcExt:CopyrightOwner', 'XMP-plus:CopyrightOwnerName', 'IPTC:CopyrightOwner'],
+  rating: ['Xmp.xmp.Rating', 'XMP-xmp:Rating'],
+  label: ['Xmp.xmp.Label', 'XMP-xmp:Label'],
+  identifier: ['XMP-dc:Identifier', 'IPTC:ObjectName'],
+  location: ['XMP-iptcCore:Location', 'IPTC:Location'],
 };
+const GPS_LAT_REF = ['GPS:GPSLatitudeRef', 'EXIF:GPSLatitudeRef', 'ExifIFD:GPSLatitudeRef'];
+const GPS_LON_REF = ['GPS:GPSLongitudeRef', 'EXIF:GPSLongitudeRef', 'ExifIFD:GPSLongitudeRef'];
 const CAMERA_XMP_READ = {
   make: ['XMP-tiff:Make', 'EXIF:Make', 'IFD0:Make'],
   model: ['XMP-tiff:Model', 'EXIF:Model', 'IFD0:Model'],
   lens: ['XMP-aux:Lens', 'EXIF:LensModel', 'ExifIFD:LensModel'],
   dateTaken: ['XMP-exif:DateTimeOriginal', 'EXIF:DateTimeOriginal', 'ExifIFD:DateTimeOriginal'],
 };
+function gpsDecimal(value, ref) {
+  const text = asString(value).trim();
+  if (!text) return '';
+  let degrees;
+  const dms = text.match(/(-?\d+(?:\.\d+)?)\s*(?:deg|°)\s*(\d+(?:\.\d+)?)\s*['’]?\s*(\d+(?:\.\d+)?)\s*["”]?/i);
+  if (dms) {
+    degrees = Number(dms[1]) + Number(dms[2]) / 60 + Number(dms[3]) / 3600;
+    if (dms[1].startsWith('-')) degrees = -degrees;
+  } else {
+    const number = text.match(/-?\d+(?:\.\d+)?/);
+    if (!number) return '';
+    degrees = Number(number[0]);
+  }
+  if (!Number.isFinite(degrees)) return '';
+  const direction = asString(ref).trim().toUpperCase();
+  const suffix = text.replace(/["”'’]/g, '').trim().toUpperCase();
+  const southOrWest = direction === 'S' || direction === 'SOUTH' || direction === 'W' || direction === 'WEST'
+    || /(?:SOUTH|WEST|S|W)$/.test(suffix);
+  const northOrEast = direction === 'N' || direction === 'NORTH' || direction === 'E' || direction === 'EAST'
+    || /(?:NORTH|EAST|N|E)$/.test(suffix);
+  if (southOrWest) degrees = -Math.abs(degrees);
+  else if (northOrEast) degrees = Math.abs(degrees);
+  return String(Number(degrees.toFixed(6)));
+}
+function gpsNumber(value) {
+  const match = asString(value).match(/-?\d+(?:\.\d+)?/);
+  if (!match) return '';
+  const number = Number(match[0]);
+  return Number.isFinite(number) ? String(number) : '';
+}
+function toDms(value) {
+  const number = gpsNumber(value);
+  if (!number) return '';
+  const absolute = Math.abs(Number(number));
+  const degrees = Math.floor(absolute);
+  const minutesValue = (absolute - degrees) * 60;
+  const minutes = Math.floor(minutesValue);
+  const seconds = Number(((minutesValue - minutes) * 60).toFixed(5));
+  return `${degrees} deg ${minutes}' ${seconds}"`;
+}
+function gpsRef(value, negative, positive) {
+  const number = gpsNumber(value);
+  if (!number) return '';
+  return Number(number) < 0 ? negative : positive;
+}
+function toGpsDate(value) {
+  const date = toDateInput(value);
+  return date ? date.replace(/-/g, ':') : '';
+}
+const NEW_FIELD_IDS = [
+  'gpsLatitude', 'gpsLongitude', 'gpsAltitude', 'gpsDate', 'credit', 'source',
+  'captionWriter', 'jobTitle', 'copyrightOwner', 'rating', 'label', 'identifier', 'location',
+];
+const WRITE_ALIASES = {
+  'XMP-iptcCore:Source': 'XMP-photoshop:Source',
+  'XMP-iptcCore:AuthorsPosition': 'XMP-photoshop:AuthorsPosition',
+  'XMP-iptcExt:CopyrightOwner': 'XMP-plus:CopyrightOwnerName',
+  'Xmp.xmp.Rating': 'XMP-xmp:Rating',
+  'Xmp.xmp.Label': 'XMP-xmp:Label',
+};
 function supportedFields(subtype) {
-  const fields = ['title', 'creator', 'description', 'keywords', 'rights', 'date', 'software'];
-  if (subtype !== 'png' && subtype !== 'webp') fields.push('comment');
+  const fields = ['title', 'creator', 'description', 'keywords', 'rights', 'date', 'software', ...NEW_FIELD_IDS];
+  if (!xmpOnly(subtype)) fields.push('comment');
   fields.push('make', 'model', 'lens', 'dateTaken');
   return new Set(fields);
 }
@@ -110,8 +209,11 @@ export function mapTags(tags, subtype) {
     if (!supported.has(id)) continue;
     const keys = xmpCamera(subtype) && CAMERA_XMP_READ[id] ? CAMERA_XMP_READ[id] : baseKeys;
     const value = pick(tags, keys);
-    if (id === 'date' || id === 'dateTaken') out[id] = toDateInput(value);
+    if (id === 'date' || id === 'dateTaken' || id === 'gpsDate') out[id] = toDateInput(value);
     else if (id === 'keywords') out[id] = asArray(value);
+    else if (id === 'gpsLatitude') out[id] = gpsDecimal(value, pick(tags, GPS_LAT_REF));
+    else if (id === 'gpsLongitude') out[id] = gpsDecimal(value, pick(tags, GPS_LON_REF));
+    else if (id === 'gpsAltitude' || id === 'rating') out[id] = gpsNumber(value);
     else out[id] = asString(value);
   }
   return out;
@@ -158,6 +260,19 @@ export function buildTagMap(payload, subtype) {
     model: [xmp ? 'XMP-tiff:Model' : 'EXIF:Model'],
     lens: [xmp ? 'XMP-aux:Lens' : 'EXIF:LensModel'],
     dateTaken: [xmp ? 'XMP-exif:DateTimeOriginal' : 'EXIF:DateTimeOriginal'],
+    gpsLatitude: ['GPS:GPSLatitude', 'GPS:GPSLatitudeRef'],
+    gpsLongitude: ['GPS:GPSLongitude', 'GPS:GPSLongitudeRef'],
+    gpsAltitude: ['GPS:GPSAltitude'],
+    gpsDate: ['GPS:GPSDateStamp'],
+    credit: ['XMP-photoshop:Credit'],
+    source: ['XMP-iptcCore:Source'],
+    captionWriter: ['XMP-photoshop:CaptionWriter'],
+    jobTitle: ['XMP-iptcCore:AuthorsPosition'],
+    copyrightOwner: ['XMP-iptcExt:CopyrightOwner'],
+    rating: ['Xmp.xmp.Rating'],
+    label: ['Xmp.xmp.Label'],
+    identifier: ['XMP-dc:Identifier'],
+    location: ['XMP-iptcCore:Location'],
   };
   const supported = supportedFields(subtype);
   for (const [id, keys] of Object.entries(map)) {
@@ -175,6 +290,16 @@ export function buildTagMap(payload, subtype) {
       add('XMP-xmp:CreateDate', toIsoDate(value));
     } else if (id === 'dateTaken') {
       add(keys[0], toExifDate(value));
+    } else if (id === 'gpsLatitude') {
+      add(keys[0], toDms(value));
+      add(keys[1], gpsRef(value, 'S', 'N'));
+    } else if (id === 'gpsLongitude') {
+      add(keys[0], toDms(value));
+      add(keys[1], gpsRef(value, 'W', 'E'));
+    } else if (id === 'gpsAltitude' || id === 'rating') {
+      add(keys[0], gpsNumber(value));
+    } else if (id === 'gpsDate') {
+      add(keys[0], toGpsDate(value));
     } else if (id === 'creator' || id === 'description') {
       add(keys[0], asString(value));
       if (keys[1]) add(keys[1], asString(value));
@@ -222,13 +347,17 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const { writeTags, readTags } = await import('../engines/exiftool.js');
   const safeFile = withSafeName(file, options.extension);
   const tags = buildTagMap(payload, options.subtype);
-  if (!Object.keys(tags).length) {
+  const engineTags = {};
+  for (const [key, value] of Object.entries(tags)) {
+    engineTags[WRITE_ALIASES[key] || key] = value;
+  }
+  if (!Object.keys(engineTags).length) {
     throw new AppError('NO_CHANGES', 'Tidak ada metadata yang perlu ditulis.');
   }
   report({ stage: 'Menulis metadata ke gambar…', pct: 35 });
   let bytes;
   try {
-    bytes = await writeTags(safeFile, tags);
+    bytes = await writeTags(safeFile, engineTags);
   } catch (error) {
     throw new AppError('WRITE_FAILED', 'Gagal menulis metadata gambar.', error.message || String(error));
   }
@@ -269,4 +398,4 @@ async function dispose() {
   const { disposeExifToolRuntime } = await import('../engines/exiftool.js');
   await disposeExifToolRuntime();
 }
-export default { meta, sections, fields, sectionsFor, fieldsFor, read, write, dispose };
+export default { meta, sections, fields, sectionsFor, fieldsFor, xmpOnly, read, write, dispose };

@@ -27,7 +27,8 @@ npm run fixtures:generate
 ```
 
 Requires Node 22, ffmpeg (libmp3lame, flac, libopus, libvorbis, libspeex,
-libx264, libvpx, libwebp, AAC), ImageMagick `convert`, and OpenSSL 3.
+libx264, libvpx, libwebp, AAC), ImageMagick `convert`, OpenSSL 3, and the
+vendored ExifTool WASM engine (used to write `gps-iptc.jpg` from Node).
 `generate.mjs` is the auditable compatibility-fixture recipe. It does not download anything.
 The two long playback fixtures are generated, when missing, by
 `tests/e2e/single-undo-redo.mjs` using FFmpeg; run `npm run test:undo`.
@@ -46,6 +47,7 @@ outputs in memory, not changes to these source fixtures.
 | --- | ---: | --- | --- |
 | `pattern.jpg` | 765 | ImageMagick gradient JPEG; handmade EXIF APP1/TIFF | Read EXIF, edit title, preserve untouched tags |
 | `clean-gps.jpg` | 707 | Standalone Node JPEG with a real EXIF GPS IFD + Artist/Software/Owner/Orientation | Fase 3 clean-metadata E2E: detect and remove GPS/identity/software, keep orientation |
+| `gps-iptc.jpg` | 5591 | `pattern.jpg` plus GPS/IPTC/XMP written by the vendored ExifTool WASM engine | Read/edit GPS, IPTC, and XMP fields; edit → write → re-read → integrity round-trip for the extended image fields |
 | `pattern.png` | 2061 | Node zlib/CRC PNG with handmade `eXIf` TIFF chunk | Read EXIF, edit XMP title, preserve original EXIF |
 | `pattern.webp` | 144 | ffmpeg libwebp from gradient PNG | Add/read back title |
 | `pattern.tif` | 394 | ImageMagick TIFF from gradient | Add/read back title; strict integrity must pass |
@@ -116,6 +118,17 @@ GPSLongitudeRef/GPSLongitude, GPSAltitudeRef and GPSAltitude. Run
 root to regenerate it byte-for-byte. The Fase 3 clean-metadata E2E tests use it
 to verify that location/identity/software tags are removed while orientation is
 kept, and that no data is fetched from the network.
+
+`gps-iptc.jpg` is produced by `generate.mjs` from `pattern.jpg` through the vendored
+ExifTool WASM engine (`writeTags`). It carries a real GPS IFD with latitude/longitude
+references, altitude and date stamp, a set of IPTC tags (Credit, Source, By-line,
+Caption-Abstract, Keywords, CopyrightNotice), and XMP properties for the extended
+image fields (credit, source, caption writer, job title, copyright owner, rating,
+label, identifier, location). ExifTool writes the XMP IPTC Core / Extension aliases the
+installed engine accepts (`XMP-photoshop:Source`, `XMP-photoshop:AuthorsPosition`,
+`XMP-plus:CopyrightOwnerName`, `XMP-xmp:Rating`, `XMP-xmp:Label`), which are the raw tags
+the image adapter reads back. The extended-field unit tests use this fixture for a full
+read → plan → write → re-read → verifyIntegrity round-trip.
 
 ## Signature provenance and limitations
 

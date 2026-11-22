@@ -95,6 +95,7 @@ export function collectChanges(state, { validate = false } = {}) {
 }
 export function syncActionBar(els, state) {
   const ready = state.status === 'ready';
+  const readOnly = Boolean(state.adapter?.meta?.readOnly);
   if (ready && !state.fileReadyAnnounced) {
     state.fileReadyAnnounced = true;
     if (typeof window !== 'undefined') {
@@ -110,16 +111,18 @@ export function syncActionBar(els, state) {
   setReloadUnsafe('editor-dirty', state.processing || count > 0);
   const canSave = state.processing || (ready && count > 0);
 
-  bindTranslation(els.dirtyState, 'textContent', () => (state.processing
-    ? t('ui.processing')
-    : count > 0
-      ? t('ui.changesReadyToSave', { v0: count })
-      : t('ui.noChangesYet')));
-  els.dirtyDot.classList.toggle('is-dirty', count > 0 && !state.processing);
-  els.saveBtn.disabled = !canSave;
+  bindTranslation(els.dirtyState, 'textContent', () => (readOnly
+    ? t('ui.rawVideoReadOnly')
+    : state.processing
+      ? t('ui.processing')
+      : count > 0
+        ? t('ui.changesReadyToSave', { v0: count })
+        : t('ui.noChangesYet')));
+  els.dirtyDot.classList.toggle('is-dirty', !readOnly && count > 0 && !state.processing);
+  els.saveBtn.disabled = readOnly || !canSave;
   els.saveBtn.classList.toggle('is-spinning', false);
   bindTranslation(els.saveLabel, 'textContent', () => (state.processing ? t('ui.cancel2') : t('ui.saveDownload')));
-  els.resetBtn.disabled = state.processing || !ready || count === 0;
+  els.resetBtn.disabled = readOnly || state.processing || !ready || count === 0;
   els.outputBase.disabled = state.processing;
   if (els.undoBtn) els.undoBtn.disabled = state.processing || !canUndo(state.history);
   if (els.redoBtn) els.redoBtn.disabled = state.processing || !canRedo(state.history);

@@ -28,8 +28,8 @@ export const FORMAT_RULES = {
   },
   image: {
     ignoredRaw: [/^ICC_Profile:/i, /^XMP-xmpMM:/i],
-    volatileRaw: [/^XMP-xmp:MetadataDate$/i],
-    generatedRaw: [/^XMP-xmp:MetadataDate$/i],
+    volatileRaw: [/^XMP-xmp:MetadataDate$/i, /^XMP-xmp:ModifyDate$/i],
+    generatedRaw: [/^XMP-xmp:MetadataDate$/i, /^XMP-xmp:ModifyDate$/i],
     coverRaw: [],
     knownLoss: [],
   },

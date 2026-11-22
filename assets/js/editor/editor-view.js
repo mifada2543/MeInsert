@@ -20,8 +20,10 @@ function fieldLabel(state, id) {
   const field = state.adapter?.fields?.find((item) => item.id === id);
   return field?.label || id;
 }
+const NO_BROWSER_PREVIEW = new Set(['heic', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf', 'braw', 'r3d', 'arriraw']);
 export function previewUrlFor(file, detection) {
   if (!file || !detection) return null;
+  if (detection.id === 'rawVideo' || NO_BROWSER_PREVIEW.has(detection.subtype)) return null;
   const previewable = ['image', 'pdf', 'mp3', 'flac', 'ogg', 'mp4', 'mkv'];
   return previewable.includes(detection.id) ? URL.createObjectURL(file) : null;
 }
@@ -138,7 +140,10 @@ export function refreshCoverUI(ctx) {
 export function renderTabs(ctx) {
   const { els, state } = ctx;
   let activeTab = els.tabs[0];
+  const hasGps = Boolean(state.adapter && state.detection
+    && fieldsBySection(state.adapter, state.detection.subtype).some((section) => section.id === 'lokasi'));
   for (const tab of els.tabs) {
+    if (tab.dataset.tab === 'gps') tab.hidden = !hasGps;
     const active = tab.dataset.tab === state.activeTab;
     tab.classList.toggle('is-active', active);
     tab.setAttribute('aria-selected', String(active));
@@ -178,6 +183,23 @@ export function renderWorkspace(ctx) {
     return;
   }
   if (!state.adapter || !state.readResult) return;
+  if (state.activeTab === 'gps') {
+    clear(els.panel);
+    const form = el('div', { className: 'form-root' });
+    els.panel.append(form);
+    const sections = fieldsBySection(state.adapter, state.detection.subtype)
+      .filter((section) => section.id === 'lokasi');
+    renderForm(form, {
+      adapter: state.adapter,
+      sections,
+      state,
+      handlers: ctx.handlers,
+      coverInCard: false,
+      extras: false,
+    });
+    setEditorBadge(els, `${state.detection.label} · GPS`, true);
+    return;
+  }
   if (state.activeTab === 'raw') {
     clear(els.panel);
     renderRaw(els.panel, { raw: state.readResult.raw || [] });
@@ -201,7 +223,8 @@ export function renderWorkspace(ctx) {
   }
   const form = el('div', { className: 'form-root' });
   els.panel.append(form);
-  const sections = fieldsBySection(state.adapter, state.detection.subtype);
+  const sections = fieldsBySection(state.adapter, state.detection.subtype)
+    .filter((section) => section.id !== 'lokasi');
   renderForm(form, {
     adapter: state.adapter,
     sections,

@@ -66,6 +66,12 @@ npm run test:compat       # real-file harness
 npm run fixtures:generate # regenerate optional fixtures
 ```
 
+HEIC, RAW still images, and RAW video are covered by the unit suites
+`tests/unit/image-metadata-fields.test.js`, `tests/unit/detector.test.js`, and
+`tests/unit/raw-video.test.js`. There are no dedicated npm scripts for those
+formats. If a fixture is unavailable (for example a licensed BRAW/R3D sample),
+report the case explicitly as `SKIP:` — a skip is **not** a pass.
+
 ### Selection and sharding
 
 CI splits the E2E suites across several runners. Recognized variables:
@@ -169,6 +175,12 @@ npm run test:timed-text   # hanya suite editor lirik/subtitle
 npm run test:compat       # harness file nyata
 npm run fixtures:generate # regenerasi fixture opsional
 ```
+
+HEIC, gambar RAW, dan RAW video diuji lewat suite unit
+`tests/unit/image-metadata-fields.test.js`, `tests/unit/detector.test.js`, dan
+`tests/unit/raw-video.test.js`. Tidak ada skrip npm khusus untuk format tersebut.
+Bila fixture tidak tersedia (misalnya sampel BRAW/R3D berlisensi), laporkan kasus
+tersebut secara eksplisit sebagai `SKIP:` — skip **bukan** lulus.
 
 ### Seleksi dan sharding
 

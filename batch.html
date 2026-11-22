@@ -70,6 +70,7 @@
         <h1><span data-i18n="ui.reviewAllFiles">Periksa semua file,</span><br><span class="accent-text" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer"><span data-i18n="ui.thenApply">lalu terapkan.</span></span></h1>
         <p class="lede"><span data-i18n="ui.chooseMultipleLocalFilesMeInsertGroupsMetadataByFormat">Unggah beberapa file sekaligus. MeInsert mengelompokkan metadata per format, menjaga file yang tidak dicentang tetap utuh, lalu mengunduh hasilnya sebagai ZIP — lengkap dengan laporan.</span></p>
         <div class="format-chips" id="formatChips" aria-label="Format yang didukung" data-i18n-aria-label="ui.supportedFormats"></div>
+        <p class="format-support-link"><a class="text-link" href="./about.html"><span data-i18n="ui.seeSupportAndLimits">Lihat dukungan &amp; keterbatasan</span></a></p>
         <div class="trust-row">
           <span><strong>01</strong> <span data-i18n="ui.batchReview">Cek massal</span></span>
           <span><strong>02</strong> <span data-i18n="ui.selectByGroup">Pilih per grup</span></span>
@@ -78,7 +79,7 @@
       </div>
       <div class="drop-wrap">
         <section class="drop-card batch-drop-card" id="batchDropCard">
-          <input type="file" id="batchFileInput" hidden multiple accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm,.docx,.docm,.xlsx,.xlsm,.pptx,.pptm,.odt,.ods,.odp">
+          <input type="file" id="batchFileInput" hidden multiple accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm,.docx,.docm,.xlsx,.xlsm,.pptx,.pptm,.odt,.ods,.odp,.heic,.heif,.dng,.cr2,.cr3,.nef,.arw,.orf,.rw2,.raf,.braw,.r3d,.ari,.mxf">
           <div class="drop-visual" aria-hidden="true">
             <div class="tag-stack tag-back"></div>
             <div class="tag-stack tag-mid"></div>
@@ -102,7 +103,7 @@
       </div>
     </section>
     <section class="batch-workspace" id="batchWorkspace" hidden>
-      <input type="file" id="batchAddFileInput" hidden multiple accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm,.docx,.docm,.xlsx,.xlsm,.pptx,.pptm,.odt,.ods,.odp">
+      <input type="file" id="batchAddFileInput" hidden multiple accept=".jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm,.docx,.docm,.xlsx,.xlsm,.pptx,.pptm,.odt,.ods,.odp,.heic,.heif,.dng,.cr2,.cr3,.nef,.arw,.orf,.rw2,.raf,.braw,.r3d,.ari,.mxf">
       <div class="workspace-top">
         <button class="back-button" id="batchBackBtn" type="button">
           <span class="icon" aria-hidden="true"></span>

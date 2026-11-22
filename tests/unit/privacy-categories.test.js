@@ -73,6 +73,35 @@ test('location tags are detected in images, video, audio, and PDF', () => {
   assert.equal(categorizeRawTag('ogg', 'LOCATION'), 'location');
   assert.equal(categorizeRawTag('pdf', 'XMP-iptcExt:LocationCreatedCountryName'), 'location');
 });
+test('new image GPS and IPTC fields are classified as location', () => {
+  for (const tag of [
+    'GPS:GPSLatitude', 'GPS:GPSLatitudeRef', 'GPS:GPSLongitude', 'GPS:GPSLongitudeRef',
+    'GPS:GPSAltitude', 'GPS:GPSDateStamp',
+  ]) {
+    assert.equal(categorizeRawTag('image', tag), 'location', tag);
+  }
+  assert.equal(categorizeRawTag('image', 'XMP-iptcCore:Location'), 'location');
+  assert.equal(categorizeRawTag('image', 'gpsLatitude'), 'location');
+  assert.equal(categorizeRawTag('image', 'gpsDate'), 'location');
+  assert.equal(isCleanableField('image', 'gpsLatitude'), true);
+  assert.equal(isCleanableField('image', 'location'), true);
+  assert.equal(isCleanableField('image', 'credit'), false);
+});
+test('GPS fields contribute to the location cleaning category', () => {
+  const summary = summarizeCleaning({
+    format: { id: 'image' },
+    fields: {
+      gpsLatitude: { id: 'gpsLatitude', label: 'Lintang', value: '-6.2088', normalized: '-6.2088' },
+      location: { id: 'location', label: 'Lokasi', value: 'Jakarta', normalized: 'Jakarta' },
+      title: { id: 'title', label: 'Judul', value: 'Foto', normalized: 'Foto' },
+    },
+    raw: [{ group: 'GPS', tag: 'GPS:GPSLatitudeRef', value: 'South' }],
+    custom: [],
+    cover: { present: false },
+  });
+  assert.equal(summary.categories.location.count, 3);
+  assert.equal(summary.total, 3);
+});
 test('device tags are detected in images, video, audio, and PDF', () => {
   assert.equal(categorizeRawTag('jpeg', 'EXIF:BodySerialNumber'), 'device');
   assert.equal(categorizeRawTag('jpeg', 'EXIF:CameraOwnerName'), 'device');

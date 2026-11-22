@@ -126,6 +126,40 @@ is authoritative for each file. These are the known caveats:
 
 ## Format-specific caveats
 
+### HEIC/HEIF
+
+- Metadata is written to **XMP on a best-effort basis**. The HEIF container and
+  its encoded pixels are not rewritten, so EXIF-only readers may not show the
+  fields. Unsupported tags are not guaranteed to survive.
+- The preview is a **placeholder**: browsers do not decode HEIC/HEIF natively.
+  It identifies the file type; it is not a rendering of the photo.
+- The output is read back and verified like other image files, but the
+  best-effort XMP path reports findings you should review before downloading.
+
+### RAW images
+
+- Supported still-RAW subtypes: DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF.
+- **XMP-only, best-effort**: only the XMP packet is patched. Binary EXIF, maker
+  notes, and raw sensor data are never decoded or modified; EXIF-only readers
+  may not show the fields.
+- The preview is a **placeholder** because there is no raw decoder in the
+  browser. It does not represent the actual image.
+- **Chapters and offsets:** CinemaDNG inside MOV/MKV is not handled here. Those
+  files keep using the `mp4`/`mkv` adapters and inherit their chapter and
+  container-offset caveats.
+
+### RAW video
+
+- Supported subtypes: BRAW, R3D, ARRIRAW.
+- **Read-only**: metadata can be inspected, but there is no write path. The
+  **save guard** rejects any attempt to export or overwrite these files, so the
+  original is never touched.
+- The preview is a **placeholder**; compressed raw frames are not decoded or
+  rendered.
+- **Chapters and offsets:** these containers can carry timecode, chapter, or
+  byte-offset metadata that MeInsert may read but cannot preserve or rewrite.
+  Treat the read view as partial, not as a complete map of the file.
+
 ### MP3
 
 - ID3v2.3/v2.4 tags are patched surgically (`core/id3-passthrough.js`): frames

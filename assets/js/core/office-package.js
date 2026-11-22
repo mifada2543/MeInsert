@@ -219,8 +219,6 @@ export function validateOfficePackage(inspected) {
   const findings = [];
   if (!inspected) return { subtype: null, findings: ['Paket tidak terbaca.'], packageValid: false };
   if (inspected.zip64) findings.push('ZIP64 tidak didukung untuk dokumen Office.');
-  if (inspected.prefix && inspected.prefix > 0 && !inspected.odf) {
-  }
   const skipped = new Set(inspected.previewSkipped || []);
   if (inspected.findings?.length) findings.push(...inspected.findings.filter((item) => !skipped.has(item)));
   for (const name of ['docProps/core.xml', 'docProps/app.xml', 'docProps/custom.xml', 'meta.xml']) {

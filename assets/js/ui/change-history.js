@@ -2,6 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Panel riwayat perubahan editor satu file.
+import { bindTranslation, t, translated } from '../i18n/index.js';
 import { clear, el } from './dom.js';
 import { icon } from './icons.js';
 import { showToast } from './toast.js';

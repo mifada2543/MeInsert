@@ -10,10 +10,64 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## Daftar isi
 
+- [1.6.0 — 2026-11-22](#160--2026-11-22)
 - [1.5.0 — 2026-11-21](#150--2026-11-21)
 - [1.4.1 — 2026-11-21](#141--2026-11-21)
 - [1.4.0 — 2026-11-21](#140--2026-11-21)
 - [1.3.0 — 2026-11-18](#130--2026-11-18)
+
+## [1.6.0] — 2026-11-22
+
+Rilis ini memperluas metadata gambar dengan field GPS dan IPTC/XMP DAM, serta
+menambahkan dukungan HEIC/HEIF, gambar RAW, dan video RAW. Badge README ID/EN
+menunjukkan `v1.6.0`; cache shell naik ke `meinsert-v65`, cache engine tetap
+`meinsert-engine-v1`. Seluruh alur tetap client-side/offline-first: tidak ada
+upload, dan file asli tidak pernah ditimpa.
+
+### Fitur — GPS & metadata IPTC/XMP DAM
+
+- Field **GPS** baru untuk gambar: lintang, bujur, altitude, dan tanggal. Field
+  ini ditempatkan di tab **Metadata GPS** tersendiri, bukan di tab Metadata umum.
+- Field **IPTC/XMP DAM** baru: Credit, Source, CaptionWriter, JobTitle,
+  CopyrightOwner, Rating, Label, Identifier, dan Location.
+- Field mengikuti alur editor yang sama dengan field lain: muncul sesuai format,
+  masuk review sebelum penulisan, ditulis ke paket XMP, lalu diverifikasi dengan
+  membaca ulang hasil. Hanya field yang diubah yang ditulis.
+
+### Fitur — format HEIC/HEIF, gambar RAW, dan video RAW
+
+- **HEIC / HEIF**: penulisan metadata XMP secara *best-effort* dengan pratinjau
+  placeholder (browser tidak merender format ini secara native).
+- **Gambar RAW** — DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF: **XMP-only**
+  (*best-effort*) dengan pratinjau placeholder. Data sensor mentah tidak
+  di-decode atau diubah.
+- **Video RAW** — BRAW, R3D, ARRIRAW: **read-only**. Metadata dapat dibaca,
+  tetapi tidak bisa disimpan; guard save menolak penulisan pada format ini.
+- CinemaDNG di dalam kontainer MOV/MKV tetap memakai adapter `mp4`/`mkv`, bukan
+  adapter RAW, sehingga perilaku chapter/offset mengikuti adapter kontainer.
+
+### Dokumentasi
+
+- `docs/ARCHITECTURE.md` mendokumentasikan subtype baru pada adapter image,
+  adapter `raw-video` yang read-only, dan guard save.
+- `docs/LIMITATIONS.md` menambahkan bagian "HEIC/HEIF", "RAW images", dan
+  "RAW video" untuk kaveat pratinjau placeholder, XMP-only, read-only, serta
+  chapter/offset.
+- Chip format di `index.html`, `batch.html`, dan `single.html` kini menampilkan
+  HEIC/HEIF, gambar RAW, dan RAW video. `about.html` memisahkan format didukung
+  penuh, best-effort, tidak didukung, dan keterbatasan.
+- `docs/TESTING.md` mencatat perintah suite format baru dan aturan `SKIP`
+  bila fixture tidak tersedia; `docs/deployment.md` memperbarui catatan bytes
+  offline untuk aset format baru.
+
+### Verifikasi yang akan dijalankan
+
+- ESLint 0 error, unit test, `check:css`, `check:policies`, `check:assets`, dan
+  parity README (urutan heading serta kumpulan tautan `docs/*.md` ID/EN).
+- Unit test format baru lewat `image-metadata-fields`, `detector`, dan
+  `raw-video`; fixture yang absen dilaporkan sebagai `SKIP:`, bukan lulus.
+- Audit offline `test:offline:real`: shell `meinsert-v65` terpasang offline,
+  cache engine tetap dipertahankan, dan tidak ada request keluar origin.
 
 ## [1.5.0] — 2026-11-21
 

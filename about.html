@@ -53,6 +53,7 @@
         <h1><span data-i18n="ui.about">Tentang MeInsert</span><br><span class="accent-text" title="File tidak pernah dikirim ke server" data-i18n-title="ui.filesAreNeverSentToAServer"><span data-i18n="ui.noUploads">Tanpa upload.</span></span></h1>
         <p class="lede" id="aboutIntro" data-i18n="ui.aboutIntro">MeInsert adalah editor metadata lokal: berkas Anda dibaca, diubah, diverifikasi, dan diunduh kembali seluruhnya di browser. Tidak ada server, tidak ada upload, tidak ada akun.</p>
         <p class="about-note"><span data-i18n="ui.aboutFooterNote">Penjelasan singkat ini bukan pengganti dokumen resmi. Baca kebijakan lengkap sebelum menggunakan MeInsert.</span></p>
+        <div class="format-chips" id="formatChips" aria-label="Format yang didukung" data-i18n-aria-label="ui.supportedFormats"></div>
       </div>
       <div class="mode-cards about-cards">
         <section class="mode-card about-card about-card-formats" aria-labelledby="about-formats-title">
@@ -60,6 +61,7 @@
           <span class="mode-card-kicker" data-i18n="ui.supportedFormats">Format yang didukung</span>
           <h2 id="about-formats-title" data-i18n="ui.supportedFormats">Format yang didukung</h2>
           <p data-i18n="ui.aboutFormatsIntro">MeInsert mendukung gambar (JPG, PNG, WebP, TIFF), PDF, audio (MP3, FLAC, OGG), video (MP4, MKV), dan dokumen Office (DOCX, XLSX, PPTX, ODT, ODS, ODP, termasuk varian makro). Beberapa kasus seperti PDF bertanda tangan dan makro bersifat best-effort; format lama dan dokumen terenkripsi tidak didukung.</p>
+          <h3 class="about-support-heading" data-i18n="ui.statusFullySupported">Didukung penuh</h3>
           <ul class="about-format-list">
             <li><strong data-i18n="ui.images">Gambar</strong><code>JPG · PNG · WebP · TIFF</code></li>
             <li><strong data-i18n="ui.offlineFeaturePdf">PDF</strong><code>PDF</code></li>
@@ -67,13 +69,32 @@
             <li><strong>MP4 / MKV</strong><code>Video</code></li>
             <li><strong data-i18n="ui.offlineFeatureOffice">Office</strong><code>DOCX · XLSX · PPTX · ODT · ODS · ODP</code><span class="about-format-note" data-i18n="ui.officeFormatsNote">ODT/ODS/ODP dan dokumen makro juga didukung</span></li>
           </ul>
+          <h3 class="about-support-heading" data-i18n="ui.aboutBestEffortFormats">Didukung dengan keterbatasan</h3>
+          <ul class="about-format-list">
+            <li><strong>HEIC / HEIF</strong><code>HEIC · HEIF</code></li>
+            <li><strong data-i18n="ui.aboutRawImages">Gambar RAW</strong><code>DNG · CR2 · CR3 · NEF · ARW · ORF · RW2 · RAF</code></li>
+            <li><strong data-i18n="ui.aboutRawVideo">Video RAW</strong><code>BRAW · R3D · ARRIRAW</code></li>
+            <li><strong data-i18n="ui.offlineFeatureOffice">Office</strong><code>DOCM · XLSM · PPTM · PDF bertanda tangan</code></li>
+          </ul>
+          <h3 class="about-support-heading" data-i18n="ui.statusUnsupported">Tidak didukung</h3>
+          <ul class="about-format-list">
+            <li><strong data-i18n="ui.officeUnsupported">Format Office lama</strong><code>.doc · .xls · .ppt</code></li>
+            <li><strong data-i18n="ui.officeEncrypted">Office terenkripsi</strong><code>Encrypted Office</code></li>
+            <li><strong>FLAC-in-Ogg</strong><code>FLAC-in-Ogg</code></li>
+            <li><strong>Speex</strong><code>Speex</code></li>
+          </ul>
           <div class="about-caveats" role="note">
+            <strong data-i18n="ui.aboutLimitations">Keterbatasan</strong>
             <ul>
+              <li data-i18n="ui.aboutHeicLimitation">HEIC/HEIF: pratinjau placeholder, penulisan XMP bersifat best-effort.</li>
+              <li data-i18n="ui.aboutRawImageLimitation">Gambar RAW: hanya XMP; data sensor mentah tidak diubah.</li>
+              <li data-i18n="ui.aboutRawVideoLimitation">Video RAW: hanya bisa dibaca, tidak bisa disimpan.</li>
+              <li data-i18n="ui.aboutChapterLimitation">Chapter dan attachment mungkin tidak dipertahankan saat container ditulis ulang.</li>
+              <li data-i18n="ui.aboutC2paLimitation">C2PA/Content Credentials dan MakerNotes tidak diedit.</li>
+              <li data-i18n="ui.aboutMemoryLimitation">File sangat besar dapat diblokir oleh kebijakan memori.</li>
               <li data-i18n="ui.thisPDFHasADigitalSignatureWritingMetadataWill">PDF ini memiliki tanda tangan digital. Menulis metadata akan membuat tanda tangan tidak valid.</li>
               <li data-i18n="ui.officeSignedWarning">Dokumen Office ini bertanda tangan; mengubah metadata akan membuat tanda tangan tidak valid.</li>
               <li data-i18n="ui.officeMacroWarning">Dokumen mengandung makro. Makro dipertahankan apa adanya, tetapi hasil sebaiknya diperiksa.</li>
-              <li data-i18n="ui.officeEncrypted">Dokumen Office terenkripsi tidak didukung.</li>
-              <li data-i18n="ui.officeUnsupported">Format Office lama (.doc/.xls/.ppt) belum didukung.</li>
             </ul>
           </div>
         </section>

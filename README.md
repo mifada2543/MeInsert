@@ -14,7 +14,7 @@ Tanpa server. Tanpa upload. Tanpa akun.
 [Demo langsung](https://meinsert.my.id/) · [Editor satu file](https://meinsert.my.id/single.html) · [Mode batch](https://meinsert.my.id/batch.html) · [Dokumentasi](#dokumentasi-lanjutan)
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
-[![Versi](https://img.shields.io/badge/version-v1.5.0-blue?style=flat-square)](./package.json)
+[![Versi](https://img.shields.io/badge/version-v1.6.0-blue?style=flat-square)](./package.json)
 [![Lisensi](https://img.shields.io/badge/Lisensi-AGPLv3-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#cara-memverifikasi-klaim-lokal)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)
@@ -67,12 +67,40 @@ Format dikenali dari **isi berkas**, bukan hanya ekstensi, sehingga berkas yang 
 | Kategori | Format | Metode penulisan |
 |---|---|---|
 | Gambar | JPEG, PNG, WebP, TIFF | XMP + EXIF; IPTC untuk JPEG/TIFF |
+| Gambar | HEIC, HEIF | XMP (*best-effort*); pratinjau placeholder |
+| Gambar RAW | DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF | XMP-only (*best-effort*); pratinjau placeholder |
+| Video RAW | BRAW, R3D, ARRIRAW | **Read-only** — tidak bisa disimpan; pratinjau placeholder |
 | PDF | PDF | Info Dictionary + XMP stream |
 | Audio | MP3, FLAC, OGG Vorbis / Opus | ID3v2.3, Vorbis Comment (remux lossless) |
 | Video | MP4 / M4A / MOV, MKV / WebM | ItemList + XMP (ExifTool); Matroska SimpleTag (remux lossless) |
 | Office | DOCX, XLSX, PPTX, ODT, ODS, ODP | Hanya menambal bagian XML metadata; semua entri ZIP lain diverifikasi byte-for-byte |
 
 Detail teknis dan batas tiap format ada di [dokumentasi keterbatasan](docs/LIMITATIONS.md).
+
+### GPS & metadata IPTC/XMP
+
+Field metadata gambar mencakup **GPS** — lintang, bujur, altitude, dan tanggal —
+yang kini berada di tab **Metadata GPS** tersendiri, serta field **IPTC/XMP DAM**: Credit, Source, CaptionWriter, JobTitle,
+CopyrightOwner, Rating, Label, Identifier, dan Location. Field muncul untuk
+format gambar yang mendukung XMP; nilainya ditulis ke paket XMP dan diverifikasi
+dengan membaca ulang hasil, seperti field lainnya. Hanya field yang diubah yang
+ditulis, sehingga tag lain yang tidak didukung tidak dijamin tetap utuh.
+
+### Format HEIC, RAW, dan RAW video
+
+- **HEIC / HEIF** — metadata ditulis ke XMP secara *best-effort*. Pratinjau
+  memakai placeholder karena browser tidak merender format ini secara native.
+- **Gambar RAW** (DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF) — **XMP-only**
+  (*best-effort*) dengan pratinjau placeholder. Data sensor mentah tidak
+  di-decode atau diubah.
+- **Video RAW** (BRAW, R3D, ARRIRAW) — **read-only**: metadata dapat dibaca,
+  tetapi berkas tidak bisa disimpan; guard save menolak penulisan. Pratinjau
+  juga berupa placeholder.
+
+CinemaDNG di dalam kontainer MOV/MKV tetap memakai adapter `mp4`/`mkv`, bukan
+adapter RAW. Semua alur tetap berjalan di perangkat Anda dan berfungsi offline
+setelah cache terpasang; tidak ada yang diunggah. Detail ada di
+[dokumentasi keterbatasan](docs/LIMITATIONS.md).
 
 ### Sampul / thumbnail
 

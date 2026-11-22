@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { PDFDocument, PDFName, PDFHexString, PDFString } from 'pdf-lib';
+import { writeTags as writeImageTags } from '../../assets/js/engines/exiftool.js';
 
 const dir = fileURLToPath(new URL('.', import.meta.url));
 const out = (name, bytes) => writeFileSync(join(dir, name), bytes);
@@ -81,6 +82,37 @@ const jpg = read('pattern.jpg');
 const app = Buffer.concat([Buffer.from('Exif\0\0'), exif()]);
 const len = Buffer.alloc(2); len.writeUInt16BE(app.length + 2);
 out('pattern.jpg', Buffer.concat([jpg.subarray(0, 2), Buffer.from([255, 225]), len, app, jpg.subarray(2)]));
+const gpsIptcTags = {
+  'XMP-dc:Title': 'Foto uji GPS IPTC',
+  'XMP-dc:Creator': 'Fotografer Uji',
+  'XMP-dc:Description': 'Foto sintetis dengan GPS dan IPTC',
+  'XMP-dc:Subject': ['gps', 'iptc', 'uji'],
+  'XMP-dc:Rights': '© 2026 MeInsert',
+  'XMP-dc:Identifier': 'id-uji-001',
+  'XMP-xmp:CreateDate': '2026:01:02 03:04:05',
+  'XMP-xmp:CreatorTool': 'MeInsert fixture',
+  'XMP-xmp:Rating': 4,
+  'XMP-xmp:Label': 'Uji',
+  'XMP-photoshop:Credit': 'Kredit uji',
+  'XMP-photoshop:Source': 'Sumber uji',
+  'XMP-photoshop:CaptionWriter': 'Penulis uji',
+  'XMP-photoshop:AuthorsPosition': 'Jabatan uji',
+  'XMP-plus:CopyrightOwnerName': 'Pemilik uji',
+  'XMP-iptcCore:Location': 'Jakarta',
+  'GPS:GPSLatitude': '6.2088',
+  'GPS:GPSLatitudeRef': 'S',
+  'GPS:GPSLongitude': '106.8456',
+  'GPS:GPSLongitudeRef': 'E',
+  'GPS:GPSAltitude': '12.5',
+  'GPS:GPSDateStamp': '2026:01:02',
+  'IPTC:Credit': 'Kredit IPTC',
+  'IPTC:Source': 'Sumber IPTC',
+  'IPTC:By-line': 'Fotografer IPTC',
+  'IPTC:Caption-Abstract': 'Deskripsi IPTC',
+  'IPTC:Keywords': ['gps', 'iptc'],
+  'IPTC:CopyrightNotice': '© 2026 IPTC',
+};
+out('gps-iptc.jpg', await writeImageTags(new File([read('pattern.jpg')], 'input.jpg', { type: 'image/jpeg' }), gpsIptcTags));
 ff(['-i', join(dir, 'pattern.png'), '-frames:v', '1', '-c:v', 'libwebp'], 'pattern.webp');
 execFileSync('convert', [join(dir, 'pattern.png'), '-strip', join(dir, 'pattern.tif')]);
 for (const ext of ['gif', 'bmp']) execFileSync('convert', [join(dir, 'pattern.png'), '-strip', join(dir, `cover.${ext}`)]);

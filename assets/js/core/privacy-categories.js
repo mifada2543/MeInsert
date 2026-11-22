@@ -102,7 +102,7 @@ const OFFICE_CATEGORY_PATTERNS = {
     /(?:^| )dcterms modified$/,
   ],
 };
-const FIELD_CATEGORIES = ['identity', 'software'];
+const FIELD_CATEGORIES = ['identity', 'software', 'location'];
 function normalizeTagText(tag) {
   return String(tag ?? '')
     .toLowerCase()
@@ -136,6 +136,7 @@ export function categorizeRawTag(formatId, tag) {
     }
   }
   if (formatId === 'pdf' && norm === 'creator') return 'software';
+  if (/^gps:/i.test(String(tag ?? '').trim())) return 'location';
   for (const category of CATEGORY_PRIORITY) {
     if (CATEGORY_PATTERNS[category].some((pattern) => pattern.test(norm))) return category;
   }

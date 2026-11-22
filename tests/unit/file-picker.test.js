@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const OFFICE = ['.docx', '.docm', '.xlsx', '.xlsm', '.pptx', '.pptm', '.odt', '.ods', '.odp'];
+const RAW = ['.heic', '.heif', '.dng', '.cr2', '.cr3', '.nef', '.arw', '.orf', '.rw2', '.raf', '.braw', '.r3d', '.ari', '.mxf'];
 function exts(value) {
   return new Set(String(value || '').split(',').map((item) => item.trim().toLowerCase()).filter(Boolean));
 }
@@ -15,6 +16,8 @@ test('single-file picker advertises every supported Office format', async () => 
   const single = exts(match[1]);
   const missing = OFFICE.filter((ext) => !single.has(ext));
   assert.deepEqual(missing, [], `Office formats missing from single-file picker: ${missing.join(', ')}`);
+  const missingRaw = RAW.filter((ext) => !single.has(ext));
+  assert.deepEqual(missingRaw, [], `Raw formats missing from single-file picker: ${missingRaw.join(', ')}`);
 });
 test('single-file and batch pickers stay in sync', async () => {
   const source = await readFile('assets/js/editor/editor-file.js', 'utf8');
@@ -22,6 +25,9 @@ test('single-file and batch pickers stay in sync', async () => {
   const batch = await readFile('batch.html', 'utf8');
   const batchAccept = [...batch.matchAll(/accept="([^"]+)"/g)].map((item) => item[1]);
   assert.ok(batchAccept.length >= 2, 'batch picker accept attributes not found');
-  const missing = [...exts(batchAccept[0])].filter((ext) => !single.has(ext));
+  const batchExts = exts(batchAccept[0]);
+  const missing = [...batchExts].filter((ext) => !single.has(ext));
   assert.deepEqual(missing, [], `Batch picker offers formats missing in single editor: ${missing.join(', ')}`);
+  const missingInBatch = [...OFFICE, ...RAW].filter((ext) => !batchExts.has(ext));
+  assert.deepEqual(missingInBatch, [], `Formats missing in batch picker: ${missingInBatch.join(', ')}`);
 });

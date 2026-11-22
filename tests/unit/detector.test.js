@@ -18,6 +18,11 @@ const JPEG = [0xff, 0xd8, 0xff, 0xe0];
 const PDF = [...new TextEncoder().encode('%PDF-1.7')];
 const OGG_OPUS = [...new TextEncoder().encode('OggS'), 0, 0,0,0,0,0,0,0,0,0,0,0,0, ...new TextEncoder().encode('OpusHead')];
 const MP4_M4A = [0, 0, 0, 20, ...new TextEncoder().encode('ftypM4A ')];
+const HEIC = [0, 0, 0, 24, ...new TextEncoder().encode('ftypheic')];
+const TIFF = [0x49, 0x49, 0x2a, 0x00];
+const CR3 = [0, 0, 0, 24, ...new TextEncoder().encode('ftypcrx ')];
+const R3D = [...new TextEncoder().encode('R3D')];
+const BRAW = [0, 0, 0, 24, ...new TextEncoder().encode('braw')];
 test('warns when a .jpg file actually contains PNG data', async () => {
   const detection = await detectFile(file('photo.jpg', PNG));
   assert.equal(detection.subtype, 'png');
@@ -80,4 +85,37 @@ test('does not classify an ordinary ZIP as Office from its extension alone', asy
   const detection = await detectFile(new File([bytes], 'generic.docx'));
   assert.equal(detection.id, 'office');
   assert.match(detection.warning, /isi file tidak dikenali/);
+});
+test('mendeteksi HEIC dari brand ftyp heic', async () => {
+  const detection = await detectFile(file('image.heic', HEIC));
+  assert.equal(detection.id, 'image');
+  assert.equal(detection.subtype, 'heic');
+  assert.equal(detection.ext, 'heic');
+  assert.equal(detection.warning, undefined);
+});
+test('mendeteksi DNG dari ekstensi dengan magic TIFF', async () => {
+  const detection = await detectFile(file('raw.dng', TIFF));
+  assert.equal(detection.id, 'image');
+  assert.equal(detection.subtype, 'dng');
+  assert.equal(detection.ext, 'dng');
+  assert.equal(detection.warning, undefined);
+});
+test('mendeteksi CR3 dari brand ftyp crx', async () => {
+  const detection = await detectFile(file('raw.cr3', CR3));
+  assert.equal(detection.id, 'image');
+  assert.equal(detection.subtype, 'cr3');
+  assert.equal(detection.ext, 'cr3');
+  assert.equal(detection.warning, undefined);
+});
+test('mendeteksi R3D dari magic di awal file', async () => {
+  const detection = await detectFile(file('clip.r3d', R3D));
+  assert.equal(detection.id, 'rawVideo');
+  assert.equal(detection.subtype, 'r3d');
+  assert.equal(detection.ext, 'r3d');
+});
+test('mendeteksi BRAW dari fourcc braw', async () => {
+  const detection = await detectFile(file('clip.braw', BRAW));
+  assert.equal(detection.id, 'rawVideo');
+  assert.equal(detection.subtype, 'braw');
+  assert.equal(detection.ext, 'braw');
 });

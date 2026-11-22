@@ -82,9 +82,14 @@ Behavior to know about:
 - The timed-text editor modules (`core/timed-text.js` and
   `ui/timed-text-editor.js`) are part of `SHELL_URLS`, so they work offline
   without an extra engine download.
-- When the size of an audio/video file listed in `OFFLINE_FEATURES[*].urls`
-  changes (for example `mp3.js`, `mkv.js`, `id3-sylt.js`), update its `bytes`
-  value so the offline estimate test keeps passing.
+- When the size of a file listed in `OFFLINE_FEATURES[*].urls` changes (for
+  example `mp3.js`, `mkv.js`, `id3-sylt.js`, or a new format adapter for HEIC/HEIF,
+  still RAW, or RAW video), update its `bytes` value so the offline estimate test
+  keeps passing. Adding those formats changes the offline byte total too:
+  register the new adapter URLs in `OFFLINE_FEATURES` and `KNOWN_OPTIONAL_URLS`,
+  refresh their `bytes` values, then bump the shell cache together with
+  `CURRENT_VERSION` (this release: `meinsert-v65`). The optional engine cache
+  stays on `meinsert-engine-v1`.
 - `KNOWN_OPTIONAL_URLS` in `sw.js` must equal the union of
   `OFFLINE_FEATURES[*].urls` exactly; the `offline-manifest` test enforces it.
 - Before fetching, the worker reuses an engine entry carrying
@@ -173,9 +178,14 @@ Perilaku yang perlu diketahui:
   `SHELL_URLS` ke cache dengan nama yang sama.
 - Modul editor teks berirama (`core/timed-text.js` dan `ui/timed-text-editor.js`)
   termasuk `SHELL_URLS`, jadi tersedia offline tanpa unduhan engine tambahan.
-- Perubahan ukuran file audio/video yang tercantum di `OFFLINE_FEATURES[*].urls`
-  (mis. `mp3.js`, `mkv.js`, `id3-sylt.js`) harus diikuti pembaruan nilai `bytes`
-  agar tes estimasi offline tetap lolos.
+- Perubahan ukuran file yang tercantum di `OFFLINE_FEATURES[*].urls` (mis.
+  `mp3.js`, `mkv.js`, `id3-sylt.js`, atau adapter baru untuk HEIC/HEIF, gambar
+  RAW, dan video RAW) harus diikuti pembaruan nilai `bytes` agar tes estimasi
+  offline tetap lolos. Menambahkan format-format tersebut juga mengubah total byte
+  offline: daftarkan URL adapter baru di `OFFLINE_FEATURES` dan
+  `KNOWN_OPTIONAL_URLS`, perbarui nilai `bytes`-nya, lalu naikkan cache shell
+  bersama `CURRENT_VERSION` (rilis ini: `meinsert-v65`). Cache engine opsional
+  tetap di `meinsert-engine-v1`.
 - `KNOWN_OPTIONAL_URLS` di `sw.js` harus sama persis dengan gabungan
   `OFFLINE_FEATURES[*].urls`; tes `offline-manifest` memeriksanya.
 - Sebelum mengunduh, worker memakai ulang entri engine yang memiliki header
