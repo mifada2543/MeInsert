@@ -28,51 +28,27 @@ test('stream progress precedes cache completion and lazy cache is reused', async
   assert.equal(await first, 4);
   assert.equal(await second, 4);
   assert.equal(calls, 1);
-  assert.equal((await context.api.cacheFirst({ url })).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v3');
+  assert.equal((await context.api.cacheFirst({ url })).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
   assert.equal(calls, 1);
   entries.set(url, new Response('legacy cached engine'));
   assert.ok(await context.api.cachedOptionalResponse(cache, url));
 });
-test('legacy pinned raw WASM is migrated to the gzip URL without a network request', async () => {
-  const { gunzipSync } = await import('node:zlib');
-  const gz = await readFile(new URL(`../../assets/vendor/exiftool-wasm/${exiftoolBuild.name}.gz`, import.meta.url));
-  const raw = gunzipSync(gz);
-  const url = `https://test.local/assets/vendor/exiftool-wasm/${exiftoolBuild.name}`;
-  const entries = new Map([[url, new Response(raw)]]);
-  const cache = {
-    match: async (key) => entries.get(key)?.clone(),
-    put: async (key, response) => entries.set(key, new Response(await response.arrayBuffer(), { headers: response.headers })),
-    delete: async (key) => entries.delete(key),
-  };
-  const context = vm.createContext({ URL, Response, Headers, Uint8Array, CompressionStream, crypto: globalThis.crypto,
-    caches: { open: async () => cache }, self: { registration: { scope: 'https://test.local/' }, addEventListener() {} },
-    fetch: async () => { throw new Error('unexpected network request'); } });
-  vm.runInContext(source + '\nthis.migrate = migrateRawWasmCache;', context);
-  await context.migrate();
-  assert.equal(entries.has(url), false);
-  assert.ok(gunzipSync(Buffer.from(await entries.get(`${url}.gz`).arrayBuffer())).equals(raw));
-  assert.equal(entries.get(`${url}.gz`).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v3');
-  await context.migrate();
-  assert.equal(entries.size, 1);
-  entries.clear();
-  entries.set(url, new Response(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0)));
-  await context.migrate();
-  assert.equal(entries.has(`${url}.gz`), false);
-});
-test('upgrading a previously installed image engine refreshes the changed assets', async () => {
+test('migrating the v3 engine cache to v4 refreshes Brotli assets and is idempotent', async () => {
   const scope = 'https://test.local/';
   const url = (path) => new URL(path, scope).href;
   const prefix = 'assets/vendor/exiftool-wasm/';
-  const oldWasm = url(`${prefix}zeroperl-twnm61dk.wasm.gz`);
-  const newWasm = url(`${prefix}${exiftoolBuild.name}.gz`);
-  const library = url('assets/vendor/mediabunny.mjs');
+  const gz = url(`${prefix}zeroperl-522d094a89cc.wasm.gz`);
+  const raw = url(`${prefix}zeroperl-522d094a89cc.wasm`);
+  const br = url(`${prefix}zeroperl-522d094a89cc.wasm.br`);
   const wrapper = url(`${prefix}index.js`);
+  const library = url('assets/vendor/mediabunny.mjs');
   const bridge = url('assets/js/engines/exiftool.js');
   const decoder = url('assets/vendor/brotli-decode.mjs');
   const legacy = new Map([
-    [oldWasm, new Response('old WASM')],
+    [gz, new Response('old gzip engine')],
+    [raw, new Response('old raw WASM')],
     [wrapper, new Response('old loader')],
-    [library, new Response('reusable library', { headers: { 'x-meinsert-engine-version': 'meinsert-engine-v2' } })],
+    [library, new Response('reusable library', { headers: { 'x-meinsert-engine-version': 'meinsert-engine-v3' } })],
   ]);
   const current = new Map();
   const requests = [];
@@ -81,12 +57,57 @@ test('upgrading a previously installed image engine refreshes the changed assets
     keys: async () => [...entries.keys()].map((href) => ({ url: href })),
     put: async (key, response) => entries.set(typeof key === 'string' ? key : key.url,
       new Response(await response.arrayBuffer(), { headers: response.headers })),
+    delete: async (key) => entries.delete(typeof key === 'string' ? key : key.url),
   });
   const context = vm.createContext({
     URL, Response, Headers, ReadableStream, AbortController, setTimeout, clearTimeout,
     caches: {
-      keys: async () => ['meinsert-engine-v2'],
-      open: async (name) => cache(name === 'meinsert-engine-v2' ? legacy : current),
+      keys: async () => ['meinsert-engine-v3'],
+      open: async (name) => cache(name === 'meinsert-engine-v3' ? legacy : current),
+    },
+    self: { registration: { scope }, location: { origin: 'https://test.local' }, addEventListener() {} },
+    fetch: async (href) => { requests.push(href); return new Response('built asset'); },
+  });
+  vm.runInContext(source + '\nthis.migrate = migratePreviousEngineCache;', context);
+  await context.migrate();
+  assert.deepEqual(requests.sort(), [br, wrapper, decoder, bridge].sort());
+  assert.equal(await current.get(library).text(), 'reusable library');
+  assert.equal(current.get(library).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
+  assert.equal(current.has(gz), false);
+  assert.equal(current.has(raw), false);
+  requests.length = 0;
+  await context.migrate();
+  assert.deepEqual(requests, []);
+});
+test('upgrading a previously installed image engine refreshes the changed assets', async () => {
+  const scope = 'https://test.local/';
+  const url = (path) => new URL(path, scope).href;
+  const prefix = 'assets/vendor/exiftool-wasm/';
+  const oldWasm = url(`${prefix}zeroperl-twnm61dk.wasm.gz`);
+  const newWasm = url(`${prefix}${exiftoolBuild.name}.br`);
+  const library = url('assets/vendor/mediabunny.mjs');
+  const wrapper = url(`${prefix}index.js`);
+  const bridge = url('assets/js/engines/exiftool.js');
+  const decoder = url('assets/vendor/brotli-decode.mjs');
+  const legacy = new Map([
+    [oldWasm, new Response('old WASM')],
+    [wrapper, new Response('old loader')],
+    [library, new Response('reusable library', { headers: { 'x-meinsert-engine-version': 'meinsert-engine-v3' } })],
+  ]);
+  const current = new Map();
+  const requests = [];
+  const cache = (entries) => ({
+    match: async (key) => entries.get(typeof key === 'string' ? key : key.url)?.clone(),
+    keys: async () => [...entries.keys()].map((href) => ({ url: href })),
+    put: async (key, response) => entries.set(typeof key === 'string' ? key : key.url,
+      new Response(await response.arrayBuffer(), { headers: response.headers })),
+    delete: async (key) => entries.delete(typeof key === 'string' ? key : key.url),
+  });
+  const context = vm.createContext({
+    URL, Response, Headers, ReadableStream, AbortController, setTimeout, clearTimeout,
+    caches: {
+      keys: async () => ['meinsert-engine-v3'],
+      open: async (name) => cache(name === 'meinsert-engine-v3' ? legacy : current),
     },
     self: { registration: { scope }, location: { origin: 'https://test.local' }, addEventListener() {} },
     fetch: async (href) => { requests.push(href); return new Response('built asset'); },
@@ -95,7 +116,7 @@ test('upgrading a previously installed image engine refreshes the changed assets
   await context.migrate();
   assert.deepEqual(requests.sort(), [newWasm, wrapper, bridge, decoder].sort());
   assert.equal(await current.get(library).text(), 'reusable library');
-  assert.equal(current.get(library).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v3');
+  assert.equal(current.get(library).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
   assert.equal(await current.get(wrapper).text(), 'built asset');
   assert.equal(current.has(oldWasm), false);
 });

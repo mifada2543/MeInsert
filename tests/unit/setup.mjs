@@ -6,9 +6,9 @@ import { exiftoolBuild } from '../../assets/js/core/image-engine-build.js';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { access, rename, rm, stat } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
-import { createGunzip } from 'node:zlib';
+import { createBrotliDecompress } from 'node:zlib';
 const wasm = new URL(`../../assets/vendor/exiftool-wasm/${exiftoolBuild.name}`, import.meta.url);
-const compressed = new URL(`${wasm.href}.gz`);
+const compressed = new URL(`${wasm.href}.br`);
 const expectedSize = exiftoolBuild.rawBytes;
 let valid = false;
 try {
@@ -18,7 +18,7 @@ try {
 if (!valid) {
   const temporary = new URL(`${wasm.href}.test-${process.pid}.tmp`);
   try {
-    await pipeline(createReadStream(compressed), createGunzip(), createWriteStream(temporary));
+    await pipeline(createReadStream(compressed), createBrotliDecompress(), createWriteStream(temporary));
     if ((await stat(temporary)).size !== expectedSize) {
       throw new Error('Decompressed ExifTool WASM size mismatch.');
     }

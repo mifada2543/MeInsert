@@ -27,8 +27,25 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   DNGVersion/CR2 and select RAW signatures are recognized from content.
 - Added real ExifTool GPS round-trip regression tests and clarified remaining
   limitations: RAW/HEIF container/pixel byte preservation is not proven.
-- Bumped shell cache to `meinsert-v70` and optional engine cache to
-  `meinsert-engine-v2` so existing PWA installs cannot retain stale `image.js`.
+- Bumped shell cache to `meinsert-v72` and optional engine cache to
+  `meinsert-engine-v4` so existing PWA installs cannot retain stale `image.js`.
+
+### Migrasi Brotli-only
+
+- Mesin ExifTool kini didistribusikan **hanya sebagai `.br` mentah** (3.638.320
+  byte). Host menyajikan byte tersebut apa adanya sebagai `application/wasm`
+  tanpa `Content-Encoding: br`, sehingga Cache Storage menyimpan payload
+  terkompresi yang identik di semua host.
+- PWA offline menyimpan dan memakai langsung respons `.br`, baik untuk paket
+  gambar maupun unduhan opsional. Tidak ada lagi jalur gzip, termasuk di
+  header host, manifest build, skrip vendor, dan pemeriksa aset.
+- Cache engine bermigrasi dari `meinsert-engine-v3` ke `meinsert-engine-v4`:
+  payload `.br` diunduh satu kali saat upgrade, lalu dipakai ulang tanpa
+  transfer pada instalasi berikutnya. Cache shell naik ke `meinsert-v72`.
+- Penghematan **2.208.572 byte per transfer/cache** (5.846.892 → 3.638.320 byte)
+  dan **5.846.892 byte di repositori** setelah aset gzip dihapus. Aset `.gz`
+  baru dihapus setelah gate `check:assets` memastikan tidak ada lagi
+  `*.wasm.gz` di direktori engine; sebelum itu pemeriksaan sengaja gagal.
 
 ## [1.6.0] — 2026-11-22
 

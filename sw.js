@@ -6,10 +6,9 @@
 
 
 
-const CACHE_VERSION = 'meinsert-v71';
-const ENGINE_VERSION = 'meinsert-engine-v3';
+const CACHE_VERSION = 'meinsert-v72';
+const ENGINE_VERSION = 'meinsert-engine-v4';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
-const BROTLI_WASM_URL = './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.br';
 const INSTALL_FETCH_TIMEOUT_MS = 15_000;
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
@@ -143,7 +142,7 @@ const KNOWN_OPTIONAL_URLS = Object.freeze([
   './assets/js/core/mp3-cut.js',
   './assets/vendor/exiftool-wasm/index.js',
   './assets/vendor/brotli-decode.mjs',
-  './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.gz',
+  './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.br',
   './assets/js/workers/exiftool.worker.js',
   './assets/js/formats/image.js',
   './assets/js/formats/mp4.js',
@@ -219,35 +218,12 @@ self.addEventListener('install', (event) => {
     await self.skipWaiting();
   })());
 });
-async function migrateRawWasmCache() {
-  const cache = await caches.open(ENGINE_VERSION);
-  const raw = new URL('./assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm', self.registration.scope).href;
-  const compressed = `${raw}.gz`;
-  try {
-    const legacy = await cache.match(raw);
-    if (!legacy) return;
-    if (!legacy.ok || typeof globalThis.crypto?.subtle?.digest !== 'function') return;
-    const bytes = await legacy.arrayBuffer();
-    if (bytes.byteLength !== 23_243_763) return;
-    const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
-    const hex = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
-    if (hex !== '522d094a89cc0a547035def27e7f8726604e57841a2c899b0fb239f3045b75da') return;
-    const canCompress = typeof globalThis.CompressionStream === 'function';
-    const body = canCompress ? new Response(bytes).body.pipeThrough(new CompressionStream('gzip')) : bytes;
-    await cache.put(compressed, new Response(body, { headers: {
-      'content-type': canCompress ? 'application/gzip' : 'application/wasm',
-      [ENGINE_HEADER]: ENGINE_VERSION,
-    } }));
-    await cache.delete(raw);
-  } catch {  }
-}
 async function migratePreviousEngineCache() {
-  const previous = 'meinsert-engine-v2';
+  const previous = 'meinsert-engine-v3';
   if (!(await caches.keys()).includes(previous)) return;
   const legacy = await caches.open(previous);
   const current = await caches.open(ENGINE_VERSION);
   const allowed = optionalPathSet();
-  const oldWasm = new URL('./assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz', self.registration.scope).href;
   await Promise.all((await legacy.keys()).map(async (request) => {
     const url = new URL(request.url);
     if (!isSameOrigin(url.href) || !allowed.has(url.pathname) || url.search
@@ -260,26 +236,34 @@ async function migratePreviousEngineCache() {
       await current.put(request, new Response(cached.body, { status: cached.status, headers }));
     } catch {  }
   }));
-  if (!(await legacy.match(oldWasm)) && !(await legacy.match(oldWasm.slice(0, -3)))) return;
-  
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), INSTALL_FETCH_TIMEOUT_MS);
-  try {
-    await Promise.allSettled([
-      './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.gz',
-      './assets/vendor/exiftool-wasm/index.js',
-      './assets/vendor/brotli-decode.mjs',
-      './assets/js/engines/exiftool.js',
-    ].map((path) => fetchAndStore(current, new URL(path, self.registration.scope).href, controller.signal)));
-  } finally {
-    clearTimeout(timer);
+  const required = [
+    './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.br',
+    './assets/vendor/exiftool-wasm/index.js',
+    './assets/vendor/brotli-decode.mjs',
+    './assets/js/engines/exiftool.js',
+  ];
+  const missing = [];
+  for (const path of required) {
+    const href = new URL(path, self.registration.scope).href;
+    if (!(await cachedOptionalResponse(current, href))) missing.push(href);
   }
+  if (missing.length) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), INSTALL_FETCH_TIMEOUT_MS);
+    try {
+      await Promise.allSettled(missing.map((href) => fetchAndStore(current, href, controller.signal)));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  const wasm = new URL('./assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm', self.registration.scope).href;
+  await current.delete(`${wasm}.gz`);
+  await current.delete(wasm);
 }
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     await migrateLegacyCache();
     await migratePreviousEngineCache();
-    await migrateRawWasmCache();
     const keys = await caches.keys();
     await Promise.all(keys
       .filter((key) => key.startsWith('meinsert-') && key !== CACHE_VERSION && key !== ENGINE_VERSION)
@@ -288,7 +272,7 @@ self.addEventListener('activate', (event) => {
   })());
 });
 function isCacheableAsset(pathname) {
-  return /\.(css|js|mjs|wasm|gz|br|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
+  return /\.(css|js|mjs|wasm|br|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
 }
 async function networkFirst(event) {
   const { request } = event;
@@ -315,8 +299,7 @@ async function networkFirst(event) {
 async function cacheFirst(request) {
   const cache = await caches.open(isShellRequest(request) ? CACHE_VERSION : ENGINE_VERSION);
   const { pathname, search } = new URL(request.url);
-  const brotli = pathname === new URL(BROTLI_WASM_URL, self.registration.scope).pathname;
-  const optional = !isShellRequest(request) && (optionalPathSet().has(pathname) || brotli) && !search;
+  const optional = !isShellRequest(request) && optionalPathSet().has(pathname) && !search;
   if (optional) {
     const absolute = request.url;
     const existing = await cachedOptionalResponse(cache, absolute);

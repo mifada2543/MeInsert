@@ -7,12 +7,9 @@ import { getProfile } from '../core/offline-manifest.js';
 import { exiftoolBuild } from '../core/image-engine-build.js';
 const VENDOR_DIR = new URL('../../vendor/exiftool-wasm/', import.meta.url);
 const ENGINE_WASM_NAME = exiftoolBuild.name;
-const ENGINE_WASM_GZ_NAME = `${ENGINE_WASM_NAME}.gz`;
-const ENGINE_WASM_PATTERN = new RegExp(`${ENGINE_WASM_NAME.replaceAll('.', '[.]')}(?:[.](?:gz|br))?$`);
+const ENGINE_WASM_BR_NAME = `${ENGINE_WASM_NAME}.br`;
+const ENGINE_WASM_PATTERN = new RegExp(`${ENGINE_WASM_NAME.replaceAll('.', '[.]')}(?:[.]br)?$`);
 const WASM_MAGIC = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
-const GZIP_MAGIC = [0x1f, 0x8b];
-const MAX_GZIP_LAYERS = 2;
-const MAX_ENGINE_BYTES = 64 * 1024 * 1024;
 function startsWith(bytes, prefix) {
   return Boolean(bytes?.byteLength >= prefix.length)
     && prefix.every((value, index) => bytes[index] === value);
@@ -20,13 +17,7 @@ function startsWith(bytes, prefix) {
 export function isWasmBinary(bytes) {
   return startsWith(bytes, WASM_MAGIC);
 }
-export function isGzipBinary(bytes) {
-  return startsWith(bytes, GZIP_MAGIC);
-}
-function hasNativeGunzip() {
-  return typeof globalThis.DecompressionStream === 'function';
-}
-const FALLBACK_WASM_URL = new URL(ENGINE_WASM_GZ_NAME, VENDOR_DIR).href;
+const FALLBACK_WASM_URL = new URL(ENGINE_WASM_BR_NAME, VENDOR_DIR).href;
 let observedWasmUrl = null;
 let activeLoads = 0;
 let prefetchPromise = null;
@@ -47,7 +38,7 @@ export function noteEngineUrl(url) {
   try {
     const resolved = new URL(resolveEngineUrl(url));
     if (!ENGINE_WASM_PATTERN.test(resolved.pathname)) return;
-    if (!observedWasmUrl || /\.wasm\.(?:gz|br)$/i.test(resolved.pathname)) observedWasmUrl = resolved.href;
+    if (!observedWasmUrl || /\.wasm\.br$/i.test(resolved.pathname)) observedWasmUrl = resolved.href;
   } catch {  }
 }
 export function engineWasmUrl() {
@@ -55,17 +46,9 @@ export function engineWasmUrl() {
 }
 export function engineRequestUrl(url) {
   const text = String(url);
-  return ENGINE_WASM_PATTERN.test(text) && !/\.wasm\.(?:gz|br)$/i.test(text)
-    ? `${text.slice(0, -ENGINE_WASM_NAME.length)}${ENGINE_WASM_GZ_NAME}`
+  return ENGINE_WASM_PATTERN.test(text) && !/\.wasm\.br$/i.test(text)
+    ? `${text.slice(0, -ENGINE_WASM_NAME.length)}${ENGINE_WASM_BR_NAME}`
     : text;
-}
-async function gunzipEngine(bytes) {
-  if (hasNativeGunzip()) {
-    const stream = new Response(bytes).body.pipeThrough(new DecompressionStream('gzip'));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
-  }
-  const { gunzipSync } = await import('../../vendor/fflate.mjs');
-  return gunzipSync(bytes);
 }
 async function verifySha256(bytes, expected) {
   if (typeof globalThis.crypto?.subtle?.digest !== 'function') return false;
@@ -78,36 +61,28 @@ export function verifyEngineIntegrity(bytes) {
   return verifySha256(bytes, exiftoolBuild.sha256);
 }
 export async function decodeEngineBytes(bytes) {
-  let current = bytes;
-  for (let layer = 0; layer <= MAX_GZIP_LAYERS; layer += 1) {
-    if (isWasmBinary(current)) {
-      if (current.byteLength !== exiftoolBuild.rawBytes) throw new Error('WASM size mismatch.');
-      if (!await verifyEngineIntegrity(current) && !WebAssembly.validate(current)) throw new Error('Invalid WASM binary.');
-      return current;
-    }
-    if (!isGzipBinary(current)) throw new Error('Engine payload is neither WASM nor gzip.');
-    current = await gunzipEngine(current);
-    if (current.byteLength > MAX_ENGINE_BYTES) throw new Error('Decompressed engine exceeds the size limit.');
-  }
-  throw new Error('Engine payload has too many gzip layers.');
+  if (!isWasmBinary(bytes)) throw new Error('Engine payload is not WASM.');
+  if (bytes.byteLength !== exiftoolBuild.rawBytes) throw new Error('WASM size mismatch.');
+  if (!await verifyEngineIntegrity(bytes) && !WebAssembly.validate(bytes)) throw new Error('Invalid WASM binary.');
+  return bytes;
 }
-export async function readEngineResponse(response, { brotli = false } = {}) {
-  let bytes = new Uint8Array(await response.arrayBuffer());
-  
-  if (brotli && !isWasmBinary(bytes) && !isGzipBinary(bytes)) {
-    let stream;
-    try { stream = new DecompressionStream('brotli'); } catch {  }
-    if (stream) {
-      bytes = new Uint8Array(await new Response(new Response(bytes).body.pipeThrough(stream)).arrayBuffer());
-    } else {
-      
-      if (bytes.length !== exiftoolBuild.brotliBytes || !await verifySha256(bytes, exiftoolBuild.brotliSha256)) {
-        throw new Error('Unable to verify the compressed Brotli engine.');
-      }
-      const { decompress } = await import('../../vendor/brotli-decode.mjs');
-      bytes = decompress(bytes, exiftoolBuild.rawBytes);
-    }
+async function decompressBrotli(bytes) {
+  const Native = globalThis.DecompressionStream;
+  if (typeof Native === 'function') {
+    try {
+      const stream = new Native('brotli');
+      return new Uint8Array(await new Response(new Response(bytes).body.pipeThrough(stream)).arrayBuffer());
+    } catch {  }
   }
+  if (bytes.byteLength !== exiftoolBuild.brotliBytes || !await verifySha256(bytes, exiftoolBuild.brotliSha256)) {
+    throw new Error('Unable to verify the compressed Brotli engine.');
+  }
+  const { decompress } = await import('../../vendor/brotli-decode.mjs');
+  return decompress(bytes, exiftoolBuild.rawBytes);
+}
+export async function readEngineResponse(response, { brotli = true } = {}) {
+  let bytes = new Uint8Array(await response.arrayBuffer());
+  if (brotli && !isWasmBinary(bytes)) bytes = await decompressBrotli(bytes);
   return decodeEngineBytes(bytes);
 }
 export async function decodeEngineResponse(response) {

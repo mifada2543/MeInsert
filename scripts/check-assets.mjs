@@ -2,8 +2,8 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 
-import { readFileSync } from 'node:fs';
-import { brotliDecompressSync, gunzipSync } from 'node:zlib';
+import { readFileSync, readdirSync } from 'node:fs';
+import { brotliDecompressSync } from 'node:zlib';
 import { exiftoolBuild as engine } from '../assets/js/core/image-engine-build.js';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -33,35 +33,32 @@ const loader = readFileSync(new URL('index.js', ENGINE_DIR), 'utf8');
 if (!loader.includes(engine.name) || !engine.name.includes(engine.sha256.slice(0, 12))) {
   problems.push('ExifTool loader or filename does not match the build manifest.');
 }
-for (const [suffix, size, decompress] of [
-  ['gz', engine.gzipBytes, gunzipSync],
-  ['br', engine.brotliBytes, brotliDecompressSync],
-]) {
-  const filename = `${engine.name}.${suffix}`;
-  if (!sw.includes(`./assets/vendor/exiftool-wasm/${filename}`)) {
-    problems.push(`Service worker does not recognise ${filename}.`);
+const filename = `${engine.name}.br`;
+if (!sw.includes(`./assets/vendor/exiftool-wasm/${filename}`)) {
+  problems.push(`Service worker does not recognise ${filename}.`);
+}
+try {
+  const compressed = readFileSync(new URL(filename, ENGINE_DIR));
+  if (compressed.length !== engine.brotliBytes) problems.push(`${filename} has an unexpected size.`);
+  if (engine.brotliBytes >= 4_500_000) problems.push('Brotli WASM exceeds the 4.5 MB transfer budget.');
+  if (createHash('sha256').update(compressed).digest('hex') !== engine.brotliSha256) {
+    problems.push('Brotli WASM SHA-256 differs from the pinned compressed payload.');
   }
-  try {
-    const compressed = readFileSync(new URL(filename, ENGINE_DIR));
-    if (compressed.length !== size) problems.push(`${filename} has an unexpected size.`);
-    if (suffix === 'br') {
-      if (size >= 4_500_000) problems.push('Brotli WASM exceeds the 4.5 MB transfer budget.');
-      if (createHash('sha256').update(compressed).digest('hex') !== engine.brotliSha256) {
-        problems.push('Brotli WASM SHA-256 differs from the pinned compressed payload.');
-      }
-    }
-    const plain = decompress(compressed);
-    const digest = createHash('sha256').update(plain).digest('hex');
-    if (plain.length !== engine.rawBytes || digest !== engine.sha256 || !WebAssembly.validate(plain)) {
-      problems.push(`${filename} does not decode to the pinned valid WASM.`);
-    }
-  } catch (error) {
-    problems.push(`${filename} is not readable: ${error.message}`);
+  const plain = brotliDecompressSync(compressed);
+  const digest = createHash('sha256').update(plain).digest('hex');
+  if (plain.length !== engine.rawBytes || digest !== engine.sha256 || !WebAssembly.validate(plain)) {
+    problems.push(`${filename} does not decode to the pinned valid WASM.`);
   }
+} catch (error) {
+  problems.push(`${filename} is not readable: ${error.message}`);
+}
+const staleGzip = readdirSync(ENGINE_DIR).filter((entry) => entry.endsWith('.wasm.gz'));
+if (staleGzip.length) {
+  problems.push(`Stale gzip WASM assets must be removed: ${staleGzip.join(', ')}.`);
 }
 if (problems.length) {
   console.error(`Asset check failed:\n${problems.join('\n')}`);
   process.exitCode = 1;
 } else {
-  console.log(`Asset check ok: ${EXPECTED.size} optimised images, gzip WASM ${engine.gzipBytes} bytes, Brotli WASM ${engine.brotliBytes} bytes.`);
+  console.log(`Asset check ok: ${EXPECTED.size} optimised images, Brotli WASM ${engine.brotliBytes} bytes.`);
 }

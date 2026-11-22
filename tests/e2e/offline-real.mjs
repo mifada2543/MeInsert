@@ -15,6 +15,8 @@ const PROFILE_KEY = 'meinsert.offlineProfile';
 const USER_FILES = ['tone.mp3', 'document.pdf', 'pattern.png'];
 const MP3_FIXTURE = join(root, 'tests/fixtures/tone.mp3');
 const ALL_OPTIONAL_URLS = [...new Set(OFFLINE_FEATURES.flatMap((feature) => feature.urls))];
+assert.deepEqual(ALL_OPTIONAL_URLS.filter((url) => /\.gz(?:\?|$)/i.test(url)), [],
+  'optional URLs must not reference gzip assets');
 const FEATURE_URLS = Object.fromEntries(OFFLINE_FEATURES.map((feature) => [feature.id, feature.urls]));
 const UPDATED_SHELL_VERSION = `${CURRENT_VERSION}-offline-test`;
 const contentTypes = new Map([

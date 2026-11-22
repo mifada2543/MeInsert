@@ -8,7 +8,6 @@ import { getBrowser } from './harness.mjs';
 import { firefox, webkit } from 'playwright-core';
 import { createStaticServer } from './server.mjs';
 import { existsSync, readFileSync } from 'node:fs';
-import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../..', import.meta.url));
@@ -23,32 +22,27 @@ const contentTypes = new Map([
   ['.html', 'text/html; charset=utf-8'], ['.css', 'text/css; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'], ['.mjs', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'], ['.wasm', 'application/wasm'],
-  ['.gz', 'application/gzip'], ['.png', 'image/png'], ['.jpg', 'image/jpeg'], ['.woff2', 'font/woff2'],
+  ['.br', 'application/octet-stream'], ['.png', 'image/png'], ['.jpg', 'image/jpeg'], ['.woff2', 'font/woff2'],
 ]);
 const enginePath = `/assets/vendor/exiftool-wasm/${exiftoolBuild.name}`;
-const doubleGzip = gzipSync(readFileSync(join(root, `${enginePath.slice(1)}.gz`)));
-let blockBrotli = false;
 let httpBrotli = false;
 const brotliBytes = readFileSync(join(root, `${enginePath.slice(1)}.br`));
 const requests = [];
+let gzipRequested = false;
 const server = await createStaticServer({
   root, contentTypes, traversalStatus: 403,
   intercept(path, response) {
     if (!path.startsWith(enginePath)) return false;
     requests.push(path);
+    if (path.endsWith('.gz')) {
+      gzipRequested = true;
+      response.writeHead(404).end();
+      return true;
+    }
     if (httpBrotli && path.endsWith('.br')) {
       response.writeHead(200, {
         'content-type': 'application/wasm', 'content-encoding': 'br', vary: 'Accept-Encoding',
       }).end(brotliBytes);
-      return true;
-    }
-    if (!blockBrotli) return false;
-    if (path.endsWith('.br')) {
-      response.writeHead(404).end();
-      return true;
-    }
-    if (path.endsWith('.gz')) {
-      response.writeHead(200, { 'content-type': 'application/gzip' }).end(doubleGzip);
       return true;
     }
     return false;
@@ -68,10 +62,10 @@ async function openAndExpectTags(page, label) {
     null, { timeout: 120000 });
   console.log(`PASS: ${label} — ${await page.locator('#readStatus').innerText()}`);
 }
-async function engineScenario({ fallback = false, encoded = false } = {}) {
-  blockBrotli = fallback;
+async function engineScenario({ encoded = false } = {}) {
   httpBrotli = encoded;
   requests.length = 0;
+  gzipRequested = false;
   const context = await browser.newContext({ locale: 'id-ID' });
   try {
     const page = await context.newPage();
@@ -79,12 +73,10 @@ async function engineScenario({ fallback = false, encoded = false } = {}) {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, null, { timeout: 30000 });
-    const label = fallback ? 'double-gzip fallback' : encoded ? 'HTTP Content-Encoding Brotli' : 'raw Brotli';
+    const label = encoded ? 'HTTP Content-Encoding Brotli' : 'raw Brotli';
     if (requests.length) throw new Error('WASM was requested before the first image.');
     await openAndExpectTags(page, label);
-    const expected = fallback
-      ? [`${enginePath}.br`, `${enginePath}.gz`]
-      : [`${enginePath}.br`];
+    const expected = [`${enginePath}.br`];
     assert.deepEqual(requests, expected);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await openAndExpectTags(page, `${label} cache reuse across reload`);
@@ -94,6 +86,7 @@ async function engineScenario({ fallback = false, encoded = false } = {}) {
     await openAndExpectTags(page, `${label} cache reuse offline`);
     assert.deepEqual(requests, expected);
     assert.deepEqual(errors, []);
+    assert.equal(gzipRequested, false, 'no gzip asset may be requested');
   } finally {
     await context.close();
   }
@@ -101,8 +94,7 @@ async function engineScenario({ fallback = false, encoded = false } = {}) {
 try {
   await engineScenario();
   await engineScenario({ encoded: true });
-  await engineScenario({ fallback: true });
-  console.log('ALL wasm-integrity scenarios passed (Service Worker active, no raw WASM requests)');
+  console.log('ALL wasm-integrity scenarios passed (Service Worker active, no gzip or raw WASM requests)');
 } finally {
   await browser.close();
   server.close();

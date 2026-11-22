@@ -4,7 +4,7 @@
 import { exiftoolBuild } from '../../assets/js/core/image-engine-build.js';
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { gzipSync, gunzipSync } from 'node:zlib';
+import { brotliCompressSync, brotliDecompressSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import {
   createProgressFetch,
@@ -12,12 +12,12 @@ import {
   decodeEngineResponse,
   engineRequestUrl,
   engineWasmUrl,
-  isGzipBinary,
   isWasmBinary,
   noteEngineUrl,
+  readEngineResponse,
 } from '../../assets/js/ui/engine-loading.js';
-const fixtureGzip = readFileSync(new URL(`../../assets/vendor/exiftool-wasm/${exiftoolBuild.name}.gz`, import.meta.url));
-const fixtureWasm = gunzipSync(fixtureGzip);
+const fixtureBrotli = readFileSync(new URL(`../../assets/vendor/exiftool-wasm/${exiftoolBuild.name}.br`, import.meta.url));
+const fixtureWasm = brotliDecompressSync(fixtureBrotli);
 const sampleWasm = () => fixtureWasm;
 import { friendlyMemoryError, isMemoryError } from '../../assets/js/core/worker-client.js';
 
@@ -83,18 +83,18 @@ test('createProgressFetch reports once and returns the original response when st
   assert.equal(result, original);
   assert.deepEqual(seen, [{ loaded: 5, total: 5 }]);
 });
-test('createProgressFetch resolves the vendor-relative URL to the same-origin WASM asset', async () => {
-  const calls = stubFetch(new Response('ok', { headers: { 'content-type': 'application/gzip' } }));
-  const result = await createProgressFetch()(`./${exiftoolBuild.name}.gz`);
+test('createProgressFetch resolves the vendor-relative URL to the same-origin Brotli asset', async () => {
+  const calls = stubFetch(new Response('ok', { headers: { 'content-type': 'application/octet-stream' } }));
+  const result = await createProgressFetch()(`./${exiftoolBuild.name}.br`);
   const requested = new URL(calls[0].url);
-  assert.ok(requested.pathname.endsWith(`/vendor/exiftool-wasm/${exiftoolBuild.name}.gz`));
+  assert.ok(requested.pathname.endsWith(`/vendor/exiftool-wasm/${exiftoolBuild.name}.br`));
   assert.ok(['file:', 'http:', 'https:'].includes(requested.protocol));
-  assert.equal(result.headers.get('content-type'), 'application/gzip');
+  assert.equal(result.headers.get('content-type'), 'application/octet-stream');
 });
-test('engineWasmUrl points at the gzip WASM asset without an external origin', () => {
+test('engineWasmUrl points at the Brotli WASM asset without an external origin', () => {
   const url = new URL(engineWasmUrl());
   assert.ok(['file:', 'http:', 'https:'].includes(url.protocol));
-  assert.ok(url.pathname.endsWith(`/vendor/exiftool-wasm/${exiftoolBuild.name}.gz`));
+  assert.ok(url.pathname.endsWith(`/vendor/exiftool-wasm/${exiftoolBuild.name}.br`));
 });
 test('friendlyMemoryError marks RangeError with both friendly keys and preserves code/detail', () => {
   const source = new RangeError('Invalid array length');
@@ -115,73 +115,86 @@ test('friendlyMemoryError leaves ordinary errors untouched', () => {
   assert.equal(isMemoryError(source), false);
   assert.equal(friendlyMemoryError(source), source);
 });
-test('engineRequestUrl maps only the vendored WASM to its gzip build', () => {
-  assert.equal(engineRequestUrl(`./${exiftoolBuild.name}`), `./${exiftoolBuild.name}.gz`);
-  assert.equal(engineRequestUrl(`./${exiftoolBuild.name}.gz`), `./${exiftoolBuild.name}.gz`);
+test('engineRequestUrl maps only the vendored WASM to its Brotli build', () => {
+  assert.equal(engineRequestUrl(`./${exiftoolBuild.name}`), `./${exiftoolBuild.name}.br`);
+  assert.equal(engineRequestUrl(`./${exiftoolBuild.name}.br`), `./${exiftoolBuild.name}.br`);
   assert.equal(engineRequestUrl('./another.wasm'), './another.wasm');
 });
-test('magic-byte helpers recognise WASM and gzip binaries', () => {
+test('magic-byte helper recognises WASM binaries', () => {
   const wasm = sampleWasm();
   assert.equal(isWasmBinary(wasm), true);
-  assert.equal(isGzipBinary(fixtureGzip), true);
-  assert.equal(isWasmBinary(fixtureGzip), false);
+  assert.equal(isWasmBinary(fixtureBrotli), false);
   assert.equal(isWasmBinary(Uint8Array.from([0, 0x61, 0x73, 0x6d, 2, 0, 0, 0])), false);
   assert.equal(isWasmBinary(Uint8Array.from([1, 2, 3])), false);
 });
-test('decodeEngineResponse detects gzip by magic bytes and validates the WASM result', async () => {
+test('decodeEngineResponse decompresses raw Brotli and validates the WASM result', async () => {
   const wasm = sampleWasm();
-  const gz = fixtureGzip;
-  const response = new Response(gz, { headers: { 'content-type': 'application/octet-stream' } });
+  const response = new Response(fixtureBrotli, { headers: { 'content-type': 'application/octet-stream' } });
   const decoded = await decodeEngineResponse(response);
   assert.ok(Buffer.from(await decoded.arrayBuffer()).equals(wasm));
   assert.equal(decoded.headers.get('content-length'), String(wasm.byteLength));
   assert.equal(decoded.headers.get('content-type'), 'application/wasm');
+  assert.equal(decoded.headers.get('content-encoding'), null);
 });
-test('decodeEngineResponse passes a cached raw WASM through despite a misleading Content-Encoding', async () => {
+test('decodeEngineResponse passes a cached raw WASM through and removes a misleading Content-Encoding', async () => {
   const wasm = sampleWasm();
-  const response = new Response(wasm, { headers: { 'content-encoding': 'gzip' } });
+  const response = new Response(wasm, { headers: { 'content-encoding': 'br' } });
   const decoded = await decodeEngineResponse(response);
   assert.ok(Buffer.from(await decoded.arrayBuffer()).equals(wasm));
-});
-test('decodeEngineResponse unwraps double-compressed gzip', async () => {
-  const wasm = sampleWasm();
-  const double = gzipSync(fixtureGzip);
-  const decoded = await decodeEngineResponse(new Response(double));
-  assert.ok(Buffer.from(await decoded.arrayBuffer()).equals(wasm));
+  assert.equal(decoded.headers.get('content-encoding'), null);
 });
 test('decodeEngineResponse rejects non-WASM bytes after decompression', async () => {
-  const response = new Response(gzipSync(Uint8Array.from([1, 2, 3, 4])));
-  await assert.rejects(() => decodeEngineResponse(response), /WASM/i);
+  const response = new Response(brotliCompressSync(Uint8Array.from([1, 2, 3, 4])));
+  await assert.rejects(() => decodeEngineResponse(response), /WASM|verify/i);
 });
-test('decodeEngineResponse uses fflate when DecompressionStream is absent', async () => {
-  const wasm = sampleWasm();
+test('readEngineResponse uses the JS Brotli decoder when DecompressionStream is absent', async () => {
   const native = globalThis.DecompressionStream;
   try {
     delete globalThis.DecompressionStream;
-    const decoded = await decodeEngineResponse(new Response(fixtureGzip));
-    assert.ok(Buffer.from(await decoded.arrayBuffer()).equals(wasm));
+    const decoded = await readEngineResponse(new Response(fixtureBrotli));
+    assert.ok(Buffer.from(decoded).equals(sampleWasm()));
   } finally {
     globalThis.DecompressionStream = native;
   }
+});
+test('readEngineResponse uses native Brotli decompression when available', async () => {
+  const native = globalThis.DecompressionStream;
+  let format = null;
+  globalThis.DecompressionStream = class {
+    constructor(requestedFormat) {
+      format = requestedFormat;
+      const stream = new TransformStream({
+        transform(chunk, controller) { controller.enqueue(brotliDecompressSync(chunk)); },
+      });
+      this.readable = stream.readable;
+      this.writable = stream.writable;
+    }
+  };
+  try {
+    const decoded = await readEngineResponse(new Response(fixtureBrotli));
+    assert.equal(format, 'brotli');
+    assert.ok(Buffer.from(decoded).equals(sampleWasm()));
+  } finally {
+    globalThis.DecompressionStream = native;
+  }
+});
+test('readEngineResponse rejects corrupted Brotli bytes', async () => {
+  const corrupted = Uint8Array.from(fixtureBrotli.subarray(0, 64));
+  await assert.rejects(() => readEngineResponse(new Response(corrupted)), /verify|WASM|integrity/i);
 });
 test('integrity verification is skipped safely without Web Crypto', async () => {
   const cryptoGlobal = globalThis.crypto;
   try {
     Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
-    const wasm = sampleWasm();
-    const decoded = await decodeEngineBytes(fixtureGzip);
-    assert.ok(Buffer.from(decoded).equals(wasm));
+    const decoded = await decodeEngineBytes(sampleWasm());
+    assert.ok(Buffer.from(decoded).equals(sampleWasm()));
   } finally {
     Object.defineProperty(globalThis, 'crypto', { value: cryptoGlobal, configurable: true });
   }
 });
-test('decodeEngineBytes refuses more than two gzip layers', async () => {
-  const triple = gzipSync(gzipSync(fixtureGzip));
-  await assert.rejects(() => decodeEngineBytes(triple), /gzip|WASM/i);
-});
-test('noteEngineUrl records the gzip build so offline prefetch stays compressed', () => {
-  noteEngineUrl(`./${exiftoolBuild.name}.gz`);
-  assert.ok(engineWasmUrl().endsWith(`/${exiftoolBuild.name}.gz`));
+test('noteEngineUrl records the Brotli build so offline prefetch stays compressed', () => {
+  noteEngineUrl(`./${exiftoolBuild.name}.br`);
+  assert.ok(engineWasmUrl().endsWith(`/${exiftoolBuild.name}.br`));
 });
 test('rejects a valid WASM header with an incorrect binary size', async () => {
   await assert.rejects(() => decodeEngineBytes(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0, 255)), /size mismatch/i);

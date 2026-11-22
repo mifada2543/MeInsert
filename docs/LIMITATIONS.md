@@ -128,6 +128,13 @@ is authoritative for each file. These are the known caveats:
 
 ### Image metadata engine
 
+- The engine ships **only as a raw Brotli (`.br`) payload** (3,638,320 bytes);
+  there is no gzip fallback. Hosts serve the `.br` file verbatim as
+  `application/wasm` and do not need to send `Content-Encoding: br` or
+  `Vary: Accept-Encoding`, so the same compressed bytes are cached everywhere.
+- Browsers without native Brotli decoding use the bundled ~91 KB JavaScript
+  decoder. The compressed SHA-256 is checked before decoding, then the expanded
+  WASM length and SHA-256 are checked afterwards.
 - The bundled ExifTool keeps EXIF, XMP, IPTC, GPS coordinate tags, MakerNotes,
   and modules for supported still RAW, HEIF, and RAW video. It omits the optional
   reverse-geocoding database and processor. GPS coordinates and GPS tag editing

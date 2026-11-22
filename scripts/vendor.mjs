@@ -2,25 +2,13 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 
-
-
-
-
-
-
-
-
-
-
-
 import { mkdir, copyFile, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { brotliCompress, constants, gzip } from 'node:zlib';
+import { brotliCompress, constants } from 'node:zlib';
 import { build } from 'esbuild';
 import { optimizeExifTool, sha256, upstreamName } from './optimize-exiftool.mjs';
 import { promisify } from 'node:util';
-const gzipAsync = promisify(gzip);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const nm = join(root, 'node_modules');
 const vendor = join(root, 'assets', 'vendor');
@@ -69,22 +57,18 @@ if (!process.argv.includes('--reuse-engine')) {
   const wasm = optimizeExifTool(await readFile(join(wasmDir, upstreamName)));
   const hash = sha256(wasm);
   const name = `zeroperl-${hash.slice(0, 12)}.wasm`;
-  const [gz, br] = await Promise.all([
-    gzipAsync(wasm, { level: 9 }),
-    promisify(brotliCompress)(wasm, { params: {
-      [constants.BROTLI_PARAM_QUALITY]: 11,
-      [constants.BROTLI_PARAM_LGWIN]: 24,
-    } }),
-  ]);
+  const br = await promisify(brotliCompress)(wasm, { params: {
+    [constants.BROTLI_PARAM_QUALITY]: 11,
+    [constants.BROTLI_PARAM_LGWIN]: 24,
+  } });
   const loader = (await readFile(join(wasmDir, 'index.js'), 'utf8'))
     .split('\n').filter((line) => !line.startsWith('//#')).join('\n');
   if (!loader.includes(upstreamName)) throw new Error('Upstream ExifTool loader changed.');
   await mkdir(engineDir, { recursive: true });
   await writeFile(join(engineDir, 'index.js'), loader.replaceAll(upstreamName, name));
-  await writeFile(join(engineDir, `${name}.gz`), gz);
   await writeFile(join(engineDir, `${name}.br`), br);
   const manifest = {
-    name, sha256: hash, rawBytes: wasm.length, gzipBytes: gz.length,
+    name, sha256: hash, rawBytes: wasm.length,
     brotliBytes: br.length, brotliSha256: sha256(br),
   };
   await writeFile(manifestUrl,
@@ -96,7 +80,7 @@ if (!process.argv.includes('--reuse-engine')) {
   await writeFile(swPath, sw.replaceAll(previous.name, name).replaceAll(previous.sha256, hash)
     .replaceAll(formatInteger(previous.rawBytes), formatInteger(wasm.length)));
   if (previous.name !== name) {
-    for (const ext of ['gz', 'br']) await rm(join(engineDir, `${previous.name}.${ext}`), { force: true });
+    await rm(join(engineDir, `${previous.name}.br`), { force: true });
   }
-  console.log(`ExifTool: ${wasm.length} raw, ${gz.length} gzip, ${br.length} Brotli (${name}).`);
+  console.log(`ExifTool: ${wasm.length} raw, ${br.length} Brotli (${name}).`);
 }

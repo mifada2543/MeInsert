@@ -6,11 +6,19 @@
 import { createServer } from 'node:http';
 import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
-function lookup(contentTypes, filePath) {
+const DEFAULT_TYPES = new Map([
+  ['.js', 'text/javascript; charset=utf-8'],
+  ['.mjs', 'text/javascript; charset=utf-8'],
+  ['.css', 'text/css; charset=utf-8'],
+  ['.json', 'application/json; charset=utf-8'],
+  ['.wasm', 'application/wasm'],
+]);
+function lookup(types, filePath) {
   const extension = extname(filePath);
-  return contentTypes instanceof Map ? contentTypes.get(extension) : contentTypes[extension];
+  return types.get(extension) || DEFAULT_TYPES.get(extension);
 }
 export function createStaticServer({ root, contentTypes, traversalStatus = 404, intercept }) {
+  const types = new Map([...DEFAULT_TYPES, ...(contentTypes instanceof Map ? contentTypes : new Map(Object.entries(contentTypes || {})))]);
   const server = createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);
     if (intercept?.(pathname, response)) return;
@@ -25,7 +33,7 @@ export function createStaticServer({ root, contentTypes, traversalStatus = 404, 
       response.writeHead(404).end('Not found');
       return;
     }
-    response.writeHead(200, { 'content-type': lookup(contentTypes, filePath) || 'application/octet-stream' });
+    response.writeHead(200, { 'content-type': lookup(types, filePath) || 'application/octet-stream' });
     createReadStream(filePath).pipe(response);
   });
   return new Promise((resolve, reject) => {
