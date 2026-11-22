@@ -7,7 +7,8 @@ import { openReviewDialog } from '../ui/review-dialog.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
 import { buildChangePlan } from '../core/change-plan.js';
 import { clearHistory } from '../core/history.js';
-import { canProceedWithMemory, estimateForSingle } from '../core/memory-estimate.js';
+import { canProceedWithMemory, estimateForCut, estimateForSingle } from '../core/memory-estimate.js';
+import { mediaRangeProof } from '../core/media-cut.js';
 import { verifyIntegrity } from '../core/integrity.js';
 import { preserveFailedWrite, allowResultDownload } from '../core/write-guard.js';
 import { asString } from '../core/tag-utils.js';
@@ -124,11 +125,19 @@ export async function saveMetadata(ctx) {
   const baseline = state.baselineSnapshot
     || createSnapshot({ adapter: state.adapter, detection: state.detection, readResult: state.readResult });
   state.baselineSnapshot = baseline;
-  const memory = estimateForSingle({
-    fileSize: state.file?.size || 0,
-    coverBytes: state.coverChosen?.data?.byteLength || 0,
-    observedPeakMb: client.memoryStats().peakMb,
-  });
+  const formatId = state.adapter?.meta?.id || state.detection?.id || '';
+  const observedPeakMb = client.memoryStats().peakMb;
+  const memory = payload.trim
+    ? estimateForCut({
+      fileSize: state.file?.size || 0,
+      intermediate: Boolean(payload.sidecar) || formatId === 'mp3' || formatId === 'mp4',
+      observedPeakMb,
+    })
+    : estimateForSingle({
+      fileSize: state.file?.size || 0,
+      coverBytes: state.coverChosen?.data?.byteLength || 0,
+      observedPeakMb,
+    });
   const plan = buildChangePlan({
     adapter: state.adapter,
     detection: state.detection,
@@ -191,17 +200,23 @@ export async function saveMetadata(ctx) {
   setProgress(els, 4, 'Menyiapkan…');
   setStatus(els, `Memproses ${state.detection.label}…`);
   try {
+    const writeOptions = {
+      extension: state.detection.ext,
+      subtype: state.detection.subtype,
+      mime: state.detection.mime,
+      outputName: filename,
+    };
+    if (payload.trim) {
+      const trim = payload.trim;
+      plan.trimProof = await mediaRangeProof(state.file, trim.start, trim.end);
+      writeOptions.timeoutMs = 600_000;
+    }
     const result = await client.write(
       state.adapter.meta.engine,
       state.adapter.meta.id,
       state.file,
       plan.payload,
-      {
-        extension: state.detection.ext,
-        subtype: state.detection.subtype,
-        mime: state.detection.mime,
-        outputName: filename,
-      },
+      writeOptions,
       (progress) => {
         if (progress.pct !== undefined) {
           setProgress(els, progress.pct, progress.stage || 'Memproses…');

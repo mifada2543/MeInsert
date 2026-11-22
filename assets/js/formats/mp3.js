@@ -8,6 +8,8 @@ import { KNOWN_ID3 } from '../core/integrity-rules.js';
 import { toSyltPairs } from '../core/timed-text.js';
 import { readSylt, toWriterSylt } from '../core/id3-sylt.js';
 import { parseId3Tag, patchId3Tag, frameIdentity } from '../core/id3-passthrough.js';
+import { expectedCutDuration, mediaRangeProof } from '../core/media-cut.js';
+import { sliceMp3Range } from '../core/mp3-cut.js';
 export const meta = {
   id: 'mp3',
   engine: 'media',
@@ -137,8 +139,25 @@ export async function read(file) {
 export async function write(file, payload, _options = {}, report = () => {}) {
   const { Input, ALL_FORMATS, BlobSource } = await mediaLib();
   const { ID3Writer } = await import('../../vendor/browser-id3-writer.mjs');
-  const set = payload?.set || {};
-  const remove = new Set(payload?.remove || []);
+  const trim = payload?.trim || null;
+  const sliceWarnings = [];
+  let baseFile = file;
+  if (trim) {
+    const slice = await sliceMp3Range(file, trim.start, trim.end, trim.mode);
+    if (!slice) {
+      throw new AppError('UNSUPPORTED_CODEC', 'Potongan MP3 tidak bisa dibuat.', 'Rentang tidak valid atau mode presisi belum didukung untuk MP3. Gunakan mode Salin (frame-copy).');
+    }
+    baseFile = new File([slice.blob], 'cut.mp3', { type: file.type || 'audio/mpeg' });
+    if (Array.isArray(slice.warnings)) sliceWarnings.push(...slice.warnings);
+  }
+  const effectivePayload = trim
+    ? {
+      ...payload,
+      rawRemove: [...new Set([...(payload?.rawRemove || []), 'TLEN', 'CHAP', 'CTOC'])],
+    }
+    : payload;
+  const set = effectivePayload?.set || {};
+  const remove = new Set(effectivePayload?.remove || []);
   const FRAME_FIELDS = {
     TIT2: 'title',
     TPE1: 'artist',
@@ -161,9 +180,9 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     composer: 'TCOM', comment: 'COMM', lyrics: 'USLT', copyright: 'TCOP',
     software: 'TSSE',
   };
-  const rawRemove = (payload?.rawRemove || []).map((item) => asString(item).trim()).filter(Boolean);
+  const rawRemove = (effectivePayload?.rawRemove || []).map((item) => asString(item).trim()).filter(Boolean);
   const removeCover = rawRemove.includes('APIC');
-  const rawCustomRemove = new Set(payload?.customRemove || []);
+  const rawCustomRemove = new Set(effectivePayload?.customRemove || []);
   for (const item of rawRemove) {
     if (item.startsWith('TXXX:')) {
       const key = item.slice(5).trim();
@@ -176,7 +195,7 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   report({ stage: 'Membaca tag ID3 lama…', pct: 15 });
   let tags;
   try {
-    const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+    const input = new Input({ source: new BlobSource(baseFile), formats: ALL_FORMATS });
     tags = await input.getMetadataTags();
   } catch (error) {
     throw new AppError('READ_FAILED', 'Tag MP3 lama tidak bisa dibaca.', error.message || String(error));
@@ -189,11 +208,25 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     if (id in values) values[id] = '';
   }
   report({ stage: 'Menulis ulang tag ID3…', pct: 45 });
-  // SYLT is dropped by a normal ID3 rewrite, so capture it up front and put it
-  // back below — either from the editor sidecar or verbatim from the source.
-  const existingSylt = await readSylt(file);
-  const buffer = await file.arrayBuffer();
-  const canPatch = Boolean(parseId3Tag(buffer));
+  const existingSylt = await readSylt(baseFile);
+  const buffer = await baseFile.arrayBuffer();
+  const sourceTag = parseId3Tag(buffer);
+  const id3Header = new Uint8Array(buffer, 0, Math.min(buffer.byteLength, 10));
+  const complexId3 = id3Header.length === 10
+    && id3Header[0] === 0x49 && id3Header[1] === 0x44 && id3Header[2] === 0x33
+    && (id3Header[3] === 3 || id3Header[3] === 4)
+    && Boolean(id3Header[5] & (id3Header[3] === 4 ? 0x50 : 0x40));
+  if (complexId3 && !sourceTag) {
+    throw new AppError('WRITE_FAILED',
+      'Extended header atau footer ID3 tidak valid dan tidak aman ditulis ulang.',
+      'File asli tidak diubah.');
+  }
+  if (sourceTag?.unsupportedExtendedHeader) {
+    throw new AppError('WRITE_FAILED',
+      'Tag ID3 memiliki CRC atau batasan extended header yang belum aman untuk diubah.',
+      `${sourceTag.unsupportedExtendedHeader}; file asli tidak diubah.`);
+  }
+  const canPatch = Boolean(sourceTag);
   const writer = new ID3Writer(buffer);
   writer.padding = 0;
   const firstComm = parseId3Tag(buffer)?.frames.find((frame) => frame.id === 'COMM');
@@ -234,11 +267,7 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     }
   };
   const frameMatch = (id) => (id === 'COMM' ? 'first' : 'all');
-
   if (canPatch) {
-    // Only write frames whose logical value actually changed. Every other
-    // frame — including additional COMM/APIC/TXXX instances — is copied
-    // verbatim by the byte-level patcher.
     const changedFields = new Set([...Object.keys(set), ...remove]);
     for (const field of changedFields) {
       const frameId = FIELD_FRAME[field];
@@ -250,7 +279,7 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     }
     const existingCustom = customTags(tags);
     for (const key of rawCustomRemove) spec('TXXX', 'identity', key, true);
-    for (const item of payload?.custom || []) {
+    for (const item of effectivePayload?.custom || []) {
       const key = asString(item?.key).trim();
       if (!key) continue;
       const value = asString(item?.value);
@@ -262,7 +291,7 @@ export async function write(file, payload, _options = {}, report = () => {}) {
       if (id === 'APIC' && removeCover) continue;
       if (!FRAME_FIELDS[id] && /^[A-Z0-9]{4}$/.test(id)) spec(id, 'all', undefined, true);
     }
-    const syltLines = payload?.sidecar?.lyrics?.lines;
+    const syltLines = effectivePayload?.sidecar?.lyrics?.lines;
     if (Array.isArray(syltLines) && syltLines.length) {
       writer.setFrame('SYLT', {
         type: 2,
@@ -273,20 +302,19 @@ export async function write(file, payload, _options = {}, report = () => {}) {
       });
       spec('SYLT');
     }
-    const coverAction = removeCover ? 'remove' : (payload?.cover?.action || 'keep');
-    if (coverAction === 'set' && payload?.cover?.data) {
-      const data = payload.cover.data instanceof Uint8Array ? payload.cover.data : new Uint8Array(payload.cover.data);
+    const coverAction = removeCover ? 'remove' : (effectivePayload?.cover?.action || 'keep');
+    if (coverAction === 'set' && effectivePayload?.cover?.data) {
+      const data = effectivePayload.cover.data instanceof Uint8Array ? effectivePayload.cover.data : new Uint8Array(effectivePayload.cover.data);
       writer.setFrame('APIC', {
-        description: payload.cover.name || 'cover',
+        description: effectivePayload.cover.name || 'cover',
         data,
-        type: payload.cover.kind === 'coverBack' ? 4 : 3,
+        type: effectivePayload.cover.kind === 'coverBack' ? 4 : 3,
       });
       spec('APIC', 'first');
     } else if (coverAction === 'remove') {
       spec('APIC', 'first', undefined, true);
     }
   } else {
-    // No patchable tag: rebuild exactly as before so no known field is lost.
     for (const [field, value] of Object.entries(values)) {
       const text = asString(value).trim();
       if (text) writeField(field, text);
@@ -295,13 +323,13 @@ export async function write(file, payload, _options = {}, report = () => {}) {
       const sylt = toWriterSylt(existingSylt);
       if (sylt) writer.setFrame('SYLT', sylt);
     }
-    const coverAction = removeCover ? 'remove' : (payload?.cover?.action || 'keep');
-    if (coverAction === 'set' && payload?.cover?.data) {
-      const data = payload.cover.data instanceof Uint8Array ? payload.cover.data : new Uint8Array(payload.cover.data);
+    const coverAction = removeCover ? 'remove' : (effectivePayload?.cover?.action || 'keep');
+    if (coverAction === 'set' && effectivePayload?.cover?.data) {
+      const data = effectivePayload.cover.data instanceof Uint8Array ? effectivePayload.cover.data : new Uint8Array(effectivePayload.cover.data);
       writer.setFrame('APIC', {
-        description: payload.cover.name || 'cover',
+        description: effectivePayload.cover.name || 'cover',
         data,
-        type: payload.cover.kind === 'coverBack' ? 4 : 3,
+        type: effectivePayload.cover.kind === 'coverBack' ? 4 : 3,
       });
     } else if (coverAction === 'keep') {
       const image = tags.images?.[0];
@@ -318,7 +346,7 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     const existingCustom = customTags(tags);
     const customMap = new Map(existingCustom.map((item) => [item.key, item.value]));
     for (const key of rawCustomRemove) customMap.delete(key);
-    for (const item of payload?.custom || []) {
+    for (const item of effectivePayload?.custom || []) {
       const key = asString(item?.key).trim();
       if (key) customMap.set(key, asString(item?.value));
     }
@@ -348,10 +376,11 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   const out = patched || generated;
   const passThroughWarning = patched ? '' : 'Tag ID3 ditulis ulang penuh; frame yang tidak dikenal mungkin hilang.';
   const blob = new Blob([out], { type: 'audio/mpeg' });
+  const outputFile = new File([out], 'output.mp3', { type: 'audio/mpeg' });
+  const rangeProof = trim ? await mediaRangeProof(outputFile, 0, expectedCutDuration(trim)) : null;
   report({ stage: 'Memverifikasi tag baru…', pct: 82 });
   let after;
   try {
-    const outputFile = new File([out], 'output.mp3', { type: 'audio/mpeg' });
     const output = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
     const afterTags = await output.getMetadataTags();
     after = tagsToFields(afterTags);
@@ -377,7 +406,8 @@ export async function write(file, payload, _options = {}, report = () => {}) {
       raw: rawRows(afterTags),
       info,
       ...coverFromTags(afterTags),
-      warnings: [...new Set(warnings)],
+      warnings: [...new Set([...warnings, ...sliceWarnings])],
+      ...(trim ? { rangeProof } : {}),
     };
   } catch (error) {
     return {
@@ -386,7 +416,8 @@ export async function write(file, payload, _options = {}, report = () => {}) {
       custom: [],
       raw: [],
       info: {},
-      warnings: [`Tag sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`],
+      warnings: [`Tag sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`, ...sliceWarnings],
+      ...(trim ? { rangeProof } : {}),
     };
   }
 }

@@ -162,7 +162,7 @@ class EngineWorker {
   request(message, onProgress) {
     const worker = this.ensure();
     const id = ++this.sequence;
-    const timeoutMs = timeoutForAction(message?.action);
+    const timeoutMs = message?.timeoutMs ?? timeoutForAction(message?.action);
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         if (!this.pending.has(id)) return;
@@ -258,7 +258,11 @@ export class MetadataClient {
     }
   }
   write(engine, format, file, payload, options, onProgress) {
-    return this.workerFor(engine).request({ action: 'write', format, file, payload, options }, onProgress);
+    const message = { action: 'write', format, file, payload, options };
+    if (options?.timeoutMs !== undefined && options?.timeoutMs !== null) {
+      message.timeoutMs = options.timeoutMs;
+    }
+    return this.workerFor(engine).request(message, onProgress);
   }
   cancel(engine) {
     this.workers.get(engine)?.terminate();

@@ -12,6 +12,7 @@
 
 - [Global limits](#global-limits)
 - [Timed text (lyrics & subtitles)](#timed-text-lyrics--subtitles)
+- [Cut audio/video](#cut-audiovideo)
 - [Format-specific caveats](#format-specific-caveats)
 - [Batch caveats](#batch-caveats)
 - [Compatibility-harness findings](#compatibility-harness-findings-context)
@@ -51,6 +52,10 @@ combination.
   acknowledgment (`meinsert.policyAck`, valid for 30 days) live only in this
   browser's `localStorage`. They are never uploaded, and clearing site data
   resets them (the policy notice then appears again).
+- **Change history** — the change-history panel can roll the editor back to an
+  earlier entry, and the rollback itself is undoable with **Undo** (Ctrl+Z).
+  The history lives only in the current editor session: reloading the page or
+  opening another file clears it, and it never contains a previously saved file.
 
 ## Timed text (lyrics & subtitles)
 
@@ -80,7 +85,44 @@ combination.
   while MP4 `wvtt` and browser-native players may ignore colours and
   backgrounds. Position/alignment settings are the most widely supported.
 - Appearance preferences are stored in `localStorage` separately from the
-  line draft. The draft is cleared when you press **Apply**.
+  line draft. The draft is cleared when you press **Apply**. The preference
+  card is compact and keeps the `+ Line` / gear / `Show: Subtitle` toolbar
+  visible; it stays in the right-hand editor pane rather than becoming a
+  separate centered dialog.
+
+## Cut audio/video
+
+The trim dialog stages a `{ start, end, mode }` range in editor state; the cut
+itself happens on save. The result is verified by the integrity report, which
+is authoritative for each file. These are the known caveats:
+
+- **Keyframe boundaries (copy mode)** — copy mode is stream-copy where the
+  container allows it and does not re-encode by default. Cut points may snap to
+  the nearest usable keyframe/packet boundary, so the retained range can differ
+  slightly from the requested one; `conversionCutOptions()` uses
+  `boundaryPolicy: 'shrink'` to avoid extending past the requested end.
+- **Transcoding (precise mode)** — precise mode requests exact boundaries and
+  may transcode the media. Quality, bitrate, encoding time and file size can
+  change, and some codec/container combinations are refused rather than
+  silently mangled.
+- **Chapters and attachments** — chapter tracks, attachments, and other
+  non-A/V structures are generally not preserved by stream-copy remuxing of
+  MKV/WebM/MP4; ID3 chapter frames (`CHAP`/`CTOC`) in MP3 need the same care.
+- **Xing/TLEN/CHAP/CTOC** — MP3 frame slicing copies ID3v2 bytes verbatim, but
+  the Xing/Info header of the first frame is dropped when a cut does not start
+  at zero (it describes the original full stream). Downstream `TLEN` duration
+  values and chapter/table-of-contents entries can become stale and should be
+  re-read after saving.
+- **Memory** — the cut engine holds the selected encoded packets and the output
+  blob in memory. Large audio/video files can exceed the estimated warning
+  (~350 MB) or block (~900 MB) bands. Peak is estimated, not measured; the
+  same `warn`/`block` policy as other writes applies (low-memory mode for
+  batches, explicit risk acknowledgement for a single file). Worker payloads
+  are transferred rather than duplicated.
+- **Offline** — cutting needs the optional engine assets. Offline use is
+  blocked with a toast unless the `audio` package (for audio) or `image`
+  package (for video) has already been downloaded in Settings → Storage &
+  Offline.
 
 ## Format-specific caveats
 

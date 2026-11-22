@@ -30,6 +30,8 @@ const allSuites = [
   'scroll-reveal',
   'action-bar',
   'preview-animation',
+  'cut-media',
+  'change-history',
 ];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function option(name) {

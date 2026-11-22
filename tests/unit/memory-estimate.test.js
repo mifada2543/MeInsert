@@ -8,6 +8,7 @@ import {
   MEMORY_BLOCK_MB,
   estimateMemory,
   estimateForSingle,
+  estimateForCut,
   estimateForBatch,
   canProceedWithMemory,
 } from '../../assets/js/core/memory-estimate.js';
@@ -36,6 +37,16 @@ test('canProceedWithMemory enforces the same policy on every save path', () => {
   assert.deepEqual(canProceedWithMemory({ level: 'block' }), { allowed: false, reason: 'blocked' });
   assert.deepEqual(canProceedWithMemory({ level: 'block' }, { lowMemory: true }), { allowed: true, reason: 'acknowledged' });
   assert.deepEqual(canProceedWithMemory({ level: 'block' }, { memoryOverride: true }), { allowed: true, reason: 'acknowledged' });
+});
+
+test('estimateForCut holds two buffers when an intermediate file is involved', () => {
+  const direct = estimateForCut({ fileSize: 100 * 1024 * 1024 });
+  const intermediate = estimateForCut({ fileSize: 100 * 1024 * 1024, intermediate: true, observedPeakMb: 400 });
+  assert.equal(direct.breakdown.held, 100 * 1024 * 1024);
+  assert.equal(intermediate.breakdown.held, 200 * 1024 * 1024);
+  assert.equal(intermediate.breakdown.copyFactor, 1.5);
+  assert.equal(intermediate.breakdown.observedPeakMb, 400);
+  assert.ok(intermediate.estimatedMb > direct.estimatedMb);
 });
 
 test('single and batch helpers forward the observed peak', () => {

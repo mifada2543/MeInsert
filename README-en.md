@@ -14,7 +14,7 @@ No backend. No uploads. No account.
 [Live demo](https://meinsert.my.id/) · [Single-file editor](https://meinsert.my.id/single.html) · [Batch mode](https://meinsert.my.id/batch.html) · [Documentation](#further-documentation)
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v1.4.1-blue?style=flat-square)](./package.json)
+[![Version](https://img.shields.io/badge/version-v1.5.0-blue?style=flat-square)](./package.json)
 [![License](https://img.shields.io/badge/License-AGPLv3-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#how-to-verify-the-local-only-claim)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)
@@ -91,7 +91,7 @@ The **Lyrics & subtitles** button opens a two-column editor: media preview on th
 
 - **Editing:** type text, timestamp each line directly, import (`.lrc`, `.srt`, `.vtt`), and export timed text.
 - **Text appearance (video subtitles only):** the **gear** button opens a card for text colour, background colour/opacity, size, bold, shadow, position, and alignment, including a **MEeL** preset. LRC cannot store colours or backgrounds, so the button is not offered for lyrics.
-- **Card behaviour:** while the card is open the editor is covered by a dark overlay (no blur) and the primary button becomes **Save preference** (stored in `localStorage`); when closed it returns to **Apply**. Click outside the card or press the gear ✕ to close; unsaved changes prompt **Discard** / **Save**.
+- **Card behaviour:** while the card is open the **+ Line** / gear ✕ / **Show: Subtitle** toolbar stays visible, the controls are arranged as compact rows, the editor is covered by a dark overlay (no blur), and the primary button becomes **Save preference** (stored in `localStorage`); when closed it returns to **Apply**. Click outside the card or press the gear ✕ to close; unsaved changes prompt **Discard** / **Save**.
 - **Drafts:** lines are saved automatically and cleared after **Apply**.
 - **Writing to the file:** the text is embedded inside the container, not into the video pixels. Lyrics can also become a track labelled "Lirik". The original file is never overwritten.
 
@@ -103,6 +103,21 @@ The **Lyrics & subtitles** button opens a two-column editor: media preview on th
 | MKV / WebM | WebVTT track |
 
 The `STYLE` block and cue settings are written too. Colours and backgrounds are guaranteed in the preview and the `.vtt` file; internal players may differ. Details are in the [limitations documentation](docs/LIMITATIONS.md).
+
+### Cut audio/video
+
+The **Cut audio/video** button appears in the action-bar options for MP3, FLAC, OGG/Opus, MP4/M4A, MOV, MKV, and WebM. The dialog shows a local preview, `mm:ss.mmm` inputs, buttons to mark the start/end from the playhead, and two modes:
+
+- **Copy** (default): stream-copy without transcoding when keyframes allow it.
+- **Precise**: exact boundaries; may transcode locally.
+
+The range is staged as a `trim` change in the editor and joins undo/redo; it is processed only when you press **Save**. The output is verified against a media range proof before download, and the original file is never overwritten. An offline guard blocks the button when the related engine package has not been cached.
+
+### Change history
+
+The **History** button in the editor head, next to **Undo** / **Redo**, opens a list of every action in the current session: field edits, custom tags, cover, raw tags, metadata cleaning, lyrics/subtitles, cuts, and the output name. Each entry shows a human-readable label and time.
+
+Choosing **Roll back to this version** asks for confirmation first. After a rollback you can still press **Undo** (Ctrl+Z) to cancel that rollback. History is not persisted across reloads or file changes.
 
 ### Office documents
 

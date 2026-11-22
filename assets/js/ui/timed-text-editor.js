@@ -490,25 +490,32 @@ function buildStylePanel(onChange) {
     alignButtons.set(value, button);
     alignRow.append(button);
   }
-  const field = (labelKey, control) => el('label', { className: 'timed-text__style-field' },
+  const field = (labelKey, control, className = '') => el('label', { className: `timed-text__style-field${className ? ` ${className}` : ''}` },
     el('span', { className: 'timed-text__style-label' }, translated(() => t(labelKey))), control);
   const check = (labelKey, input) => el('label', { className: 'timed-text__style-check' }, input, el('span', {}, translated(() => t(labelKey))));
   const note = el('p', { className: 'timed-text__style-note' });
   bindText(note, () => t('ui.timedTextStyleNote'));
   const resetBtn = el('button', { type: 'button', className: 'timed-text__btn', id: 'timedTextStyleReset', on: { click: () => onChange(CUE_STYLE_DEFAULTS, true) } }, icon('refresh'), el('span', {}, translated(() => t('ui.timedTextStyleReset'))));
-  const element = el('section', { className: 'timed-text__style-panel', hidden: true },
+  const colorRow = el('div', { className: 'timed-text__style-grid timed-text__style-grid--two' },
+    field('ui.timedTextColorText', colorText),
+    field('ui.timedTextColorBg', colorBg),
+  );
+  const positionAlignRow = el('div', { className: 'timed-text__style-grid' },
+    field('ui.timedTextPosition', positionRow),
+    field('ui.timedTextAlign', alignRow),
+  );
+  const card = el('div', { className: 'timed-text__style-card' },
     el('div', { className: 'timed-text__style-head' },
       el('h3', { className: 'timed-text__style-title', textContent: translated(() => t('ui.timedTextStyleTitle')) }), resetBtn),
     field('ui.timedTextTheme', presetRow),
-    field('ui.timedTextColorText', colorText),
-    field('ui.timedTextColorBg', colorBg),
+    colorRow,
     field('ui.timedTextOpacity', el('div', { className: 'timed-text__opacity-row' }, opacity, opacityValue)),
     field('ui.timedTextSize', sizeRow),
     el('div', { className: 'timed-text__style-checks' }, check('ui.timedTextBold', bold), check('ui.timedTextOutline', outline)),
-    field('ui.timedTextPosition', positionRow),
-    field('ui.timedTextAlign', alignRow),
+    positionAlignRow,
     note,
   );
+  const element = el('section', { className: 'timed-text__style-panel', hidden: true }, card);
   const setStyle = (style) => {
     const s = normalizeCueStyle(style);
     for (const [key, button] of presetButtons) button.classList.toggle('is-active', s.theme === key);
@@ -1437,7 +1444,7 @@ export function mountTimedTextButton({ container, ctx } = {}) {
   if (!host) return null;
   const existing = qs('#timedTextBtn', host);
   if (existing) return existing;
-  const buttonIcon = el('span', { className: 'timed-text-btn__icon' }, icon('audio'));
+  const buttonIcon = el('span', { className: 'timed-text-btn__icon' }, icon('caption'));
   const buttonLabel = el('span', { className: 'timed-text-btn__label' });
   bindText(buttonLabel, () => t(mediaModeForFile(ctx.state?.file) === 'subtitles' ? 'ui.timedTextOpenVideo' : 'ui.timedTextOpenAudio'));
   const supportsFile = (file) => TIMED_TEXT_EXTS.has(String(file?.name || '').toLowerCase().split('.').pop());
@@ -1455,7 +1462,6 @@ export function mountTimedTextButton({ container, ctx } = {}) {
     button.hidden = !supportsFile(ctx.state?.file);
     if (button.hidden) return;
     const mode = mediaModeForFile(ctx.state?.file);
-    buttonIcon.replaceChildren(icon(mode === 'subtitles' ? 'video' : 'audio'));
     buttonLabel.textContent = t(mode === 'subtitles' ? 'ui.timedTextOpenVideo' : 'ui.timedTextOpenAudio');
     button.title = buttonLabel.textContent;
     button.setAttribute('aria-label', buttonLabel.textContent);
@@ -1471,7 +1477,7 @@ export function mountTimedTextButton({ container, ctx } = {}) {
       file: editorState.file,
       sidecar: editorState.sidecar,
       onApply: (next) => {
-        beginChange(editorState.history, 'sidecar');
+        beginChange(editorState.history, 'sidecar', t('ui.changeHistorySidecar'));
         setSidecar(editorState, next);
         endChange(editorState.history);
         syncActionBar(ctx.els, editorState);

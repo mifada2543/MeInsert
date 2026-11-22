@@ -10,7 +10,9 @@ import {
   clearHistory,
   createHistory,
   endChange,
+  historyEntries,
   redo,
+  rollbackTo,
   undo,
 } from '../../assets/js/core/history.js';
 
@@ -195,4 +197,139 @@ test('the history stack is capped at 120 entries', () => {
   assert.equal(history.past.length, 120);
   assert.equal(history.past[0].value, 'v11');
   assert.equal(history.past[119].value, 'v130');
+  // Label dan waktu ikut tergeser bersama snapshot saat trim.
+  assert.equal(history.pastLabels.length, 120);
+  assert.equal(history.pastTimes.length, 120);
+  assert.ok(history.pastTimes.every((time) => typeof time === 'number'));
+});
+
+test('createHistory exposes the new label and timestamp arrays', () => {
+  const { history } = createEditor();
+  assert.deepEqual(history.pastLabels, []);
+  assert.deepEqual(history.futureLabels, []);
+  assert.deepEqual(history.pastTimes, []);
+  assert.deepEqual(history.futureTimes, []);
+});
+
+test('beginChange stores an optional label next to the snapshot', () => {
+  const { state, history } = createEditor('awal');
+  beginChange(history, 'title', 'Edit Judul');
+  state.value = 'baru';
+  assert.deepEqual(history.pastLabels, ['Edit Judul']);
+  assert.equal(history.pastTimes.length, 1);
+  assert.equal(typeof history.pastTimes[0], 'number');
+  beginChange(history, 'artist');
+  assert.deepEqual(history.pastLabels, ['Edit Judul', null]);
+});
+
+test('labels and timestamps follow their snapshots through undo and redo', () => {
+  const { state, history } = createEditor('awal');
+  beginChange(history, 'title', 'Edit Judul');
+  state.value = 'satu';
+  beginChange(history, 'artist', 'Edit Artis');
+  state.value = 'dua';
+
+  assert.deepEqual(history.pastLabels, ['Edit Judul', 'Edit Artis']);
+  const timesAtStart = [...history.pastTimes];
+
+  assert.equal(undo(history), true);
+  assert.equal(state.value, 'satu');
+  assert.deepEqual(history.pastLabels, ['Edit Judul']);
+  assert.deepEqual(history.futureLabels, ['Edit Artis']);
+  assert.equal(history.futureTimes.length, 1);
+  assert.equal(history.futureTimes[0], timesAtStart[1]);
+
+  assert.equal(undo(history), true);
+  assert.equal(state.value, 'awal');
+  assert.deepEqual(history.pastLabels, []);
+  assert.deepEqual(history.futureLabels, ['Edit Artis', 'Edit Judul']);
+  assert.equal(history.futureTimes.length, 2);
+
+  assert.equal(redo(history), true);
+  assert.equal(state.value, 'satu');
+  assert.deepEqual(history.pastLabels, ['Edit Judul']);
+  assert.deepEqual(history.futureLabels, ['Edit Artis']);
+
+  assert.equal(redo(history), true);
+  assert.equal(state.value, 'dua');
+  assert.deepEqual(history.pastLabels, ['Edit Judul', 'Edit Artis']);
+  assert.deepEqual(history.futureLabels, []);
+  assert.deepEqual(history.futureTimes, []);
+});
+
+test('historyEntries lists past snapshots oldest to newest with index, label and time', () => {
+  const { state, history } = createEditor('a');
+  beginChange(history, 'x', 'Pertama');
+  state.value = 'b';
+  beginChange(history, 'y', 'Kedua');
+  state.value = 'c';
+
+  const entries = historyEntries(history);
+  assert.deepEqual(entries.map((entry) => entry.index), [0, 1]);
+  assert.deepEqual(entries.map((entry) => entry.label), ['Pertama', 'Kedua']);
+  assert.deepEqual(entries.map((entry) => entry.snapshot.value), ['a', 'b']);
+  assert.ok(entries[0].at > 0);
+  assert.ok(entries[1].at >= entries[0].at);
+
+  undo(history);
+  assert.deepEqual(historyEntries(history).map((entry) => entry.label), ['Pertama']);
+  assert.deepEqual(historyEntries({ past: [], pastLabels: [], pastTimes: [] }), []);
+});
+
+test('rollbackTo restores an older snapshot, clears redo and stays undoable', () => {
+  const { state, history } = createEditor('v0');
+  beginChange(history, 'a', 'Ubah A');
+  state.value = 'v1';
+  beginChange(history, 'b', 'Ubah B');
+  state.value = 'v2';
+  beginChange(history, 'c', 'Ubah C');
+  state.value = 'v3';
+  // past = [v0, v1, v2], state = v3
+
+  assert.equal(rollbackTo(history, 0), true);
+  assert.equal(state.value, 'v0');
+  assert.equal(history.future.length, 0);
+  assert.deepEqual(history.futureLabels, []);
+  assert.deepEqual(history.futureTimes, []);
+  assert.equal(history.lastKey, null);
+  assert.deepEqual(history.past.map((snap) => snap.value), ['v0', 'v1', 'v2', 'v3']);
+
+  const entries = historyEntries(history);
+  assert.equal(entries.length, 4);
+  assert.equal(entries[3].snapshot.value, 'v3');
+  assert.equal(typeof entries[3].label, 'string');
+  assert.ok(entries[3].label.includes('Ubah A'), `rollback label: ${entries[3].label}`);
+  assert.equal(typeof entries[3].at, 'number');
+
+  // Undo setelah rollback mengembalikan state sebelum rollback.
+  assert.equal(undo(history), true);
+  assert.equal(state.value, 'v3');
+  assert.equal(history.past.length, 3);
+  assert.equal(canRedo(history), true);
+  assert.equal(redo(history), true);
+  assert.equal(state.value, 'v0');
+});
+
+test('rollbackTo rejects invalid indices without touching the stack', () => {
+  const { state, history } = createEditor('awal');
+  beginChange(history, 'title', 'Edit Judul');
+  state.value = 'baru';
+  assert.equal(rollbackTo(history, -1), false);
+  assert.equal(rollbackTo(history, 2), false);
+  assert.equal(rollbackTo(history, 'nope'), false);
+  assert.equal(state.value, 'baru');
+  assert.equal(history.past.length, 1);
+  assert.deepEqual(history.pastLabels, ['Edit Judul']);
+});
+
+test('clearHistory empties the label and timestamp arrays too', () => {
+  const { state, history } = createEditor('awal');
+  beginChange(history, 'title', 'Edit Judul');
+  state.value = 'satu';
+  undo(history);
+  clearHistory(history);
+  assert.deepEqual(history.pastLabels, []);
+  assert.deepEqual(history.futureLabels, []);
+  assert.deepEqual(history.pastTimes, []);
+  assert.deepEqual(history.futureTimes, []);
 });

@@ -43,6 +43,9 @@ export function createEditorState() {
     // First-class timed-text payload (synchronized lyrics + subtitle cues).
     // Owned by the lyrics/subtitle panels; flows through collectChanges().
     sidecar: null,
+    // Pending media cut (trim) range. Owned by the cut panel; flows through
+    // collectChanges() into the change plan and the write path.
+    trim: null,
     coverOriginal: null,
     coverOriginalBytes: null,
     coverPreviewUrl: null,
@@ -63,6 +66,7 @@ export function createEditorState() {
       coverAction: state.coverAction,
       coverChosen: state.coverChosen ? { ...state.coverChosen } : null,
       sidecar: cloneSidecar(state.sidecar),
+      trim: cloneTrim(state.trim),
       outputBase: state.outputBase,
     }),
     restore: (snapshot) => {
@@ -74,6 +78,7 @@ export function createEditorState() {
       state.coverAction = snapshot.coverAction;
       state.coverChosen = snapshot.coverChosen ? { ...snapshot.coverChosen } : null;
       state.sidecar = cloneSidecar(snapshot.sidecar);
+      state.trim = cloneTrim(snapshot.trim);
       state.outputBase = snapshot.outputBase;
     },
   });
@@ -93,6 +98,16 @@ function cloneValue(value) {
 }
 export function cloneSidecar(sidecar) {
   return sidecar && typeof sidecar === 'object' ? cloneValue(sidecar) : null;
+}
+/** Clone a plain trim range so callers can never mutate editor state by reference. */
+export function cloneTrim(trim) {
+  if (!trim || typeof trim !== 'object') return null;
+  return { start: trim.start, end: trim.end, mode: trim.mode };
+}
+/** Set (or clear with null) the editor's pending media cut range. */
+export function setTrim(state, trim) {
+  state.trim = cloneTrim(trim);
+  return state.trim;
 }
 /** Set (or clear with null) the editor's timed-text sidecar payload. */
 export function setSidecar(state, sidecar) {

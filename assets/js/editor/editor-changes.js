@@ -4,7 +4,7 @@
 import { bindTranslation, t } from '../i18n/index.js';
 import { asArray, asString, validateCustomKey } from '../core/tag-utils.js';
 import { canRedo, canUndo } from '../core/history.js';
-import { PDF_STANDARD_KEYS, cloneSidecar } from './editor-state.js';
+import { PDF_STANDARD_KEYS, cloneSidecar, cloneTrim } from './editor-state.js';
 import { setEditingNavigation, singleEditing } from '../ui/editing-navigation.js';
 import { setReloadUnsafe } from '../core/reload-guard.js';
 export function inputSame(a, b, field) {
@@ -84,9 +84,11 @@ export function collectChanges(state, { validate = false } = {}) {
   const rawRemove = [...state.rawRemove];
   const sidecar = cloneSidecar(state.sidecar);
   const sidecarCount = sidecar ? 1 : 0;
-  const count = Object.keys(set).length + new Set(remove).size + custom.length + customRemove.size + rawRemove.length + coverCount + sidecarCount;
+  const trim = cloneTrim(state.trim);
+  const trimCount = trim ? 1 : 0;
+  const count = Object.keys(set).length + new Set(remove).size + custom.length + customRemove.size + rawRemove.length + coverCount + sidecarCount + trimCount;
   return {
-    payload: { set, remove: [...new Set(remove)], custom, customRemove: [...customRemove], rawRemove, ...(cover ? { cover } : {}), sidecar },
+    payload: { set, remove: [...new Set(remove)], custom, customRemove: [...customRemove], rawRemove, ...(cover ? { cover } : {}), sidecar, ...(trim ? { trim } : {}) },
     errors,
     count,
   };
@@ -121,6 +123,7 @@ export function syncActionBar(els, state) {
   els.outputBase.disabled = state.processing;
   if (els.undoBtn) els.undoBtn.disabled = state.processing || !canUndo(state.history);
   if (els.redoBtn) els.redoBtn.disabled = state.processing || !canRedo(state.history);
+  if (els.historyBtn) els.historyBtn.disabled = state.processing || !canUndo(state.history);
   if (state.detection) {
     els.outputBase.value = state.outputBase;
     els.outputExt.textContent = `.${state.detection.ext}`;

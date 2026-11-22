@@ -26,7 +26,7 @@ New users should begin with the quick start and the supported-format table in
 [CONTRIBUTING.md](../CONTRIBUTING.md) before opening a pull request. Maintainers
 use [RELEASING.md](RELEASING.md) for the version-sync checklist and
 [deployment.md](deployment.md) for host-specific headers. Current release:
-**v1.4.1** — see the [changelog](../CHANGELOG.md#141--2026-11-21).
+**v1.5.0** — see the [changelog](../CHANGELOG.md#150--2026-11-21).
 
 ### Document map
 
@@ -75,7 +75,7 @@ di [README.md](../README.md). Kontributor perlu membaca aturan keras di
 [CONTRIBUTING.md](../CONTRIBUTING.md) sebelum membuka pull request. Maintainer
 memakai [RELEASING.md](RELEASING.md) untuk checklist sinkronisasi versi dan
 [deployment.md](deployment.md) untuk header tiap host. Rilis saat ini:
-**v1.4.1** — lihat [changelog](../CHANGELOG.md#141--2026-11-21).
+**v1.5.0** — lihat [changelog](../CHANGELOG.md#150--2026-11-21).
 
 ### Peta dokumen
 

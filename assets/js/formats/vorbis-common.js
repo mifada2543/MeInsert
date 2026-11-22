@@ -7,6 +7,7 @@ import { applyCoverImages, coverFromTags, scrubPrimaryCoverRaw } from '../core/i
 import { commentPictures, editPictures, flacPictures, pictureBase64, repairFlacMetadata } from './vorbis-pictures.js';
 import { rewriteOggCommentBlob } from '../core/ogg-comment.js';
 import { parseLrc, serializeLrc } from '../core/timed-text.js';
+import { conversionCutOptions, expectedCutDuration, mediaRangeProof } from '../core/media-cut.js';
 
 // A single LRC timestamp such as [00:12.34] or [01:02:03.004]. The plain
 // LYRICS field stays the raw text; the sidecar only carries parsed lines.
@@ -124,6 +125,7 @@ export async function writeVorbis(file, payload, options, report, config) {
   const format = new FormatClass();
   const { Input, ALL_FORMATS, BlobSource, Output, BufferTarget, Conversion } = lib;
   const set = payload?.set || {};
+  const trim = payload?.trim || null;
   const sidecarLines = payload?.sidecar?.lyrics?.lines;
   const hasSidecarLyrics = Array.isArray(sidecarLines) && sidecarLines.length > 0;
   // When the editor sends timed lyrics, the plain LYRICS comment and the
@@ -233,11 +235,13 @@ export async function writeVorbis(file, payload, options, report, config) {
   // ENTIRE output back through the media engine from a File built from that
   // Blob, so verification semantics are identical and the whole output never
   // has to be materialized as a Uint8Array.
-  const verifyOutput = async (output, initialWarnings = []) => {
+  const verifyOutput = async (output, initialWarnings = [], trim = null) => {
     const blob = output instanceof Blob ? output : new Blob([output], { type: mime });
+    const outputFile = new File([blob], `output.${outExt}`, { type: mime });
+    // Rebased output timestamps start at zero after the cut conversion.
+    const rangeProof = trim ? await mediaRangeProof(outputFile, 0, expectedCutDuration(trim)) : null;
     report({ stage: 'Memverifikasi hasil…', pct: 82 });
     try {
-      const outputFile = new File([blob], `output.${outExt}`, { type: mime });
       const check = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
       const afterTags = await check.getMetadataTags();
       const checkFields = toFields(afterTags);
@@ -268,6 +272,7 @@ export async function writeVorbis(file, payload, options, report, config) {
         info,
         ...coverFromTags(afterTags),
         warnings,
+        ...(trim ? { rangeProof } : {}),
       };
     } catch (error) {
       return {
@@ -277,11 +282,14 @@ export async function writeVorbis(file, payload, options, report, config) {
         raw: [],
         info: {},
         warnings: [...initialWarnings, `File sudah ditulis, tetapi verifikasi gagal: ${error.message || error}`],
+        ...(trim ? { rangeProof } : {}),
       };
     }
   };
   let fallbackWarning = null;
-  if (config.formatClass === 'OggOutputFormat') {
+  // An in-place comment patch cannot change the media duration, so a trim
+  // must always go through the remux path instead.
+  if (config.formatClass === 'OggOutputFormat' && !trim) {
     try {
       const changes = {};
       const originalRaw = tags.raw || {};
@@ -316,7 +324,9 @@ export async function writeVorbis(file, payload, options, report, config) {
       input,
       output,
       tags: merged,
-      copy: { mode: 'forced', ...(config.copy || {}) },
+      ...(trim
+        ? conversionCutOptions(trim, config.copy || {})
+        : { copy: { mode: 'forced', ...(config.copy || {}) } }),
       showWarnings: false,
     });
   } catch (error) {
@@ -336,5 +346,5 @@ export async function writeVorbis(file, payload, options, report, config) {
   }
   let bytes = new Uint8Array(output.target.buffer);
   if (isFlac) bytes = repairFlacMetadata(bytes, pictures, tags.raw?.vendor);
-  return verifyOutput(bytes, fallbackWarning ? [fallbackWarning] : []);
+  return verifyOutput(bytes, fallbackWarning ? [fallbackWarning] : [], trim);
 }

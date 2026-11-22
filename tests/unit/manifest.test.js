@@ -29,6 +29,28 @@ async function walk(dir, filter) {
   }
   return out;
 }
+async function collectStaticModules(entry, seen = new Set(), modules = new Set()) {
+  if (seen.has(entry)) return modules;
+  seen.add(entry);
+  let source;
+  try {
+    source = await read(entry);
+  } catch {
+    return modules;
+  }
+  const patterns = [
+    /\bfrom\s+['"](\.[^'"]+)['"]/g,
+    /\bimport\s+['"](\.[^'"]+)['"]/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of source.matchAll(pattern)) {
+      const target = join(dirname(entry), match[1]);
+      modules.add(target);
+      await collectStaticModules(target, seen, modules);
+    }
+  }
+  return modules;
+}
 test('service worker: every precached URL exists on disk', async () => {
   const sw = await read('sw.js');
   const block = sw.match(/const SHELL_URLS = \[([\s\S]*?)\];/);
@@ -43,19 +65,17 @@ test('service worker: every precached URL exists on disk', async () => {
   }
   assert.deepEqual(missing, [], `Aset di precache tapi tidak ada: ${missing.join(', ')}`);
 });
-test('service worker: precache mencakup modul inti yang diimpor app.js', async () => {
+test('service worker: precache mencakup seluruh impor statis transitif dari shell', async () => {
   const sw = await read('sw.js');
-  const app = await read('assets/js/app.js');
   const block = sw.match(/const SHELL_URLS = \[([\s\S]*?)\];/);
   const urls = new Set([...block[1].matchAll(/'([^']+)'/g)].map((match) => match[1]));
-  const imports = [...app.matchAll(/from\s+'(\.\/[^']+)'/g)].map((match) => match[1]);
-  assert.ok(imports.length > 5, 'app.js tidak punya import statis — cek regex test');
-  const missing = [];
-  for (const spec of imports) {
-    const target = `assets/js/${spec.replace(/^\.\//, '')}`;
-    if (!urls.has(`./${target}`)) missing.push(target);
+  const modules = new Set();
+  for (const entry of ['assets/js/app.js', 'assets/js/home.js']) {
+    await collectStaticModules(entry, new Set(), modules);
   }
-  assert.deepEqual(missing, [], `Modul inti tidak di-precache: ${missing.join(', ')}`);
+  assert.ok(modules.size > 20, 'Impor statis shell terlalu sedikit — cek regex test');
+  const missing = [...modules].filter((target) => !urls.has(`./${target}`));
+  assert.deepEqual(missing, [], `Modul shell tidak di-precache: ${missing.join(', ')}`);
 });
 test('halaman HTML: seluruh referensi aset lokal ada', async () => {
   const missing = [];

@@ -9,6 +9,14 @@ function fieldsFor(adapter, detection) {
   if (typeof adapter.fieldsFor === 'function') return adapter.fieldsFor(detection?.subtype) || [];
   return adapter.fields || [];
 }
+function formatCutTime(seconds) {
+  const total = Math.max(0, Math.round((Number(seconds) || 0) * 1000));
+  const ms = total % 1000;
+  const whole = Math.floor(total / 1000);
+  const ss = whole % 60;
+  const mm = Math.floor(whole / 60);
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+}
 function coverHash(cover) {
   if (!cover?.data) return null;
   return hashBytes(cover.data);
@@ -58,6 +66,7 @@ export function buildChangePlan({
   const set = payload?.set || {};
   const remove = new Set(payload?.remove || []);
   const sidecar = payload?.sidecar || null;
+  const trim = payload?.trim || null;
   for (const field of definitions) {
     const beforeField = before.fields?.[field.id];
     const beforeValue = beforeField?.normalized || '';
@@ -250,6 +259,19 @@ export function buildChangePlan({
       source,
     });
   }
+  if (trim) {
+    const trimStart = Number(trim.start) || 0;
+    const trimEnd = Number(trim.end) || 0;
+    const trimDuration = Math.max(0, trimEnd - trimStart);
+    operations.push({
+      kind: 'trim',
+      action: 'apply',
+      label: t('ui.cutPlanRow', { v0: formatCutTime(trimStart), v1: formatCutTime(trimEnd), v2: formatCutTime(trimDuration) }),
+      before: before.structure?.duration ?? null,
+      after: trimDuration,
+      source,
+    });
+  }
   const changedFields = new Set(operations.filter((op) => op.kind === 'field').map((op) => op.id));
   const changedCustom = new Set(operations.filter((op) => op.kind === 'custom').map((op) => normalizeCustomKey(formatId, op.key)));
   const changedRaw = new Set(operations.filter((op) => op.kind === 'raw').map((op) => normalizeRawTag(op.tag)));
@@ -289,6 +311,34 @@ export function buildChangePlan({
       message: 'Sampul akan dihapus dari file hasil.',
     });
   }
+  if (trim) {
+    risks.push({
+      code: 'CUT_REWRITE',
+      severity: 'warning',
+      message: 'Operasi potong menulis ulang container; metadata lain tetap dipertahankan.',
+    });
+    if (trim.mode === 'precise') {
+      risks.push({
+        code: 'CUT_TRANSCODE',
+        severity: 'warning',
+        message: 'Mode presisi melakukan transcoding; kualitas dan ukuran file dapat berubah.',
+      });
+    }
+    if (formatId === 'mp3' || formatId === 'mkv') {
+      risks.push({
+        code: 'CUT_CHAPTERS',
+        severity: 'warning',
+        message: 'Chapter dan attachment mungkin tidak dipertahankan setelah pemotongan.',
+      });
+    }
+    if (formatId === 'mp3') {
+      risks.push({
+        code: 'CUT_XING',
+        severity: 'warning',
+        message: 'Header Xing/Info yang kedaluwarsa akan dibuang dari hasil MP3; batas potong mengikuti frame dan dapat menimbulkan artefak awal.',
+      });
+    }
+  }
   if (memory?.level === 'warn' || memory?.level === 'block') {
     risks.push({
       code: memory.level === 'block' ? 'MEMORY_BLOCK' : 'MEMORY_WARN',
@@ -310,6 +360,7 @@ export function buildChangePlan({
       rawRemove: [...actualRawRemove],
       ...(actualCover ? { cover: actualCover } : {}),
       ...(sidecar ? { sidecar } : {}),
+      ...(trim ? { trim } : {}),
     },
     operations,
     noops,

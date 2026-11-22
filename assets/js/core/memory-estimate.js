@@ -63,6 +63,18 @@ export function estimateForSingle({ fileSize = 0, coverBytes = 0, observedPeakMb
     observedPeakMb,
   });
 }
+/** Memory policy for a media cut. Cuts with an intermediate file hold two
+ * full-size buffers, so they are estimated more conservatively. */
+export function estimateForCut({ fileSize = 0, intermediate = false, coverBytes = 0, observedPeakMb = 0 } = {}) {
+  return estimateMemory({
+    inputSizes: [fileSize],
+    heldOutputSizes: intermediate ? [fileSize, fileSize] : [fileSize],
+    coverBytes,
+    copyFactor: 1.5,
+    engineOverheadMb: 30,
+    observedPeakMb,
+  });
+}
 export function estimateForBatch(items = [], { observedPeakMb = 0 } = {}) {
   const sizes = (items || []).map((item) => Number(item?.file?.size) || 0);
   return estimateMemory({

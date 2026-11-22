@@ -11,6 +11,7 @@
 //
 // Modul ini murni logika (tanpa DOM) supaya bisa diuji unit tanpa browser.
 import { beginChange, canRedo, canUndo, clearHistory, createHistory, endChange, redo, undo } from '../core/history.js';
+import { t } from '../i18n/index.js';
 
 /** Kunci perubahan untuk coalescing riwayat: satu field grup. */
 export function groupFieldChangeKey(groupKey, fieldId) {
@@ -80,7 +81,7 @@ export function createGroupHistoryController({ getGroup, histories = new Map() }
     history: (key) => historyFor(key),
     /** Catat state sebelum perubahan; key sama digabung jadi satu entri. */
     begin(key, changeKey) {
-      beginChange(historyFor(key), changeKey);
+      beginChange(historyFor(key), changeKey, t('ui.changeHistoryField', { v0: 'Batch' }));
     },
     /** Tutup rentang coalescing tanpa mencatat apa pun. */
     end(key) {

@@ -37,6 +37,10 @@ test('editor state exposes an empty undo/redo history', () => {
   assert.equal(canRedo(state.history), false);
   assert.equal(state.history.past.length, 0);
   assert.equal(state.history.future.length, 0);
+  assert.deepEqual(state.history.pastLabels, []);
+  assert.deepEqual(state.history.futureLabels, []);
+  assert.deepEqual(state.history.pastTimes, []);
+  assert.deepEqual(state.history.futureTimes, []);
 });
 
 test('snapshot keeps every editable value and restore writes them back', () => {
@@ -203,4 +207,48 @@ test('clearHistory empties both stacks', () => {
   assert.equal(canRedo(state.history), false);
   assert.equal(state.history.past.length, 0);
   assert.equal(state.history.future.length, 0);
+});
+
+test('editor history keeps label and timestamp arrays in sync with undo and clear', () => {
+  const state = seededState();
+  beginChange(state.history, 'field:title', 'Edit Judul');
+  state.values.title = 'Ubah';
+  assert.equal(state.history.past.length, 1);
+  assert.deepEqual(state.history.pastLabels, ['Edit Judul']);
+  assert.equal(state.history.pastTimes.length, 1);
+  assert.equal(typeof state.history.pastTimes[0], 'number');
+
+  assert.equal(undo(state.history), true);
+  assert.equal(state.values.title, 'Asli');
+  assert.deepEqual(state.history.pastLabels, []);
+  assert.deepEqual(state.history.futureLabels, ['Edit Judul']);
+  assert.equal(state.history.futureTimes.length, 1);
+
+  clearHistory(state.history);
+  assert.deepEqual(state.history.pastLabels, []);
+  assert.deepEqual(state.history.futureLabels, []);
+  assert.deepEqual(state.history.pastTimes, []);
+  assert.deepEqual(state.history.futureTimes, []);
+});
+
+test('trim and sidecar are copied into and restored from the snapshot', () => {
+  const state = seededState();
+  state.trim = { start: 1.5, end: 4.5, mode: 'keep' };
+  state.sidecar = { cues: [{ start: 0, end: 1, text: 'halo' }], nested: { v: 2 } };
+
+  const snapshot = state.history.snapshot();
+  assert.deepEqual(snapshot.trim, { start: 1.5, end: 4.5, mode: 'keep' });
+  assert.deepEqual(snapshot.sidecar, { cues: [{ start: 0, end: 1, text: 'halo' }], nested: { v: 2 } });
+
+  state.trim = null;
+  state.sidecar = null;
+  state.history.restore(snapshot);
+  assert.deepEqual(state.trim, { start: 1.5, end: 4.5, mode: 'keep' });
+  assert.deepEqual(state.sidecar, { cues: [{ start: 0, end: 1, text: 'halo' }], nested: { v: 2 } });
+
+  // Salinan, bukan referensi bersama dengan snapshot.
+  state.sidecar.cues[0].text = 'diubah';
+  state.trim.start = 99;
+  assert.equal(snapshot.sidecar.cues[0].text, 'halo');
+  assert.equal(snapshot.trim.start, 1.5);
 });

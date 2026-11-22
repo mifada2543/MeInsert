@@ -29,6 +29,8 @@ import { initScrollReveal } from './ui/scroll-reveal.js';
 import { initMobileMenu } from './ui/mobile-menu.js';
 import './ui/offline-settings.js';
 import { mountTimedTextButton } from './ui/timed-text-editor.js';
+import { mountCutButton } from './ui/media-cut-editor.js';
+import { mountChangeHistory } from './ui/change-history.js';
 initLanguage();
 registerServiceWorker();
 const client = new MetadataClient();
@@ -154,6 +156,8 @@ function boot() {
     setupShortcuts();
     mountQuickSaveToggle({ container: els.actionBar });
     mountTimedTextButton({ container: els.actionBar, ctx });
+    mountCutButton({ container: els.actionBar, ctx });
+    mountChangeHistory({ ctx, els });
     setupCleanMetadata();
     initActionBar();
     dock.attach();

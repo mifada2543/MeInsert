@@ -10,9 +10,76 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## Daftar isi
 
+- [1.5.0 — 2026-11-21](#150--2026-11-21)
 - [1.4.1 — 2026-11-21](#141--2026-11-21)
 - [1.4.0 — 2026-11-21](#140--2026-11-21)
 - [1.3.0 — 2026-11-18](#130--2026-11-18)
+
+## [1.5.0] — 2026-11-21
+
+Rilis ini menambahkan pemotongan rentang audio/video, panel riwayat perubahan,
+dan penyempurnaan ikon serta kartu preferensi subtitle ke editor satu berkas.
+`package.json`, lock file, dan badge README ID/EN menunjukkan `v1.5.0`. Cache
+shell naik ke `meinsert-v62`; cache engine tetap `meinsert-engine-v1`.
+
+### Fitur — potong audio/video
+
+- Tombol **Potong audio/video** muncul di panel opsi action bar hanya untuk
+  MP3, FLAC, OGG/Opus, MP4/M4A, MOV, MKV, dan WebM; mode (audio/video) dikunci
+  dari ekstensi berkas dan diperbarui saat berkas selesai dibuka.
+- Dialog potong dua kolom menampilkan pratinjau `blob:` berbasis `<audio>` /
+  `<video>`, input waktu `mm:ss.mmm`, tombol tandai mulai/selesai dari posisi
+  putar, putar rentang, atur ulang, terapkan, dan batal. Pratinjau dan URL
+  objek dilepaskan saat dialog ditutup.
+- Dua mode: **Salin** (default, stream-copy bila keyframe mengizinkan) dan
+  **Presisi** (batas waktu eksak, dapat melakukan transcode). Ringkasan durasi
+  hasil, rencana rentang, dan peringatan keyframe/transcode/bab/Xing/memori
+  ditampilkan sebelum penerapan.
+- Rentang divalidasi dengan `core/media-cut.js#normalizeTrim` terhadap durasi
+  media; rentang tidak valid ditolak dengan toast dan pesan status. Penerapan
+  masuk ke undo/redo sebagai perubahan `trim` melalui `setTrim()` dan
+  `syncActionBar()`.
+- Guard offline dipulihkan: fitur audio memakai paket offline `audio`, video
+  memakai `image`; mesin yang belum ter-cache menampilkan toast dan memblokir
+  dialog saat offline.
+
+### Fitur — riwayat perubahan & kerapian ikon
+
+- Tombol **Riwayat perubahan** ditaruh di kepala kartu editor, berdampingan
+  dengan **Urungkan** / **Ulangkan**. Panel mencatat semua aksi yang masuk undo
+  (field, tag kustom, sampul, tag mentah, pembersihan metadata, lirik/subtitle,
+  potong, dan nama hasil) dengan label manusiawi dan waktu.
+- Memilih entri lalu **Kembali ke versi ini** meminta konfirmasi terlebih
+  dahulu. Rollback dapat dibatalkan dengan **Urungkan** (Ctrl+Z); riwayat
+  berlaku untuk sesi editing saat ini dan tidak disimpan lintas reload.
+- Tombol **Lirik & Subtitle** memakai ikon caption, tombol **Potong** memakai
+  ikon gunting. Keduanya berukuran 16×16, tidak berganti ikon mengikuti mode
+  berkas, sehingga tampil simetris dan mudah dibedakan.
+- Kartu pengaturan tampilan subtitle kini memakai kartu ringkas bergaya kartu
+  cue: toolbar **+ Baris** / gear / **Tampilkan: Subtitle** tetap terlihat,
+  semua kontrol (tema, warna teks/latar, opacity, ukuran, tebal/bayang, posisi,
+  perataan) dirapikan menjadi baris-baris kompak, dan tombol bawah tetap
+  **Simpan preferensi**.
+
+### Dokumentasi & offline
+
+- `docs/ARCHITECTURE.md` mendokumentasikan `state.trim`, operasi potong, panel
+  riwayat, range proof, dan kebijakan memori pada langkah pipeline 5/7/8.
+- `docs/LIMITATIONS.md` menambahkan bagian "Cut audio/video" untuk keyframe,
+  transcode, chapter/attachment, Xing/TLEN/CHAP/CTOC, dan memori.
+- `media-cut.js`, `mp3-cut.js`, dan dependensinya masuk ke manifest offline
+  audio/image; `KNOWN_OPTIONAL_URLS` Service Worker mengikuti union manifest.
+- Skrip `test:cut`, `test:history`, dan `test:timed-text` ditambahkan untuk
+  suite E2E potong media, riwayat perubahan, dan editor teks berirama.
+
+### Verifikasi rilis
+
+- ESLint 0 error, 439 unit test, `check:css`, `check:policies`, dan
+  `check:assets` hijau.
+- 20/20 suite E2E lolos dengan satu Chrome bersama, termasuk `cut-media`,
+  `change-history`, dan `timed-text`.
+- Audit `test:offline:real` lolos: shell terpasang offline, engine cache
+  dipertahankan saat pembaruan, dan tidak ada request keluar origin.
 
 ## [1.4.1] — 2026-11-21
 

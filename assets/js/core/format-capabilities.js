@@ -45,7 +45,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'audio',
     labelKey: 'ui.offlineFeatureAudio',
-    bytes: 828_036,
+    bytes: 839_436,
     urls: [
       './assets/vendor/mediabunny.mjs',
       './assets/js/workers/media.worker.js',
@@ -59,12 +59,13 @@ export const OFFLINE_FEATURES = [
       './assets/vendor/browser-id3-writer.mjs',
       './assets/js/core/id3-sylt.js',
       './assets/js/core/id3-passthrough.js',
+      './assets/js/core/mp3-cut.js',
     ],
   },
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 9_364_104,
+    bytes: 9_381_919,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
       './assets/vendor/fflate.mjs',
@@ -74,6 +75,8 @@ export const OFFLINE_FEATURES = [
       './assets/js/formats/mp4.js',
       './assets/js/engines/exiftool.js',
       './assets/vendor/mediabunny.mjs',
+      './assets/js/core/id3-passthrough.js',
+      './assets/js/core/mp3-cut.js',
     ],
   },
   {

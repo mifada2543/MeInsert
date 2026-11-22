@@ -14,7 +14,7 @@ Tanpa server. Tanpa upload. Tanpa akun.
 [Demo langsung](https://meinsert.my.id/) · [Editor satu file](https://meinsert.my.id/single.html) · [Mode batch](https://meinsert.my.id/batch.html) · [Dokumentasi](#dokumentasi-lanjutan)
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
-[![Versi](https://img.shields.io/badge/version-v1.4.1-blue?style=flat-square)](./package.json)
+[![Versi](https://img.shields.io/badge/version-v1.5.0-blue?style=flat-square)](./package.json)
 [![Lisensi](https://img.shields.io/badge/Lisensi-AGPLv3-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#cara-memverifikasi-klaim-lokal)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)
@@ -91,7 +91,7 @@ Tombol **Lirik & Subtitle** di editor membuka editor dua kolom: pratinjau media 
 
 - **Penyuntingan:** ketik teks, tandai waktu langsung di tiap baris, impor (`.lrc`, `.srt`, `.vtt`), dan ekspor teks berirama.
 - **Tampilan teks (khusus subtitle/video):** tombol **gear** membuka kartu pengaturan warna teks, warna dan opacity latar, ukuran, tebal, bayang, posisi, dan perataan, termasuk preset **MEeL**. Format LRC tidak menyimpan warna atau latar, sehingga tombol ini tidak tersedia untuk lirik.
-- **Perilaku kartu:** saat terbuka, editor meredup dengan overlay gelap (tanpa blur) dan tombol utama berubah menjadi **Simpan preferensi** (disimpan di `localStorage`); saat tertutup kembali menjadi **Terapkan**. Klik di luar kartu atau tekan gear ✕ untuk menutup; perubahan yang belum disimpan memunculkan pilihan **Batalkan** / **Simpan**.
+- **Perilaku kartu:** saat terbuka, toolbar **+ Baris** / gear ✕ / **Tampilkan: Subtitle** tetap terlihat, isi kartu dirapikan menjadi baris-baris kompak, editor meredup dengan overlay gelap (tanpa blur), dan tombol utama berubah menjadi **Simpan preferensi** (disimpan di `localStorage`); saat tertutup kembali menjadi **Terapkan**. Klik di luar kartu atau tekan gear ✕ untuk menutup; perubahan yang belum disimpan memunculkan pilihan **Batalkan** / **Simpan**.
 - **Draf:** baris tersimpan otomatis dan dihapus setelah **Terapkan**.
 - **Penyimpanan ke berkas:** teks disisipkan ke dalam kontainer, bukan ke piksel video. Lirik juga bisa menjadi track berlabel "Lirik". File asli tidak pernah ditimpa.
 
@@ -103,6 +103,21 @@ Tombol **Lirik & Subtitle** di editor membuka editor dua kolom: pratinjau media 
 | MKV / WebM | Track WebVTT |
 
 Blok `STYLE` dan cue settings ikut ditulis. Warna dan latar dijamin pada pratinjau dan file `.vtt`; pemutar internal mungkin berbeda. Detail ada di [dokumentasi keterbatasan](docs/LIMITATIONS.md).
+
+### Potong audio/video
+
+Tombol **Potong audio/video** tersedia di panel opsi action bar untuk MP3, FLAC, OGG/Opus, MP4/M4A, MOV, MKV, dan WebM. Dialog menampilkan pratinjau lokal, input waktu `mm:ss.mmm`, tombol tandai awal/akhir dari posisi putar, serta dua mode:
+
+- **Salin** (default): stream-copy tanpa transcode bila keyframe mengizinkan.
+- **Presisi**: batas waktu eksak; dapat melakukan transcode lokal.
+
+Rentang disimpan sebagai perubahan `trim` di editor, ikut undo/redo, dan baru diproses saat Anda menekan **Simpan**. Hasil diverifikasi terhadap bukti rentang media sebelum bisa diunduh; file asli tidak pernah ditimpa. Guard offline memblokir tombol jika paket engine terkait belum ter-cache.
+
+### Riwayat perubahan
+
+Tombol **Riwayat** di kepala kartu editor, berdampingan dengan **Urungkan** / **Ulangkan**, membuka daftar semua aksi pada sesi ini: perubahan field, tag kustom, sampul, tag mentah, pembersihan metadata, lirik/subtitle, potong, dan nama hasil. Tiap entri memuat label dan waktu.
+
+Memilih **Kembali ke versi ini** memunculkan konfirmasi. Setelah rollback, Anda masih bisa menekan **Urungkan** (Ctrl+Z) untuk membatalkan rollback tersebut. Riwayat tidak disimpan lintas reload atau pergantian berkas.
 
 ### Dokumen Office
 

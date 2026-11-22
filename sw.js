@@ -6,7 +6,7 @@
 // must never throw away engines the user already downloaded. ENGINE_VERSION is
 // mirrored by core/build.js (this worker is a classic script, so it cannot use
 // a static import); tests/unit/service-worker-update.test.js keeps them in sync.
-const CACHE_VERSION = 'meinsert-v58';
+const CACHE_VERSION = 'meinsert-v62';
 const ENGINE_VERSION = 'meinsert-engine-v1';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
 const INSTALL_FETCH_TIMEOUT_MS = 15_000;
@@ -44,6 +44,9 @@ const SHELL_URLS = [
   './assets/js/core/image-utils.js',
   './assets/js/core/integrity-rules.js',
   './assets/js/core/integrity.js',
+  './assets/js/core/media-cut.js',
+  './assets/js/core/mp3-cut.js',
+  './assets/js/core/id3-passthrough.js',
   './assets/js/core/media-proof.js',
   './assets/js/core/memory-estimate.js',
   './assets/js/core/memory-meter.js',
@@ -65,6 +68,7 @@ const SHELL_URLS = [
   './assets/js/ui/batch-clean.js',
   './assets/js/ui/clean-metadata.js',
   './assets/js/ui/confirm.js',
+  './assets/js/ui/change-history.js',
   './assets/js/ui/dom.js',
   './assets/js/ui/mobile-menu.js',
   './assets/js/ui/editing-navigation.js',
@@ -82,6 +86,7 @@ const SHELL_URLS = [
   './assets/js/ui/policy-notice.js',
   './assets/js/ui/offline-settings.js',
   './assets/js/ui/timed-text-editor.js',
+  './assets/js/ui/media-cut-editor.js',
   './assets/js/ui/raw-view.js',
   './assets/js/ui/result-view.js',
   './assets/js/ui/review-dialog.js',
@@ -132,6 +137,7 @@ const KNOWN_OPTIONAL_URLS = Object.freeze([
   './assets/vendor/browser-id3-writer.mjs',
   './assets/js/core/id3-sylt.js',
   './assets/js/core/id3-passthrough.js',
+  './assets/js/core/mp3-cut.js',
   './assets/vendor/exiftool-wasm/index.js',
   './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
   './assets/js/workers/exiftool.worker.js',
