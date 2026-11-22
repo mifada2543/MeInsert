@@ -126,6 +126,31 @@ is authoritative for each file. These are the known caveats:
 
 ## Format-specific caveats
 
+### Image metadata engine
+
+- The engine ships **only as a raw Brotli (`.br`) payload** (3,638,320 bytes);
+  there is no gzip fallback. Hosts serve the `.br` file verbatim as
+  `application/wasm` and do not need to send `Content-Encoding: br` or
+  `Vary: Accept-Encoding`, so the same compressed bytes are cached everywhere.
+- Browsers without native Brotli decoding use the bundled ~91 KB JavaScript
+  decoder. The compressed SHA-256 is checked before decoding, then the expanded
+  WASM length and SHA-256 are checked afterwards.
+- The image offline pack is 4.822.717 bytes; all optional features together are
+  5.568.585 bytes offline. These estimates track the vendored assets on disk.
+- The bundled ExifTool keeps EXIF, XMP, IPTC, GPS coordinate tags, MakerNotes,
+  and modules for supported still RAW, HEIF, and RAW video. It omits the optional
+  reverse-geocoding database and processor. GPS coordinates and GPS tag editing
+  remain available. Automatic lookup of a city or region from coordinates is
+  outside this image engine build.
+- The build omits parsers for out-of-scope formats and formats handled by other
+  MeInsert engines. Some embedded formats may expose fewer raw tags than a
+  stock desktop ExifTool release. See the explicit module lists in
+  `scripts/optimize-exiftool.mjs`.
+- Standard image edits and selective cleanup still use ExifTool's tag namespaces
+  and read-back verification. Opening a supported image for full metadata
+  inspection loads the engine on demand. This release does not add a separate
+  native JavaScript image metadata writer.
+
 ### HEIC/HEIF
 
 - Only **XMP tag writes are requested** (including `XMP-exif` GPS). ExifTool may

@@ -24,6 +24,8 @@ sponsorship is implied.
 | zeroperl | — | MIT | Perl-in-WASM runtime |
 | mediabunny | 1.65.0 | MPL-2.0 | Audio/video demux and mux |
 | pdf-lib | 1.17.1 | MIT | PDF metadata |
+| brotli | 2.1.0 | MIT (package) and Apache-2.0 (decoder sources) | Brotli decoding on static hosts |
+| base64-js | 1.5.1 | MIT | Embedded Brotli dictionary decoding |
 | fflate | 0.8.3 | MIT | ZIP / gzip |
 | browser-id3-writer | 6.4.0 | MIT | ID3 tags |
 | MEeL (adapted source) | commit `95e4937` | AGPL-3.0-or-later | Lyrics/subtitle editor |
@@ -44,11 +46,10 @@ The sections below are the authoritative entries.
 - **License**: Apache-2.0 (see `licenses/exiftool-wasm-LICENSE`)
 - **Source**: npm `@colorhythm/exiftool-wasm` — upstream repo
   https://github.com/6over3/exiftool (also published as `@uswriting/exiftool`)
-- **Modifications**: None. Used as distributed.
+- **Modifications**: The vendored wrapper points to the content-hashed optimized WASM.
 - **Compliance**: Apache-2.0 §4 — copy of the license is given to
-  recipients (`licenses/exiftool-wasm-LICENSE`); modified files (none)
-  and copyright/patent/trademark notices from the source are retained
-  in the source form of any derivative (none here). The wrapper's
+  recipients (`licenses/exiftool-wasm-LICENSE`); copyright and other
+  upstream notices are retained. The wrapper's
   Apache-2.0 license does **not** override the licenses of the
   components it executes (ExifTool, zeroperl below).
 
@@ -59,12 +60,10 @@ The sections below are the authoritative entries.
 - **Copyright**: 2003-2026, Phil Harvey
 - **Source**: https://exiftool.org/ · https://github.com/exiftool/exiftool
 - **Where it lives**: Embedded (minified Perl) in
-  `assets/vendor/exiftool-wasm/index.js` and executed by the
-  `assets/vendor/exiftool-wasm/*.wasm` module via zeroperl.
-- **Modifications**: None beyond minification by the upstream
-  exiftool-wasm build. The copyright notice above is retained in this
-  index and in `licenses/`; the wrapper's Apache-2.0 license grants
-  no rights in ExifTool itself.
+  the zeroperl WASM module served as `.wasm.gz` or `.wasm.br`.
+- **Modifications**: MeInsert prunes optional format modules and POD and adjusts
+  TagLookup to skip unavailable tables. See `scripts/optimize-exiftool.mjs`.
+  The upstream ExifTool license remains applicable.
 
 ## zeroperl (Perl-in-WASM runtime, executed inside exiftool-wasm)
 - **License**: MIT (see `licenses/zeroperl-LICENSE`)
@@ -144,3 +143,14 @@ After running it, re-check that every file in `assets/vendor/licenses/`
 still matches its upstream license, and keep this index in sync —
 in particular the ExifTool notice, which is **not** copied by the
 script and must survive `npm run vendor`.
+
+
+## Brotli decoder and base64-js
+- **Source**: npm `brotli@2.1.0` (https://github.com/devongovett/brotli.js),
+  and `base64-js@1.5.1` (https://github.com/beatgammit/base64-js).
+- **License**: The Brotli package declares MIT. The decoder sources include
+  Copyright 2013 Google Inc. and Apache-2.0 notices (license text in
+  `licenses/exiftool-wasm-LICENSE`). base64-js is MIT
+  (`licenses/base64-js-LICENSE`).
+- **Modifications**: Bundled and minified the decoder entry and dependencies
+  into `assets/vendor/brotli-decode.mjs`.

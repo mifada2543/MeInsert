@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { exiftoolBuild } from '../../assets/js/core/image-engine-build.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
@@ -18,7 +19,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const EXPLICIT_OFFLINE_ASSETS = [
   './assets/js/engines/exiftool.js',
   './assets/vendor/browser-id3-writer.mjs',
-  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
+  `./assets/vendor/exiftool-wasm/${exiftoolBuild.name}.br`,
 ];
 function toDiskPath(url) {
   return url.replace(/^\.\//, '');
@@ -115,13 +116,14 @@ test('offline profile drives the optional URL list and byte estimate', async () 
   assert.equal(featuresForProfile(all).length, OFFLINE_FEATURES.length);
   const urls = optionalUrls(all);
   assert.ok(urls.length > 10, 'all mode must cover every optional engine URL');
+  assert.deepEqual(urls.filter((url) => /\.gz$/i.test(url)), [], 'optional URLs must not reference gzip assets');
   assert.deepEqual(urls, [...new Set(urls)], 'optional URLs must be de-duplicated');
   assert.ok(urls.includes('./assets/js/core/zip-directory.js'), 'office feature must include zip-directory.js');
   let uniqueBytes = 0;
   for (const url of urls) uniqueBytes += (await stat(join(root, toDiskPath(url)))).size;
   assert.equal(estimatedBytes(all), uniqueBytes);
   const image = OFFLINE_FEATURES.find((feature) => feature.id === 'image');
-  assert.ok(image.urls.includes('./assets/vendor/fflate.mjs'), 'image-only offline mode must include the gzip fallback');
+  assert.ok(image.urls.includes('./assets/vendor/fflate.mjs'), 'image-only offline mode must include the Brotli decoder');
   for (const ids of [['image', 'audio'], ['image', 'office']]) {
     const profile = { mode: 'selected', features: ids };
     let total = 0;

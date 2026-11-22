@@ -1,9 +1,10 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-// Development-only guard for optimised brand assets. No runtime dependency.
-import { readFileSync } from 'node:fs';
-import { gunzipSync } from 'node:zlib';
+
+import { readFileSync, readdirSync } from 'node:fs';
+import { brotliDecompressSync } from 'node:zlib';
+import { exiftoolBuild as engine } from '../assets/js/core/image-engine-build.js';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -26,22 +27,38 @@ for (const [name, magic] of EXPECTED) {
     problems.push(`${name}: bukan container WebP`);
   }
 }
-const RAW_WASM_BYTES = 27_651_111;
-const RAW_WASM_SHA256 = 'f854cbb7b6b014d2816a89428fcb217162bb0d7e65f2078f3bbd4b72eaa412ce';
 const ENGINE_DIR = new URL('../assets/vendor/exiftool-wasm/', import.meta.url);
-const wasmGz = readFileSync(new URL('zeroperl-twnm61dk.wasm.gz', ENGINE_DIR));
-if (wasmGz.byteLength > 12 * 1024 * 1024) problems.push(`gzip WASM grew to ${wasmGz.byteLength} bytes`);
+const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const loader = readFileSync(new URL('index.js', ENGINE_DIR), 'utf8');
+if (!loader.includes(engine.name) || !engine.name.includes(engine.sha256.slice(0, 12))) {
+  problems.push('ExifTool loader or filename does not match the build manifest.');
+}
+const filename = `${engine.name}.br`;
+if (!sw.includes(`./assets/vendor/exiftool-wasm/${filename}`)) {
+  problems.push(`Service worker does not recognise ${filename}.`);
+}
 try {
-  const plain = gunzipSync(wasmGz);
-  if (plain.byteLength !== RAW_WASM_BYTES) problems.push(`gzip WASM expands to ${plain.byteLength}, expected ${RAW_WASM_BYTES}`);
+  const compressed = readFileSync(new URL(filename, ENGINE_DIR));
+  if (compressed.length !== engine.brotliBytes) problems.push(`${filename} has an unexpected size.`);
+  if (engine.brotliBytes >= 4_500_000) problems.push('Brotli WASM exceeds the 4.5 MB transfer budget.');
+  if (createHash('sha256').update(compressed).digest('hex') !== engine.brotliSha256) {
+    problems.push('Brotli WASM SHA-256 differs from the pinned compressed payload.');
+  }
+  const plain = brotliDecompressSync(compressed);
   const digest = createHash('sha256').update(plain).digest('hex');
-  if (digest !== RAW_WASM_SHA256) problems.push(`gzip WASM hash ${digest} does not match the pinned upstream engine`);
+  if (plain.length !== engine.rawBytes || digest !== engine.sha256 || !WebAssembly.validate(plain)) {
+    problems.push(`${filename} does not decode to the pinned valid WASM.`);
+  }
 } catch (error) {
-  problems.push(`gzip WASM is not readable: ${error.message}`);
+  problems.push(`${filename} is not readable: ${error.message}`);
+}
+const staleGzip = readdirSync(ENGINE_DIR).filter((entry) => entry.endsWith('.wasm.gz'));
+if (staleGzip.length) {
+  problems.push(`Stale gzip WASM assets must be removed: ${staleGzip.join(', ')}.`);
 }
 if (problems.length) {
   console.error(`Asset check failed:\n${problems.join('\n')}`);
   process.exitCode = 1;
 } else {
-  console.log(`Asset check ok: ${EXPECTED.size} optimised images, gzip WASM ${wasmGz.byteLength} bytes.`);
+  console.log(`Asset check ok: ${EXPECTED.size} optimised images, Brotli WASM ${engine.brotliBytes} bytes.`);
 }

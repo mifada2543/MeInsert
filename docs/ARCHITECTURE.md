@@ -134,15 +134,32 @@ metadata/preview parts with actual-byte decompression budgets).
 `exiftool.js` wraps the vendored ExifTool WASM runtime (`readTags`,
 `writeTags`, `disposeExifToolRuntime`). Other engines are reached through the
 vendored libraries loaded inside the workers (Mediabunny, pdf-lib,
-browser-id3-writer, fflate). Only the gzip build of the ExifTool engine is
-vendored (`zeroperl-twnm61dk.wasm.gz`): `ui/engine-loading.js` redirects the
-runtime's `.wasm` request to it and decompresses the bytes with
-`DecompressionStream('gzip')`, falling back to the vendored `fflate.gunzipSync()`
-on browsers without that API. The service worker caches and reuses the
-compressed response, while the offline byte estimate still describes the
-uncompressed size held in that cache. `npm run vendor` regenerates the gzip
-from the pinned dependency and `npm run check:assets` verifies its expanded
-size and SHA-256.
+browser-id3-writer, fflate). The ExifTool worker fetches the content-hashed raw
+Brotli asset (`.br`) on the first image operation (3,638,320 bytes). The host
+serves those bytes verbatim as `application/wasm` with no `Content-Encoding`, so
+Fetch never expands the response. The worker verifies the compressed SHA-256,
+decodes with native Brotli where available or the bundled ~91 KB JavaScript
+decoder otherwise, then checks the expanded WASM length and SHA-256. There is no
+gzip fallback. The request, decompression and metadata work stay local.
+
+The explicit image offline pack caches the same raw `.br` payload for
+portability, and a worker reuses a cached pack before fetching. The PWA engine
+cache (`meinsert-engine-v4`) also reuses the on-demand Brotli response. Because
+no host sets `Content-Encoding`, Cache Storage holds exactly the same
+3,638,320 compressed bytes everywhere: that is the per-transfer and per-cache
+cost of the engine. The whole image offline pack is 4.822.717 bytes, and every
+optional feature together is 5.568.585 bytes offline.
+
+To reproduce the assets, run `npm ci`, then `npm run vendor` with Node 24.22.3.
+The build checks the pinned upstream hash, rewrites the embedded Perl file
+table, strips POD from retained ExifTool source, and optimizes with Binaryen 125
+(`-Oz --strip-debug`, bulk memory, sign extension and nontrapping float-to-int).
+The upstream already contains no custom/debug sections. The shared tag table
+keeps stable indexes, with entries for removed modules skipped. The build
+writes Brotli level 11 with a 24-bit window and `core/image-engine-build.js`.
+If upgrading the pinned upstream version, audit
+the VFS layout. The build synchronizes the service worker pins.
+`npm run check:assets` checks the WASM signature, sizes, SHA-256 and asset paths.
 
 ### `assets/js/workers/**` — off-main-thread execution
 
@@ -292,8 +309,8 @@ assembles a ZIP and JSON/CSV report instead of a single download.
 `sw.js` treats the app as a precached, offline-first PWA with **two independent
 caches**:
 
-- **Shell cache** (`CACHE_VERSION`, e.g. `meinsert-v52`) holds the always-needed
-  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v2`) holds
+- **Shell cache** (`CACHE_VERSION`, e.g. `meinsert-v72`) holds the always-needed
+  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v4`) holds
   the optional format engines downloaded on demand. Separating them means a
   shell update never discards engines the user already paid to download, and
   clearing optional engines never removes shell assets. The two version markers
@@ -307,8 +324,11 @@ caches**:
   `skipWaiting()` activates the new worker promptly.
 - **Activate** — first migrates optional entries from the legacy single cache
   (`meinsert-v51`) into the engine cache, skipping anything already in the
-  shell; then deletes old `meinsert-*` caches except the two *active* caches,
-  and calls `clients.claim()` to take control of the current page.
+  shell. Upgrading from `meinsert-engine-v3` to `v4` deliberately does not copy
+  files under `/exiftool-wasm/`: the raw `.br` payload is downloaded once into
+  the new engine cache and reused from then on. Finally the worker deletes old
+  `meinsert-*` caches except the two *active* caches, and calls
+  `clients.claim()` to take control of the current page.
 - **Fetch** — GET requests only; anything cross-origin is ignored. A
   shell URL uses **cache-first against the shell cache**; any other cacheable
   asset (vendor library, WASM, format adapter) uses cache-first against the

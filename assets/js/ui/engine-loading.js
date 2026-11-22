@@ -4,16 +4,12 @@
 import { bindText, t, translated } from '../i18n/index.js';
 import { clear, el, formatBytes } from './dom.js';
 import { getProfile } from '../core/offline-manifest.js';
+import { exiftoolBuild } from '../core/image-engine-build.js';
 const VENDOR_DIR = new URL('../../vendor/exiftool-wasm/', import.meta.url);
-const ENGINE_WASM_NAME = 'zeroperl-twnm61dk.wasm';
-const ENGINE_WASM_GZ_NAME = `${ENGINE_WASM_NAME}.gz`;
-const ENGINE_WASM_PATTERN = /zeroperl-twnm61dk\.wasm(?:\.(?:gz|br))?$/i;
-const ENGINE_WASM_BYTES = 27_651_111;
-const ENGINE_WASM_SHA256 = 'f854cbb7b6b014d2816a89428fcb217162bb0d7e65f2078f3bbd4b72eaa412ce';
+const ENGINE_WASM_NAME = exiftoolBuild.name;
+const ENGINE_WASM_BR_NAME = `${ENGINE_WASM_NAME}.br`;
+const ENGINE_WASM_PATTERN = new RegExp(`${ENGINE_WASM_NAME.replaceAll('.', '[.]')}(?:[.]br)?$`);
 const WASM_MAGIC = [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00];
-const GZIP_MAGIC = [0x1f, 0x8b];
-const MAX_GZIP_LAYERS = 2;
-const MAX_ENGINE_BYTES = 64 * 1024 * 1024;
 function startsWith(bytes, prefix) {
   return Boolean(bytes?.byteLength >= prefix.length)
     && prefix.every((value, index) => bytes[index] === value);
@@ -21,19 +17,13 @@ function startsWith(bytes, prefix) {
 export function isWasmBinary(bytes) {
   return startsWith(bytes, WASM_MAGIC);
 }
-export function isGzipBinary(bytes) {
-  return startsWith(bytes, GZIP_MAGIC);
-}
-function hasNativeGunzip() {
-  return typeof globalThis.DecompressionStream === 'function';
-}
-const FALLBACK_WASM_URL = new URL(ENGINE_WASM_GZ_NAME, VENDOR_DIR).href;
+const FALLBACK_WASM_URL = new URL(ENGINE_WASM_BR_NAME, VENDOR_DIR).href;
 let observedWasmUrl = null;
 let activeLoads = 0;
 let prefetchPromise = null;
 let scheduledPromise = null;
 let prefetchController = null;
-function resolveEngineUrl(url) {
+export function resolveEngineUrl(url) {
   if (url instanceof URL) return url.href;
   const text = String(url);
   if (/^[a-z][a-z0-9+.-]*:/i.test(text) || text.startsWith('//')) return text;
@@ -48,51 +38,56 @@ export function noteEngineUrl(url) {
   try {
     const resolved = new URL(resolveEngineUrl(url));
     if (!ENGINE_WASM_PATTERN.test(resolved.pathname)) return;
-    if (!observedWasmUrl || /\.wasm\.(?:gz|br)$/i.test(resolved.pathname)) observedWasmUrl = resolved.href;
-  } catch { /* biarkan fetch memakai nilai asli */ }
+    if (!observedWasmUrl || /\.wasm\.br$/i.test(resolved.pathname)) observedWasmUrl = resolved.href;
+  } catch {  }
 }
 export function engineWasmUrl() {
   return observedWasmUrl || FALLBACK_WASM_URL;
 }
 export function engineRequestUrl(url) {
   const text = String(url);
-  return ENGINE_WASM_PATTERN.test(text) && !/\.wasm\.(?:gz|br)$/i.test(text)
-    ? `${text.slice(0, -ENGINE_WASM_NAME.length)}${ENGINE_WASM_GZ_NAME}`
+  return ENGINE_WASM_PATTERN.test(text) && !/\.wasm\.br$/i.test(text)
+    ? `${text.slice(0, -ENGINE_WASM_NAME.length)}${ENGINE_WASM_BR_NAME}`
     : text;
 }
-async function gunzipEngine(bytes) {
-  if (hasNativeGunzip()) {
-    const stream = new Response(bytes).body.pipeThrough(new DecompressionStream('gzip'));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
-  }
-  const { gunzipSync } = await import('../../vendor/fflate.mjs');
-  return gunzipSync(bytes);
-}
-export async function verifyEngineIntegrity(bytes) {
+async function verifySha256(bytes, expected) {
   if (typeof globalThis.crypto?.subtle?.digest !== 'function') return false;
   const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
   const hex = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
-  if (hex !== ENGINE_WASM_SHA256) throw new Error(`WASM integrity mismatch: ${hex}`);
+  if (hex !== expected) throw new Error(`WASM integrity mismatch: ${hex}`);
   return true;
 }
+export function verifyEngineIntegrity(bytes) {
+  return verifySha256(bytes, exiftoolBuild.sha256);
+}
 export async function decodeEngineBytes(bytes) {
-  let current = bytes;
-  for (let layer = 0; layer <= MAX_GZIP_LAYERS; layer += 1) {
-    if (isWasmBinary(current)) {
-      if (current.byteLength !== ENGINE_WASM_BYTES) throw new Error('WASM size mismatch.');
-      if (!await verifyEngineIntegrity(current) && !WebAssembly.validate(current)) throw new Error('Invalid WASM binary.');
-      return current;
-    }
-    if (!isGzipBinary(current)) throw new Error('Engine payload is neither WASM nor gzip.');
-    current = await gunzipEngine(current);
-    if (current.byteLength > MAX_ENGINE_BYTES) throw new Error('Decompressed engine exceeds the size limit.');
+  if (!isWasmBinary(bytes)) throw new Error('Engine payload is not WASM.');
+  if (bytes.byteLength !== exiftoolBuild.rawBytes) throw new Error('WASM size mismatch.');
+  if (!await verifyEngineIntegrity(bytes) && !WebAssembly.validate(bytes)) throw new Error('Invalid WASM binary.');
+  return bytes;
+}
+async function decompressBrotli(bytes) {
+  const Native = globalThis.DecompressionStream;
+  if (typeof Native === 'function') {
+    try {
+      const stream = new Native('brotli');
+      return new Uint8Array(await new Response(new Response(bytes).body.pipeThrough(stream)).arrayBuffer());
+    } catch {  }
   }
-  throw new Error('Engine payload has too many gzip layers.');
+  if (bytes.byteLength !== exiftoolBuild.brotliBytes || !await verifySha256(bytes, exiftoolBuild.brotliSha256)) {
+    throw new Error('Unable to verify the compressed Brotli engine.');
+  }
+  const { decompress } = await import('../../vendor/brotli-decode.mjs');
+  return decompress(bytes, exiftoolBuild.rawBytes);
+}
+export async function readEngineResponse(response, { brotli = true } = {}) {
+  let bytes = new Uint8Array(await response.arrayBuffer());
+  if (brotli && !isWasmBinary(bytes)) bytes = await decompressBrotli(bytes);
+  return decodeEngineBytes(bytes);
 }
 export async function decodeEngineResponse(response) {
   if (!response) return response;
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const plain = await decodeEngineBytes(bytes);
+  const plain = await readEngineResponse(response);
   const headers = new Headers(response.headers);
   headers.delete('content-encoding');
   headers.set('content-length', String(plain.byteLength));
@@ -117,13 +112,15 @@ export function createProgressFetch({ onProgress, onError, buffer = true } = {})
     const target = resolveEngineUrl(url);
     noteEngineUrl(target);
     if (onProgress && prefetchController) {
-      try { prefetchController.abort(); } catch { /* best effort */ }
+      try { prefetchController.abort(); } catch {  }
       prefetchController = null;
     }
     activeLoads += 1;
     try {
       const response = await fetch(target, init);
-      const rawLength = response.headers?.get?.('content-length');
+      if (response.ok === false) return response;
+      const rawLength = response.headers?.get?.('content-encoding')
+        ? null : response.headers?.get?.('content-length');
       const total = rawLength == null ? null : (Number(rawLength) || 0);
       if (!response.body || typeof response.body.getReader !== 'function') {
         onProgress?.({ loaded: total ?? 0, total });
@@ -143,7 +140,7 @@ export function createProgressFetch({ onProgress, onError, buffer = true } = {})
           }
         }
       } finally {
-        try { reader.releaseLock?.(); } catch { /* best effort */ }
+        try { reader.releaseLock?.(); } catch {  }
       }
       if (!buffer) return new Response(null, { status: 200 });
       return new Response(joinChunks(chunks, loaded), {

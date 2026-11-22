@@ -15,8 +15,11 @@ const PROFILE_KEY = 'meinsert.offlineProfile';
 const USER_FILES = ['tone.mp3', 'document.pdf', 'pattern.png'];
 const MP3_FIXTURE = join(root, 'tests/fixtures/tone.mp3');
 const ALL_OPTIONAL_URLS = [...new Set(OFFLINE_FEATURES.flatMap((feature) => feature.urls))];
+assert.deepEqual(ALL_OPTIONAL_URLS.filter((url) => /\.gz(?:\?|$)/i.test(url)), [],
+  'optional URLs must not reference gzip assets');
 const FEATURE_URLS = Object.fromEntries(OFFLINE_FEATURES.map((feature) => [feature.id, feature.urls]));
 const UPDATED_SHELL_VERSION = `${CURRENT_VERSION}-offline-test`;
+const MIGRATION_SHELL_VERSION = `${CURRENT_VERSION}-migration-test`;
 const contentTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.css', 'text/css; charset=utf-8'],
@@ -35,10 +38,11 @@ const contentTypes = new Map([
   ['.pdf', 'application/pdf'],
 ]);
 let serveUpdated = false;
+let servedShellVersion = UPDATED_SHELL_VERSION;
 function updatedBody(pathname) {
   const filePath = normalize(join(root, pathname));
   if (!filePath.startsWith(root) || !existsSync(filePath)) return null;
-  return readFileSync(filePath, 'utf8').split(CURRENT_VERSION).join(UPDATED_SHELL_VERSION);
+  return readFileSync(filePath, 'utf8').split(CURRENT_VERSION).join(servedShellVersion);
 }
 function serve() {
   const server = createServer((request, response) => {
@@ -441,6 +445,65 @@ try {
     assert.equal(probe.badCancel.type, 'OPTIONAL_ERROR');
     assert.equal(probe.badCancel.error, 'invalid_job');
     console.log('PASS: (j) worker rejected unknown types, blob:/file: URLs and malformed job ids');
+  }
+  {
+    const brotliPath = OFFLINE_FEATURES.find((feature) => feature.id === 'image').urls.find((url) => url.endsWith('.wasm.br'));
+    const brotliHref = new URL(brotliPath, base).href;
+    console.log('STAGE: (k) seed gzip-only v3 engine cache');
+    const seedEntries = ALL_OPTIONAL_URLS.filter((path) => !path.endsWith('.wasm.br')).map((path) => ({
+      url: new URL(path, base).href,
+      body: readFileSync(join(root, path.slice(2)), 'utf8'),
+      type: /[.]m?js$/.test(path) ? 'text/javascript; charset=utf-8' : 'application/octet-stream',
+    }));
+    await page.evaluate(async ({ from, to, gzipPath, entries }) => {
+      await caches.delete(to);
+      const legacy = await caches.open(from);
+      await legacy.put(new URL(gzipPath, location.href).href, new Response('legacy gzip payload'));
+      await Promise.all(entries.map((entry) => legacy.put(entry.url, new Response(entry.body, { headers: { 'content-type': entry.type } }))));
+    }, { from: 'meinsert-engine-v3', to: ENGINE_VERSION, gzipPath: `./assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.gz`, entries: seedEntries });
+    servedShellVersion = MIGRATION_SHELL_VERSION;
+    serveUpdated = true;
+    requests.length = 0;
+    optionalResponses.length = 0;
+    await withTimeout(page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) throw new Error('No service worker registration to update');
+      await registration.update();
+    }), 60_000, 'migration registration.update()');
+    await cacheNamesHave(page, [MIGRATION_SHELL_VERSION, ENGINE_VERSION], `migration shell ${MIGRATION_SHELL_VERSION}`);
+    await waitFor(async () => {
+      const version = await page.evaluate(() => navigator.serviceWorker.controller?.postMessage
+        ? new Promise((resolve) => {
+          const channel = new MessageChannel();
+          channel.port1.onmessage = (event) => resolve(event.data?.version || '');
+          navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+          setTimeout(() => resolve(''), 2000);
+        })
+        : '');
+      return version === MIGRATION_SHELL_VERSION ? true : null;
+    }, 'migration worker controlling the page');
+    const migrated = [
+      brotliPath,
+      './assets/vendor/exiftool-wasm/index.js',
+      './assets/vendor/brotli-decode.mjs',
+      './assets/js/engines/exiftool.js',
+    ];
+    await cacheHas(page, ENGINE_VERSION, migrated, 'Brotli package present after migration');
+    const snapshot = await cacheSnapshot(page);
+    const engineUrls = snapshot[ENGINE_VERSION] || [];
+    assert.equal(engineUrls.some((url) => url.endsWith('.wasm.gz')), false, 'gzip entry must not be migrated');
+    assert.equal(engineUrls.some((url) => /\.wasm(\?|$)/.test(url)), false, 'raw WASM entry must not be migrated');
+    assert.deepEqual([...requestedPaths(requests)].filter(isWasm), [pathOf(brotliHref)], 'migration must fetch only the Brotli WASM');
+    await context.setOffline(true);
+    requests.length = 0;
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller), null, { timeout: 60_000 });
+    await page.locator('#fileInput').setInputFiles(join(root, 'tests/fixtures/pattern.png'));
+    await page.waitForFunction(() => /tag terbaca/.test(document.querySelector('#readStatus')?.textContent || ''), null, { timeout: 120_000 });
+    assertSameOriginOnly(requests, baseOrigin, 'offline reopen after migration');
+    assert.deepEqual([...requestedPaths(requests)].filter(isWasm), [pathOf(brotliHref)], 'offline reopen reused the cached Brotli payload');
+    console.log('PASS: (k) gzip-only v3 cache upgraded to Brotli v4; offline reopen read tags');
+    await context.setOffline(false);
   }
   assert.deepEqual(errors, [], `unexpected page errors: ${errors.join('; ')}`);
   console.log('PASS: no page errors during any offline scenario');
