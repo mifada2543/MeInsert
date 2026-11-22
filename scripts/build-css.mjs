@@ -70,7 +70,6 @@ function seenCount(css) {
   return (css.match(/\{/g) || []).length;
 }
 export async function cssIsUpToDate() {
-  // Compare raw bytes: readCss() intentionally strips watermarks for bundling.
   const current = await readFile(outFile, 'utf8').catch(() => '');
   const fresh = await bundleCss();
   return current.trim() === fresh.trim();

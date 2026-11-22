@@ -5,12 +5,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEditorState, setTrim } from '../../assets/js/editor/editor-state.js';
 import { beginChange, endChange, redo, undo } from '../../assets/js/core/history.js';
-
 test('createEditorState starts without a trim', () => {
   const state = createEditorState();
   assert.equal(state.trim, null);
 });
-
 test('setTrim stores a copy and clears with null', () => {
   const state = createEditorState();
   const trim = { start: 2, end: 5, mode: 'copy' };
@@ -22,7 +20,6 @@ test('setTrim stores a copy and clears with null', () => {
   assert.equal(setTrim(state, null), null);
   assert.equal(state.trim, null);
 });
-
 test('trim participates in undo and redo as a cloned plain object', () => {
   const state = createEditorState();
   beginChange(state.history, 'trim');

@@ -4,14 +4,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { confirmNavigation, isConfirmOpen, closeConfirm } from '../../assets/js/ui/confirm.js';
-
 test('confirmNavigation resolves false without DOM', async () => {
   closeConfirm();
   const result = await confirmNavigation({ title: 't', message: 'm' });
   assert.equal(result, false);
   assert.equal(isConfirmOpen(), false);
 });
-
 test('confirm module exports stable helpers', async () => {
   const mod = await import('../../assets/js/ui/confirm.js');
   assert.equal(typeof mod.confirmNavigation, 'function');

@@ -22,6 +22,18 @@ export const FORMAT_CAPABILITIES = [
   { id: 'docm', label: 'DOCM', group: 'office', status: 'bestEffort', offlineFeature: 'office', chip: false },
   { id: 'xlsm', label: 'XLSM', group: 'office', status: 'bestEffort', offlineFeature: 'office', chip: false },
   { id: 'pptm', label: 'PPTM', group: 'office', status: 'bestEffort', offlineFeature: 'office', chip: false },
+  { id: 'heic', label: 'HEIC', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'dng', label: 'DNG', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'cr2', label: 'CR2', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'cr3', label: 'CR3', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'nef', label: 'NEF', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'arw', label: 'ARW', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'orf', label: 'ORF', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'rw2', label: 'RW2', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'raf', label: 'RAF', group: 'image', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'braw', label: 'BRAW', group: 'video', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'r3d', label: 'R3D', group: 'video', status: 'bestEffort', offlineFeature: 'image', chip: true },
+  { id: 'arriraw', label: 'ARRIRAW', group: 'video', status: 'bestEffort', offlineFeature: 'image', chip: true },
   { id: 'signed-pdf', label: 'PDF + tanda tangan', group: 'pdf', status: 'bestEffort', offlineFeature: 'pdf', chip: false },
   { id: 'doc-legacy', label: '.doc/.xls/.ppt', group: 'office', status: 'unsupported', offlineFeature: 'office', chip: false },
   { id: 'encrypted', label: 'Office terenkripsi', group: 'office', status: 'unsupported', offlineFeature: 'office', chip: false },
@@ -45,7 +57,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'audio',
     labelKey: 'ui.offlineFeatureAudio',
-    bytes: 839_436,
+    bytes: 835_254,
     urls: [
       './assets/vendor/mediabunny.mjs',
       './assets/js/workers/media.worker.js',
@@ -65,7 +77,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 9_381_919,
+    bytes: 9_391_805,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
       './assets/vendor/fflate.mjs',
@@ -88,7 +100,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'office',
     labelKey: 'ui.offlineFeatureOffice',
-    bytes: 191_721,
+    bytes: 191_125,
     urls: [
       './assets/vendor/fflate.mjs',
       './assets/js/core/office-zip.js',

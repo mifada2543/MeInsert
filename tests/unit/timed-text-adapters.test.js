@@ -12,7 +12,6 @@ import { buildChangePlan } from '../../assets/js/core/change-plan.js';
 import { verifyIntegrity } from '../../assets/js/core/integrity.js';
 import { write as writeMp4 } from '../../assets/js/formats/mp4.js';
 import { read as readMkv, write as writeMkv } from '../../assets/js/formats/mkv.js';
-
 const workdir = mkdtempSync(join(tmpdir(), 'meinsert-timed-text-'));
 const fixture = (name) => new File([readFileSync(`tests/fixtures/${name}`)], name);
 const latin1 = (bytes) => Buffer.from(bytes).toString('latin1');
@@ -20,7 +19,6 @@ const sidecar = {
   lyrics: { lang: 'id', lines: [{ time: 0, text: 'baris satu' }, { time: 1000, text: 'baris dua' }] },
   subtitles: { lang: 'id', cues: [{ id: '1', start: 0, end: 900, text: 'subtitle satu', settings: '' }] },
 };
-
 test('mediaPacketProof equals on a copied A/V file and detects changed packets', async (t) => {
   for (const name of ['clip.mkv', 'clip.mp4']) {
     await t.test(name, async () => {
@@ -33,14 +31,12 @@ test('mediaPacketProof equals on a copied A/V file and detects changed packets',
       assert.equal(sameMediaProof(before, await mediaPacketProof(copy)), true);
       const bytes = new Uint8Array(await original.arrayBuffer());
       const index = latin1(bytes).indexOf(name.endsWith('mkv') ? 'S_TEXT/WEBVTT' : 'mdat');
-      // Flip a byte beyond the header so a real media sample changes.
       bytes[index < 0 ? Math.floor(bytes.length / 2) : Math.min(bytes.length - 1, index + 12)] ^= 0xff;
       assert.equal(sameMediaProof(before, await mediaPacketProof(new File([bytes], `changed-${name}`))), false);
       assert.equal((await mediaPacketProof(new Blob(['not media']))).valid, false);
     });
   }
 });
-
 test('sameMediaProof accepts matching av-packets-v1 proofs and keeps sha256-chunks-v1 strict', () => {
   const proof = (algorithm, region) => ({
     valid: true, kind: 'mp4', algorithm, regions: [region],
@@ -54,7 +50,6 @@ test('sameMediaProof accepts matching av-packets-v1 proofs and keeps sha256-chun
   assert.equal(sameMediaProof({ ...proof('av-packets-v1', region), valid: false }, proof('av-packets-v1', region)), false);
   assert.equal(sameMediaProof(proof('av-packets-v1', region), { ...proof('av-packets-v1', region), regions: [] }), false);
 });
-
 test('composable subtitle embedding writes raw WebVTT markers and preserves A/V packets', async (t) => {
   const mp4 = fixture('clip.mp4');
   const originalPacketProof = await mediaPacketProof(mp4);
@@ -78,7 +73,6 @@ test('composable subtitle embedding writes raw WebVTT markers and preserves A/V 
     assert.ok(result.warnings.some((warning) => /ditulis ulang/.test(warning)));
   });
 });
-
 test('integrity accepts relocated bytes backed by an equal packet proof', async () => {
   const adapter = {
     meta: { id: 'mp4' },
@@ -113,5 +107,4 @@ test('integrity accepts relocated bytes backed by an equal packet proof', async 
   const corrupted = verifyIntegrity(plan, snapshot('new', afterBytes, { ...packetProof, regions: [] }));
   assert.equal(corrupted.findings.some((finding) => finding.code === 'MEDIA_PAYLOAD_CHANGED'), true);
 });
-
 test.after(() => rmSync(workdir, { recursive: true, force: true }));

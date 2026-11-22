@@ -6,37 +6,28 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readSylt, toWriterSylt } from '../../assets/js/core/id3-sylt.js';
 import { ID3Writer } from '../../assets/vendor/browser-id3-writer.mjs';
-
 const fixtureUrl = new URL('../fixtures/tone.mp3', import.meta.url);
 const latin1Bytes = (text) => Uint8Array.from([...text].map((ch) => ch.charCodeAt(0) & 0xff));
 const utf8Bytes = (text) => new TextEncoder().encode(text);
 const be32 = (value) => Uint8Array.from([(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff]);
 const syncSafe = (value) => Uint8Array.from([(value >>> 21) & 0x7f, (value >>> 14) & 0x7f, (value >>> 7) & 0x7f, value & 0x7f]);
 const concat = (...parts) => Uint8Array.from(parts.flatMap((part) => [...part]));
-
-// Build one ID3v2.3 frame: 4-byte ID, 4-byte BE size, 2 flags, then the body.
 function frame(id, body, sizeOverride) {
   const size = sizeOverride === undefined ? body.length : sizeOverride;
   return concat(latin1Bytes(id), be32(size), new Uint8Array(2), body);
 }
-
-// Build a SYLT frame body for encoding 0 (latin1) or 3 (UTF-8).
 function syltBody({ encoding = 0, language = 'ind', timestampFormat = 2, type = 2, description = '', pairs }) {
   const encode = encoding === 3 ? utf8Bytes : latin1Bytes;
   const parts = [new Uint8Array([encoding, ...latin1Bytes(language), timestampFormat, type]), encode(description), new Uint8Array([0])];
   for (const [text, time] of pairs) parts.push(encode(text), new Uint8Array([0]), be32(time));
   return concat(...parts);
 }
-
-// Wrap frames in an ID3v2.3 tag. `tagSizeOverride` exercises truncation checks.
 function id3(frames, tagSizeOverride) {
   const body = concat(...frames);
   const size = tagSizeOverride === undefined ? body.length : tagSizeOverride;
   return concat(latin1Bytes('ID3'), new Uint8Array([3, 0, 0]), syncSafe(size), body);
 }
-
 const blobOf = (bytes) => new Blob([bytes], { type: 'audio/mpeg' });
-
 test('synthetic ID3v2.3 SYLT, encoding 0 (latin1), multi-line pairs', async () => {
   const body = syltBody({
     encoding: 0,
@@ -56,7 +47,6 @@ test('synthetic ID3v2.3 SYLT, encoding 0 (latin1), multi-line pairs', async () =
     ],
   });
 });
-
 test('synthetic ID3v2.3 SYLT, encoding 3 (UTF-8), multibyte text and description', async () => {
   const body = syltBody({
     encoding: 3,
@@ -71,14 +61,12 @@ test('synthetic ID3v2.3 SYLT, encoding 3 (UTF-8), multibyte text and description
     { text: 'こんにちは', time: 1500 },
   ]);
 });
-
 test('earlier unrelated frames are skipped and the description terminator is respected', async () => {
   const title = frame('TIT2', new Uint8Array([0, ...utf8Bytes('Judul'), 0]));
   const body = syltBody({ encoding: 0, pairs: [['satu', 10], ['dua', 20]] });
   const parsed = await readSylt(blobOf(id3([title, frame('SYLT', body)])));
   assert.deepEqual(parsed.pairs, [{ text: 'satu', time: 10 }, { text: 'dua', time: 20 }]);
 });
-
 test('malformed frames, wrong signatures and truncated data resolve to null, never throw', async () => {
   const good = syltBody({ encoding: 0, pairs: [['ok', 100]] });
   const cases = [
@@ -95,7 +83,6 @@ test('malformed frames, wrong signatures and truncated data resolve to null, nev
     assert.equal(await readSylt(input), null, `expected null for ${String(input)}`);
   }
 });
-
 test('ID3Writer.addTag() round-trips a SYLT frame through readSylt()', async () => {
   const raw = await readFile(fixtureUrl);
   const base = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
@@ -121,7 +108,6 @@ test('ID3Writer.addTag() round-trips a SYLT frame through readSylt()', async () 
     ],
   });
 });
-
 test('toWriterSylt shape matches the browser-id3-writer contract and is defensive', () => {
   const parsed = {
     type: 2,
@@ -145,7 +131,6 @@ test('toWriterSylt shape matches the browser-id3-writer contract and is defensiv
     { type: 2, timestampFormat: 2, language: 'eng', description: '', text: [['x', 0]] },
   );
 });
-
 test('toWriterSylt output re-writes through ID3Writer and preserves content-type / language', async () => {
   const raw = await readFile(fixtureUrl);
   const base = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);

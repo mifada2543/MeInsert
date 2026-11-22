@@ -6,17 +6,10 @@
 import { createServer } from 'node:http';
 import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
-
 function lookup(contentTypes, filePath) {
   const extension = extname(filePath);
   return contentTypes instanceof Map ? contentTypes.get(extension) : contentTypes[extension];
 }
-
-/**
- * Serve repository files on an ephemeral localhost port.
- * `traversalStatus` keeps the two historical behaviours: 404 in most suites,
- * 403 in suites that explicitly assert path traversal handling.
- */
 export function createStaticServer({ root, contentTypes, traversalStatus = 404 }) {
   const server = createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url || '/', 'http://127.0.0.1').pathname);

@@ -17,8 +17,6 @@ const RAW_LOCKED = [
 ];
 export class BatchDetailView {
   openDetail(itemId, tab = 'summary') {
-    // The workspace is hidden below, so remember where keyboard focus was and
-    // give the detail view a starting point before the user tabs around.
     this.detailFocusBefore = typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;

@@ -314,9 +314,6 @@ function equalBytes(left, right) {
   }
   return true;
 }
-// How many leading pages we buffer while locating the comment packet. The
-// identification and comment packets live in the first pages of a real stream;
-// anything beyond this limit takes the full-remux path.
 const MAX_HEADER_PAGES = 64;
 /**
  * Range-based counterpart of {@link rewriteOggComment}. Every Ogg page is
@@ -325,10 +322,6 @@ const MAX_HEADER_PAGES = 64;
  * rebuilt with the exact same byte-level rewriter and the output Blob is
  * assembled from `Blob.slice()` ranges, so the audio payload is never copied
  * into one big Uint8Array.
- *
- * `patchedBytes` is the small rebuilt comment page (the only region whose
- * bytes change); `blob` is the full, ready-to-write output.
- *
  * @param {Blob} file source Ogg/Opus file.
  * @param {object} options same options as rewriteOggComment (an optional
  *   `mime` is used as the output Blob's MIME type).
@@ -343,12 +336,10 @@ export async function rewriteOggCommentBlob(file, options = {}) {
   let offset = 0;
   let pageIndex = 0;
   let found = null;
-  // Walk EVERY page once: validate framing and CRC, reject chained streams,
-  // and buffer only the leading pages up to the one holding the comment.
   while (offset + 27 <= file.size) {
     const head = await read(offset, offset + 27);
     if (head.length < 27 || ascii(head, 0, 4) !== 'OggS' || head[4] !== 0) return null;
-    if (pageIndex > 0 && (head[5] & 0x02)) return null; // chained stream BOS page
+    if (pageIndex > 0 && (head[5] & 0x02)) return null;
     const segments = head[26];
     const headerLength = 27 + segments;
     const withLacing = await read(offset, offset + headerLength);
@@ -373,16 +364,9 @@ export async function rewriteOggCommentBlob(file, options = {}) {
   }
   if (offset !== file.size || !found) return null;
   const { page } = found;
-  // inspectOggComment's locateComment already rejects cross-page packets, so
-  // a positive match means the whole comment lives inside this single page.
   if (found.start < page.bodyStart || found.end > page.end || page.start < 0 || page.end > file.size) return null;
-  // Reuse the byte rewriter on the buffered header prefix. This keeps vendor
-  // handling, comment count, framing bit, granule/sequence numbers and CRC
-  // recalculation byte-for-byte identical to the full-buffer path.
   const patchedPrefix = rewriteOggComment(prefix, options);
   if (!patchedPrefix || !inspectOggComment(patchedPrefix)) return null;
-  // rewriteOggComment only touches the comment page; derive its new length from
-  // the unchanged trailing bytes and require the surrounding bytes to match.
   const beforeLength = page.start;
   const afterLength = prefix.length - page.end;
   const patchedPageLength = patchedPrefix.length - beforeLength - afterLength;

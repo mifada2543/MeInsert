@@ -10,6 +10,10 @@ import { captureMediaSession, canReuseMedia, restoreMediaSession } from './media
 import { buildOfficePreview } from './office-preview.js';
 const mediaFrames = new WeakMap();
 const mediaRatioBound = new WeakSet();
+const NO_BROWSER_PREVIEW = new Set(['heic', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf', 'braw', 'r3d', 'arriraw']);
+function needsPreviewPlaceholder(detection) {
+  return Boolean(detection) && (detection.id === 'rawVideo' || NO_BROWSER_PREVIEW.has(detection.subtype));
+}
 function bindMediaRatio(media, frame) {
   mediaFrames.set(media, frame);
   if (media.readyState >= 1) setMediaRatio(frame, media.videoWidth, media.videoHeight);
@@ -23,6 +27,7 @@ function bindMediaRatio(media, frame) {
 }
 export function previewKind(detection) {
   if (!detection) return 'file';
+  if (needsPreviewPlaceholder(detection)) return 'file';
   if (detection.id === 'image') return 'image';
   if (detection.id === 'pdf') return 'pdf';
   if (detection.id === 'office') return 'office';
@@ -305,6 +310,12 @@ export function renderFileCard(container, {
     frame.append(el('iframe', { src: previewUrl, title: translated(() => (t('ui.preview', { v0: file.name }))) }));
   } else if (kind === 'office') {
     frame.append(buildOfficePreview({ file, detection, readResult }));
+  } else if (needsPreviewPlaceholder(detection)) {
+    frame.append(el('div', { className: 'preview-placeholder' },
+      icon('file'),
+      el('p', { className: 'preview-placeholder-message', textContent: translated(() => (t('ui.previewUnavailable'))) }),
+      el('p', { className: 'preview-placeholder-format', textContent: detection?.label || '' }),
+    ));
   } else {
     frame.append(el('div', { className: 'preview-icon' }, icon(kind === 'pdf' ? 'pdf' : 'file')));
   }

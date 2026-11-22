@@ -84,8 +84,6 @@ export function initMobileMenu() {
   }
   initialized = true;
   toggle.dataset[READY_KEY] = 'true';
-  // Split the three static lines into independent paths so CSS can morph the
-  // hamburger into an X while the menu is open (no extra markup in HTML).
   const toggleSvg = toggle.querySelector('svg');
   if (toggleSvg) {
     toggleSvg.innerHTML = '<path class="menu-line menu-line--top" d="M4 7h16"/><path class="menu-line menu-line--middle" d="M4 12h16"/><path class="menu-line menu-line--bottom" d="M4 17h16"/>';

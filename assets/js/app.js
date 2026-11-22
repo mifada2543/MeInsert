@@ -86,16 +86,19 @@ function setupShortcuts() {
   });
 }
 function setupEvents() {
-  els.tabs.forEach((tab, index) => {
+  els.tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
       state.activeTab = tab.dataset.tab;
       renderWorkspace(ctx);
     });
     tab.addEventListener('keydown', (event) => {
       const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-      if (!step || !els.tabs.length) return;
+      const visibleTabs = els.tabs.filter((item) => !item.hidden);
+      if (!step || !visibleTabs.length) return;
+      const current = visibleTabs.indexOf(tab);
+      if (current < 0) return;
       event.preventDefault();
-      const next = els.tabs[(index + step + els.tabs.length) % els.tabs.length];
+      const next = visibleTabs[(current + step + visibleTabs.length) % visibleTabs.length];
       next.focus();
       state.activeTab = next.dataset.tab;
       renderWorkspace(ctx);

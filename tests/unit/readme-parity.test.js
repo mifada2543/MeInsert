@@ -7,8 +7,6 @@ import { readFile } from 'node:fs/promises';
 const root = new URL('../../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 const FILES = ['README.md', 'README-en.md'];
-// Headings that live inside fenced code blocks (e.g. shell "# 1. Clone…"
-// comments) are not Markdown headings; drop fences before collecting them.
 const withoutFences = (text) => text.replace(/```[\s\S]*?```/g, '');
 function headingLevels(text) {
   return withoutFences(text)

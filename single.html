@@ -72,6 +72,7 @@
         <p class="lede"><span data-i18n="ui.editTitlesAuthorsTagsAndCameraInformationRightIn">Ubah judul, penulis, tag, dan info kamera langsung di browser. File tetap di perangkat Anda —
           tidak ada server, tidak ada antrean, tidak ada akun.</span></p>
         <div class="format-chips" id="formatChips" aria-label="Format yang didukung" data-i18n-aria-label="ui.supportedFormats"></div>
+        <p class="format-support-link"><a class="text-link" href="./about.html"><span data-i18n="ui.seeSupportAndLimits">Lihat dukungan &amp; keterbatasan</span></a></p>
         <div class="trust-row">
           <span><strong>01</strong> <span data-i18n="ui.automaticDetection">Deteksi otomatis</span></span>
           <span><strong>02</strong> <span data-i18n="ui.reviewChanges">Preview perubahan</span></span>
@@ -122,6 +123,8 @@
             <div class="tabs" role="tablist" aria-label="Bagian editor" data-i18n-aria-label="ui.editorSections">
               <button class="tab is-active" id="tabMetadata" type="button" role="tab" aria-selected="true"
                 aria-controls="panel" data-tab="metadata">Metadata</button>
+              <button class="tab" id="tabGps" type="button" role="tab" aria-selected="false" aria-controls="panel"
+                data-tab="gps" data-i18n="ui.gpsMetadata" hidden>Metadata GPS</button>
               <button class="tab" id="tabRaw" type="button" role="tab" aria-selected="false" aria-controls="panel"
                 data-tab="raw"><span data-i18n="ui.rawTags">Tag mentah</span> <span class="tab-count" id="rawCount">0</span></button>
             </div>
@@ -240,5 +243,4 @@
 }
 </script>
 </body>
-
 </html>

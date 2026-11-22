@@ -37,6 +37,9 @@
   font-weight: 650;
   white-space: nowrap;
 }
+.tab[hidden] {
+  display: none;
+}
 .tab:hover {
   color: var(--ink);
 }

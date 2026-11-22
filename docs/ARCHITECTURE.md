@@ -102,6 +102,21 @@ an adapter descriptor
 optional `dispose`). See [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-new-format)
 for the exact exported shape.
 
+The image adapter also resolves several new subtypes. **HEIC/HEIF** writes XMP
+on a best-effort basis, and still RAW files (DNG, CR2, CR3, NEF, ARW, ORF, RW2,
+RAF) are **XMP-only**. Both return a **placeholder preview** rather than decoded
+pixels, because the browser cannot render these formats natively; raw sensor
+data is never decoded or rewritten. CinemaDNG carried inside MOV/MKV keeps
+resolving to the `mp4`/`mkv` adapters, so its chapter/offset behavior follows the
+container adapter.
+
+A separate **read-only `raw-video` adapter** covers BRAW, R3D, and ARRIRAW: its
+`read()` exposes fields and warnings, but there is no write path. Read-only
+detections are marked as a risk in `core/change-plan.js#buildChangePlan`, and a
+**save guard** in `editor/editor-save.js#saveMetadata` (mirrored in
+`batch/batch-save-flow.js`) rejects the write before any engine work starts, so
+these files can be inspected but never exported or overwritten.
+
 Office metadata uses two worker-safe helpers: `core/office-xml.js` is a small
 namespace-aware parser/writer (URI + local name resolution, arbitrary prefixes,
 default namespaces, prefix shadowing, entity decoding, DTD/external entity
@@ -215,7 +230,9 @@ Each stage in detail:
    engine Worker; the adapter's `read()` returns fields, raw/custom tags, info,
    cover, and warnings. Audio/video adapters may also return a `sidecar`
    (synchronized lyrics/subtitle cues). A baseline snapshot is created
-   (`core/metadata-snapshot.js#createSnapshot`) and the form is rendered.
+   (`core/metadata-snapshot.js#createSnapshot`) and the form is rendered. Image
+   fields are grouped into sections; section `lokasi` is rendered only in the
+   separate `gps` tab, keeping the general Metadata tab compact.
 5. **Edit & plan** — the user changes fields, opens the timed-text editor
    (`ui/timed-text-editor.js`, ported from MEeL — see third-party attributions),
    or opens the trim dialog (`ui/media-cut-editor.js`). The trim dialog stages a
@@ -252,7 +269,8 @@ Each stage in detail:
    releasing the result. Cut output that would exceed the memory policy is
    treated like any other large write: `warn` is dismissible, `block` requires
    low-memory mode or explicit acknowledgement, and worker payloads are
-   transferred rather than copied.
+   transferred rather than copied. A read-only RAW video detection stops at the
+   save guard: no write is dispatched and no output blob is produced.
 8. **Verify** — `core/integrity.js#verifyIntegrity` compares the output snapshot
    against the plan and the original baseline for fields, custom tags, raw
    tags, XMP, cover, structure, and payload proofs. For a cut, the retained
@@ -275,7 +293,7 @@ assembles a ZIP and JSON/CSV report instead of a single download.
 caches**:
 
 - **Shell cache** (`CACHE_VERSION`, e.g. `meinsert-v52`) holds the always-needed
-  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v1`) holds
+  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v2`) holds
   the optional format engines downloaded on demand. Separating them means a
   shell update never discards engines the user already paid to download, and
   clearing optional engines never removes shell assets. The two version markers

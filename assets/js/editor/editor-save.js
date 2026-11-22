@@ -105,6 +105,10 @@ export function recordWriteResult(ctx, result, afterSnapshot) {
 }
 export async function saveMetadata(ctx) {
   const { client, els, state } = ctx;
+  if (state.adapter?.meta?.readOnly) {
+    showToast(t('ui.rawVideoWriteBlocked'), 'info');
+    return;
+  }
   if (state.processing) {
     if (state.adapter) client.cancel(state.adapter.meta.engine);
     setProgress(els, 0, 'Membatalkan…');

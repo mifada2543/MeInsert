@@ -23,7 +23,6 @@ import {
   serializeLrc,
   serializeVtt,
 } from '../core/timed-text.js';
-
 const EXIT_MS = 160;
 const EXIT_SAFETY_MS = EXIT_MS + 100;
 const TOLERANCE_MS = 150;
@@ -31,13 +30,10 @@ const STYLE_STORAGE_KEY = 'meinsert-timed-text-style-v1';
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'mov', 'm4v', 'ogv', 'ogm', 'mkv', 'avi']);
 const AUDIO_EXTS = new Set(['mp3', 'flac', 'ogg', 'oga', 'opus', 'm4a', 'aac', 'wav']);
 const TIMED_TEXT_EXTS = new Set([...VIDEO_EXTS, ...AUDIO_EXTS]);
-
-/** Extension decides the editor mode: audio files edit lyrics, video files edit subtitles. */
 function mediaModeForFile(file) {
   const ext = String(file?.name || '').toLowerCase().split('.').pop();
   return VIDEO_EXTS.has(ext) ? 'subtitles' : 'lyrics';
 }
-
 let dialog = null;
 let refs = null;
 let state = null;
@@ -47,11 +43,9 @@ let closeTimer = 0;
 let closeFinish = null;
 let closeAnimationEnd = null;
 let draftTimer = 0;
-
 function reduceMotion() {
   try { return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches); } catch { return false; }
 }
-
 function clone(value) {
   if (value === null || value === undefined) return value;
   try {
@@ -59,16 +53,13 @@ function clone(value) {
   } catch { /* fall through to JSON clone */ }
   return JSON.parse(JSON.stringify(value));
 }
-
 function numberMs(value) {
   const num = Number(value);
   return Number.isFinite(num) && num > 0 ? num : 0;
 }
-
 function stringValue(value, fallback = '') {
   return typeof value === 'string' ? value : fallback;
 }
-
 function normalizeLine(value) {
   const line = Array.isArray(value) ? { time: value[0], text: value[1] } : (value && typeof value === 'object' ? value : {});
   return {
@@ -76,7 +67,6 @@ function normalizeLine(value) {
     text: stringValue(line.text),
   };
 }
-
 function normalizeCue(value, index) {
   const cue = value && typeof value === 'object' ? value : {};
   const start = numberMs(cue.start ?? cue.time);
@@ -88,22 +78,18 @@ function normalizeCue(value, index) {
     settings: cue.settings === undefined ? '' : cue.settings,
   };
 }
-
 function normalizeLyrics(value) {
   if (Array.isArray(value)) return { lang: 'id', lines: value.map(normalizeLine) };
   const root = value && typeof value === 'object' ? (value.lyrics && typeof value.lyrics === 'object' ? value.lyrics : value) : {};
   const lines = Array.isArray(root.lines) ? root.lines : [];
-  // LRC has no colour/background format, so lyrics never carry a cue style.
   return { lang: stringValue(root.lang, 'id'), lines: lines.map(normalizeLine) };
 }
-
 function normalizeSubtitles(value) {
   if (Array.isArray(value)) return { lang: 'id', cues: value.map(normalizeCue) };
   const root = value && typeof value === 'object' ? (value.subtitles && typeof value.subtitles === 'object' ? value.subtitles : value) : {};
   const cues = Array.isArray(root.cues) ? root.cues : [];
   return { lang: stringValue(root.lang, 'id'), cues: cues.map(normalizeCue), style: normalizeCueStyle(root.style) };
 }
-
 function normalizeSidecar(sidecar) {
   const source = sidecar && typeof sidecar === 'object' ? sidecar : {};
   return {
@@ -111,7 +97,6 @@ function normalizeSidecar(sidecar) {
     subtitles: source.subtitles ? normalizeSubtitles(source.subtitles) : null,
   };
 }
-
 function draftKey() {
   const file = state?.file;
   const raw = `${file?.name || ''}|${file?.size || 0}|${file?.lastModified || 0}|${state?.mode || 'lyrics'}`;
@@ -157,7 +142,6 @@ function clearDraft() {
   try { globalThis.localStorage?.removeItem(draftKey()); } catch { /* storage is optional */ }
   updateDraftLabel();
 }
-
 function loadSavedStyles() {
   try {
     const raw = globalThis.localStorage?.getItem(STYLE_STORAGE_KEY);
@@ -286,7 +270,6 @@ async function exitStyleMode() {
   return true;
 }
 async function toggleStyleMode() {
-  // Appearance preferences apply only to WebVTT subtitles, never to LRC lyrics.
   if (!state || state.mode !== 'subtitles') return;
   if (state.styleMode) {
     await exitStyleMode();
@@ -316,10 +299,8 @@ async function onRequestClose() {
   if (state?.styleMode) await exitStyleMode();
   requestClose();
 }
-
 function payloadFor(list, data) {
   const source = Array.isArray(list) ? list : [];
-  // Accept either (array) or ({ lines, cues, lang }) signatures in core/timed-text.js.
   const payload = source.slice();
   payload.lines = source;
   payload.cues = source;
@@ -328,7 +309,6 @@ function payloadFor(list, data) {
   payload.subtitles = data;
   return payload;
 }
-
 function fallbackStamp(ms, kind) {
   const value = Math.max(0, Math.round(ms));
   const hours = Math.floor(value / 3_600_000);
@@ -340,13 +320,9 @@ function fallbackStamp(ms, kind) {
   }
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
 }
-
 function formatStamp(ms, kind = 'vtt') {
-  // The core formatTimestamp() is a compact "MM:SS" label for the player UI;
-  // exports need centisecond LRC / millisecond WebVTT, so format locally.
   return fallbackStamp(numberMs(ms), kind);
 }
-
 function parseStamp(input, fallback = 0) {
   const raw = String(input ?? '').trim().replace(',', '.');
   if (!raw) return fallback;
@@ -360,7 +336,6 @@ function parseStamp(input, fallback = 0) {
   }
   return Math.round(seconds * 1000);
 }
-
 function fromCore(kind, text, lang) {
   let parsed = null;
   try {
@@ -370,7 +345,6 @@ function fromCore(kind, text, lang) {
   } catch { /* empty import */ }
   return kind === 'lyrics' ? normalizeLyrics(parsed) : normalizeSubtitles(parsed);
 }
-
 function serialize(kind) {
   const data = kind === 'lyrics' ? state?.data.lyrics : state?.data.subtitles;
   if (!data) return '';
@@ -391,7 +365,6 @@ function serialize(kind) {
     return `${head}\n${cue.text}\n`;
   }).join('\n')}`;
 }
-
 function readText(file) {
   if (typeof file?.text === 'function') return file.text();
   return new Promise((resolve, reject) => {
@@ -401,7 +374,6 @@ function readText(file) {
     reader.readAsText(file);
   });
 }
-
 function cancelClose() {
   clearTimeout(closeTimer);
   closeTimer = 0;
@@ -410,7 +382,6 @@ function cancelClose() {
   closeFinish = null;
   dialog?.classList.remove('is-closing');
 }
-
 function requestClose() {
   if (!dialog?.open || dialog.classList.contains('is-closing')) return;
   if (reduceMotion()) {
@@ -432,7 +403,6 @@ function requestClose() {
   instance.addEventListener('animationend', onEnd);
   closeTimer = setTimeout(finish, EXIT_SAFETY_MS);
 }
-
 function trapFocus(event) {
   const focusable = [...dialog.querySelectorAll('button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])')]
     .filter((node) => node.getClientRects().length > 0);
@@ -447,7 +417,6 @@ function trapFocus(event) {
     first.focus();
   }
 }
-
 function buildStylePanel(onChange) {
   const presetButtons = new Map();
   const presetRow = el('div', { className: 'timed-text__preset-row' });
@@ -462,7 +431,6 @@ function buildStylePanel(onChange) {
     presetButtons.set(key, button);
     presetRow.append(button);
   }
-
   const colorText = el('input', { type: 'color', className: 'timed-text__color' });
   const colorBg = el('input', { type: 'color', className: 'timed-text__color' });
   const opacity = el('input', { type: 'range', className: 'timed-text__opacity', min: '0', max: '100', step: '1' });
@@ -539,7 +507,6 @@ function buildStylePanel(onChange) {
   outline.addEventListener('change', () => onChange({ outline: outline.checked, theme: 'custom' }));
   return { element, setStyle };
 }
-
 function actionButton({ id, iconName, labelKey, onClick, primary = false }) {
   const label = el('span', { className: 'timed-text__btn-label' });
   bindText(label, () => t(labelKey));
@@ -550,10 +517,8 @@ function actionButton({ id, iconName, labelKey, onClick, primary = false }) {
     on: { click: onClick },
   }, icon(iconName), label);
 }
-
 function buildDialog() {
   if (dialog) return dialog;
-
   const title = el('h2', { id: 'timedTextTitle', className: 'timed-text__title' });
   bindText(title, () => t(state?.mode === 'subtitles' ? 'ui.timedTextTitleSubtitles' : 'ui.timedTextTitleLyrics'));
   const modeBadge = el('span', { className: 'timed-text__badge' });
@@ -565,7 +530,6 @@ function buildDialog() {
     'aria-label': translated(() => t('ui.timedTextClose')),
     on: { click: () => onRequestClose() },
   }, icon('x'));
-
   const mediaWrap = el('div', { className: 'timed-text__media-wrap' });
   const overlayText = el('span', { className: 'timed-text__overlay-text' });
   const overlay = el('div', { className: 'timed-text__overlay', 'aria-hidden': 'true' }, overlayText);
@@ -627,7 +591,6 @@ function buildDialog() {
   const screen = el('div', { className: 'timed-text__screen' }, player);
   const rotateHint = el('p', { className: 'timed-text__rotate-hint' });
   bindText(rotateHint, () => t('ui.timedTextRotateHint'));
-
   const tabs = {
     lyrics: el('button', {
       className: 'timed-text__tab',
@@ -660,7 +623,6 @@ function buildDialog() {
   const styleBtnLyrics = makeStyleBtn('timedTextStyleLyrics');
   const styleBtnSubtitles = makeStyleBtn('timedTextStyleSubtitles');
   const stylePanel = buildStylePanel(handleStyleChange);
-
   const addLineBtn = actionButton({ id: 'timedTextAddLine', iconName: 'plus', labelKey: 'ui.timedTextAddLine', onClick: () => addRow('lyrics') });
   const lyricsHint = el('p', { className: 'timed-text__hint' });
   bindText(lyricsHint, () => t(state?.mode === 'subtitles' ? 'ui.timedTextHintVideo' : 'ui.timedTextHintAudio'));
@@ -671,7 +633,6 @@ function buildDialog() {
     role: 'tabpanel',
     'aria-labelledby': 'timedTextTabLyrics',
   }, el('div', { className: 'timed-text__toolbar' }, addLineBtn, styleBtnLyrics), lyricsRows, lyricsHint);
-
   const addCueBtn = actionButton({ id: 'timedTextAddCue', iconName: 'plus', labelKey: 'ui.timedTextAddLine', onClick: () => addRow('subtitles') });
   const showBtn = el('button', { className: 'timed-text__btn timed-text__show', type: 'button', on: { click: () => toggleOverlayVariant() } }, icon('video'), el('span', { className: 'timed-text__btn-label' }));
   const subtitlesRows = el('div', { className: 'timed-text__rows', id: 'timedTextRowsSubtitles' });
@@ -682,7 +643,6 @@ function buildDialog() {
     'aria-labelledby': 'timedTextTabSubtitles',
     hidden: true,
   }, el('div', { className: 'timed-text__toolbar' }, addCueBtn, styleBtnSubtitles, showBtn), subtitlesRows);
-
   const fileInput = el('input', {
     className: 'timed-text__file',
     type: 'file',
@@ -714,7 +674,6 @@ function buildDialog() {
     saveBtn,
     credit,
   );
-
   const body = el('div', { className: 'timed-text__body' }, lyricsPanel, subtitlesPanel);
   dialog = el('dialog', {
     id: 'timedTextDialog',
@@ -748,14 +707,12 @@ function buildDialog() {
   };
   return dialog;
 }
-
 function showLabel() {
   return `${t('ui.timedTextShow')}: ${t(state?.overlayVariant === 'lyrics' ? 'ui.timedTextLyrics' : 'ui.timedTextSubtitles')}`;
 }
 function bindShowLabel() {
   bindText(refs.showBtn.querySelector('.timed-text__btn-label'), showLabel);
 }
-
 function setupMedia(file) {
   clear(refs.mediaWrap);
   state.mediaUrl = '';
@@ -765,7 +722,6 @@ function setupMedia(file) {
   refs.player.dataset.kind = state.mediaKind;
   if (dialog) dialog.dataset.kind = state.mediaKind;
   if (!file) return;
-
   const url = URL.createObjectURL(file);
   state.mediaUrl = url;
   const media = document.createElement(state.mediaKind === 'video' ? 'video' : 'audio');
@@ -773,7 +729,6 @@ function setupMedia(file) {
   media.preload = 'metadata';
   if (state.mediaKind === 'video') media.playsInline = true;
   media.src = url;
-
   const listen = (type, handler) => {
     media.addEventListener(type, handler);
     state.mediaListeners.push([media, type, handler]);
@@ -788,24 +743,20 @@ function setupMedia(file) {
   listen('pause', () => updatePlayState());
   listen('ended', () => updatePlayState());
   listen('seeked', () => updatePlayer());
-
   refs.mediaWrap.append(media);
   if (state.mediaKind === 'audio') {
     refs.mediaWrap.append(el('div', { className: 'timed-text__audio-art' }, icon('audio')));
   }
   state.mediaEl = media;
 }
-
 function currentMs() {
   const media = state?.mediaEl;
   return media ? Math.max(0, (Number(media.currentTime) || 0) * 1000) : 0;
 }
-
 function durationMs() {
   const media = state?.mediaEl;
   return media ? Math.max(0, (Number(media.duration) || 0) * 1000) : 0;
 }
-
 function updateVideoRatio(media) {
   const width = Number(media?.videoWidth) || 0;
   const height = Number(media?.videoHeight) || 0;
@@ -813,14 +764,12 @@ function updateVideoRatio(media) {
   state.videoRatio = width / height;
   dialog?.style.setProperty('--tt-video-ratio', String(state.videoRatio));
 }
-
 function updateRotateHint() {
   if (!refs?.rotateHint) return;
   const portrait = typeof globalThis.matchMedia === 'function'
     && globalThis.matchMedia('(orientation: portrait)').matches;
   refs.rotateHint.hidden = !portrait || state?.mode !== 'subtitles' || Boolean(document.fullscreenElement);
 }
-
 function togglePreviewCompact() {
   if (!state || state.mode !== 'subtitles') return;
   state.previewCompact = !state.previewCompact;
@@ -831,7 +780,6 @@ function togglePreviewCompact() {
   refs.compactBtn.setAttribute('aria-label', label);
   updateVideoRatio(state.mediaEl);
 }
-
 async function toggleFullscreen() {
   const screen = refs?.screen;
   if (!screen) return;
@@ -853,7 +801,6 @@ async function toggleFullscreen() {
     showToast(t('ui.timedTextFullscreenUnsupported'), 'info', 4000);
   }
 }
-
 function onFullscreenChange() {
   if (!refs?.fullscreenBtn) return;
   const active = document.fullscreenElement === refs.screen;
@@ -867,7 +814,6 @@ function onFullscreenChange() {
   }
   updateRotateHint();
 }
-
 function updatePlayState() {
   if (!state?.mediaEl || !refs) return;
   const playing = !state.mediaEl.paused && !state.mediaEl.ended;
@@ -881,7 +827,6 @@ function updatePlayState() {
   refs.playBtn.setAttribute('aria-label', label);
   refs.playBtn.dataset.playing = playing ? 'true' : 'false';
 }
-
 function updatePlayer() {
   if (!state || !refs) return;
   const ms = currentMs();
@@ -892,7 +837,6 @@ function updatePlayer() {
   updatePlayState();
   syncHighlights();
 }
-
 function seekMedia() {
   const media = state?.mediaEl;
   if (!media) return;
@@ -900,7 +844,6 @@ function seekMedia() {
   try { media.currentTime = target; } catch { /* seek not ready */ }
   updatePlayer();
 }
-
 function seekTo(ms) {
   const media = state?.mediaEl;
   if (!media) return;
@@ -909,7 +852,6 @@ function seekTo(ms) {
   try { media.currentTime = target; } catch { /* seek not ready */ }
   updatePlayer();
 }
-
 function togglePlay() {
   const media = state?.mediaEl;
   if (!media) return;
@@ -917,7 +859,6 @@ function togglePlay() {
   else media.pause();
   updatePlayState();
 }
-
 function skip(seconds) {
   const media = state?.mediaEl;
   if (!media) return;
@@ -927,7 +868,6 @@ function skip(seconds) {
   try { media.currentTime = next; } catch { /* seek not ready */ }
   updatePlayer();
 }
-
 function centerRow(row, container) {
   if (!row || !container) return;
   const rowRect = row.getBoundingClientRect();
@@ -938,7 +878,6 @@ function centerRow(row, container) {
   if (typeof container.scrollTo === 'function') container.scrollTo({ top, behavior });
   else container.scrollTop = top;
 }
-
 function syncHighlights() {
   if (!state) return;
   syncLyrics();
@@ -946,7 +885,6 @@ function syncHighlights() {
   syncKaraoke();
   renderOverlay();
 }
-
 function syncLyrics() {
   const lines = state.data.lyrics?.lines || [];
   const ms = currentMs();
@@ -959,7 +897,6 @@ function syncLyrics() {
   state.rows.lyrics.forEach((row, i) => row.classList.toggle('is-active', i === index));
   centerRow(state.rows.lyrics[index], refs.rows.lyrics);
 }
-
 function syncCues() {
   const cues = state.data.subtitles?.cues || [];
   const ms = currentMs();
@@ -972,7 +909,6 @@ function syncCues() {
   state.rows.subtitles.forEach((row, i) => row.classList.toggle('is-active', i === index));
   centerRow(state.rows.subtitles[index], refs.rows.subtitles);
 }
-
 function renderKaraoke() {
   if (!refs?.karaoke || !state) return;
   clear(refs.karaoke);
@@ -996,7 +932,6 @@ function syncKaraoke() {
   const active = nodes[index];
   if (active?.scrollIntoView) active.scrollIntoView({ block: 'center', behavior: reduceMotion() ? 'auto' : 'smooth' });
 }
-
 function renderOverlay() {
   if (!state || !refs) return;
   const variant = state.overlayVariant;
@@ -1007,16 +942,12 @@ function renderOverlay() {
   refs.overlay.dataset.variant = variant;
   refs.overlay.hidden = state.mediaKind !== 'video' || !text;
 }
-
 function toggleOverlayVariant() {
   state.overlayVariant = state.overlayVariant === 'lyrics' ? 'subtitle' : 'lyrics';
   bindShowLabel();
   syncHighlights();
 }
-
 function renderTabs() {
-  // Mode follows the file extension: audio files get lyrics, video files get
-  // subtitles. The other panel is removed from the layout entirely.
   const mode = state?.mode === 'subtitles' ? 'subtitles' : 'lyrics';
   refs.tablist.hidden = true;
   for (const [kind, button] of Object.entries(refs.tabs)) {
@@ -1028,26 +959,22 @@ function renderTabs() {
     refs.panels[kind].hidden = !active;
   }
 }
-
 function switchTab(kind) {
   if (!state || kind !== state.mode) return;
   state.tab = kind;
   renderTabs();
   refs.tabs[kind].focus();
 }
-
 function onTabKeydown(event) {
   if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
   event.preventDefault();
   const next = state.tab === 'lyrics' ? 'subtitles' : 'lyrics';
   switchTab(next);
 }
-
 function selectRow(kind, index) {
   state.selected[kind] = index;
   state.rows[kind].forEach((row, i) => row.classList.toggle('is-selected', i === index));
 }
-
 function makeTimeInput(kind, index, field, value) {
   const input = el('input', {
     className: 'timed-text__time',
@@ -1075,7 +1002,6 @@ function makeTimeInput(kind, index, field, value) {
   });
   return input;
 }
-
 function makeTextInput(kind, index, value) {
   return el('input', {
     className: 'timed-text__text',
@@ -1094,7 +1020,6 @@ function makeTextInput(kind, index, value) {
     },
   });
 }
-
 function makeRowButton(labelKey, iconName, onClick, action) {
   return el('button', {
     className: 'timed-text__row-btn',
@@ -1105,7 +1030,6 @@ function makeRowButton(labelKey, iconName, onClick, action) {
     on: { click: (event) => { event.stopPropagation(); onClick(); } },
   }, icon(iconName));
 }
-
 function makeRemoveButton(onClick) {
   return el('button', {
     className: 'timed-text__row-btn timed-text__row-btn--remove',
@@ -1116,7 +1040,6 @@ function makeRemoveButton(onClick) {
     on: { click: (event) => { event.stopPropagation(); onClick(); } },
   }, icon('x'));
 }
-
 function removeRow(kind, index) {
   if (kind === 'lyrics') state.data.lyrics?.lines.splice(index, 1);
   else state.data.subtitles?.cues.splice(index, 1);
@@ -1127,7 +1050,6 @@ function removeRow(kind, index) {
   syncHighlights();
   scheduleDraftSave();
 }
-
 function renderRows(kind) {
   const container = refs.rows[kind];
   clear(container);
@@ -1139,7 +1061,6 @@ function renderRows(kind) {
     container.append(empty);
     return;
   }
-
   list.forEach((item, index) => {
     const row = el('div', {
       className: kind === 'lyrics' ? 'timed-text__row' : 'timed-text__row timed-text__row--cue',
@@ -1158,7 +1079,6 @@ function renderRows(kind) {
         },
       },
     });
-
     if (kind === 'lyrics') {
       row.append(
         makeTimeInput(kind, index, 'time', item.time),
@@ -1207,7 +1127,6 @@ function renderRows(kind) {
     if (state.selected[kind] === index) row.classList.add('is-selected');
   });
 }
-
 function addRow(kind) {
   if (kind === 'lyrics') {
     if (!state.data.lyrics) state.data.lyrics = { lang: 'id', lines: [] };
@@ -1227,7 +1146,6 @@ function addRow(kind) {
   scheduleDraftSave();
   state.rows[kind][state.selected[kind]]?.querySelector('.timed-text__text')?.focus();
 }
-
 function markCue(field) {
   let cues = state.data.subtitles?.cues || [];
   let index = state.selected.subtitles;
@@ -1252,7 +1170,6 @@ function markCue(field) {
   syncHighlights();
   scheduleDraftSave();
 }
-
 async function onImport(event) {
   const input = event.target;
   const file = input.files?.[0];
@@ -1286,12 +1203,10 @@ async function onImport(event) {
   } catch { /* unreadable import file: keep current data */ }
   input.value = '';
 }
-
 function baseName() {
   const name = String(state?.file?.name || 'timed-text');
   return name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : name;
 }
-
 function downloadText(text, filename, type) {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const link = el('a', { href: url, download: filename });
@@ -1300,13 +1215,11 @@ function downloadText(text, filename, type) {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
 function downloadExport(kind) {
   const text = serialize(kind);
   if (!text) return;
   downloadText(text, `${baseName()}.${kind}`, kind === 'vtt' ? 'text/vtt;charset=utf-8' : 'text/plain;charset=utf-8');
 }
-
 function applyChanges() {
   if (!state) return;
   const handler = state.onApply;
@@ -1315,7 +1228,6 @@ function applyChanges() {
   void onRequestClose();
   handler?.(next);
 }
-
 function cleanupSession() {
   cancelClose();
   if (state) {
@@ -1332,7 +1244,6 @@ function cleanupSession() {
   lastFocused?.focus?.();
   lastFocused = null;
 }
-
 function onGlobalKeydown(event) {
   if (!dialog?.open || !state) return;
   if (event.key === 'Escape') {
@@ -1363,7 +1274,6 @@ function onGlobalKeydown(event) {
     markCue('end');
   }
 }
-
 export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   if (typeof document === 'undefined') return;
   cancelClose();
@@ -1398,7 +1308,6 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   state.styleDraft = currentStyle();
   state.styleBaseline = currentStyle();
   updatePrimaryAction();
-
   instance.dataset.mode = mode;
   instance.dataset.preview = 'full';
   instance.dataset.styleMode = 'false';
@@ -1424,7 +1333,6 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   updateDraftLabel();
   updateRotateHint();
   updatePlayer();
-
   if (!listening) {
     listening = true;
     document.addEventListener('keydown', onGlobalKeydown);
@@ -1436,7 +1344,6 @@ export function openTimedTextEditor({ file, sidecar, onApply } = {}) {
   instance.showModal();
   refs.closeBtn.focus();
 }
-
 export function mountTimedTextButton({ container, ctx } = {}) {
   if (typeof document === 'undefined' || !ctx?.state) return null;
   const target = document.getElementById('actionOptions') || container;
@@ -1456,8 +1363,6 @@ export function mountTimedTextButton({ container, ctx } = {}) {
     'aria-label': translated(() => t('ui.timedTextOpen')),
   }, buttonIcon, buttonLabel);
   button.hidden = !supportsFile(ctx.state?.file);
-  // Only audio/video files can carry timed text; hide it for images, PDFs,
-  // Office documents and other formats.
   window.addEventListener('meinsert:fileReady', () => {
     button.hidden = !supportsFile(ctx.state?.file);
     if (button.hidden) return;
@@ -1487,7 +1392,6 @@ export function mountTimedTextButton({ container, ctx } = {}) {
   host.insertBefore(button, qs('.action-buttons', host) || null);
   return button;
 }
-
 export function closeTimedTextEditor() {
   if (!dialog) return;
   if (!dialog.open) {

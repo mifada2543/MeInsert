@@ -10,6 +10,7 @@ const ADAPTER_LOADERS = {
   mkv: () => import('../formats/mkv.js'),
   mp4: () => import('../formats/mp4.js'),
   office: () => import('../formats/office.js'),
+  rawVideo: () => import('../formats/raw-video.js'),
 };
 const adapterCache = new Map();
 export async function getAdapter(id) {

@@ -11,6 +11,11 @@
   font-size: 11.5px;
   line-height: 1.45;
 }
+.format-support-link {
+  flex: 1 1 100%;
+  margin: 6px 0 0;
+  font-size: 11.5px;
+}
 .format-status {
   display: flex;
   flex: 1 1 100%;

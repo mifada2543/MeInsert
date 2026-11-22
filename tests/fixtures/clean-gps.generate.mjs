@@ -14,11 +14,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-
 const out = fileURLToPath(new URL('clean-gps.jpg', import.meta.url));
-
-/* ---------- penulis nilai TIFF ---------- */
-
 function entry(tag, type, values) {
   if (type === 1 || type === 3 || type === 4) {
     const size = type === 1 ? 1 : type === 3 ? 2 : 4;
@@ -47,8 +43,6 @@ function entry(tag, type, values) {
   }
   throw new Error(`Tipe TIFF tidak didukung: ${type}`);
 }
-
-/** Kode Huffman kanonik JPEG, dipakai untuk menyusun bit scan yang valid. */
 function huffmanCodes(bits, values) {
   const codes = new Map();
   let code = 0;
@@ -63,35 +57,28 @@ function huffmanCodes(bits, values) {
   }
   return codes;
 }
-
 function huffmanBits(codes, symbol) {
   const { code, length } = codes.get(symbol);
   return code.toString(2).padStart(length, '0');
 }
-
-/* ---------- EXIF / TIFF ---------- */
-
 const artist = entry(0x013b, 2, 'MeInsert fixture');
 const software = entry(0x0131, 2, 'MeInsert generator');
 const owner = entry(0xa430, 2, 'Fixture Owner');
-const uniqueId = entry(0xa420, 2, 'MEINSERT-CLEAN-GPS-0001'); // ImageUniqueID
-const serial = entry(0xa431, 2, 'MEINSERT-CLEAN-GPS-SN-0001'); // BodySerialNumber
-const orientation = entry(0x0112, 3, 6); // handmade orientation tag
-
+const uniqueId = entry(0xa420, 2, 'MEINSERT-CLEAN-GPS-0001');
+const serial = entry(0xa431, 2, 'MEINSERT-CLEAN-GPS-SN-0001');
+const orientation = entry(0x0112, 3, 6);
 const gpsEntries = [
-  entry(0x0000, 1, [2, 3, 0, 0]), // GPSVersionID
-  entry(0x0001, 2, 'S'), // GPSLatitudeRef
-  entry(0x0002, 5, [[6, 1], [12, 1], [34, 1]]), // GPSLatitude = 6°12'34"
-  entry(0x0003, 2, 'E'), // GPSLongitudeRef
-  entry(0x0004, 5, [[106, 1], [45, 1], [0, 1]]), // GPSLongitude = 106°45'00"
-  entry(0x0005, 1, 0), // GPSAltitudeRef = above sea level
-  entry(0x0006, 5, [12, 1]), // GPSAltitude = 12 m
+  entry(0x0000, 1, [2, 3, 0, 0]),
+  entry(0x0001, 2, 'S'),
+  entry(0x0002, 5, [[6, 1], [12, 1], [34, 1]]),
+  entry(0x0003, 2, 'E'),
+  entry(0x0004, 5, [[106, 1], [45, 1], [0, 1]]),
+  entry(0x0005, 1, 0),
+  entry(0x0006, 5, [12, 1]),
 ];
-
 function buildTiff() {
   const ifd0Entries = [artist, software, owner, orientation];
-  const exifEntries = [uniqueId, serial]; // Keduanya tag ExifIFD, bukan IFD0.
-  // +2 karena IFD0 juga memuat penunjuk ExifIFD dan GPS IFD.
+  const exifEntries = [uniqueId, serial];
   const ifd0Size = 2 + (ifd0Entries.length + 2) * 12 + 4;
   const exifOffset = 8 + ifd0Size;
   const exifSize = 2 + exifEntries.length * 12 + 4;
@@ -103,7 +90,7 @@ function buildTiff() {
   function allocate(bytes) {
     const offset = cursor;
     cursor += bytes.length;
-    if (cursor % 2) cursor += 1; // TIFF values start on a word boundary
+    if (cursor % 2) cursor += 1;
     chunks.push({ offset, bytes });
     return offset;
   }
@@ -124,7 +111,6 @@ function buildTiff() {
     ifd.writeUInt32LE(nextOffset, ifd.length - 4);
     return ifd;
   }
-
   const ifd0 = makeIfd([
     ...ifd0Entries,
     entry(0x8769, 4, exifOffset),
@@ -140,28 +126,22 @@ function buildTiff() {
   header.writeUInt32LE(8, 4);
   return Buffer.concat([header, ifd0, exifIfd, gps, data]);
 }
-
-/* ---------- JPEG baseline ---------- */
-
 function segment(marker, payload) {
   const length = Buffer.alloc(2);
   length.writeUInt16BE(payload.length + 2);
   return Buffer.concat([Buffer.from([0xff, marker]), length, payload]);
 }
-
 function buildJpeg() {
   const app0 = Buffer.concat([
     Buffer.from('JFIF\0', 'ascii'),
     Buffer.from([1, 1, 1]),
-    Buffer.from([0, 1, 0, 1]), // X/Y density
-    Buffer.from([0, 0]), // no thumbnail
+    Buffer.from([0, 1, 0, 1]),
+    Buffer.from([0, 0]),
   ]);
   const exif = Buffer.concat([Buffer.from('Exif\0\0', 'ascii'), buildTiff()]);
-
   const quant = Buffer.alloc(65);
-  quant[0] = 0; // 8-bit luminance table 0
+  quant[0] = 0;
   quant.fill(16, 1);
-
   const dcBits = [0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0];
   const dcValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
   const acBits = [0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7d];
@@ -183,31 +163,25 @@ function buildJpeg() {
   ];
   const dcHuffman = Buffer.concat([Buffer.from([0x00]), Buffer.from(dcBits), Buffer.from(dcValues)]);
   const acHuffman = Buffer.concat([Buffer.from([0x10]), Buffer.from(acBits), Buffer.from(acValues)]);
-
   const frame = Buffer.concat([
-    Buffer.from([8, 0, 8, 0, 8, 1, 1, 0x11, 0]), // 8x8, one luminance component
+    Buffer.from([8, 0, 8, 0, 8, 1, 1, 0x11, 0]),
   ]);
   const scan = Buffer.concat([Buffer.from([1, 1, 0x00, 0, 63, 0])]);
-
-  // One 8x8 block: DC difference 0 (luminance DC table symbol 0) followed by EOB
-  // (luminance AC table symbol 0x00). Pad the final byte with 1 bits, per JPEG.
   const bits = `${huffmanBits(huffmanCodes(dcBits, dcValues), 0)}${huffmanBits(huffmanCodes(acBits, acValues), 0x00)}`;
   const entropy = Buffer.from([parseInt(bits.padEnd(8, '1'), 2)]);
-
   return Buffer.concat([
-    Buffer.from([0xff, 0xd8]), // SOI
-    segment(0xe1, exif), // APP1 / Exif
-    segment(0xe0, app0), // APP0 / JFIF
-    segment(0xdb, quant), // DQT
-    segment(0xc0, frame), // SOF0
-    segment(0xc4, dcHuffman), // DHT (DC)
-    segment(0xc4, acHuffman), // DHT (AC)
-    segment(0xda, scan), // SOS
+    Buffer.from([0xff, 0xd8]),
+    segment(0xe1, exif),
+    segment(0xe0, app0),
+    segment(0xdb, quant),
+    segment(0xc0, frame),
+    segment(0xc4, dcHuffman),
+    segment(0xc4, acHuffman),
+    segment(0xda, scan),
     entropy,
-    Buffer.from([0xff, 0xd9]), // EOI
+    Buffer.from([0xff, 0xd9]),
   ]);
 }
-
 const jpeg = buildJpeg();
 if (jpeg.length > 10 * 1024) throw new Error(`Fixture terlalu besar: ${jpeg.length} byte`);
 writeFileSync(out, jpeg);

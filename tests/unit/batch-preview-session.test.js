@@ -4,7 +4,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BatchPreview } from '../../assets/js/batch/batch-preview.js';
-
 test('batch cover changes replace only the cover, not the media preview', () => {
   const preview = new BatchPreview();
   preview.els = {};

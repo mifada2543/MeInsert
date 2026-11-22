@@ -159,8 +159,6 @@ function validateOoxml(inspected, findings) {
   const subtype = root.family === 'word' ? (macro ? 'docm' : 'docx')
     : root.family === 'excel' ? (macro ? 'xlsm' : 'xlsx')
       : (macro ? 'pptm' : 'pptx');
-  // A relationship without its part, or a part without its relationship, is an
-  // ambiguous package: never accept it just because a filename matches.
   for (const rel of relationships) {
     if (/\/metadata\/core-properties$/i.test(rel.type) || /\/extended-properties$/i.test(rel.type)
         || /\/custom-properties$/i.test(rel.type)) {
@@ -217,19 +215,10 @@ function validateOdf(inspected, findings) {
   if (!subtype) findings.push(`ODF: mimetype tidak dikenali (${mimetype || 'kosong'}).`);
   return { subtype, macro: false, mainPart: 'content.xml' };
 }
-
-/**
- * Return a validated subtype plus findings. Callers must convert findings into
- * a hard failure; a package with findings is never an editable Office file.
- */
 export function validateOfficePackage(inspected) {
   const findings = [];
   if (!inspected) return { subtype: null, findings: ['Paket tidak terbaca.'], packageValid: false };
   if (inspected.zip64) findings.push('ZIP64 tidak didukung untuk dokumen Office.');
-  if (inspected.prefix && inspected.prefix > 0 && !inspected.odf) {
-    // A prefixed OOXML archive is legal (self-extracting wrappers exist); the
-    // central directory already resolved it, so this is informational only.
-  }
   const skipped = new Set(inspected.previewSkipped || []);
   if (inspected.findings?.length) findings.push(...inspected.findings.filter((item) => !skipped.has(item)));
   for (const name of ['docProps/core.xml', 'docProps/app.xml', 'docProps/custom.xml', 'meta.xml']) {

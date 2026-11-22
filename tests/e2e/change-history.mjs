@@ -9,7 +9,6 @@ import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const chrome = [process.env.CHROME_BIN, process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
   '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser']
@@ -38,7 +37,6 @@ page.on('pageerror', (error) => errors.push(error.message));
 page.on('dialog', (dialog) => { dialog.accept().catch(() => {}); });
 const tempDir = mkdtempSync(join(tmpdir(), 'meinsert-change-history-'));
 const audio = join(tempDir, 'tone.mp3');
-
 async function openActionOptions() {
   const toggle = page.locator('#actionOptionsToggle');
   if (await toggle.count() && await toggle.isVisible()
@@ -47,7 +45,6 @@ async function openActionOptions() {
     await toggle.click();
   }
 }
-
 async function loadFile() {
   await page.goto(`${base}/single.html`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.locator('#fileInput').setInputFiles(audio);
@@ -55,13 +52,11 @@ async function loadFile() {
     null, { timeout: 120000 });
   await openActionOptions();
 }
-
 async function openHistory() {
   const dialog = page.locator('.history-dialog[open]');
   if (!(await dialog.count())) await page.locator('#historyBtn').click();
   await dialog.waitFor({ timeout: 10000 });
 }
-
 async function closeHistory() {
   const dialog = page.locator('.history-dialog[open]');
   if (!(await dialog.count())) return;
@@ -74,28 +69,22 @@ async function closeHistory() {
     await dialog.waitFor({ state: 'hidden', timeout: 5000 });
   }
 }
-
 async function historyEntryTexts() {
   return page.locator('.history-entry').allInnerTexts();
 }
-
 async function dirtySnapshot() {
   return page.locator('#dirtyState').evaluate((node) => `${node.getAttribute('data-count') || ''}|${node.textContent || ''}`);
 }
-
 async function waitForDirtyChange(previous) {
   await page.waitForFunction((prev) => {
     const node = document.querySelector('#dirtyState');
     return `${node?.getAttribute('data-count') || ''}|${node?.textContent || ''}` !== prev;
   }, previous, { timeout: 15000 });
 }
-
 try {
   copyFileSync(join(root, 'tests/fixtures/tone.mp3'), audio);
   await loadFile();
   const initialTitle = await page.locator('#field-title').inputValue();
-
-  // 1. Field change is recorded in the history dialog.
   await page.locator('#field-title').fill('Judul Histori');
   await page.locator('#field-title').blur();
   await openHistory();
@@ -106,8 +95,6 @@ try {
     `field-change entry is missing: ${JSON.stringify(fieldTexts)}`);
   console.log('PASS: perubahan field tercatat di dialog riwayat');
   await closeHistory();
-
-  // 2. Lyric / subtitle change is recorded.
   await page.locator('#timedTextBtn').click();
   await page.locator('#timedTextDialog[open]').waitFor({ timeout: 10000 });
   await page.locator('#timedTextAddLine').click();
@@ -120,8 +107,6 @@ try {
   assert.ok(lyricTexts.some((text) => /lirik|lyric|subtitle/i.test(text)),
     `lyric/subtitle entry is missing: ${JSON.stringify(lyricTexts)}`);
   console.log('PASS: perubahan lirik/subtitle tercatat di dialog riwayat');
-
-  // 3. Cut change is recorded.
   await closeHistory();
   await page.locator('#cutBtn').click();
   await page.locator('#cutDialog[open]').waitFor({ timeout: 10000 });
@@ -136,8 +121,6 @@ try {
   assert.ok(cutTexts.some((text) => /potong|cut|trim/i.test(text)),
     `cut entry is missing: ${JSON.stringify(cutTexts)}`);
   console.log('PASS: perubahan potong tercatat di dialog riwayat');
-
-  // 4. Undoable rollback of the oldest (field) entry.
   const fieldEntry = page.locator('.history-entry').filter({ hasText: /judul|field/i }).first();
   assert.ok(await fieldEntry.count(), 'field entry is available for rollback');
   const dirtyBeforeRollback = await dirtySnapshot();
@@ -153,7 +136,6 @@ try {
     'rollback restores the original field value');
   await waitForDirtyChange(dirtyBeforeRollback);
   console.log('PASS: rollback entri field mengembalikan nilai awal dan mengubah dirty state');
-
   await page.evaluate(() => document.activeElement?.blur());
   await page.keyboard.press('Control+z');
   await page.waitForFunction(() => document.querySelector('#field-title')?.value === 'Judul Histori',
@@ -168,8 +150,6 @@ try {
     `cut still present after undo: ${JSON.stringify(undoneTexts)}`);
   console.log('PASS: Ctrl+Z membatalkan rollback; lirik dan potong tetap ada');
   await closeHistory();
-
-  // 5. Action icons are distinct and both render at 16x16.
   await openActionOptions();
   const icons = await page.evaluate(() => ({
     lyric: document.querySelector('#timedTextBtn .icon')?.innerHTML ?? null,
@@ -185,7 +165,6 @@ try {
     assert.ok(Math.abs(box.height - 16) <= 0.5, `${selector} height ~16px (got ${box.height})`);
   }
   console.log('PASS: ikon lirik dan potong berbeda dan berukuran 16x16');
-
   if (errors.length) throw new Error(`Page errors: ${errors.join(' | ')}`);
   console.log('ALL change-history scenarios passed');
 } finally {

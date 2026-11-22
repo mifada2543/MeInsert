@@ -42,10 +42,6 @@ export function estimateMemory({
     breakdown: { inputs, held, cover, copyFactor, engineOverheadMb, observedPeakMb: observed / (1024 * 1024) },
   };
 }
-/**
- * Single source of truth for save-path enforcement. `warn` is dismissible;
- * `block` requires either low-memory mode or an explicit acknowledgement.
- */
 export function canProceedWithMemory(memory, { lowMemory = false, memoryOverride = false } = {}) {
   if (!memory || memory.level === 'ok') return { allowed: true, reason: 'ok' };
   if (memory.level === 'block' && !lowMemory && !memoryOverride) {
@@ -63,8 +59,6 @@ export function estimateForSingle({ fileSize = 0, coverBytes = 0, observedPeakMb
     observedPeakMb,
   });
 }
-/** Memory policy for a media cut. Cuts with an intermediate file hold two
- * full-size buffers, so they are estimated more conservatively. */
 export function estimateForCut({ fileSize = 0, intermediate = false, coverBytes = 0, observedPeakMb = 0 } = {}) {
   return estimateMemory({
     inputSizes: [fileSize],

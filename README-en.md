@@ -14,7 +14,7 @@ No backend. No uploads. No account.
 [Live demo](https://meinsert.my.id/) · [Single-file editor](https://meinsert.my.id/single.html) · [Batch mode](https://meinsert.my.id/batch.html) · [Documentation](#further-documentation)
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v1.5.0-blue?style=flat-square)](./package.json)
+[![Version](https://img.shields.io/badge/version-v1.6.0-blue?style=flat-square)](./package.json)
 [![License](https://img.shields.io/badge/License-AGPLv3-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#how-to-verify-the-local-only-claim)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)
@@ -67,12 +67,45 @@ Formats are detected from the **file contents**, not just the extension, so a wr
 | Category | Formats | Writing method |
 |---|---|---|
 | Images | JPEG, PNG, WebP, TIFF | XMP + EXIF; IPTC for JPEG/TIFF |
+| Images | HEIC, HEIF | XMP (*best-effort*); placeholder preview |
+| RAW images | DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF | XMP-only (*best-effort*); placeholder preview |
+| RAW video | BRAW, R3D, ARRIRAW | **Read-only** — cannot be saved; placeholder preview |
 | PDF | PDF | Info Dictionary + XMP stream |
 | Audio | MP3, FLAC, OGG Vorbis / Opus | ID3v2.3, Vorbis Comment; stream-copy remuxing |
 | Video | MP4 / M4A / MOV, MKV / WebM | ItemList + XMP through ExifTool; Matroska SimpleTag with stream-copy remuxing |
 | Office | DOCX, XLSX, PPTX, ODT, ODS, ODP | Patches only the metadata XML parts; all other ZIP entries are verified byte-for-byte |
 
 Technical details and per-format limits are in the [limitations documentation](docs/LIMITATIONS.md).
+
+### GPS & metadata IPTC/XMP
+
+Image metadata fields include **GPS** — latitude, longitude, altitude, and date —
+now placed in its own **GPS metadata** tab, plus the **IPTC/XMP DAM** fields: Credit, Source, CaptionWriter, JobTitle,
+CopyrightOwner, Rating, Label, Identifier, and Location. The fields appear for
+image formats that support XMP; values are written to the XMP packet and verified
+by reading the output back, like any other field. Only changed fields are written,
+so other unsupported tags are not guaranteed to survive.
+
+### Format HEIC, RAW, dan RAW video
+
+- **HEIC / HEIF** — only XMP tags are requested on a *best-effort* basis.
+  The engine may still rewrite container structures. The preview uses a placeholder because browsers do not render the format natively.
+- **RAW images** (DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF) — **XMP-only**
+  (*best-effort*) with a placeholder preview. Only XMP tags are requested;
+  the engine may still repack RAW containers, so full sensor/maker-note byte
+  preservation is not guaranteed without real-format verification.
+- **RAW video** (BRAW, R3D, ARRIRAW) — **read-only**: metadata can be read, but
+  the file cannot be saved; the save guard rejects writes. The preview is also a
+  placeholder.
+
+Invalid GPS coordinates are rejected; negative altitude is stored with a
+*Below Sea Level* reference. TIFF-based RAW inferred from filename alone is
+marked with an explicit uncertainty warning.
+
+CinemaDNG inside MOV/MKV containers keeps using the `mp4`/`mkv` adapters, not the
+RAW adapter. Every flow still runs on your device and works offline once cached;
+nothing is uploaded. Details are in the
+[limitations documentation](docs/LIMITATIONS.md).
 
 ### Cover art / thumbnails
 

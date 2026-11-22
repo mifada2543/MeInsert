@@ -10,7 +10,6 @@ import { existsSync } from 'node:fs';
 import { resolve, extname, sep, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const server = createServer(async (req, res) => {
   const path = resolve(root, `.${new URL(req.url, 'http://localhost').pathname}`);
@@ -69,8 +68,6 @@ try {
           ? new File([repairFlacMetadata(new Uint8Array(await original.arrayBuffer()), pictures, (await tags(original)).raw.vendor)], original.name)
           : original;
         if (extension !== 'flac') {
-          // The custom-field UI only accepts scalars; seed multiple native Ogg
-          // pictures with the engine, then test production-worker title edits.
           const { Output, BufferTarget, Conversion, OggOutputFormat } = await import('/assets/vendor/mediabunny.mjs');
           const input = new Input({ source: new BlobSource(original), formats: ALL_FORMATS });
           const metadata = await input.getMetadataTags();

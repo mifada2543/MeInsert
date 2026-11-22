@@ -3,11 +3,9 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { t, translated } from '../i18n/index.js';
 import { el, qs } from '../ui/dom.js';
-
 export const MAX_DROP_DEPTH = 8;
 export const MAX_DROP_FILES = 500;
 const MAX_READ_BATCHES = 10_000;
-
 function readAllEntries(reader) {
   return new Promise((resolve) => {
     const entries = [];
@@ -43,7 +41,6 @@ function readAllEntries(reader) {
     next();
   });
 }
-
 function fileFromEntry(entry) {
   return new Promise((resolve) => {
     let settled = false;
@@ -59,7 +56,6 @@ function fileFromEntry(entry) {
     }
   });
 }
-
 async function walkEntry(entry, depth, collected) {
   if (!entry || depth > MAX_DROP_DEPTH || collected.length >= MAX_DROP_FILES) return;
   if (entry.isFile) {
@@ -74,12 +70,6 @@ async function walkEntry(entry, depth, collected) {
     await walkEntry(child, depth + 1, collected);
   }
 }
-
-/**
- * Flatten a folder drop into File objects. Only collects files; applying the
- * batch limits stays the caller's job. Bounded by depth and file count so a
- * hostile or cyclical entry tree cannot hang the editor.
- */
 export async function collectDroppedFiles(dataTransfer) {
   const files = [];
   const items = Array.from(dataTransfer?.items || []);
@@ -105,8 +95,6 @@ export async function collectDroppedFiles(dataTransfer) {
   }
   return files;
 }
-
-/** Add a localized folder hint to the existing drop card (no HTML changes). */
 export function bindFolderDropCopy(card) {
   if (typeof document === 'undefined' || !card) return null;
   const existing = qs('.drop-folder-hint', card);

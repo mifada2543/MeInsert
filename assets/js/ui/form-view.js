@@ -19,6 +19,9 @@ function fieldIsDirty(field, state) {
   }
   return !inputsEqual(state.values[field.id], state.originalValues[field.id], field);
 }
+function fieldIsReadOnly(field, state) {
+  return Boolean(field.readOnly || state?.adapter?.meta?.readOnly);
+}
 function customPlaceholder(adapterId) {
   switch (adapterId) {
     case 'image':
@@ -54,6 +57,7 @@ function customHint(adapterId) {
   }
 }
 function buildField(field, state, handlers) {
+  const readOnly = fieldIsReadOnly(field, state);
   const wrapper = el('div', {
     className: `field ${field.type === 'textarea' || field.type === 'tags' ? 'is-full' : ''}`.trim(),
     dataset: { fieldId: field.id },
@@ -66,6 +70,7 @@ function buildField(field, state, handlers) {
     el('button', {
       className: 'field-clear',
       type: 'button',
+      hidden: readOnly,
       title: translated(() => (t('ui.clearThisField'))),
       'aria-label': translated(() => (t('ui.clear', { v0: translateSource(field.label) }))),
       on: {
@@ -95,6 +100,10 @@ function buildField(field, state, handlers) {
       },
     },
   };
+  if (readOnly) {
+    common.readOnly = true;
+    common.disabled = true;
+  }
   if (field.maxLength) common.maxLength = field.maxLength;
   if (field.min !== undefined) common.min = field.min;
   if (field.max !== undefined) common.max = field.max;
@@ -280,7 +289,7 @@ export function renderCoverBlock(adapter, state, handlers) {
     ),
   );
 }
-export function renderForm(container, { adapter, sections, state, handlers, coverInCard = false }) {
+export function renderForm(container, { adapter, sections, state, handlers, coverInCard = false, extras = true }) {
   clear(container);
   let index = 0;
   for (const section of sections) {
@@ -299,29 +308,31 @@ export function renderForm(container, { adapter, sections, state, handlers, cove
     );
     container.append(block);
   }
-  if (adapter.meta?.cover && handlers.onCoverChooseFile && !coverInCard) {
-    container.append(renderCoverBlock(adapter, state, handlers));
-  }
-  const list = el('div', { className: 'custom-list' });
-  const addButton = el('button', {
-    className: 'button ghost small',
-    type: 'button',
-    on: {
-      click: () => {
-        handlers.onAddCustom();
-        renderCustomRows(list, state, handlers);
+  if (extras) {
+    if (adapter.meta?.cover && handlers.onCoverChooseFile && !coverInCard) {
+      container.append(renderCoverBlock(adapter, state, handlers));
+    }
+    const list = el('div', { className: 'custom-list' });
+    const addButton = el('button', {
+      className: 'button ghost small',
+      type: 'button',
+      on: {
+        click: () => {
+          handlers.onAddCustom();
+          renderCustomRows(list, state, handlers);
+        },
       },
-    },
-  }, icon('plus'), translated(() => (t('ui.addTag'))));
-  container.append(el('section', { className: 'custom-block' },
-    el('div', { className: 'custom-head' },
-      el('div', {},
-        el('h2', { textContent: translated(() => (t('ui.customTags'))) }),
-        el('p', { textContent: translated(() => (customHint(adapter.meta.id))) }),
+    }, icon('plus'), translated(() => (t('ui.addTag'))));
+    container.append(el('section', { className: 'custom-block' },
+      el('div', { className: 'custom-head' },
+        el('div', {},
+          el('h2', { textContent: translated(() => (t('ui.customTags'))) }),
+          el('p', { textContent: translated(() => (customHint(adapter.meta.id))) }),
+        ),
+        addButton,
       ),
-      addButton,
-    ),
-    list,
-  ));
-  renderCustomRows(list, state, handlers);
+      list,
+    ));
+    renderCustomRows(list, state, handlers);
+  }
 }

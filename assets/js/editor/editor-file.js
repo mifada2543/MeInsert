@@ -40,8 +40,6 @@ export async function openFile(ctx, file) {
   cleanupUrls(state);
   state.readToken += 1;
   const token = state.readToken;
-  // A new file starts a fresh undo history: the previous edits belong to
-  // another file and must never be replayed on this one.
   clearHistory(state.history);
   state.file = file;
   state.detection = detection;
@@ -116,7 +114,7 @@ export async function openFile(ctx, file) {
 }
 export function setupDropzone(ctx) {
   const { els } = ctx;
-  els.fileInput.accept = '.jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm,.docx,.docm,.xlsx,.xlsm,.pptx,.pptm,.odt,.ods,.odp';
+  els.fileInput.accept = '.jpg,.jpeg,.png,.webp,.tif,.tiff,.pdf,.mp3,.flac,.ogg,.oga,.opus,.mp4,.m4a,.m4v,.mov,.mkv,.webm,.docx,.docm,.xlsx,.xlsm,.pptx,.pptm,.odt,.ods,.odp,.heic,.heif,.dng,.cr2,.cr3,.nef,.arw,.orf,.rw2,.raf,.braw,.r3d,.ari,.mxf';
   const pick = () => els.fileInput.click();
   els.browseBtn.addEventListener('click', (event) => {
     event.stopPropagation();

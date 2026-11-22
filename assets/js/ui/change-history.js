@@ -1,9 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-// Panel riwayat perubahan editor satu file. Entri berasal dari historyEntries()
-// (core/history.js); tombol "Kembali ke versi ini" memakai rollbackTo() yang
-// tetap bisa di-undo lewat Ctrl+Z. Semua teks UI lewat katalog i18n.
+// Panel riwayat perubahan editor satu file.
 import { bindTranslation, t, translated } from '../i18n/index.js';
 import { clear, el } from './dom.js';
 import { icon } from './icons.js';
@@ -12,11 +10,9 @@ import { confirmNavigation } from './confirm.js';
 import { historyEntries, rollbackTo } from '../core/history.js';
 import { renderWorkspace } from '../editor/editor-view.js';
 import { syncActionBar } from '../editor/editor-changes.js';
-
 let dialog = null;
 let refs = null;
 let host = null;
-
 function formatTime(at) {
   const value = Number(at);
   if (!Number.isFinite(value) || value <= 0) return '';
@@ -24,19 +20,15 @@ function formatTime(at) {
   if (Number.isNaN(date.getTime())) return '';
   try { return date.toLocaleTimeString(); } catch { return ''; }
 }
-
 function labelOf(entry) {
   const label = typeof entry?.label === 'string' ? entry.label.trim() : '';
   return label || t('ui.changeHistoryCurrent');
 }
-
 function closeDialog() {
   if (dialog?.open) dialog.close();
 }
-
 function buildDialog() {
   if (dialog) return dialog;
-
   const title = el('h2', { id: 'changeHistoryTitle', className: 'history-title' });
   bindTranslation(title, 'textContent', () => (t('ui.changeHistory')));
   const closeBtn = el('button', {
@@ -46,13 +38,11 @@ function buildDialog() {
     'aria-label': translated(() => (t('ui.close'))),
     on: { click: () => closeDialog() },
   }, icon('x'));
-
   const list = el('ul', { className: 'history-list', id: 'changeHistoryList' });
   const empty = el('p', { className: 'history-empty' });
   bindTranslation(empty, 'textContent', () => (t('ui.changeHistoryEmpty')));
   const note = el('p', { className: 'history-note' });
   bindTranslation(note, 'textContent', () => (t('ui.changeHistoryUndoable')));
-
   dialog = el('dialog', {
     id: 'changeHistoryDialog',
     className: 'history-dialog',
@@ -77,7 +67,6 @@ function buildDialog() {
   refs = { title, closeBtn, list, empty, note };
   return dialog;
 }
-
 function currentEntry() {
   return el('li', { className: 'history-entry is-current', 'aria-current': 'true' },
     el('span', { className: 'history-entry-mark is-current', 'aria-hidden': 'true' }),
@@ -86,7 +75,6 @@ function currentEntry() {
     ),
   );
 }
-
 function changeEntry(ctx, entry) {
   const time = formatTime(entry.at);
   const rollback = el('button', {
@@ -105,7 +93,6 @@ function changeEntry(ctx, entry) {
     rollback,
   );
 }
-
 function renderEntries(ctx) {
   if (!refs) return;
   const entries = historyEntries(ctx?.state?.history).slice().reverse();
@@ -114,7 +101,6 @@ function renderEntries(ctx) {
   refs.list.append(currentEntry());
   for (const entry of entries) refs.list.append(changeEntry(ctx, entry));
 }
-
 function openDialog() {
   if (!host) return;
   if (!dialog) buildDialog();
@@ -122,12 +108,8 @@ function openDialog() {
   if (!dialog.open) dialog.showModal();
   refs.closeBtn.focus();
 }
-
 async function requestRollback(ctx, entry) {
   const label = labelOf(entry);
-  // `<dialog>.showModal()` lives in the browser top layer, so the confirmation
-  // backdrop (plain DOM) would be inert. Leave the top layer while confirming
-  // and restore the panel when the user cancels.
   const wasOpen = Boolean(dialog?.open);
   closeDialog();
   const confirmed = await confirmNavigation({
@@ -147,7 +129,6 @@ async function requestRollback(ctx, entry) {
   renderWorkspace(ctx);
   showToast(t('ui.changeHistoryRollbackDone'));
 }
-
 export function mountChangeHistory({ ctx, els } = {}) {
   if (typeof document === 'undefined') return null;
   host = ctx || { els };

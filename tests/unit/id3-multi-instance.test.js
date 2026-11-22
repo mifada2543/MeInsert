@@ -7,7 +7,6 @@ import { readFileSync } from 'node:fs';
 import { ID3Writer } from '../../assets/vendor/browser-id3-writer.mjs';
 import { parseId3Tag, frameIdentity } from '../../assets/js/core/id3-passthrough.js';
 import { write as writeMp3 } from '../../assets/js/formats/mp3.js';
-
 const DECODERS = { 0: 'iso-8859-1', 1: 'utf-16le', 2: 'utf-16be', 3: 'utf-8' };
 function terminated(bytes, offset, encoding) {
   if (encoding === 1 || encoding === 2) {
@@ -56,7 +55,6 @@ function audioBytes(bytes) {
   assert.ok(tag, 'tag should parse');
   return bytes.slice(tag.tagEnd);
 }
-
 const TWO_COMM = [
   ['TIT2', 'Judul lama'],
   ['COMM', { description: 'review', text: 'Review lama' }],
@@ -65,19 +63,16 @@ const TWO_COMM = [
   ['TXXX', { description: 'one', value: '1' }],
   ['TXXX', { description: 'two', value: '2' }],
 ];
-
 test('editing only TIT2 preserves two COMM frames with different descriptions', async () => {
   const source = makeFixture(TWO_COMM);
   const before = frameInventory(source);
   assert.equal(before.comms.length, 2, 'fixture must contain two COMM frames');
   assert.deepEqual(before.comms.map((item) => item.description).sort(), ['review', 'source']);
-
   const result = await writeMp3(new File([source], 'multi.mp3', { type: 'audio/mpeg' }), {
     set: { title: 'Judul baru' },
   });
   const output = new Uint8Array(await result.blob.arrayBuffer());
   const after = frameInventory(output);
-
   assert.equal(after.comms.length, 2, 'two unrelated COMM frames must survive a title edit');
   assert.deepEqual(
     after.comms.map((item) => [item.description, item.text]).sort(),
@@ -88,7 +83,6 @@ test('editing only TIT2 preserves two COMM frames with different descriptions', 
   assert.ok(title, 'title frame must exist');
   assert.equal(decodeText(Uint8Array.from(title.bytes).slice(11), title.bytes[10] || 0), 'Judul baru');
 });
-
 test('unrelated PRIV and TXXX instances survive a title edit', async () => {
   const source = makeFixture(TWO_COMM);
   const result = await writeMp3(new File([source], 'multi.mp3', { type: 'audio/mpeg' }), {
@@ -98,7 +92,6 @@ test('unrelated PRIV and TXXX instances survive a title edit', async () => {
   assert.equal(after.ids.filter((id) => id === 'PRIV').length, 1);
   assert.equal(after.ids.filter((id) => id === 'TXXX').length, 2);
 });
-
 function concatBytes(parts) {
   const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
   let offset = 0;
@@ -146,7 +139,6 @@ function toV24(bytes) {
   ]);
   return concatBytes([header, bodyOut, bytes.slice(tag.tagEnd)]);
 }
-
 test('multiple APIC frames survive an unrelated title edit', async () => {
   const source = makeFixture([
     ['TIT2', 'Judul lama'],
@@ -164,7 +156,6 @@ test('multiple APIC frames survive an unrelated title edit', async () => {
   assert.deepEqual(after.map((frame) => frameIdentity('APIC', frame.bytes)).sort(), [...before].sort());
   assert.deepEqual([...audioBytes(output)], [...audioBytes(source)]);
 });
-
 test('editing one TXXX instance preserves the other', async () => {
   const source = makeFixture([
     ['TIT2', 'Judul'],
@@ -184,7 +175,6 @@ test('editing one TXXX instance preserves the other', async () => {
   const description = terminated(body, 1, body[0] || 0);
   assert.match(decodeText(body.slice(description.end), body[0] || 0), /baru/);
 });
-
 test('unknown structurally valid frames survive a known-field edit', async () => {
   const source = addedRawFrame(makeFixture([['TIT2', 'Judul']]), 'ZZZZ', Uint8Array.from([3, 65, 66, 67]));
   const unknown = framesOf(source, 'ZZZZ');
@@ -195,7 +185,6 @@ test('unknown structurally valid frames survive a known-field edit', async () =>
   const output = new Uint8Array(await result.blob.arrayBuffer());
   assert.deepEqual([...framesOf(output, 'ZZZZ')[0].bytes], [...unknown[0].bytes]);
 });
-
 test('editing a comment keeps unrelated comments and PRIV intact', async () => {
   const source = makeFixture(TWO_COMM);
   const result = await writeMp3(new File([source], 'comment.mp3', { type: 'audio/mpeg' }), {
@@ -207,7 +196,6 @@ test('editing a comment keeps unrelated comments and PRIV intact', async () => {
     [['review', 'Review baru'], ['source', 'Source lama']]);
   assert.equal(after.ids.filter((id) => id === 'PRIV').length, 1);
 });
-
 test('setting or removing one cover keeps the other cover', async () => {
   const source = makeFixture([
     ['TIT2', 'Judul'],
@@ -223,7 +211,6 @@ test('setting or removing one cover keeps the other cover', async () => {
   const setFrames = framesOf(setOutput, 'APIC').map((frame) => frameIdentity('APIC', frame.bytes));
   assert.equal(setFrames.length, 2);
   assert.ok(setFrames.includes(back), 'secondary cover must survive a cover replace');
-
   const removeResult = await writeMp3(new File([source], 'covers.mp3', { type: 'audio/mpeg' }), {
     rawRemove: ['APIC'],
   });
@@ -231,7 +218,6 @@ test('setting or removing one cover keeps the other cover', async () => {
   const removeFrames = framesOf(removeOutput, 'APIC').map((frame) => frameIdentity('APIC', frame.bytes));
   assert.deepEqual(removeFrames, [back], 'only the primary cover should be removed');
 });
-
 test('ID3v2.4 tags keep both COMM frames byte-identically', async () => {
   const source = toV24(makeFixture(TWO_COMM));
   assert.equal(parseId3Tag(source).version[0], 4);
@@ -244,7 +230,6 @@ test('ID3v2.4 tags keep both COMM frames byte-identically', async () => {
   const after = framesOf(output, 'COMM').map((frame) => frameIdentity('COMM', frame.bytes)).sort();
   assert.deepEqual(after, before);
 });
-
 test('repeated save cycles do not accumulate metadata loss', async () => {
   let current = makeFixture(TWO_COMM);
   for (const title of ['Satu', 'Dua', 'Tiga']) {
@@ -258,7 +243,6 @@ test('repeated save cycles do not accumulate metadata loss', async () => {
   }
   assert.deepEqual(frameInventory(current).comms.map((item) => item.text).sort(), ['Review lama', 'Source lama']);
 });
-
 test('malformed tags fall back safely with a precise warning', async () => {
   const source = makeFixture([['TIT2', 'Judul']]);
   assert.ok(parseId3Tag(source)?.frames.length);

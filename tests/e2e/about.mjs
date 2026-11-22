@@ -72,6 +72,12 @@ try {
   assert.equal(await page.locator('main a[href="./Terms.html"]').count() > 0, true);
   assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://meinsert.my.id/about.html');
   console.log('PASS: About chrome, canonical URL and policy links are present');
+  const chipCount = await page.locator('#formatChips .chip').count();
+  assert.ok(chipCount > 12, `expected expanded format chips, got ${chipCount}`);
+  const aboutText = await page.locator('#landing').innerText();
+  assert.match(aboutText, /HEIC|RAW/);
+  assert.match(aboutText, /Tidak didukung/);
+  assert.match(aboutText, /Keterbatasan/);
   const desktop = await page.evaluate(() => {
     const hero = document.querySelector('.hero-copy').getBoundingClientRect();
     const cards = [...document.querySelectorAll('.about-card')].map((card) => {

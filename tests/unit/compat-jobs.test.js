@@ -4,7 +4,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { jobs, concurrency } from '../compat/jobs.mjs';
-
 test('compatibility concurrency is bounded and cannot silently spawn unbounded browsers', () => {
   assert.equal(concurrency(), 2);
   assert.equal(concurrency('1'), 1);

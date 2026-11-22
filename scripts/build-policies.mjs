@@ -2,7 +2,6 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Deliberately small, escaped renderer for the project's own policy Markdown.
-// No runtime Markdown fetching, external dependency, or untrusted HTML execution.
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +31,6 @@ function inline(value) {
 async function article(file, locale, type) {
   const lines = (await readFile(resolve(root, file), 'utf8')).split('\n');
   const title = lines.shift().replace(/^# MeInsert — /, '');
-  // Source-language navigation is provided by the shared live ID/EN control.
   const navigation = lines.findIndex((line) => line.includes('README]('));
   if (navigation >= 0) lines.splice(0, navigation + 1);
   const toc = [], parts = [];

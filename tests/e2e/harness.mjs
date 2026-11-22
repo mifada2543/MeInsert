@@ -4,7 +4,6 @@
 /* Shared browser harness: one Chrome process for every E2E suite. */
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -17,15 +16,6 @@ function findChrome() {
   if (!found) throw new Error('Set CHROME_BIN to Chrome/Chromium executable');
   return found;
 }
-
-/**
- * Return a Browser handle backed by:
- *  - a long-lived Chrome exposed by run-all.mjs via CDP (suite mode), or
- *  - a fresh Chromium launch (standalone `node tests/e2e/<suite>.mjs`).
- *
- * The proxy tracks contexts so a suite's `browser.close()` never leaks
- * pages/contexts into the next suite when Chrome is shared.
- */
 export async function getBrowser() {
   const endpoint = process.env.MEINSERT_CDP_ENDPOINT;
   const browser = endpoint

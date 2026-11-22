@@ -292,8 +292,6 @@ export class BatchSaveFlow {
       this.syncApply();
       return;
     }
-    // Only retire histories whose entire group succeeded in this run. Keep
-    // failed, cancelled, excluded and integrity-flagged groups undoable.
     const savedItems = new Set((result.processed || []).filter((item) =>
       item.status === 'done' && item.integrity?.status !== 'failed'
       && (item.outputFile || item.downloadedPerFile)));

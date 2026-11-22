@@ -3,7 +3,6 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import id from './id.js';
 import en from './en.js';
-
 export const STORAGE_KEY = 'meinsert-language';
 export const catalogs = { id, en };
 export function resolveLanguage(stored, preferred = []) {
@@ -32,8 +31,6 @@ export function onLanguageChange(listener) {
   return () => listeners.delete(listener);
 }
 const sourceKeys = new Map(Object.entries(id).filter(([, value]) => typeof value === 'string').map(([key, value]) => [value, key]));
-// Some adapters originally used English labels even in the Indonesian UI.
-// These are display-label aliases, not native tag names or metadata values.
 for (const [source, key] of Object.entries({ 'Album artist': 'ui.albumArtist', Creator: 'ui.creator', Producer: 'ui.producer', Track: 'field.trackNumber', Disc: 'field.discNumber' })) sourceKeys.set(source, key);
 const templates = [...sourceKeys].filter(([source]) => /\{v\d+\}/.test(source)).map(([source, key]) => {
   const names = [];
@@ -54,8 +51,6 @@ export function translateSource(source) {
     if (match) {
       const parameters = Object.fromEntries(template.names.map((name, index) => [name, match[index + 1]]));
       const original = id[template.key];
-      // These parameters are adapter-owned labels or diagnostic messages,
-      // unlike tag names, filenames, and metadata values, which stay verbatim.
       if (original.startsWith('Field "') || original.startsWith('{v0}: maksimal') || original.startsWith('{v0}: ukuran batch')) {
         parameters.v0 = sourceKeys.has(parameters.v0) ? t(sourceKeys.get(parameters.v0)) : parameters.v0;
       }

@@ -8,7 +8,6 @@ import { createSnapshot } from '../../assets/js/core/metadata-snapshot.js';
 import { buildChangePlan } from '../../assets/js/core/change-plan.js';
 import { verifyIntegrity } from '../../assets/js/core/integrity.js';
 import { fields as mp4Fields } from '../../assets/js/formats/mp4.js';
-
 function box(type, data) {
   const bytes = new Uint8Array(8 + data.length);
   new DataView(bytes.buffer).setUint32(0, bytes.length);

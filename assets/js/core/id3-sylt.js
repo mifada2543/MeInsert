@@ -5,15 +5,11 @@
 // find the first synchronised lyrics (SYLT) frame and decode it into the
 // ms-based shape used by the timed-text editor. Nothing here throws: every
 // malformed/unsupported input resolves to null.
-
-/** ISO-8859-1 is a 1:1 byte -> code point map (unlike TextDecoder('latin1')). */
 function latin1(bytes) {
   let out = '';
   for (let i = 0; i < bytes.length; i += 1) out += String.fromCharCode(bytes[i]);
   return out;
 }
-
-/** Syncsafe integer (7 bits per byte) used by the tag size and v2.4 frames. */
 function syncSafe(bytes) {
   if (!bytes || bytes.length < 4) return 0;
   return ((bytes[0] & 0x7f) << 21)
@@ -21,15 +17,11 @@ function syncSafe(bytes) {
     | ((bytes[2] & 0x7f) << 7)
     | (bytes[3] & 0x7f);
 }
-
-/** Plain big-endian 16/24/32-bit integers (v2.2/v2.3 frame sizes, timestamps). */
 function be(bytes) {
   let value = 0;
   for (let i = 0; i < bytes.length; i += 1) value = (value * 256 + bytes[i]) >>> 0;
   return value;
 }
-
-/** Remove the 0x00 inserted after 0xFF by ID3 unsynchronisation. */
 function deunsync(bytes) {
   let hasPadding = false;
   for (let i = 0; i + 1 < bytes.length; i += 1) {
@@ -43,12 +35,6 @@ function deunsync(bytes) {
   }
   return Uint8Array.from(out);
 }
-
-/**
- * Read one encoding-terminated string starting at `offset`.
- * `state.little` carries the UTF-16 byte order between fields so a field
- * without its own BOM still decodes correctly. Returns null on truncation.
- */
 function readString(bytes, offset, encoding, state) {
   if (!Number.isInteger(offset) || offset < 0 || offset > bytes.length) return null;
   let pos = offset;
@@ -80,8 +66,6 @@ function readString(bytes, offset, encoding, state) {
   }
   return { text, next: end + unit };
 }
-
-/** Decode a SYLT frame body (everything after the 10-byte ID3 frame header). */
 function decodeSyltBody(body) {
   if (!body || body.length < 7) return null;
   const encoding = body[0];
@@ -99,8 +83,6 @@ function decodeSyltBody(body) {
     if (!item) return null;
     pos = item.next;
     if (pos + 4 > body.length) return null;
-    // Format 2 = milliseconds; format 1 = frames. No frame rate is available
-    // here, so format 1 keeps its raw frame counter (and round-trips as-is).
     const time = be(body.subarray(pos, pos + 4));
     pos += 4;
     pairs.push({ text: item.text, time });
@@ -108,8 +90,6 @@ function decodeSyltBody(body) {
   if (!pairs.length) return null;
   return { type, timestampFormat, language, description: description.text, pairs };
 }
-
-/** Walk the ID3v2 frame list and decode the first SYLT frame, or null. */
 function parseId3(buffer) {
   const bytes = new Uint8Array(buffer);
   if (bytes.length < 10) return null;
@@ -121,17 +101,14 @@ function parseId3(buffer) {
   if (!tagSize || tagSize > bytes.length - 10) tagSize = bytes.length - 10;
   let offset = 10;
   const tagEnd = offset + tagSize;
-
-  if (flags & 0x40) { // extended header: 4-byte size, then the header itself
+  if (flags & 0x40) {
     if (offset + 4 > tagEnd) return null;
     const extSize = major === 4 ? syncSafe(bytes.subarray(offset, offset + 4)) : be(bytes.subarray(offset, offset + 4));
     offset += 4 + extSize;
     if (offset > tagEnd) return null;
   }
-
   let frameBytes = bytes.subarray(offset, tagEnd);
-  if (flags & 0x80) frameBytes = deunsync(frameBytes); // whole-tag unsynchronisation
-
+  if (flags & 0x80) frameBytes = deunsync(frameBytes);
   const idLength = major === 2 ? 3 : 4;
   const frameHeader = major === 2 ? 6 : 10;
   let cursor = 0;
@@ -145,21 +122,17 @@ function parseId3(buffer) {
     if (major >= 3) frameFlags = (frameBytes[cursor + 8] << 8) | frameBytes[cursor + 9];
     const bodyStart = cursor + frameHeader;
     const bodyEnd = bodyStart + size;
-    if (bodyEnd > frameBytes.length) break; // truncated frame list
+    if (bodyEnd > frameBytes.length) break;
     if (id === 'SYLT' || (major === 2 && id === 'ULT')) {
       let body = frameBytes.subarray(bodyStart, bodyEnd);
-      if (major === 4 && (frameFlags & 0x40)) body = deunsync(body); // per-frame unsync
-      return decodeSyltBody(body); // found but malformed => null, do not keep walking
+      if (major === 4 && (frameFlags & 0x40)) body = deunsync(body);
+      return decodeSyltBody(body);
     }
     cursor = bodyEnd;
   }
   return null;
 }
-
 /**
- * Read the first SYLT frame from a File/Blob (an ArrayBuffer or Uint8Array is
- * accepted too). Always resolves to a parsed object or null — never throws.
- *
  * @returns {Promise<null|{type:number,timestampFormat:number,language:string,description:string,pairs:Array<{text:string,time:number}>}>}
  */
 export async function readSylt(file) {
@@ -174,12 +147,6 @@ export async function readSylt(file) {
     return null;
   }
 }
-
-/**
- * Convert a parsed SYLT back into the object accepted by
- * `writer.setFrame('SYLT', ...)` from browser-id3-writer.
- * Returns null when there is no usable lyrical content.
- */
 export function toWriterSylt(parsed) {
   if (!parsed || !Array.isArray(parsed.pairs) || !parsed.pairs.length) return null;
   const text = [];
@@ -197,5 +164,4 @@ export function toWriterSylt(parsed) {
   const description = typeof parsed.description === 'string' ? parsed.description : '';
   return { type, timestampFormat, language, description, text };
 }
-
 export default { readSylt, toWriterSylt };

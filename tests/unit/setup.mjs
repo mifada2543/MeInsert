@@ -1,10 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* Generate the gitignored raw WASM needed by the Node ExifTool runtime.
- * The shipped application still uses the compressed .wasm.gz asset.
- * No network access or node_modules dependencies are required here.
- */
+/* Generate the gitignored raw WASM needed by the Node ExifTool runtime.*/
 import { createReadStream, createWriteStream } from 'node:fs';
 import { access, rename, rm, stat } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';

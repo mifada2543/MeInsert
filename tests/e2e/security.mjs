@@ -7,7 +7,6 @@ import { createStaticServer } from './server.mjs';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const pages = ['index.html', 'single.html', 'batch.html', 'privacy.html', 'Terms.html'];
 const contentTypes = new Map([
@@ -24,11 +23,9 @@ const contentTypes = new Map([
   ['.woff2', 'font/woff2'],
   ['.pdf', 'application/pdf'],
 ]);
-
 function serve() {
   return createStaticServer({ root, contentTypes, traversalStatus: 403 });
 }
-
 function findChrome() {
   const candidates = [
     process.env.CHROME_BIN,
@@ -41,12 +38,10 @@ function findChrome() {
   if (!found) throw new Error('Chrome/Chromium not found. Set CHROME_BIN to the browser executable path.');
   return found;
 }
-
 function directive(policy, name) {
   const entry = policy.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name} `));
   return entry ? entry.slice(name.length + 1).trim() : '';
 }
-
 function checkPolicy(policy, pageName) {
   const where = `CSP on ${pageName}`;
   assert.ok(policy, `${where}: meta Content-Security-Policy is missing`);

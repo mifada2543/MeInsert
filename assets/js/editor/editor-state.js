@@ -14,7 +14,6 @@ export function createEditorState() {
     detection: null,
     adapter: null,
     status: 'idle',
-    // One-shot marker used to announce "a file finished loading" once per file.
     fileReadyAnnounced: false,
     readResult: null,
     baselineSnapshot: null,
@@ -22,8 +21,6 @@ export function createEditorState() {
     values: {},
     originalValues: {},
     removedFields: new Set(),
-    // Raw tag names queued for removal by the metadata-cleaning panel. They
-    // flow through collectChanges() into buildChangePlan() as payload.rawRemove.
     rawRemove: new Set(),
     customRows: [],
     customBaseline: [],
@@ -40,11 +37,7 @@ export function createEditorState() {
     previewMinimized: false,
     detectionWarning: '',
     sideSignature: '',
-    // First-class timed-text payload (synchronized lyrics + subtitle cues).
-    // Owned by the lyrics/subtitle panels; flows through collectChanges().
     sidecar: null,
-    // Pending media cut (trim) range. Owned by the cut panel; flows through
-    // collectChanges() into the change plan and the write path.
     trim: null,
     coverOriginal: null,
     coverOriginalBytes: null,
@@ -52,10 +45,6 @@ export function createEditorState() {
     coverAction: 'keep',
     coverChosen: null,
   };
-  // The undo/redo stack only knows about the editable surface. The baselines
-  // (originalValues, customBaseline, coverOriginal, coverOriginalBytes) and
-  // the loaded file (file, readResult, detection, adapter) are never part of a
-  // snapshot, so undoing can never roll the file back to another file.
   state.history = createHistory({
     snapshot: () => ({
       values: { ...state.values },
@@ -99,17 +88,14 @@ function cloneValue(value) {
 export function cloneSidecar(sidecar) {
   return sidecar && typeof sidecar === 'object' ? cloneValue(sidecar) : null;
 }
-/** Clone a plain trim range so callers can never mutate editor state by reference. */
 export function cloneTrim(trim) {
   if (!trim || typeof trim !== 'object') return null;
   return { start: trim.start, end: trim.end, mode: trim.mode };
 }
-/** Set (or clear with null) the editor's pending media cut range. */
 export function setTrim(state, trim) {
   state.trim = cloneTrim(trim);
   return state.trim;
 }
-/** Set (or clear with null) the editor's timed-text sidecar payload. */
 export function setSidecar(state, sidecar) {
   state.sidecar = cloneSidecar(sidecar);
   return state.sidecar;

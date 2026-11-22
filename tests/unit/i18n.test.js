@@ -4,7 +4,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { catalogs, getLanguage, onLanguageChange, resolveLanguage, setLanguage, t, translateSource } from '../../assets/js/i18n/index.js';
-
 const placeholders = (text) => [...new Set(String(text).match(/\{\w+\}/g) || [])].sort();
 test('i18n catalogs have identical semantic keys and interpolation placeholders', () => {
   assert.deepEqual(Object.keys(catalogs.id).sort(), Object.keys(catalogs.en).sort());

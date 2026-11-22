@@ -32,6 +32,7 @@ const allSuites = [
   'preview-animation',
   'cut-media',
   'change-history',
+  'gps-tab',
 ];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function option(name) {

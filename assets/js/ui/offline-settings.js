@@ -57,11 +57,6 @@ function featureReady(feature) {
 function cachedFeature(feature) {
   return Boolean(feature?.urls?.length) && feature.urls.every((url) => cachedUrls.has(absoluteUrl(url)));
 }
-/**
- * Preflight for features that need optional engine assets. Online the app is
- * free to fetch them on demand; offline we only start when every URL of the
- * feature is already in the engine cache.
- */
 export function ensureFeatureOffline(featureId) {
   try {
     const feature = featureFor(featureId);

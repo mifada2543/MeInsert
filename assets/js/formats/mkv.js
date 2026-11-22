@@ -103,8 +103,6 @@ async function mediaLib() {
   return import('../../vendor/mediabunny.mjs');
 }
 async function preserveDefaultDurations(conversion, output, EncodedPacketSink) {
-  // Pre-added subtitle tracks live in output.tracks but have no counterpart in
-  // utilizedTracks; map only A/V tracks, in their original order.
   const isAv = (track) => track.type === 'video' || track.type === 'audio';
   const targets = output.tracks.filter(isAv);
   const sources = (conversion.utilizedTracks || []).filter(isAv);
@@ -127,8 +125,6 @@ async function preserveDefaultDurations(conversion, output, EncodedPacketSink) {
   }
 }
 async function verifyPacketTiming(before, after, EncodedPacketSink, trim = null) {
-  // The output also carries the embedded WebVTT track, which mediabunny's
-  // demuxer does not expose; compare only copied A/V tracks.
   const isAv = (track) => track.type === 'video' || track.type === 'audio';
   const sourceTracks = (before || []).filter(isAv);
   const copiedTracks = (await after.getTracks()).filter(isAv);
@@ -140,10 +136,6 @@ async function verifyPacketTiming(before, after, EncodedPacketSink, trim = null)
     if (sourceTracks[i].type !== copiedTracks[i].type) throw new Error('Track type changed during Matroska copy.');
     const original = new EncodedPacketSink(sourceTracks[i]).packets(undefined, undefined, { metadataOnly: true });
     const copied = new EncodedPacketSink(copiedTracks[i]).packets(undefined, undefined, { metadataOnly: true });
-    // A cut keeps only the packets inside [start, end] and rebases their
-    // timestamps to zero, so keep one buffered source packet and compare with
-    // the start offset applied. Without a cut the buffer stays empty and the
-    // original packet-for-packet comparison is unchanged.
     let carry = null;
     let exhausted = false;
     const nextOriginal = async () => {
@@ -331,8 +323,6 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
   const format = options.subtype === 'webm' ? new WebMOutputFormat() : new MkvOutputFormat();
   const output = new Output({ format, target: new BufferTarget() });
-  // Composable mode: metadata is set on the output, and pre-added subtitle
-  // tracks are accepted (non-composable Conversion.init rejects them).
   output.setMetadataTags(merged);
   const textTracks = [];
   if (timedLyrics.length) {
@@ -388,15 +378,12 @@ export async function write(file, payload, options = {}, report = () => {}) {
   const extension = options.subtype === 'webm' ? 'webm' : 'mkv';
   const blob = new Blob([bytes], { type: mime });
   const outputFile = new File([bytes], `output.${extension}`, { type: mime });
-  // Output timestamps are rebased to [0, duration) by the cut conversion.
   const rangeProof = trim ? await mediaRangeProof(outputFile, 0, expectedCutDuration(trim)) : null;
   if (textTracks.length && !await hasBytes(outputFile, WEBVTT_MARKER)) {
     throw new AppError('WRITE_FAILED', 'Trek subtitle tidak ditemukan pada container MKV/WebM hasil.');
   }
   report({ stage: 'Memverifikasi hasil…', pct: 82 });
   const check = new Input({ source: new BlobSource(outputFile), formats: ALL_FORMATS });
-  // Precise cuts may transcode, so packet-by-packet equality no longer applies.
-  // The trimmed range proof and duration check below cover that path instead.
   if (!(trim && trim.mode === 'precise')) {
     try {
       await verifyPacketTiming(await input.getTracks(), check, EncodedPacketSink, trim);

@@ -8,7 +8,6 @@ import { createSnapshot } from '../../assets/js/core/metadata-snapshot.js';
 import { buildChangePlan } from '../../assets/js/core/change-plan.js';
 import { verifyIntegrity } from '../../assets/js/core/integrity.js';
 import { isSupportedCover, mimeOf } from '../../assets/js/core/image-utils.js';
-
 const client = new MetadataClient({ idleTimeout: 0 });
 function check(condition, message) { if (!condition) throw new Error(message); }
 async function fixture(name) {
@@ -92,7 +91,6 @@ export async function runFixture(name, { reject = false, cover = false, signed =
       });
       row.signedRanges = coveredUnchanged ? 'unchanged' : 'CHANGED (signature invalidated, warned)';
       row.signatureValidity = coveredUnchanged ? 'NOT VERIFIED' : 'NOT PRESERVED';
-      // Rewriting a PDF changes signed bytes. This is NOT a signature-validity assertion.
     }
     check(integrity.status !== 'failed', `Integrity: ${integrity.findings.filter((f) => f.severity === 'error').map((f) => `${f.code} ${f.target} (${String(f.before).slice(0, 70)} → ${String(f.after).slice(0, 70)})`).join('; ')}`);
     check(integrity.summary.unverified === 0, 'Integrity verification incomplete');
@@ -103,7 +101,6 @@ export async function runFixture(name, { reject = false, cover = false, signed =
   }
   return row;
 }
-
 export async function coverPolicy({ names = ['tone.mp3', 'tone.flac', 'tone.opus', 'tone.ogg', 'clip.mkv'], mp4Policy = true } = {}) {
   const rows = [];
   for (const ext of ['gif', 'bmp']) {

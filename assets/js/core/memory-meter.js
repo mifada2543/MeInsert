@@ -3,15 +3,12 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Optional, dev-only instrumentation. Enabled with ?mem=1. Never throws and
 // adds no work in normal use, so it is safe to import from the hot RPC path.
-
 let enabled = false;
 try {
   enabled = typeof globalThis.location !== 'undefined' && /(?:^|[?&])mem=1(?:&|$)/.test(globalThis.location.search || '');
 } catch { /* location may be unavailable in workers/tests */ }
-
 const entries = new Map();
 let peakBytes = 0;
-
 function countBytes(value, seen = new Set()) {
   if (!value || typeof value !== 'object' || seen.has(value)) return 0;
   seen.add(value);

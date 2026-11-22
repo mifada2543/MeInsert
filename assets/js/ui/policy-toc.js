@@ -41,7 +41,6 @@ export function initPolicyToc() {
   window.addEventListener('hashchange', schedule);
   window.addEventListener('pageshow', schedule);
   document.addEventListener('meinsert:languagechange', schedule);
-  // Font loading and text reflow can move headings without a scroll event.
   const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null;
   const main = document.querySelector('.policy-main');
   if (main) resize?.observe(main);

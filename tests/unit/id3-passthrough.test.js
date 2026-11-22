@@ -7,7 +7,6 @@ import { readFileSync } from 'node:fs';
 import { ID3Writer } from '../../assets/vendor/browser-id3-writer.mjs';
 import { parseId3Tag } from '../../assets/js/core/id3-passthrough.js';
 import { write as writeMp3 } from '../../assets/js/formats/mp3.js';
-
 function withTag(frames) {
   const raw = readFileSync('tests/fixtures/tone.mp3');
   const writer = new ID3Writer(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
@@ -21,13 +20,11 @@ function frameBody(tag, id) {
   const frame = parsed.frames.find((item) => item.id === id);
   return frame ? frame.bytes.slice(10) : null;
 }
-
 test('parseId3Tag rejects missing and v2.2 tags', () => {
   assert.equal(parseId3Tag(Uint8Array.of(1, 2, 3)), null);
   const v22 = Uint8Array.from([0x49, 0x44, 0x33, 2, 2, 0, 0, 0, 0, 0]);
   assert.equal(parseId3Tag(v22), null);
 });
-
 test('editing a title keeps untouched PRIV and TXXX frames verbatim', async () => {
   const priv = { id: 'meinsert-test', data: Uint8Array.from([1, 2, 3, 255]) };
   const source = withTag([
@@ -39,7 +36,6 @@ test('editing a title keeps untouched PRIV and TXXX frames verbatim', async () =
   const beforeTxxx = frameBody(source, 'TXXX');
   assert.ok(beforePriv?.length);
   assert.ok(beforeTxxx?.length);
-
   const file = new File([source], 'tagged.mp3', { type: 'audio/mpeg' });
   const result = await writeMp3(file, { set: { title: 'Judul baru' } });
   const output = new Uint8Array(await result.blob.arrayBuffer());
