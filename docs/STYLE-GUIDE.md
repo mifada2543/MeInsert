@@ -1,5 +1,5 @@
 <!-- MeInsert — Edit metadata file tanpa upload, 100% di browser. -->
-<!-- Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
+<!-- Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
 <!-- reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 -->
 
 # Documentation style guide
@@ -84,6 +84,7 @@ Some files are consumed by code or served raw, so they have extra rules.
 | `README.md`, `README-en.md` | Same heading-level sequence; same set of `docs/*.md` links; version badge equals `package.json`; no wording that presents a shipped feature as upcoming. | `tests/unit/readme-parity.test.js` |
 | `PRIVACY*.md`, `TERMS*.md` | Rendered by `scripts/build-policies.mjs`. Only a first-line `# MeInsert — …` title, a navigation line, `##` headings, paragraphs, `-` and `1.` lists, links, **bold**, and `code`. No tables, blockquotes, or HTML. Regenerate with `npm run build:policies`. | `npm run check:policies` |
 | `NOTICE*.md`, `assets/THIRD_PARTY_LICENSES.md` | Linked from every page footer and served as plain text, so they must stay readable raw: no HTML and no alert syntax. | Manual review |
+| `LICENSE`, `NOTICE*.md` | Binding and bilingual; the plain-language summary must not contradict the license text. The second watermark line must name the current license. | Manual review, `tests/unit/watermark.test.js` |
 | `assets/vendor/licenses/*` | Verbatim upstream license texts. Never reformat. | Manual review |
 | `CHANGELOG.md` | [Keep a Changelog](https://keepachangelog.com/) layout, newest first, Indonesian. | Manual review |
 

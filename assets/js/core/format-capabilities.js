@@ -1,5 +1,5 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { exiftoolBuild } from './image-engine-build.js';
 
@@ -58,7 +58,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'audio',
     labelKey: 'ui.offlineFeatureAudio',
-    bytes: 835_254,
+    bytes: 835_606,
     urls: [
       './assets/vendor/mediabunny.mjs',
       './assets/js/workers/media.worker.js',
@@ -78,7 +78,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 1_184_397 + exiftoolBuild.brotliBytes,
+    bytes: 1_184_621 + exiftoolBuild.brotliBytes,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
       './assets/vendor/brotli-decode.mjs',
@@ -96,13 +96,13 @@ export const OFFLINE_FEATURES = [
   {
     id: 'pdf',
     labelKey: 'ui.offlineFeaturePdf',
-    bytes: 548_886,
+    bytes: 548_950,
     urls: ['./assets/vendor/pdf-lib.esm.js', './assets/js/workers/pdf.worker.js', './assets/js/formats/pdf.js'],
   },
   {
     id: 'office',
     labelKey: 'ui.offlineFeatureOffice',
-    bytes: 191_125,
+    bytes: 191_317,
     urls: [
       './assets/vendor/fflate.mjs',
       './assets/js/core/office-zip.js',

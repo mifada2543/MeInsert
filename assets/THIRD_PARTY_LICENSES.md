@@ -6,7 +6,7 @@ index for the bundle.** If any entry below disagrees with the license file
 copied into `assets/vendor/licenses/`, the file in `licenses/` controls for
 that component; please open an issue so the entry can be corrected.
 
-MeInsert's own code is licensed under **AGPLv3** (see `LICENSE`).
+MeInsert's own code is licensed under the **MeInsert Source-Available License v1.0** (see `LICENSE`).
 Nothing in this file re-licenses any third-party component.
 
 Product names (ExifTool, Mediabunny, pdf-lib, IBM Plex, zeroperl, …)
@@ -28,7 +28,7 @@ sponsorship is implied.
 | base64-js | 1.5.1 | MIT | Embedded Brotli dictionary decoding |
 | fflate | 0.8.3 | MIT | ZIP / gzip |
 | browser-id3-writer | 6.4.0 | MIT | ID3 tags |
-| MEeL (adapted source) | commit `95e4937` | AGPL-3.0-or-later | Lyrics/subtitle editor |
+| MEeL (adapted source) | commit `95e4937` | MeInsert Source-Available License v1.0 | Lyrics/subtitle editor |
 
 The sections below are the authoritative entries.
 
@@ -109,7 +109,9 @@ The sections below are the authoritative entries.
   no other organisation is the rights holder for the bundled copy.
 
 ## MEeL — LRC editor & timed-text helpers (adapted source)
-- **License**: AGPL-3.0-or-later (see `licenses/meel-LICENSE`)
+- **License**: MeInsert Source-Available License v1.0 for the adaptation.
+  Original MEeL-HUB releases remain AGPL-3.0-or-later; see `licenses/meel-LICENSE`
+  for that historical text.
 - **Copyright**: © 2026 Mifada (mifada2543)
 - **Source**: https://github.com/mifada2543/MEeL-HUB — pinned at commit
   `95e4937c74c3929977a907a463a415dcea50d2da` (files last changed in `8e64b9f`)
@@ -121,14 +123,16 @@ The sections below are the authoritative entries.
 - **Modifications**: ported from PHP/IIFE to plain ESM with millisecond-based
   state; PHP/database/lucide/plyr/htmx dependencies removed; `localStorage`
   replaced by MeInsert editor state; media preview from `URL.createObjectURL`;
-  design tokens and mobile bottom-sheet restyled for MeInsert; AGPL header and
-  MeInsert watermark added. The original editor displays karaoke lyrics while
+  design tokens and mobile bottom-sheet restyled for MeInsert; MEeL provenance
+  header and MeInsert watermark added. The original editor displays karaoke lyrics while
   playing; MeInsert reuses its timestamp parsing, tap-to-mark, active-line
   sync (0.15 s tolerance) and centred auto-scroll.
-- **Compliance**: same author and license family as MeInsert (AGPLv3). This
-  attribution, the copied license text, and per-file source headers are kept
-  so recipients can identify the adapted code and its origin. No endorsement
-  by MEeL is implied.
+- **Compliance**: the adapted code is licensed under the MeInsert
+  Source-Available License v1.0 by the same rights holder who published MEeL-HUB;
+  original MEeL-HUB releases remain AGPL-3.0-or-later. This attribution, the
+  copied historical license text, and per-file provenance headers are kept so
+  recipients can identify the adapted code and its origin. No endorsement by
+  MEeL is implied.
 
 ---
 

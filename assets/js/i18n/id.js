@@ -1,5 +1,5 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Semantic message keys shared by both catalogs. Values are plain text, never HTML.
 export default {
@@ -50,6 +50,7 @@ export default {
   "ui.resultsAreReadBackInYourBrowserDownloadA": "Hasil dibaca ulang di browser. Unduh file baru; file asli tidak pernah ditimpa.",
   "ui.aStaticMetadataEditorMadeForFilesYouWant": "— editor metadata statis. Dibuat untuk file yang ingin tetap privat.",
   "ui.noBackendNoUploads": "Tidak ada backend · Tidak ada upload ·",
+  "ui.license": "Lisensi",
   "ui.attributions": "Atribusi",
   "ui.editTitlesAuthorsTagsAndCameraInformationRightIn": "Ubah judul, penulis, tag, dan info kamera langsung di browser. File tetap di perangkat Anda — tidak ada server, tidak ada antrean, tidak ada akun.",
   "ui.automaticDetection": "Deteksi otomatis",
@@ -331,7 +332,7 @@ export default {
   "ui.aboutShort": "Tentang",
   "ui.aboutPrinciplesTitle": "Prinsip kami",
   "ui.aboutIntro": "MeInsert adalah editor metadata lokal: berkas Anda dibaca, diubah, diverifikasi, dan diunduh kembali seluruhnya di browser. Tidak ada server, tidak ada upload, tidak ada akun.",
-  "ui.aboutPrinciples": "Prinsipnya sederhana: berkas Anda tidak pernah meninggalkan perangkat, hasil selalu ditinjau dan diverifikasi sebelum diunduh, dan kode MeInsert terbuka di bawah AGPLv3.",
+  "ui.aboutPrinciples": "Prinsipnya sederhana: berkas Anda tidak pernah meninggalkan perangkat, hasil selalu ditinjau dan diverifikasi sebelum diunduh, dan kode MeInsert tersedia di bawah MeInsert Source-Available License v1.0.",
   "ui.aboutFormatsIntro": "MeInsert mendukung gambar (JPG, PNG, WebP, TIFF), PDF, audio (MP3, FLAC, OGG), video (MP4, MKV), dan dokumen Office (DOCX, XLSX, PPTX, ODT, ODS, ODP, termasuk varian makro). Beberapa kasus seperti PDF bertanda tangan dan makro bersifat best-effort; format lama dan dokumen terenkripsi tidak didukung.",
   "ui.aboutPrivacyShort": "MeInsert tidak mengunggah berkas, tidak memakai analytics, dan tidak membuat akun. Satu cap waktu lokal disimpan untuk mengingat bahwa Anda telah membaca pemberitahuan kebijakan.",
   "ui.aboutTermsShort": "Gunakan MeInsert hanya pada berkas yang Anda miliki atau berhak edit. Pemalsuan untuk menipu dan penyalahgunaan dilarang; hasil edit bukan bukti keaslian.",
@@ -811,12 +812,12 @@ export default {
   "ui.timedTextClose": "Tutup editor teks berirama",
   "ui.timedTextHint": "Klik baris untuk lompat · Spasi untuk play/jeda · ←/→ untuk ±5 detik",
   "ui.timedTextShow": "Tampilkan",
-  "ui.timedTextCredit": "Berdasarkan editor LRC MEeL — © 2026 Mifada — AGPL-3.0",
+  "ui.timedTextCredit": "Berdasarkan editor LRC MEeL — © 2026 Mifada — MeInsert Source-Available License v1.0",
   "ui.timedTextEmpty": "Belum ada baris. Tambahkan baris atau impor berkas .lrc/.srt/.vtt.",
   "ui.timedTextSave": "Terapkan",
   "ui.timedTextUnsupported": "Buka berkas MP3, FLAC, OGG/Opus, MP4/M4A, atau MKV/WebM terlebih dahulu.",
   "ui.timedTextPlanRow": "Teks berirama: {v0} baris lirik, {v1} cue subtitle",
-  "ui.timedTextAboutCredit": "Editor lirik dan subtitle diadaptasi dari MEeL — © 2026 Mifada — AGPL-3.0. Sumber: github.com/mifada2543/MEeL-HUB.",
+  "ui.timedTextAboutCredit": "Editor lirik dan subtitle diadaptasi dari MEeL — © 2026 Mifada — MeInsert Source-Available License v1.0. Sumber: github.com/mifada2543/MEeL-HUB.",
   "ui.cutOpen": "Potong audio/video",
   "ui.cutOpenAudio": "Potong audio",
   "ui.cutOpenVideo": "Potong video",

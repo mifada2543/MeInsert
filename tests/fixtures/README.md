@@ -16,7 +16,7 @@ Synthetic, purpose-built files used by the unit, E2E, and compatibility suites.
 All media is purpose-built for MeInsert: synthetic gradients, solid-color frames,
 440 Hz tones, and a one-page test document. No personal metadata or third-party
 media. Keep each fixture below 1 MB (the long playback fixture is about 160 KB). Generator and
-harness source use the project's AGPLv3 header.
+harness source use the project's license watermark header.
 
 ## Regenerate
 

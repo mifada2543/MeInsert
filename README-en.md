@@ -15,7 +15,7 @@ No backend. No uploads. No account.
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-v1.6.0-blue?style=flat-square)](./package.json)
-[![License](https://img.shields.io/badge/License-AGPLv3-orange?style=flat-square)](./LICENSE)
+[![License](https://img.shields.io/badge/License-Source_Available-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#how-to-verify-the-local-only-claim)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)
 
@@ -328,7 +328,7 @@ CI shards the E2E suites across 4 runners: `MEINSERT_E2E_SHARD=1/4 npm run test:
 
 ## License
 
-**Application code:** [AGPLv3](./LICENSE) — Copyright (C) 2026 mifada2543.
+**Application code:** [MeInsert Source-Available License v1.0](./LICENSE) — Copyright (C) 2026 mifada2543.
 
 **Source:** [github.com/mifada2543/meinsert](https://github.com/mifada2543/meinsert). Every page also links to Source in its footer.
 
@@ -341,12 +341,12 @@ Bundled dependencies retain their own licenses. See the [attribution index](asse
 - **ExifTool 13.60** (Artistic/GPL), **@colorhythm/exiftool-wasm** (Apache-2.0) + **zeroperl** (MIT)
 - **Mediabunny** (MPL-2.0), **pdf-lib**, **browser-id3-writer**, **fflate** (MIT)
 - **IBM Plex fonts** — SIL Open Font License 1.1
-- **MEeL — LRC editor & timed-text helpers** (AGPL-3.0, © 2026 Mifada) — adapted source for the lyrics/subtitle editor; the exact source and destination files are listed in [NOTICE-en.md](./NOTICE-en.md) and the [attribution index](assets/THIRD_PARTY_LICENSES.md).
+- **MEeL — LRC editor & timed-text helpers** (MeInsert Source-Available License v1.0, © 2026 Mifada) — adapted from MEeL-HUB for the lyrics/subtitle editor; original MEeL releases remain AGPL-3.0. The exact source and destination files are listed in [NOTICE-en.md](./NOTICE-en.md) and the [attribution index](assets/THIRD_PARTY_LICENSES.md).
 - **Brand artwork** — original project assets; see [provenance](assets/img/PROVENANCE.md).
 
-### Licensing and monetization (AGPLv3)
+### Licensing and monetization
 
-Commercial use is allowed, but AGPLv3 is *network copyleft*: when conveying covered software, provide the **Corresponding Source**. Private modifications do not automatically require publication. The [LICENSE](./LICENSE) text is binding; this is only a plain-language summary.
+This is not an *open source* license: the Original Version may be used and self-hosted internally without a user limit, while a **Modified Version for internal use is limited to three people**. Public Hosting is allowed without a user limit when it is free of charge, ad-free, and meets the NOTICE obligations. **Monetizing hosting, access, or distribution requires separate written permission** from the Rights Holder; paid work done with MeInsert remains allowed. Earlier releases stay under their original license (section 7 of [LICENSE](./LICENSE)). The LICENSE text is binding; the full plain-language summary is in [NOTICE.md](./NOTICE.md) / [NOTICE-en.md](./NOTICE-en.md).
 
 ### Responsible use
 
@@ -362,7 +362,7 @@ MeInsert only provides a *tool* for reading and writing standard tags. You are r
 
 **The official application does not send or upload file contents, edited metadata, cover art, or processing outputs to a server.** See [docs/security.md](docs/security.md) for how to verify this claim, including a note about the analytics beacon injected by the production host.
 
-**Forgery for deception or unlawful purposes is prohibited.** Established violations may result in penalties under applicable law and lawful proceedings; MeInsert does not automatically impose punishment. The use policy does not add restrictions to the AGPL software license.
+**Forgery for deception or unlawful purposes is prohibited.** Established violations may result in penalties under applicable law and lawful proceedings; MeInsert does not automatically impose punishment. The use policy does not add restrictions to the MeInsert Source-Available License v1.0.
 
 ---
 

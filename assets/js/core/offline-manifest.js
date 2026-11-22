@@ -1,5 +1,5 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Persisted description of which optional engines the user wants available
 import { OFFLINE_FEATURES, featureFor } from './format-capabilities.js';
@@ -70,8 +70,8 @@ export function optionalUrls(profile) {
 const SHARED_OPTIONAL_BYTES = new Map([
   ['./assets/vendor/mediabunny.mjs', 722_897],
   ['./assets/vendor/fflate.mjs', 90_922],
-  ['./assets/js/core/id3-passthrough.js', 9_579],
-  ['./assets/js/core/mp3-cut.js', 5_999],
+  ['./assets/js/core/id3-passthrough.js', 9_611],
+  ['./assets/js/core/mp3-cut.js', 6_031],
 ]);
 export function estimatedBytes(profile) {
   try {

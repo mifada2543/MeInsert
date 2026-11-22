@@ -3,8 +3,8 @@
 All image files in this directory are **original brand assets created for
 the MeInsert project** by the project author. They are not stock
 photography, not copied from a third-party site, and not distributed
-under any other license. They are part of MeInsert (AGPLv3 — see
-[`LICENSE`](../../LICENSE)).
+under any other license. They are part of MeInsert (MeInsert Source-Available
+License v1.0 — see [`LICENSE`](../../LICENSE)).
 
 | File | Dimensions | Purpose | Compression / provenance |
 |---|---|---|---|

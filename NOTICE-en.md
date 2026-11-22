@@ -8,9 +8,9 @@ uploaded, there is no backend, and no account is required. The application works
 offline after the first visit, because a service worker caches the app shell.
 
 Unless a file or component states otherwise, the source code in this repository is
-licensed under the GNU Affero General Public License, version 3 or later
-(AGPL-3.0-or-later). A
-copy of the license is available in the LICENSE file.
+licensed under the MeInsert Source-Available License, version 1.0. A
+copy of the license is available in the LICENSE file. This is not an *open source*
+license; a summary of its obligations follows.
 
 This NOTICE file is informational only. It does not modify, replace, or add to the
 terms of any applicable license. When redistributing MeInsert, preserve this file,
@@ -32,7 +32,8 @@ MeInsert bundles the following independent software in `assets/vendor/` and
 - IBM Plex fonts (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
   (SIL Open Font License 1.1)
 - MEeL — LRC editor & timed-text helpers (adapted source) — © 2026 Mifada
-  (mifada2543) — https://github.com/mifada2543/MEeL-HUB (AGPL-3.0-or-later)
+  (mifada2543) — https://github.com/mifada2543/MEeL-HUB (original releases: AGPL-3.0-or-later;
+  adaptation in MeInsert: MeInsert Source-Available License v1.0)
   Source files used (MEeL repo, commit `95e4937c74c3929977a907a463a415dcea50d2da`):
   - `assets/js/music/lrc-editor.js` — LRC parser, tap-to-timestamp, player controls
   - `assets/css/music/lrc-editor.css` — editor and karaoke styling
@@ -43,7 +44,8 @@ MeInsert bundles the following independent software in `assets/vendor/` and
   - `assets/js/core/timed-text.js` — pure parser/serializer (from lyrics.php + subtitle.php + lrc-editor.js)
   - `assets/js/ui/timed-text-editor.js` — editor dialog (from lrc-editor.js + karaoke.js)
   - `assets/css/components/timed-text-editor.css` — editor styling (from lrc-editor.css)
-  - `assets/vendor/licenses/meel-LICENSE` — copy of MEeL's AGPL-3.0 license
+  - `assets/vendor/licenses/meel-LICENSE` — AGPL-3.0 text of the original MEeL-HUB
+    (provenance only; not the license of the MeInsert adaptation)
   Modification details and attribution index: `assets/THIRD_PARTY_LICENSES.md`.
 
 **`assets/THIRD_PARTY_LICENSES.md` is the authoritative attribution index**
@@ -69,27 +71,42 @@ the project author, you are responsible for including the applicable license
 texts and attribution notices required by those works. Please review the license
 and notice files shipped with each dependency before redistribution.
 
-## AGPLv3 network copyleft and monetization
+## License, use limits, and monetization
 
-MeInsert may be monetized (paid product, paid hosting, premium services). AGPLv3
-is a network copyleft license, so the obligations are:
+The MeInsert Source-Available License v1.0 governs use as follows.
 
-- You may charge for distribution, support, or services.
-- When conveying covered software, provide Corresponding Source as required
-  by the applicable provisions of AGPLv3.
-- If you modify the Program and your version supports remote network
-  interaction, AGPLv3 section 13 requires prominently offering all users
-  interacting with it remotely an opportunity to receive the Corresponding
-  Source of your version, at no charge, through a standard or customary means.
-- Private modifications alone do not require public publication. These
-  obligations apply to the covered work, not automatically to independent
-  software used alongside it.
-- Third-party components above remain under their own licenses; AGPLv3 does not
-  change them.
+- **Original Version** — an official release whose code, assets, and behavior
+  are unchanged. It may be used and self-hosted for Internal Use, including
+  commercial activity, with no user limit.
+- **Modified Version** — a copy with changes to code, assets, appearance,
+  features, or behavior. Internal use is limited to three people; a fourth
+  user requires a paid license from the Rights Holder. The count covers all
+  teams, accounts, devices, and instances of the same organization, and each
+  person is counted once.
+- **Public Hosting** — offering an Original or Modified Version to external
+  parties is allowed without a user limit when access is free of charge,
+  ad-free, and sections 5 and 6 are met. Access restricted to invitations or
+  specific accounts still counts as Public Hosting.
+- **Monetization** — separate written permission from the Rights Holder is
+  required before monetizing hosting, access, or distribution, including
+  advertising, paywalls, selling copies, or inclusion in a paid package.
+  Requests may be sent to mifada2543@gmail.com. An unsolicited contribution
+  does not grant permission to monetize. Charges for work or services performed
+  with MeInsert, such as photography and metadata editing, remain allowed.
+- **Attribution** — when redistributing or providing Public Hosting, retain
+  LICENSE, NOTICE, copyright notices, and component license texts. Mark
+  modified copies and give users reasonable access to LICENSE and NOTICE, for
+  example through an attribution page.
+- **Components and earlier releases** — third-party components keep their own
+  licenses. Original MEeL-HUB releases remain AGPL-3.0-or-later; the adapted code
+  in MeInsert uses the MeInsert Source-Available License v1.0. This license does
+  not revoke rights in copies previously released under GNU AGPLv3 or another
+  license.
 
-In short: monetization is allowed; applicable source-sharing duties remain. The
-text of the `LICENSE` file is binding; this paragraph is only a plain-language
-summary.
+In short: the Original Version is unrestricted for internal use, a Modified
+Version is limited to three internal users, and monetization requires written
+permission. The text of the `LICENSE` file is binding; this is only a
+plain-language summary.
 
 ## User-provided content and external services
 

@@ -1,5 +1,5 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Byte-level ID3v2 patching: keep untouched frames verbatim so an edit to one
 // field cannot silently drop the rest of the tag. Pure JS, no dependencies.

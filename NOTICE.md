@@ -9,9 +9,9 @@ tetap bisa dipakai offline setelah kunjungan pertama, karena service worker
 menyimpan app shell di cache.
 
 Kecuali dinyatakan lain pada file atau komponennya, kode sumber pada repositori
-ini dilisensikan di bawah GNU Affero General Public License versi 3 atau
-yang lebih baru (AGPL-3.0-or-later).
-Salinan lisensi tersedia pada file LICENSE.
+ini dilisensikan di bawah MeInsert Source-Available License versi 1.0.
+Salinan lisensi tersedia pada file LICENSE. Lisensi ini bukan lisensi *open
+source*; ringkasan kewajibannya ada di bawah.
 
 File NOTICE ini hanya bersifat informatif. File ini tidak mengubah, mengganti,
 atau menambahkan ketentuan pada lisensi yang berlaku. Saat mendistribusikan ulang
@@ -33,7 +33,8 @@ MeInsert membundel perangkat lunak independen berikut di `assets/vendor/` dan
 - Font IBM Plex (Sans, Sans Condensed, Mono) — https://github.com/IBM/plex
   (SIL Open Font License 1.1)
 - MEeL — editor LRC & helper teks berirama (kode yang diadaptasi) — © 2026 Mifada
-  (mifada2543) — https://github.com/mifada2543/MEeL-HUB (AGPL-3.0-or-later)
+  (mifada2543) — https://github.com/mifada2543/MEeL-HUB (rilis asli: AGPL-3.0-or-later;
+  adaptasi di MeInsert: MeInsert Source-Available License v1.0)
   Sumber yang dipakai (repo MEeL, commit `95e4937c74c3929977a907a463a415dcea50d2da`):
   - `assets/js/music/lrc-editor.js` — parser LRC, tap-to-timestamp, kontrol player
   - `assets/css/music/lrc-editor.css` — gaya editor dan karaoke
@@ -44,7 +45,8 @@ MeInsert membundel perangkat lunak independen berikut di `assets/vendor/` dan
   - `assets/js/core/timed-text.js` — parser/serializer murni (dari lyrics.php + subtitle.php + lrc-editor.js)
   - `assets/js/ui/timed-text-editor.js` — dialog editor (dari lrc-editor.js + karaoke.js)
   - `assets/css/components/timed-text-editor.css` — gaya editor (dari lrc-editor.css)
-  - `assets/vendor/licenses/meel-LICENSE` — salinan lisensi AGPL-3.0 MEeL
+  - `assets/vendor/licenses/meel-LICENSE` — teks lisensi AGPL-3.0 dari MEeL-HUB
+    asli (provenance; bukan lisensi adaptasi di MeInsert)
   Rincian modifikasi dan indeks atribusi: `assets/THIRD_PARTY_LICENSES.md`.
 
 **`assets/THIRD_PARTY_LICENSES.md` adalah indeks atribusi otoritatif** untuk
@@ -71,26 +73,42 @@ lisensi dan pemberitahuan atribusi yang diwajibkan oleh karya tersebut. Tinjau
 file lisensi dan file pemberitahuan yang disertakan setiap dependensi sebelum
 redistribusi.
 
-## AGPLv3, copyleft jaringan, dan monetisasi
+## Lisensi, batas penggunaan, dan monetisasi
 
-MeInsert boleh dimonetisasi (produk berbayar, hosting berbayar, layanan premium).
-AGPLv3 bersifat copyleft jaringan, sehingga kewajiban yang berlaku adalah:
+MeInsert Source-Available License v1.0 mengatur penggunaan sebagai berikut.
 
-- Anda boleh mengenakan biaya atas distribusi, dukungan, atau layanan.
-- Saat mendistribusikan perangkat lunak yang tercakup, sediakan Corresponding
-  Source sesuai ketentuan AGPLv3 yang berlaku.
-- Jika Anda memodifikasi Program dan versi Anda mendukung interaksi jaringan
-  jarak jauh, pasal 13 AGPLv3 mewajibkan penawaran yang jelas kepada semua
-  pengguna yang berinteraksi dengannya dari jarak jauh untuk memperoleh
-  Corresponding Source versi tersebut secara gratis melalui cara yang lazim.
-- Modifikasi privat saja tidak mewajibkan publikasi ke umum. Kewajiban tersebut
-  berlaku pada karya yang tercakup, bukan otomatis pada perangkat lunak
-  independen yang digunakan bersamanya.
-- Komponen pihak ketiga di atas tetap tunduk pada lisensinya masing-masing;
-  AGPLv3 tidak mengubahnya.
+- **Versi Asli** — salinan rilis resmi yang kode, aset, dan perilakunya tidak
+  diubah. Boleh dipakai dan di-host sendiri untuk Penggunaan Internal, termasuk
+  kegiatan komersial, tanpa batas jumlah pengguna.
+- **Versi Modifikasi** — salinan dengan perubahan pada kode, aset, tampilan,
+  fitur, atau perilaku. Penggunaan internal dibatasi maksimal tiga orang;
+  pengguna keempat mensyaratkan lisensi berbayar dari Pemegang Hak.
+  Penghitungan mencakup semua tim, akun, perangkat, dan instance organisasi
+  yang sama; orang yang sama dihitung sekali.
+- **Hosting Publik** — menyediakan Versi Asli atau Modifikasi kepada pihak luar
+  boleh tanpa batas pengguna jika aksesnya gratis, tanpa iklan, dan Bagian 5
+  serta 6 dipatuhi. Akses yang dibatasi pada undangan atau akun tertentu tetap
+  dihitung sebagai Hosting Publik.
+- **Monetisasi** — izin tertulis terpisah dari Pemegang Hak wajib diperoleh
+  sebelum memonetisasi hosting, akses, atau distribusi, termasuk iklan,
+  paywall, penjualan salinan, atau penyertaan dalam paket berbayar. Permohonan
+  izin dapat dikirim ke mifada2543@gmail.com. Kontribusi sukarela tidak
+  memberikan izin monetisasi. Bayaran atas pekerjaan atau jasa yang dilakukan
+  dengan MeInsert, seperti fotografi dan penyuntingan metadata, tetap
+  diperbolehkan.
+- **Atribusi** — saat mendistribusikan atau melakukan Hosting Publik,
+  pertahankan LICENSE, NOTICE, pemberitahuan hak cipta, serta teks lisensi
+  komponen. Tandai salinan yang dimodifikasi dan berikan akses wajar bagi
+  pengguna untuk membaca LICENSE dan NOTICE, misalnya lewat halaman atribusi.
+- **Komponen dan rilis terdahulu** — komponen pihak ketiga tetap memakai
+  lisensinya masing-masing. Rilis asli MEeL-HUB tetap AGPL-3.0-or-later;
+  kode adaptasinya di MeInsert memakai MeInsert Source-Available License v1.0.
+  Lisensi ini tidak mencabut hak atas salinan yang sebelumnya dirilis di bawah
+  GNU AGPLv3 atau lisensi lain.
 
-Ringkasnya: monetisasi boleh; kewajiban berbagi sumber yang berlaku tetap harus
-dipenuhi. Teks `LICENSE` yang mengikat; paragraf ini hanya penjelasan bahasa sederhana.
+Ringkasnya: Versi Asli bebas untuk penggunaan internal, Versi Modifikasi
+dibatasi tiga pengguna internal, dan monetisasi memerlukan izin tertulis.
+Teks `LICENSE` yang mengikat; bagian ini hanya penjelasan sederhana.
 
 ## Konten pengguna dan layanan eksternal
 

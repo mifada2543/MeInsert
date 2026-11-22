@@ -2,7 +2,7 @@
   "name": "meinsert",
   "version": "1.6.0",
   "private": true,
-  "license": "AGPL-3.0-or-later",
+  "license": "SEE LICENSE IN LICENSE",
   "description": "Insert and edit file metadata locally in your browser.",
   "type": "module",
   "scripts": {

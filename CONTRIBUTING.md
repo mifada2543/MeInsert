@@ -1,5 +1,5 @@
 <!-- MeInsert — Edit metadata file tanpa upload, 100% di browser. -->
-<!-- Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
+<!-- Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
 <!-- reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 -->
 
 # Contributing to MeInsert
@@ -121,7 +121,7 @@ Nearly every source file begins with this three-line header:
 
 ```js
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 ```
 
@@ -217,5 +217,9 @@ Maintainers follow the [release checklist](docs/RELEASING.md).
 
 ## Licensing
 
-By contributing you agree that your work is licensed under AGPL-3.0-or-later,
-the same license as the project. See [LICENSE](LICENSE) and the NOTICE files.
+By contributing you agree that your work is licensed under the MeInsert
+Source-Available License v1.0, the same license as the project — including the
+MEeL-derived lyrics/subtitle code, whose provenance is retained. Third-party
+components keep their own license notices. See [LICENSE](LICENSE),
+[NOTICE.md](NOTICE.md) / [NOTICE-en.md](NOTICE-en.md), and the
+[attribution index](assets/THIRD_PARTY_LICENSES.md).

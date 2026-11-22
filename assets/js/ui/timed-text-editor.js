@@ -1,8 +1,8 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Ported from MEeL — https://github.com/mifada2543/MEeL-HUB @ 95e4937c
- * Copyright (C) 2026 Mifada (mifada2543) — AGPL-3.0-or-later
+ * Copyright (C) 2026 Mifada (mifada2543) — MeInsert Source-Available License v1.0
  * Source: assets/js/music/lrc-editor.js, assets/js/music/watch/karaoke.js, assets/css/music/lrc-editor.css
  * Modified for MeInsert: dialog instead of PHP page, object-URL preview, editor state instead of localStorage, MeInsert tokens, watermark added. */
 import { bindText, t, translated } from '../i18n/index.js';

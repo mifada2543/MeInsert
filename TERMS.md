@@ -11,7 +11,7 @@ Kebijakan ini menjelaskan penggunaan yang diperbolehkan, larangan penyalahgunaan
 serta batas kemampuan aplikasi. Kebijakan ini bukan nasihat hukum.
 
 Hak menggunakan, menyalin, memodifikasi, dan mendistribusikan kode diatur oleh
-[AGPL-3.0-or-later](LICENSE) dan lisensi komponen masing-masing. Dokumen ini
+[MeInsert Source-Available License v1.0](LICENSE) dan lisensi komponen masing-masing. Dokumen ini
 tidak menambahkan pembatasan lisensi perangkat lunak, mengurangi hak yang
 diberikan lisensi, atau mengubah ketentuan hukumnya. Larangan penyalahgunaan
 di bawah menyatakan kebijakan proyek dan kewajiban hukum pengguna.

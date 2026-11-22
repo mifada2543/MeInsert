@@ -1,8 +1,8 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Ported from MEeL — https://github.com/mifada2543/MEeL-HUB @ 95e4937c
- * Copyright (C) 2026 Mifada (mifada2543) — AGPL-3.0-or-later
+ * Copyright (C) 2026 Mifada (mifada2543) — MeInsert Source-Available License v1.0
  * Source: modules/core/helpers/lyrics.php, modules/core/helpers/subtitle.php,
  *         assets/js/music/lrc-editor.js
  * Modified for MeInsert: plain JS ESM, ms-based state, no PHP/DOM/global deps,

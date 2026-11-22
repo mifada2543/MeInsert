@@ -1,5 +1,5 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,14 +8,14 @@ import adapter, { fieldsFor, meta, read, sectionsFor, write } from '../../assets
 const SOURCE = new URL('../../assets/js/formats/raw-video.js', import.meta.url);
 const WATERMARK = [
   '/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */',
-  '/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */',
+  '/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */',
   '/* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */',
 ];
 const SAMPLE = Uint8Array.from(Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
   'base64',
 ));
-test('raw-video.js diawali watermark AGPL tepat 3 baris', async () => {
+test('raw-video.js diawali watermark lisensi tepat 3 baris', async () => {
   const lines = (await readFile(SOURCE, 'utf8')).split('\n').slice(0, 3).map((line) => line.trimEnd());
   assert.deepEqual(lines, WATERMARK);
 });

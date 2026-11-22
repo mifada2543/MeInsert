@@ -15,7 +15,7 @@ Tanpa server. Tanpa upload. Tanpa akun.
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
 [![Versi](https://img.shields.io/badge/version-v1.6.0-blue?style=flat-square)](./package.json)
-[![Lisensi](https://img.shields.io/badge/Lisensi-AGPLv3-orange?style=flat-square)](./LICENSE)
+[![Lisensi](https://img.shields.io/badge/Lisensi-Source_Available-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#cara-memverifikasi-klaim-lokal)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)
 
@@ -329,9 +329,9 @@ CI membagi suite E2E ke 4 runner: `MEINSERT_E2E_SHARD=1/4 npm run test:e2e:all`.
 
 ## Lisensi
 
-**Kode aplikasi:** [AGPLv3](./LICENSE) — Copyright (C) 2026 mifada2543.
+**Kode aplikasi:** [MeInsert Source-Available License v1.0](./LICENSE) — Copyright (C) 2026 mifada2543.
 
-**Source:** [github.com/mifada2543/meinsert](https://github.com/mifada2543/meinsert). Tautan **Source** juga ada di footer setiap halaman (kewajiban transparansi AGPL §13).
+**Source:** [github.com/mifada2543/meinsert](https://github.com/mifada2543/meinsert). Tautan **Source** juga ada di footer setiap halaman.
 
 **Pemberitahuan:** [NOTICE.md](./NOTICE.md) (Indonesia) · [NOTICE-en.md](./NOTICE-en.md) (English).
 
@@ -342,12 +342,12 @@ Library pihak ketiga yang dibundel tetap berada di bawah lisensi aslinya. Lihat 
 - **ExifTool 13.60** (Artistic/GPL), **@colorhythm/exiftool-wasm** (Apache-2.0) + **zeroperl** (MIT)
 - **Mediabunny** (MPL-2.0), **pdf-lib**, **browser-id3-writer**, **fflate** (MIT)
 - **Font IBM Plex** — SIL Open Font License 1.1
-- **MEeL — editor LRC & helper teks berirama** (AGPL-3.0, © 2026 Mifada) — kode yang diadaptasi untuk editor lirik/subtitle; daftar file sumber dan tujuan ada di [NOTICE.md](./NOTICE.md) dan [indeks atribusi](assets/THIRD_PARTY_LICENSES.md).
+- **MEeL — editor LRC & helper teks berirama** (MeInsert Source-Available License v1.0, © 2026 Mifada) — kode adaptasi dari MEeL-HUB untuk editor lirik/subtitle; rilis asli MEeL tetap AGPL-3.0. Daftar file sumber dan tujuan ada di [NOTICE.md](./NOTICE.md) dan [indeks atribusi](assets/THIRD_PARTY_LICENSES.md).
 - **Gambar merek** — karya asli proyek; lihat [provenance](assets/img/PROVENANCE.md).
 
-### Lisensi dan monetisasi (AGPLv3)
+### Lisensi dan monetisasi
 
-Monetisasi boleh, tetapi AGPLv3 bersifat *copyleft jaringan*: saat mendistribusikan perangkat lunak tercakup, sediakan **Corresponding Source**. Modifikasi privat tidak otomatis wajib dipublikasikan. Teks [LICENSE](./LICENSE) yang mengikat; ringkasan ini hanya penjelasan sederhana.
+Lisensi ini bukan lisensi *open source*: Versi Asli boleh dipakai dan di-host untuk keperluan internal tanpa batas pengguna, sedangkan **Versi Modifikasi untuk penggunaan internal dibatasi maksimal tiga orang**. Hosting Publik boleh tanpa batas pengguna jika gratis, tanpa iklan, dan mematuhi kewajiban NOTICE. **Monetisasi hosting, akses, atau distribusi memerlukan izin tertulis terpisah** dari Pemegang Hak; pekerjaan jasa dengan MeInsert tetap diperbolehkan. Rilis sebelum lisensi ini tetap tunduk pada lisensi semula (§7 [LICENSE](./LICENSE)). Teks LICENSE yang mengikat; ringkasan lengkap ada di [NOTICE.md](./NOTICE.md) / [NOTICE-en.md](./NOTICE-en.md).
 
 ### Catatan penggunaan yang pantas
 
@@ -363,7 +363,7 @@ MeInsert hanya menyediakan *alat* untuk membaca dan menulis tag standar. Anda be
 
 **Isi berkas, metadata yang diedit, sampul, dan hasil pemrosesan tidak dikirim atau diunggah ke server oleh aplikasi resmi.** Baca [docs/security.md](docs/security.md) untuk cara memverifikasi klaim tersebut, termasuk catatan tentang beacon analitik yang disuntikkan host produksi.
 
-**Pemalsuan untuk menipu atau melakukan pelanggaran hukum dilarang.** Pelanggaran yang terbukti dapat dikenai sanksi sesuai hukum dan proses pihak berwenang; MeInsert tidak menjatuhkan hukuman otomatis. Kebijakan penggunaan tidak menambahkan pembatasan pada lisensi AGPL.
+**Pemalsuan untuk menipu atau melakukan pelanggaran hukum dilarang.** Pelanggaran yang terbukti dapat dikenai sanksi sesuai hukum dan proses pihak berwenang; MeInsert tidak menjatuhkan hukuman otomatis. Kebijakan penggunaan tidak menambahkan pembatasan pada Lisensi MeInsert Source-Available v1.0.
 
 ---
 

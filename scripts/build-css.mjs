@@ -1,5 +1,5 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /**
  * Bundles assets/css/app.css (@import berantai) menjadi satu file statis.
@@ -19,7 +19,7 @@ const cssDir = join(root, 'assets', 'css');
 const entry = join(cssDir, 'app.css');
 const outFile = join(cssDir, 'app.bundle.css');
 const BANNER = `/* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */`;
 const WATERMARK_LINES = new Set(BANNER.split('\n'));
 const IMPORT_RE = /@import\s+"([^"]+)";\s*/g;

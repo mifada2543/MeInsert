@@ -1,5 +1,5 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 // Semantic message keys shared by both catalogs. Values are plain text, never HTML.
 export default {
@@ -56,6 +56,7 @@ export default {
   "ui.resultsAreReadBackInYourBrowserDownloadA": "Results are read back in your browser. Download a new file; the original is never overwritten.",
   "ui.aStaticMetadataEditorMadeForFilesYouWant": "— a static metadata editor. Made for files you want to keep private.",
   "ui.noBackendNoUploads": "No backend · No uploads ·",
+  "ui.license": "License",
   "ui.attributions": "Attributions",
   "ui.editTitlesAuthorsTagsAndCameraInformationRightIn": "Edit titles, authors, tags, and camera information right in your browser. Files stay on your device — no server, no queue, no account.",
   "ui.automaticDetection": "Automatic detection",
@@ -391,7 +392,7 @@ export default {
   "ui.aboutShort": "About",
   "ui.aboutPrinciplesTitle": "Our principles",
   "ui.aboutIntro": "MeInsert is a local metadata editor: files are read, changed, verified, and downloaded back entirely in your browser. No server, no upload, no account.",
-  "ui.aboutPrinciples": "The principles are simple: your files never leave your device, results are always reviewed and verified before download, and the MeInsert code is open under AGPLv3.",
+  "ui.aboutPrinciples": "The principles are simple: your files never leave your device, results are always reviewed and verified before download, and the MeInsert code is available under the MeInsert Source-Available License v1.0.",
   "ui.aboutFormatsIntro": "MeInsert supports images (JPG, PNG, WebP, TIFF), PDF, audio (MP3, FLAC, OGG), video (MP4, MKV), and Office documents (DOCX, XLSX, PPTX, ODT, ODS, ODP, including macro variants). Some cases such as signed PDFs and macros are best-effort; legacy formats and encrypted documents are not supported.",
   "ui.aboutPrivacyShort": "MeInsert does not upload files, does not use analytics, and has no accounts. A single local timestamp is stored to remember that you acknowledged the policy notice.",
   "ui.aboutTermsShort": "Use MeInsert only on files you own or are authorized to edit. Forgery for deception and misuse are prohibited; edited metadata is not proof of authenticity.",
@@ -889,12 +890,12 @@ export default {
   "ui.timedTextClose": "Close timed text editor",
   "ui.timedTextHint": "Click a line to seek · Space to play/pause · ←/→ to skip 5s",
   "ui.timedTextShow": "Show",
-  "ui.timedTextCredit": "Based on MEeL's LRC editor — © 2026 Mifada — AGPL-3.0",
+  "ui.timedTextCredit": "Based on MEeL's LRC editor — © 2026 Mifada — MeInsert Source-Available License v1.0",
   "ui.timedTextEmpty": "No lines yet. Add a line or import a .lrc/.srt/.vtt file.",
   "ui.timedTextSave": "Apply",
   "ui.timedTextUnsupported": "Open an MP3, FLAC, OGG/Opus, MP4/M4A, or MKV/WebM file first.",
   "ui.timedTextPlanRow": "Timed text: {v0} lyric lines, {v1} subtitle cues",
-  "ui.timedTextAboutCredit": "The lyrics and subtitle editor is adapted from MEeL — © 2026 Mifada — AGPL-3.0. Source: github.com/mifada2543/MEeL-HUB.",
+  "ui.timedTextAboutCredit": "The lyrics and subtitle editor is adapted from MEeL — © 2026 Mifada — MeInsert Source-Available License v1.0. Source: github.com/mifada2543/MEeL-HUB.",
   "ui.cutOpen": "Cut audio/video",
   "ui.cutOpenAudio": "Cut audio",
   "ui.cutOpenVideo": "Cut video",

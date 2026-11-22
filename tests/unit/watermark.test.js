@@ -1,5 +1,5 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
-/* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
+/* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const WATERMARK = [
   'MeInsert — Edit metadata file tanpa upload, 100% di browser.',
-  'Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert',
+  'Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert',
   'reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2',
 ];
 const ROOTS = ['assets/css', 'assets/js', 'scripts', 'tests', 'sw.js'];
@@ -27,7 +27,7 @@ async function collect(path) {
   }
   return files;
 }
-test('every MeInsert source code file carries the AGPL watermark', async () => {
+test('every MeInsert source code file carries the license watermark', async () => {
   const files = (await Promise.all(ROOTS.map((path) => collect(join(root, path))))).flat();
   assert.ok(files.length > 100, `watermark scan must cover the whole codebase, found ${files.length} files`);
   const missing = [];

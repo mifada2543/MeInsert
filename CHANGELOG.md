@@ -1,5 +1,5 @@
 <!-- MeInsert — Edit metadata file tanpa upload, 100% di browser. -->
-<!-- Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
+<!-- Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
 <!-- reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 -->
 
 # Changelog
@@ -29,6 +29,18 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   limitations: RAW/HEIF container/pixel byte preservation is not proven.
 - Bumped shell cache to `meinsert-v72` and optional engine cache to
   `meinsert-engine-v4` so existing PWA installs cannot retain stale `image.js`.
+
+### Perubahan lisensi (2026-11-22)
+
+- Kode MeInsert beralih dari AGPLv3 ke **MeInsert Source-Available License v1.0**
+  (bilingual). Lisensi baru membatasi Versi Modifikasi untuk penggunaan internal
+  maksimal tiga orang dan mewajibkan izin tertulis untuk monetisasi hosting,
+  akses, atau distribusi.
+- Rilis sebelumnya tetap tunduk pada lisensi semula (§7). Komponen pihak ketiga
+  tidak berubah; rilis asli MEeL-HUB tetap AGPL-3.0-or-later, sedangkan kode
+  adaptasinya di MeInsert memakai lisensi baru dengan provenance tetap dijaga.
+- Watermark tiga baris di seluruh sumber, README, NOTICE, TERMS, CONTRIBUTING,
+  atribusi, dan dokumen diperbarui; metadata paket memakai `SEE LICENSE IN LICENSE`.
 
 ### Migrasi Brotli-only
 

@@ -1,5 +1,5 @@
 <!-- MeInsert — Edit metadata file tanpa upload, 100% di browser. -->
-<!-- Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
+<!-- Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert -->
 <!-- reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 -->
 
 # Launch notes (drafts for the owner)
@@ -21,13 +21,13 @@
 English (≤350 characters):
 
 ```
-Edit image, PDF, audio, video and Office metadata locally in your browser. 100% client-side — no upload, no account, no analytics. Works offline as a PWA. AGPLv3. Live: https://meinsert.my.id/
+Edit image, PDF, audio, video and Office metadata locally in your browser. 100% client-side — no upload, no account, no analytics. Works offline as a PWA. Source-available license. Live: https://meinsert.my.id/
 ```
 
 Bahasa Indonesia (padanan, ≤350 karakter):
 
 ```
-Edit metadata gambar, PDF, audio, video, dan dokumen Office langsung di browser Anda. 100% sisi klien — tanpa upload, akun, atau analitik. Berfungsi offline sebagai PWA. AGPLv3. Live: https://meinsert.my.id/
+Edit metadata gambar, PDF, audio, video, dan dokumen Office langsung di browser Anda. 100% sisi klien — tanpa upload, akun, atau analitik. Berfungsi offline sebagai PWA. Lisensi source-available. Live: https://meinsert.my.id/
 ```
 
 ## Suggested GitHub topics
@@ -36,7 +36,7 @@ Lowercase, hyphenated. Refined from the supported formats and the README's
 feature list; the owner selects the final subset on the repository page.
 
 ```
-privacy metadata-editor pwa browser-only offline-first webassembly exif id3 pdf exiftool matroska mp4 office ooxml odf image-metadata audio-metadata video-metadata subtitle-editor lyrics-editor no-upload client-side javascript
+privacy metadata-editor pwa browser-only offline-first webassembly exif id3 pdf exiftool matroska mp4 office ooxml odf image-metadata audio-metadata video-metadata subtitle-editor lyrics-editor no-upload client-side javascript source-available
 ```
 
 The synchronized lyrics/subtitle editor (extended from MEeL) is credited
@@ -74,7 +74,7 @@ PDFs lose their signature validity, MKV/WebM chapters and attachments are not
 carried over, and a few exotic ID3 frames may be dropped. These cases are
 documented and surfaced in the integrity report rather than hidden.
 
-The code is AGPLv3 and the source is on GitHub:
+The code is under the MeInsert Source-Available License v1.0 and the source is on GitHub:
 https://github.com/mifada2543/meinsert
 
 Live app: https://meinsert.my.id/
@@ -114,7 +114,7 @@ attachment MKV/WebM tidak ikut terbawa, dan beberapa frame ID3 yang tidak umum
 mungkin hilang. Kasus-kasus ini didokumentasikan dan ditampilkan di laporan
 integritas, bukan disembunyikan.
 
-Kodenya berlisensi AGPLv3 dan sumbernya ada di GitHub:
+Kodenya memakai MeInsert Source-Available License v1.0 dan sumbernya ada di GitHub:
 https://github.com/mifada2543/meinsert
 
 Aplikasi live: https://meinsert.my.id/

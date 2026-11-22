@@ -11,7 +11,7 @@ This policy explains acceptable use, misuse restrictions, and application
 limitations. It is not legal advice.
 
 Rights to use, copy, modify, and distribute the code are governed by
-[AGPL-3.0-or-later](LICENSE) and the respective component licenses. This document
+[MeInsert Source-Available License v1.0](LICENSE) and the respective component licenses. This document
 does not add software-license restrictions, reduce license-granted rights, or
 amend license terms. The misuse provisions below state project policy and users'
 legal responsibilities.
