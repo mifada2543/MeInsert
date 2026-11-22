@@ -7,14 +7,12 @@ import { createEditorState, setTrim } from '../../assets/js/editor/editor-state.
 import { collectChanges } from '../../assets/js/editor/editor-changes.js';
 import { buildChangePlan } from '../../assets/js/core/change-plan.js';
 import { createSnapshot } from '../../assets/js/core/metadata-snapshot.js';
-
 const adapter = {
   meta: { id: 'mp3', engine: 'media', label: 'MP3' },
   fields: [{ id: 'title', label: 'Judul', type: 'text', native: 'TIT2' }],
   fieldsFor: () => [{ id: 'title', label: 'Judul', type: 'text', native: 'TIT2' }],
 };
 const detection = { id: 'mp3', ext: 'mp3', subtype: 'mp3', mime: 'audio/mpeg', label: 'MP3' };
-
 function makeState(trim, id = 'mp3') {
   const localAdapter = { ...adapter, meta: { ...adapter.meta, id } };
   const localDetection = { ...detection, id };
@@ -26,7 +24,6 @@ function makeState(trim, id = 'mp3') {
   if (trim) setTrim(state, trim);
   return { state, localAdapter, localDetection };
 }
-
 function makePlan(trim, id = 'mp3') {
   const { state, localAdapter, localDetection } = makeState(trim, id);
   const changes = collectChanges(state);
@@ -45,7 +42,6 @@ function makePlan(trim, id = 'mp3') {
   });
   return { changes, plan };
 }
-
 test('collectChanges reports a trim as one change and clones the range', () => {
   const { state } = makeState({ start: 2, end: 5, mode: 'copy' });
   const changes = collectChanges(state);
@@ -53,14 +49,12 @@ test('collectChanges reports a trim as one change and clones the range', () => {
   assert.deepEqual(changes.payload.trim, { start: 2, end: 5, mode: 'copy' });
   assert.notEqual(changes.payload.trim, state.trim);
 });
-
 test('no trim leaves no trim key in the payload', () => {
   const { state } = makeState(null);
   const changes = collectChanges(state);
   assert.equal(changes.count, 0);
   assert.equal(Object.hasOwn(changes.payload, 'trim'), false);
 });
-
 test('buildChangePlan creates a trim operation with a local mm:ss.mmm label', () => {
   const { plan } = makePlan({ start: 2.5, end: 10, mode: 'copy' });
   const op = plan.operations.find((item) => item.kind === 'trim');
@@ -75,21 +69,18 @@ test('buildChangePlan creates a trim operation with a local mm:ss.mmm label', ()
   assert.deepEqual(plan.payload.trim, { start: 2.5, end: 10, mode: 'copy' });
   assert.equal(plan.hasOperations, true);
 });
-
 test('trim risks are warnings and depend on mode and format', () => {
   const copy = makePlan({ start: 0, end: 5, mode: 'copy' }).plan;
   const copyCodes = copy.risks.map((risk) => risk.code);
   assert.ok(copyCodes.includes('CUT_REWRITE'));
   assert.ok(!copyCodes.includes('CUT_TRANSCODE'));
   assert.ok(copyCodes.includes('CUT_CHAPTERS'));
-  assert.ok(!copyCodes.includes('CUT_XING'));
+  assert.ok(copyCodes.includes('CUT_XING')); // Xing source header must be dropped even for a cut from zero
   assert.ok(copy.risks.filter((risk) => risk.code.startsWith('CUT_')).every((risk) => risk.severity === 'warning'));
-
   const precise = makePlan({ start: 2, end: 5, mode: 'precise' }).plan;
   const preciseCodes = precise.risks.map((risk) => risk.code);
   assert.ok(preciseCodes.includes('CUT_TRANSCODE'));
   assert.ok(preciseCodes.includes('CUT_XING'));
-
   const mkv = makePlan({ start: 0, end: 5, mode: 'copy' }, 'mkv').plan;
   assert.ok(mkv.risks.some((risk) => risk.code === 'CUT_CHAPTERS'));
   const mp4 = makePlan({ start: 0, end: 5, mode: 'precise' }, 'mp4').plan;

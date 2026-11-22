@@ -312,9 +312,6 @@ export function verifyIntegrity(plan, afterSnapshot) {
   const targetRaw = new Set((plan?.operations || []).filter((op) => op.kind === 'raw').map((op) => normalizeRawTag(op.tag)));
   const byteProofRelocated = sameMediaProof(before.mediaProof, after.mediaProof);
   const packetProofRelocated = sameMediaProof(before.packetProof, after.packetProof);
-  // A media cut legitimately rewrites payload bytes. The range proof captured
-  // before the write vouches for the cut window, so suppress only
-  // MEDIA_PAYLOAD_CHANGED in this case.
   const relocatedPayload = byteProofRelocated || packetProofRelocated || hasTrimProof;
   if (before.mediaProof?.valid && !relocatedPayload) {
     add({ severity: 'error', code: 'MEDIA_PAYLOAD_CHANGED', target: 'media',
@@ -331,9 +328,12 @@ export function verifyIntegrity(plan, afterSnapshot) {
     );
   }
   if (hasTrimProof) {
+    const validBefore = plan.trimProof.valid === true && Array.isArray(plan.trimProof.regions) && plan.trimProof.regions.length > 0;
+    const validAfter = after.rangeProof?.valid === true && Array.isArray(after.rangeProof.regions) && after.rangeProof.regions.length > 0;
+    const sameAlgorithm = plan.trimProof.algorithm === after.rangeProof?.algorithm;
     const beforeRegions = JSON.stringify(plan.trimProof.regions || []);
     const afterRegions = JSON.stringify(after.rangeProof?.regions || []);
-    if (beforeRegions !== afterRegions) {
+    if (!validBefore || !validAfter || !sameAlgorithm || beforeRegions !== afterRegions) {
       add({
         severity: 'error',
         code: 'CUT_RANGE_MISMATCH',

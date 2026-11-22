@@ -9,7 +9,6 @@ function fieldsFor(adapter, detection) {
   if (typeof adapter.fieldsFor === 'function') return adapter.fieldsFor(detection?.subtype) || [];
   return adapter.fields || [];
 }
-/** Local mm:ss.mmm formatter for cut ranges (seconds in, no i18n dependency). */
 function formatCutTime(seconds) {
   const total = Math.max(0, Math.round((Number(seconds) || 0) * 1000));
   const ms = total % 1000;
@@ -332,11 +331,11 @@ export function buildChangePlan({
         message: 'Chapter dan attachment mungkin tidak dipertahankan setelah pemotongan.',
       });
     }
-    if (formatId === 'mp3' && (Number(trim.start) || 0) > 0) {
+    if (formatId === 'mp3') {
       risks.push({
         code: 'CUT_XING',
         severity: 'warning',
-        message: 'Header Xing/Info MP3 akan ditulis ulang saat memotong dari awal.',
+        message: 'Header Xing/Info yang kedaluwarsa akan dibuang dari hasil MP3; batas potong mengikuti frame dan dapat menimbulkan artefak awal.',
       });
     }
   }

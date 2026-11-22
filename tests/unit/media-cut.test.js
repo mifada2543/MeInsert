@@ -4,12 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import {
-  CUT_MODES, normalizeTrim, conversionCutOptions, expectedCutDuration, mediaRangeProof,
-} from '../../assets/js/core/media-cut.js';
-
+import { CUT_MODES, normalizeTrim, conversionCutOptions, expectedCutDuration, mediaRangeProof, } from '../../assets/js/core/media-cut.js';
 const tone = new Blob([readFileSync(new URL('../fixtures/tone.mp3', import.meta.url))]);
-
 test('normalizeTrim parses numbers and rejects out-of-range or malformed windows', () => {
   assert.equal(normalizeTrim(null), null);
   assert.equal(normalizeTrim(undefined), null);
@@ -33,7 +29,6 @@ test('normalizeTrim parses numbers and rejects out-of-range or malformed windows
     start: 0, end: 10.0000001, mode: 'copy',
   });
 });
-
 test('conversionCutOptions maps modes and preserves base copy settings', () => {
   const copy = conversionCutOptions({ start: 0.2, end: 0.5, mode: 'copy' }, { shiftTolerance: Infinity });
   assert.deepEqual(copy, {
@@ -47,23 +42,20 @@ test('conversionCutOptions maps modes and preserves base copy settings', () => {
       shiftTolerance: Infinity, mode: 'preferred', boundaryPolicy: 'shrink', boundaryTolerance: 0,
     },
   });
-  // Mode-specific options win over conflicting baseCopy values.
   assert.deepEqual(conversionCutOptions({ start: 0, end: 1, mode: 'copy' }, { mode: 'preferred' }).copy, {
     mode: 'forced', boundaryPolicy: 'shrink',
   });
 });
-
 test('expectedCutDuration reflects the normalized window only', () => {
   assert.equal(expectedCutDuration({ start: 0.2, end: 0.5, mode: 'precise' }), 0.3);
   assert.equal(expectedCutDuration(null), 0);
   assert.equal(expectedCutDuration({ start: 2, end: 1 }), 0);
   assert.equal(expectedCutDuration({ start: 0, end: 1, mode: 'fast' }), 0);
 });
-
 test('mediaRangeProof hashes encoded packets inside the trim window', async () => {
   const proof = await mediaRangeProof(tone, 0, 1);
   assert.equal(proof.valid, true);
-  assert.equal(proof.algorithm, 'av-range-v1');
+  assert.equal(proof.algorithm, 'mp3-frames-v1');
   assert.ok(Array.isArray(proof.regions) && proof.regions.length > 0);
   for (const region of proof.regions) {
     assert.ok(region.length > 0);

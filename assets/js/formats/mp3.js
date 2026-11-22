@@ -143,14 +143,13 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   const sliceWarnings = [];
   let baseFile = file;
   if (trim) {
-    const slice = await sliceMp3Range(file, trim.start, trim.end);
+    const slice = await sliceMp3Range(file, trim.start, trim.end, trim.mode);
     if (!slice) {
-      throw new AppError('UNSUPPORTED_CODEC', 'Potongan MP3 tidak bisa dibuat.', 'Rentang tidak berada pada batas frame MP3 yang valid.');
+      throw new AppError('UNSUPPORTED_CODEC', 'Potongan MP3 tidak bisa dibuat.', 'Rentang tidak valid atau mode presisi belum didukung untuk MP3. Gunakan mode Salin (frame-copy).');
     }
     baseFile = new File([slice.blob], 'cut.mp3', { type: file.type || 'audio/mpeg' });
     if (Array.isArray(slice.warnings)) sliceWarnings.push(...slice.warnings);
   }
-  // A cut changes the duration, so cached TLEN/chapter frames must not survive.
   const effectivePayload = trim
     ? {
       ...payload,
@@ -268,7 +267,6 @@ export async function write(file, payload, _options = {}, report = () => {}) {
     }
   };
   const frameMatch = (id) => (id === 'COMM' ? 'first' : 'all');
-
   if (canPatch) {
     const changedFields = new Set([...Object.keys(set), ...remove]);
     for (const field of changedFields) {
@@ -379,7 +377,6 @@ export async function write(file, payload, _options = {}, report = () => {}) {
   const passThroughWarning = patched ? '' : 'Tag ID3 ditulis ulang penuh; frame yang tidak dikenal mungkin hilang.';
   const blob = new Blob([out], { type: 'audio/mpeg' });
   const outputFile = new File([out], 'output.mp3', { type: 'audio/mpeg' });
-  // The trimmed file was rebuilt with timestamps starting at zero.
   const rangeProof = trim ? await mediaRangeProof(outputFile, 0, expectedCutDuration(trim)) : null;
   report({ stage: 'Memverifikasi tag baru…', pct: 82 });
   let after;

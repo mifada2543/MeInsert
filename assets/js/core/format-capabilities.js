@@ -45,7 +45,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'audio',
     labelKey: 'ui.offlineFeatureAudio',
-    bytes: 837_882,
+    bytes: 840_748,
     urls: [
       './assets/vendor/mediabunny.mjs',
       './assets/js/workers/media.worker.js',
@@ -65,7 +65,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 9_380_269,
+    bytes: 9_383_081,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
       './assets/vendor/fflate.mjs',
@@ -75,8 +75,6 @@ export const OFFLINE_FEATURES = [
       './assets/js/formats/mp4.js',
       './assets/js/engines/exiftool.js',
       './assets/vendor/mediabunny.mjs',
-      // Video trimming needs the same cut helpers as audio. mp3-cut.js imports
-      // id3-passthrough.js, so that dependency is declared here as well.
       './assets/js/core/id3-passthrough.js',
       './assets/js/core/mp3-cut.js',
     ],

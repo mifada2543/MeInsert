@@ -71,7 +71,7 @@ const SHARED_OPTIONAL_BYTES = new Map([
   ['./assets/vendor/mediabunny.mjs', 722_897],
   ['./assets/vendor/fflate.mjs', 90_922],
   ['./assets/js/core/id3-passthrough.js', 9_579],
-  ['./assets/js/core/mp3-cut.js', 4_349],
+  ['./assets/js/core/mp3-cut.js', 7_161],
 ]);
 export function estimatedBytes(profile) {
   try {

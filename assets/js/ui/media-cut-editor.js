@@ -13,13 +13,11 @@ import { setTrim } from '../editor/editor-state.js';
 import { syncActionBar } from '../editor/editor-changes.js';
 import { CUT_MODES, expectedCutDuration, normalizeTrim } from '../core/media-cut.js';
 import { ensureFeatureOffline } from './offline-settings.js';
-
 const EXIT_MS = 160;
 const EXIT_SAFETY_MS = EXIT_MS + 100;
 const AUDIO_EXTS = new Set(['mp3', 'flac', 'ogg', 'oga', 'opus']);
 const VIDEO_EXTS = new Set(['mp4', 'm4a', 'mov', 'mkv', 'webm']);
 const SUPPORTED_EXTS = new Set([...AUDIO_EXTS, ...VIDEO_EXTS]);
-
 let dialog = null;
 let refs = null;
 let state = null;
@@ -28,8 +26,6 @@ let listening = false;
 let closeTimer = 0;
 let closeFinish = null;
 let closeAnimationEnd = null;
-
-/** Extension decides the local mode: m4a is intentionally grouped with video. */
 function extensionOf(file) {
   return String(file?.name || '').toLowerCase().split('.').pop();
 }
@@ -42,8 +38,6 @@ function cutModeForFile(file) {
 function reduceMotion() {
   try { return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches); } catch { return false; }
 }
-
-/** Format a number of seconds as mm:ss.mmm. */
 function formatTime(value) {
   const total = Math.max(0, Math.round((Number(value) || 0) * 1000));
   const minutes = Math.floor(total / 60_000);
@@ -51,8 +45,6 @@ function formatTime(value) {
   const millis = total % 1000;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
 }
-
-/** Parse mm:ss.mmm (and a plain seconds value) into seconds. */
 function parseTime(input, fallback = 0) {
   const raw = String(input ?? '').trim().replace(',', '.');
   if (!raw) return fallback;
@@ -65,7 +57,6 @@ function parseTime(input, fallback = 0) {
   const total = Number(match[1]) * 60 + Number(match[2]) + Number((match[3] || '').padEnd(3, '0')) / 1000;
   return Number.isFinite(total) ? total : fallback;
 }
-
 function currentMode() {
   return refs?.modePrecise?.checked ? CUT_MODES.PRECISE : CUT_MODES.COPY;
 }
@@ -86,7 +77,6 @@ function invalidRange() {
   setStatus(message, 'error');
   showToast(message, 'error', 4200);
 }
-
 function updateRisks() {
   if (!refs?.risks || !state) return;
   clear(refs.risks);
@@ -98,14 +88,12 @@ function updateRisks() {
   rows.push(t('ui.cutMemoryHint'));
   for (const text of rows) refs.risks.append(el('li', { className: 'cut-dialog__risk' }, text));
 }
-
 function updateModeHint() {
   if (!refs) return;
   const precise = currentMode() === CUT_MODES.PRECISE;
   if (refs.hintCopy) refs.hintCopy.hidden = precise;
   if (refs.hintPrecise) refs.hintPrecise.hidden = !precise;
 }
-
 function updateSummary() {
   if (!refs) return;
   const start = parseTime(refs.start.value, 0);
@@ -124,7 +112,6 @@ function updateSummary() {
   updateModeHint();
   updateRisks();
 }
-
 function setupPreview(file) {
   clear(refs.preview);
   for (const [target, type, handler] of state.mediaListeners || []) target.removeEventListener(type, handler);
@@ -135,7 +122,6 @@ function setupPreview(file) {
   state.mediaUrl = '';
   state.mediaEl = null;
   if (!file) return;
-
   const url = URL.createObjectURL(file);
   state.mediaUrl = url;
   const media = document.createElement(state.mode === 'video' ? 'video' : 'audio');
@@ -154,14 +140,12 @@ function setupPreview(file) {
   refs.preview.append(media);
   state.mediaEl = media;
 }
-
 function mark(field) {
   if (!refs?.[field]) return;
   refs[field].value = formatTime(currentTime());
   setStatus('', 'info');
   updateSummary();
 }
-
 function playRange() {
   const media = state?.mediaEl;
   if (!media) return;
@@ -180,7 +164,6 @@ function playRange() {
   const attempt = media.play();
   if (attempt && typeof attempt.catch === 'function') attempt.catch(() => {});
 }
-
 function resetValues() {
   if (!refs) return;
   refs.start.value = formatTime(0);
@@ -190,7 +173,6 @@ function resetValues() {
   setStatus('', 'info');
   updateSummary();
 }
-
 function applyCut() {
   if (!state) return;
   const duration = mediaDuration();
@@ -199,6 +181,10 @@ function applyCut() {
     end: parseTime(refs.end.value, 0),
     mode: currentMode(),
   };
+  if (extensionOf(state.file) === 'mp3' && input.mode === CUT_MODES.PRECISE) {
+    setStatus('Mode presisi belum tersedia untuk MP3; gunakan mode Salin.', 'error');
+    return;
+  }
   const next = normalizeTrim(input, { duration: duration || Infinity });
   if (!next) { invalidRange(); return; }
   const handler = state.onApply;
@@ -206,7 +192,6 @@ function applyCut() {
   void onRequestClose();
   handler?.(applied);
 }
-
 function cancelClose() {
   clearTimeout(closeTimer);
   closeTimer = 0;
@@ -215,7 +200,6 @@ function cancelClose() {
   closeFinish = null;
   dialog?.classList.remove('is-closing');
 }
-
 function requestClose() {
   if (!dialog?.open || dialog.classList.contains('is-closing')) return;
   if (reduceMotion()) { dialog.close(); return; }
@@ -234,9 +218,7 @@ function requestClose() {
   instance.addEventListener('animationend', onEnd);
   closeTimer = setTimeout(finish, EXIT_SAFETY_MS);
 }
-
 function onRequestClose() { requestClose(); }
-
 function trapFocus(event) {
   const focusable = [...dialog.querySelectorAll('button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])')]
     .filter((node) => node.getClientRects().length > 0);
@@ -246,13 +228,11 @@ function trapFocus(event) {
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 }
-
 function onGlobalKeydown(event) {
   if (!dialog?.open || !state) return;
   if (event.key === 'Escape') { event.preventDefault(); requestClose(); }
   else if (event.key === 'Tab') trapFocus(event);
 }
-
 function cleanupSession() {
   cancelClose();
   if (state) {
@@ -269,7 +249,6 @@ function cleanupSession() {
   lastFocused?.focus?.();
   lastFocused = null;
 }
-
 function actionButton({ id, className = '', iconName, labelKey, onClick }) {
   const label = el('span', { className: 'cut-dialog__btn-label' });
   bindText(label, () => t(labelKey));
@@ -280,7 +259,6 @@ function actionButton({ id, className = '', iconName, labelKey, onClick }) {
     on: { click: onClick },
   }, icon(iconName), label);
 }
-
 function timeField({ id, key, labelKey, buttonId, buttonKey }) {
   const input = el('input', {
     id,
@@ -304,10 +282,8 @@ function timeField({ id, key, labelKey, buttonId, buttonKey }) {
     row: el('div', { className: 'cut-dialog__field' }, label, el('div', { className: 'cut-dialog__time-row' }, input, button)),
   };
 }
-
 function buildDialog() {
   if (dialog) return dialog;
-
   const title = el('h2', { id: 'cutTitle', className: 'cut-dialog__title' });
   bindText(title, () => t(state?.mode === 'video' ? 'ui.cutTitleVideo' : 'ui.cutTitleAudio'));
   const badge = el('span', { className: 'cut-dialog__badge' });
@@ -319,17 +295,14 @@ function buildDialog() {
     'aria-label': translated(() => t('ui.cutCancel')),
     on: { click: () => requestClose() },
   }, icon('x'));
-
   const preview = el('div', { className: 'cut-dialog__preview' });
   const offlineNote = el('p', { className: 'cut-dialog__offline-note' });
   bindText(offlineNote, () => t('ui.cutNeedsOffline'));
   const previewPane = el('section', { className: 'cut-dialog__pane cut-dialog__pane--preview' },
     el('h3', { className: 'cut-dialog__pane-title' }, translated(() => t('ui.cutOpen'))), preview, offlineNote);
-
   const start = timeField({ id: 'cutStart', key: 'start', labelKey: 'ui.cutStart', buttonId: 'cutSetStart', buttonKey: 'ui.cutSetStart' });
   const end = timeField({ id: 'cutEnd', key: 'end', labelKey: 'ui.cutEnd', buttonId: 'cutSetEnd', buttonKey: 'ui.cutSetEnd' });
   const playBtn = actionButton({ id: 'cutPlayRange', className: 'cut-dialog__btn--play', iconName: 'play', labelKey: 'ui.cutPlayRange', onClick: () => playRange() });
-
   const modeCopy = el('input', { type: 'radio', name: 'cutMode', id: 'cutModeCopy', value: CUT_MODES.COPY, checked: true, on: { change: () => updateSummary() } });
   const modePrecise = el('input', { type: 'radio', name: 'cutMode', id: 'cutModePrecise', value: CUT_MODES.PRECISE, on: { change: () => updateSummary() } });
   const hintCopy = el('small', { className: 'cut-dialog__hint' });
@@ -347,7 +320,6 @@ function buildDialog() {
     el('label', { className: 'cut-dialog__mode', for: modeCopy.id }, modeCopy, modeLabelCopy),
     el('label', { className: 'cut-dialog__mode', for: modePrecise.id }, modePrecise, modeLabelPrecise),
     hintCopy, hintPrecise);
-
   const durationLabel = el('span', { className: 'cut-dialog__label' });
   bindText(durationLabel, () => t('ui.cutDuration'));
   const duration = el('output', { id: 'cutDuration', className: 'cut-dialog__duration', for: 'cutStart cutEnd' }, formatTime(0));
@@ -356,18 +328,15 @@ function buildDialog() {
   const plan = el('p', { className: 'cut-dialog__plan' });
   const risks = el('ul', { className: 'cut-dialog__risks' });
   const status = el('p', { id: 'cutStatus', className: 'cut-dialog__status', role: 'status', 'aria-live': 'polite' });
-
   const formPane = el('section', { className: 'cut-dialog__pane cut-dialog__pane--form' },
     start.row, end.row,
     el('div', { className: 'cut-dialog__time-actions' }, playBtn),
     modes,
     el('div', { className: 'cut-dialog__summary' }, durationLabel, duration, resultLabel, plan),
     risks, status);
-
   const resetBtn = actionButton({ id: 'cutReset', className: 'cut-dialog__btn--quiet', iconName: 'refresh', labelKey: 'ui.cutReset', onClick: () => resetValues() });
   const cancelBtn = actionButton({ id: 'cutCancel', className: 'cut-dialog__btn--quiet', iconName: 'x', labelKey: 'ui.cutCancel', onClick: () => requestClose() });
   const applyBtn = actionButton({ id: 'cutApply', className: 'cut-dialog__btn--apply', iconName: 'scissors', labelKey: 'ui.cutApply', onClick: () => applyCut() });
-
   dialog = el('dialog', {
     id: 'cutDialog',
     className: 'cut-dialog',
@@ -391,7 +360,6 @@ function buildDialog() {
   };
   return dialog;
 }
-
 export function openCutEditor({ file, trim, onApply } = {}) {
   if (typeof document === 'undefined') return;
   cancelClose();
@@ -399,7 +367,6 @@ export function openCutEditor({ file, trim, onApply } = {}) {
   if (!instance.isConnected) document.body.append(instance);
   if (state?.mediaUrl) URL.revokeObjectURL(state.mediaUrl);
   lastFocused = document.activeElement;
-
   const mode = cutModeForFile(file);
   const trimmed = trim && typeof trim === 'object' ? trim : null;
   state = {
@@ -412,16 +379,16 @@ export function openCutEditor({ file, trim, onApply } = {}) {
     mediaListeners: [],
     rangeListeners: [],
   };
-
   instance.dataset.mode = mode;
   refs.start.value = state.trimProvided ? formatTime(trimmed.start) : formatTime(0);
   refs.end.value = state.trimProvided ? formatTime(trimmed.end) : '';
-  refs.modeCopy.checked = trimmed?.mode !== CUT_MODES.PRECISE;
-  refs.modePrecise.checked = trimmed?.mode === CUT_MODES.PRECISE;
+  const mp3 = extensionOf(file) === 'mp3';
+  refs.modePrecise.disabled = mp3;
+  refs.modePrecise.checked = !mp3 && trimmed?.mode === CUT_MODES.PRECISE;
+  refs.modeCopy.checked = !refs.modePrecise.checked;
   setStatus('', 'info');
   setupPreview(file);
   updateSummary();
-
   if (!listening) {
     listening = true;
     document.addEventListener('keydown', onGlobalKeydown);
@@ -430,7 +397,6 @@ export function openCutEditor({ file, trim, onApply } = {}) {
   instance.showModal();
   refs.closeBtn?.focus?.();
 }
-
 export function mountCutButton({ container, ctx } = {}) {
   if (typeof document === 'undefined' || !ctx?.state) return null;
   const target = document.getElementById('actionOptions') || container;
@@ -480,7 +446,6 @@ export function mountCutButton({ container, ctx } = {}) {
   host.insertBefore(button, qs('.action-buttons', host) || null);
   return button;
 }
-
 export function closeCutEditor() {
   if (!dialog) return;
   if (!dialog.open) {

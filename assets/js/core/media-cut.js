@@ -4,10 +4,9 @@
 // Trim helpers shared by precise/copy conversion paths. The configuration is
 // deliberately normalized into a small, serializable shape: no decoders are
 // invoked here and no bytes are ever uploaded.
+import { mp3FrameRangeProof } from './mp3-cut.js';
 export const CUT_MODES = Object.freeze({ COPY: 'copy', PRECISE: 'precise' });
-
 const hex = (bytes) => Array.from(new Uint8Array(bytes), (value) => value.toString(16).padStart(2, '0')).join('');
-
 export function normalizeTrim(input, { duration = Infinity } = {}) {
   if (input === null || input === undefined) return null;
   const start = Number(input.start);
@@ -19,7 +18,6 @@ export function normalizeTrim(input, { duration = Infinity } = {}) {
   if (mode !== CUT_MODES.COPY && mode !== CUT_MODES.PRECISE) return null;
   return { start, end, mode };
 }
-
 export function conversionCutOptions(trim, baseCopy = {}) {
   const { start = 0, end = 0, mode = CUT_MODES.COPY } = trim || {};
   const modeOptions = mode === CUT_MODES.PRECISE
@@ -27,17 +25,16 @@ export function conversionCutOptions(trim, baseCopy = {}) {
     : { mode: 'forced', boundaryPolicy: 'shrink' };
   return { trim: { start, end }, copy: { ...baseCopy, ...modeOptions } };
 }
-
 export function expectedCutDuration(trim) {
   const normalized = normalizeTrim(trim);
   return normalized ? normalized.end - normalized.start : 0;
 }
-
-// Hash the encoded packets that actually fall inside a trim window. Like
-// mediaPacketProof this ignores absolute timestamps and track ids, so a
-// container rewrite that preserves the compressed samples still verifies.
 export async function mediaRangeProof(file, start, end) {
   try {
+    const head = new Uint8Array(await file.slice(0, 10).arrayBuffer());
+    const id3 = head[0] === 0x49 && head[1] === 0x44 && head[2] === 0x33;
+    const sync = head[0] === 0xff && (head[1] & 0xe0) === 0xe0;
+    if (id3 || sync) return await mp3FrameRangeProof(file, start, end);
     const {
       Input, ALL_FORMATS, BlobSource, EncodedPacketSink,
     } = await import('../../vendor/mediabunny.mjs');
