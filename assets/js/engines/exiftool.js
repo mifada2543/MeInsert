@@ -3,7 +3,7 @@
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { parseMetadata, writeMetadata, dispose as disposeExifTool } from '../../vendor/exiftool-wasm/index.js';
 import { AppError } from '../core/errors.js';
-import { createProgressFetch, decodeEngineResponse, engineRequestUrl } from '../ui/engine-loading.js';
+import { createProgressFetch, engineRequestUrl, readEngineResponse, resolveEngineUrl } from '../ui/engine-loading.js';
 function inWorker() {
   return typeof WorkerGlobalScope !== 'undefined'
     && typeof self !== 'undefined'
@@ -13,7 +13,7 @@ function postEngineProgress(payload) {
   if (!inWorker()) return;
   try {
     self.postMessage({ type: 'engine-progress', ...payload });
-  } catch { /* UI terbaik */ }
+  } catch {  }
 }
 let engineBytesPromise = null;
 let engineFetchFailed = false;
@@ -21,7 +21,16 @@ export function resetEngineFetchStateForTests() {
   engineBytesPromise = null;
   engineFetchFailed = false;
 }
-export function makeEngineFetch() {
+async function hasCachedGzip(url) {
+  try {
+    const response = await globalThis.caches?.match(resolveEngineUrl(url));
+    return Boolean(response?.ok);
+  } catch {
+    return false;
+  }
+}
+
+export function makeEngineFetch({ preferBrotli = inWorker() } = {}) {
   const progressFetch = createProgressFetch({
     onProgress: ({ loaded, total }) => postEngineProgress({ phase: 'downloading', loaded, total }),
   });
@@ -31,10 +40,20 @@ export function makeEngineFetch() {
       if (engineFetchFailed) throw new Error('ExifTool engine download already failed in this worker.');
       if (!engineBytesPromise) {
         engineBytesPromise = (async () => {
-          const response = await progressFetch(engineRequestUrl(url), init);
+          const gzipUrl = engineRequestUrl(url);
+          if (preferBrotli && gzipUrl.endsWith('.wasm.gz') && !await hasCachedGzip(gzipUrl)) {
+            try {
+              const response = await progressFetch(`${gzipUrl.slice(0, -3)}.br`, init);
+              if (!response.ok) throw new Error(`Brotli engine download failed (${response.status}).`);
+              return await readEngineResponse(response, { brotli: true });
+            } catch (error) {
+              if (init?.signal?.aborted) throw error;
+              postEngineProgress({ phase: 'loading' });
+            }
+          }
+          const response = await progressFetch(gzipUrl, init);
           if (!response.ok) throw new Error(`ExifTool engine download failed (${response.status}).`);
-          const decoded = await decodeEngineResponse(response);
-          return new Uint8Array(await decoded.arrayBuffer());
+          return readEngineResponse(response);
         })().catch((error) => {
           engineFetchFailed = true;
           engineBytesPromise = null;

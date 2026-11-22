@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { exiftoolBuild } from '../../assets/js/core/image-engine-build.js';
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { gzipSync, gunzipSync } from 'node:zlib';
@@ -15,7 +16,7 @@ import {
   isWasmBinary,
   noteEngineUrl,
 } from '../../assets/js/ui/engine-loading.js';
-const fixtureGzip = readFileSync(new URL('../../assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz', import.meta.url));
+const fixtureGzip = readFileSync(new URL(`../../assets/vendor/exiftool-wasm/${exiftoolBuild.name}.gz`, import.meta.url));
 const fixtureWasm = gunzipSync(fixtureGzip);
 const sampleWasm = () => fixtureWasm;
 import { friendlyMemoryError, isMemoryError } from '../../assets/js/core/worker-client.js';
@@ -84,16 +85,16 @@ test('createProgressFetch reports once and returns the original response when st
 });
 test('createProgressFetch resolves the vendor-relative URL to the same-origin WASM asset', async () => {
   const calls = stubFetch(new Response('ok', { headers: { 'content-type': 'application/gzip' } }));
-  const result = await createProgressFetch()('./zeroperl-twnm61dk.wasm.gz');
+  const result = await createProgressFetch()(`./${exiftoolBuild.name}.gz`);
   const requested = new URL(calls[0].url);
-  assert.match(requested.pathname, /\/vendor\/exiftool-wasm\/zeroperl-twnm61dk\.wasm\.gz$/);
+  assert.ok(requested.pathname.endsWith(`/vendor/exiftool-wasm/${exiftoolBuild.name}.gz`));
   assert.ok(['file:', 'http:', 'https:'].includes(requested.protocol));
   assert.equal(result.headers.get('content-type'), 'application/gzip');
 });
 test('engineWasmUrl points at the gzip WASM asset without an external origin', () => {
   const url = new URL(engineWasmUrl());
   assert.ok(['file:', 'http:', 'https:'].includes(url.protocol));
-  assert.match(url.pathname, /\/vendor\/exiftool-wasm\/zeroperl-twnm61dk\.wasm\.gz$/);
+  assert.ok(url.pathname.endsWith(`/vendor/exiftool-wasm/${exiftoolBuild.name}.gz`));
 });
 test('friendlyMemoryError marks RangeError with both friendly keys and preserves code/detail', () => {
   const source = new RangeError('Invalid array length');
@@ -115,8 +116,8 @@ test('friendlyMemoryError leaves ordinary errors untouched', () => {
   assert.equal(friendlyMemoryError(source), source);
 });
 test('engineRequestUrl maps only the vendored WASM to its gzip build', () => {
-  assert.equal(engineRequestUrl('./zeroperl-twnm61dk.wasm'), './zeroperl-twnm61dk.wasm.gz');
-  assert.equal(engineRequestUrl('./zeroperl-twnm61dk.wasm.gz'), './zeroperl-twnm61dk.wasm.gz');
+  assert.equal(engineRequestUrl(`./${exiftoolBuild.name}`), `./${exiftoolBuild.name}.gz`);
+  assert.equal(engineRequestUrl(`./${exiftoolBuild.name}.gz`), `./${exiftoolBuild.name}.gz`);
   assert.equal(engineRequestUrl('./another.wasm'), './another.wasm');
 });
 test('magic-byte helpers recognise WASM and gzip binaries', () => {
@@ -179,8 +180,8 @@ test('decodeEngineBytes refuses more than two gzip layers', async () => {
   await assert.rejects(() => decodeEngineBytes(triple), /gzip|WASM/i);
 });
 test('noteEngineUrl records the gzip build so offline prefetch stays compressed', () => {
-  noteEngineUrl('./zeroperl-twnm61dk.wasm.gz');
-  assert.match(engineWasmUrl(), /zeroperl-twnm61dk\.wasm\.gz$/);
+  noteEngineUrl(`./${exiftoolBuild.name}.gz`);
+  assert.ok(engineWasmUrl().endsWith(`/${exiftoolBuild.name}.gz`));
 });
 test('rejects a valid WASM header with an incorrect binary size', async () => {
   await assert.rejects(() => decodeEngineBytes(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0, 255)), /size mismatch/i);

@@ -3,6 +3,9 @@
 # reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2
 AddType text/javascript .js .mjs
 AddType application/wasm .wasm
+AddType application/gzip .gz
+AddType application/wasm .br
+AddEncoding br .br
 AddType application/manifest+json .webmanifest
 AddType application/json .json
 AddType font/woff2 .woff2
@@ -30,6 +33,12 @@ AddDefaultCharset UTF-8
   </FilesMatch>
   <FilesMatch "\.(woff2|png|wasm)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^zeroperl-[a-f0-9]+[.]wasm[.](gz|br)$">
+    Header set Cache-Control "public, max-age=31536000, immutable, no-transform"
+  </FilesMatch>
+  <FilesMatch "^zeroperl-[a-f0-9]+[.]wasm[.]br$">
+    Header merge Vary Accept-Encoding
   </FilesMatch>
   Header set X-Content-Type-Options "nosniff"
 </IfModule>

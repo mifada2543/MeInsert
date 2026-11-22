@@ -1,14 +1,15 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-/* MeInsert service worker.*/
-// The shell and the optional engines use separate caches: bumping the shell
-// must never throw away engines the user already downloaded. ENGINE_VERSION is
-// mirrored by core/build.js (this worker is a classic script, so it cannot use
-// a static import); tests/unit/service-worker-update.test.js keeps them in sync.
-const CACHE_VERSION = 'meinsert-v70';
-const ENGINE_VERSION = 'meinsert-engine-v2';
+
+
+
+
+
+const CACHE_VERSION = 'meinsert-v71';
+const ENGINE_VERSION = 'meinsert-engine-v3';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
+const BROTLI_WASM_URL = './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.br';
 const INSTALL_FETCH_TIMEOUT_MS = 15_000;
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
@@ -40,6 +41,7 @@ const SHELL_URLS = [
   './assets/js/core/errors.js',
   './assets/js/core/format-map.js',
   './assets/js/core/format-capabilities.js',
+  './assets/js/core/image-engine-build.js',
   './assets/js/core/history.js',
   './assets/js/core/image-utils.js',
   './assets/js/core/integrity-rules.js',
@@ -140,7 +142,8 @@ const KNOWN_OPTIONAL_URLS = Object.freeze([
   './assets/js/core/id3-passthrough.js',
   './assets/js/core/mp3-cut.js',
   './assets/vendor/exiftool-wasm/index.js',
-  './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
+  './assets/vendor/brotli-decode.mjs',
+  './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.gz',
   './assets/js/workers/exiftool.worker.js',
   './assets/js/formats/image.js',
   './assets/js/formats/mp4.js',
@@ -182,10 +185,12 @@ async function migrateLegacyCache() {
     let pathname = null;
     try { pathname = new URL(request.url).pathname; } catch { return; }
     if (shell.has(pathname)) return;
+    if (!optionalPathSet().has(pathname) || pathname.includes('/exiftool-wasm/')
+        || pathname.endsWith('/engines/exiftool.js')) return;
     try {
       const response = await legacy.match(request);
       if (response) await engine.put(request, response.clone());
-    } catch { /* best-effort migration */ }
+    } catch {  }
   }));
 }
 async function precacheShellUrl(cache, url) {
@@ -216,17 +221,17 @@ self.addEventListener('install', (event) => {
 });
 async function migrateRawWasmCache() {
   const cache = await caches.open(ENGINE_VERSION);
-  const raw = new URL('./assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm', self.registration.scope).href;
+  const raw = new URL('./assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm', self.registration.scope).href;
   const compressed = `${raw}.gz`;
   try {
     const legacy = await cache.match(raw);
     if (!legacy) return;
     if (!legacy.ok || typeof globalThis.crypto?.subtle?.digest !== 'function') return;
     const bytes = await legacy.arrayBuffer();
-    if (bytes.byteLength !== 27_651_111) return;
+    if (bytes.byteLength !== 23_243_763) return;
     const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
     const hex = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
-    if (hex !== 'f854cbb7b6b014d2816a89428fcb217162bb0d7e65f2078f3bbd4b72eaa412ce') return;
+    if (hex !== '522d094a89cc0a547035def27e7f8726604e57841a2c899b0fb239f3045b75da') return;
     const canCompress = typeof globalThis.CompressionStream === 'function';
     const body = canCompress ? new Response(bytes).body.pipeThrough(new CompressionStream('gzip')) : bytes;
     await cache.put(compressed, new Response(body, { headers: {
@@ -234,11 +239,46 @@ async function migrateRawWasmCache() {
       [ENGINE_HEADER]: ENGINE_VERSION,
     } }));
     await cache.delete(raw);
-  } catch { /* Keep the old entry if migration fails; never block activation. */ }
+  } catch {  }
+}
+async function migratePreviousEngineCache() {
+  const previous = 'meinsert-engine-v2';
+  if (!(await caches.keys()).includes(previous)) return;
+  const legacy = await caches.open(previous);
+  const current = await caches.open(ENGINE_VERSION);
+  const allowed = optionalPathSet();
+  const oldWasm = new URL('./assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz', self.registration.scope).href;
+  await Promise.all((await legacy.keys()).map(async (request) => {
+    const url = new URL(request.url);
+    if (!isSameOrigin(url.href) || !allowed.has(url.pathname) || url.search
+        || url.pathname.includes('/exiftool-wasm/') || url.pathname.endsWith('/engines/exiftool.js')) return;
+    try {
+      const cached = await legacy.match(request);
+      if (!cached?.ok) return;
+      const headers = new Headers(cached.headers);
+      headers.set(ENGINE_HEADER, ENGINE_VERSION);
+      await current.put(request, new Response(cached.body, { status: cached.status, headers }));
+    } catch {  }
+  }));
+  if (!(await legacy.match(oldWasm)) && !(await legacy.match(oldWasm.slice(0, -3)))) return;
+  
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), INSTALL_FETCH_TIMEOUT_MS);
+  try {
+    await Promise.allSettled([
+      './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.gz',
+      './assets/vendor/exiftool-wasm/index.js',
+      './assets/vendor/brotli-decode.mjs',
+      './assets/js/engines/exiftool.js',
+    ].map((path) => fetchAndStore(current, new URL(path, self.registration.scope).href, controller.signal)));
+  } finally {
+    clearTimeout(timer);
+  }
 }
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     await migrateLegacyCache();
+    await migratePreviousEngineCache();
     await migrateRawWasmCache();
     const keys = await caches.keys();
     await Promise.all(keys
@@ -248,7 +288,7 @@ self.addEventListener('activate', (event) => {
   })());
 });
 function isCacheableAsset(pathname) {
-  return /\.(css|js|mjs|wasm|gz|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
+  return /\.(css|js|mjs|wasm|gz|br|woff2|png|jpg|jpeg|webp|tif|tiff|json|svg|ico)$/i.test(pathname);
 }
 async function networkFirst(event) {
   const { request } = event;
@@ -274,7 +314,9 @@ async function networkFirst(event) {
 }
 async function cacheFirst(request) {
   const cache = await caches.open(isShellRequest(request) ? CACHE_VERSION : ENGINE_VERSION);
-  const optional = !isShellRequest(request) && optionalPathSet().has(new URL(request.url).pathname) && !new URL(request.url).search;
+  const { pathname, search } = new URL(request.url);
+  const brotli = pathname === new URL(BROTLI_WASM_URL, self.registration.scope).pathname;
+  const optional = !isShellRequest(request) && (optionalPathSet().has(pathname) || brotli) && !search;
   if (optional) {
     const absolute = request.url;
     const existing = await cachedOptionalResponse(cache, absolute);
@@ -344,7 +386,7 @@ async function cachedOptionalResponse(cache, absolute) {
   try {
     const response = await cache.match(absolute);
     if (response && response.ok && (!response.headers.has(ENGINE_HEADER) || response.headers.get(ENGINE_HEADER) === ENGINE_VERSION)) return response;
-  } catch { /* a corrupt cache entry must trigger a fresh fetch */ }
+  } catch {  }
   return null;
 }
 async function fetchAndStore(cache, absolute, signal, progress = () => {}) {
@@ -360,8 +402,9 @@ async function fetchAndStore(cache, absolute, signal, progress = () => {}) {
       if (declared > MAX_OPTIONAL_BYTES) throw new Error('optional asset exceeds the size limit');
       const headers = new Headers(response.headers);
       headers.set(ENGINE_HEADER, ENGINE_VERSION);
+      
+      if (headers.has('content-encoding')) headers.delete('content-length');
       headers.delete('content-encoding');
-      headers.delete('content-length');
       const reader = response.body.getReader();
       const stream = new ReadableStream({
         async pull(target) {
@@ -423,7 +466,7 @@ async function cacheOptional(event) {
         if (url.protocol === 'http:' || url.protocol === 'https:') {
           if (url.origin === self.location.origin && optionalPathSet().has(url.pathname) && !url.search && !url.hash) absolute = url.href;
         }
-      } catch { /* invalid URL — reject the whole job */ }
+      } catch {  }
     }
     if (!absolute) {
       failJob(event, 'invalid_urls', jobId);

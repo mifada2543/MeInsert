@@ -134,15 +134,30 @@ metadata/preview parts with actual-byte decompression budgets).
 `exiftool.js` wraps the vendored ExifTool WASM runtime (`readTags`,
 `writeTags`, `disposeExifToolRuntime`). Other engines are reached through the
 vendored libraries loaded inside the workers (Mediabunny, pdf-lib,
-browser-id3-writer, fflate). Only the gzip build of the ExifTool engine is
-vendored (`zeroperl-twnm61dk.wasm.gz`): `ui/engine-loading.js` redirects the
-runtime's `.wasm` request to it and decompresses the bytes with
-`DecompressionStream('gzip')`, falling back to the vendored `fflate.gunzipSync()`
-on browsers without that API. The service worker caches and reuses the
-compressed response, while the offline byte estimate still describes the
-uncompressed size held in that cache. `npm run vendor` regenerates the gzip
-from the pinned dependency and `npm run check:assets` verifies its expanded
-size and SHA-256.
+browser-id3-writer, fflate). The ExifTool worker fetches the content-hashed
+Brotli asset on the first image operation (3,638,320 bytes). On hosts that send
+`Content-Encoding: br`, Fetch expands the response. On static hosts that serve
+the original bytes, the worker uses native Brotli where available or a bundled
+JavaScript decoder after checking the compressed SHA-256. Both paths check the
+expanded WASM length and SHA-256. If Brotli fails, the worker uses the gzip
+asset (5,846,892 bytes) and decodes it with `DecompressionStream('gzip')` or
+vendored fflate. The request, decompression and metadata work stay local.
+
+The explicit image offline pack caches gzip for portability. A worker reuses a
+cached gzip pack before fetching Brotli. The PWA can also reuse its on-demand
+Brotli cache. Cache Storage holds the bytes exposed by Fetch, so when the host
+sends HTTP Content-Encoding, the cached Brotli response body is already expanded.
+
+To reproduce the assets, run `npm ci`, then `npm run vendor` with Node 24.22.3.
+The build checks the pinned upstream hash, rewrites the embedded Perl file
+table, strips POD from retained ExifTool source, and optimizes with Binaryen 125
+(`-Oz --strip-debug`, bulk memory, sign extension and nontrapping float-to-int).
+The upstream already contains no custom/debug sections. The shared tag table
+keeps stable indexes, with entries for removed modules skipped. The build
+writes gzip level 9, Brotli level 11 with a 24-bit window, and
+`core/image-engine-build.js`. If upgrading the pinned upstream version, audit
+the VFS layout. The build synchronizes the service worker pins.
+`npm run check:assets` checks the WASM signature, sizes, SHA-256 and asset paths.
 
 ### `assets/js/workers/**` — off-main-thread execution
 
@@ -293,7 +308,7 @@ assembles a ZIP and JSON/CSV report instead of a single download.
 caches**:
 
 - **Shell cache** (`CACHE_VERSION`, e.g. `meinsert-v52`) holds the always-needed
-  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v2`) holds
+  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v3`) holds
   the optional format engines downloaded on demand. Separating them means a
   shell update never discards engines the user already paid to download, and
   clearing optional engines never removes shell assets. The two version markers

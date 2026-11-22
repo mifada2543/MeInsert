@@ -1,7 +1,8 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
-// Single source of truth for what MeInsert can edit. The landing page renders
+import { exiftoolBuild } from './image-engine-build.js';
+
 export const FORMAT_CAPABILITIES = [
   { id: 'jpg', label: 'JPG', group: 'image', status: 'full', offlineFeature: 'image', chip: true },
   { id: 'png', label: 'PNG', group: 'image', status: 'full', offlineFeature: 'image', chip: true },
@@ -77,11 +78,12 @@ export const OFFLINE_FEATURES = [
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 9_391_805,
+    bytes: 1_185_124 + exiftoolBuild.gzipBytes,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
+      './assets/vendor/brotli-decode.mjs',
       './assets/vendor/fflate.mjs',
-      './assets/vendor/exiftool-wasm/zeroperl-twnm61dk.wasm.gz',
+      `./assets/vendor/exiftool-wasm/${exiftoolBuild.name}.gz`,
       './assets/js/workers/exiftool.worker.js',
       './assets/js/formats/image.js',
       './assets/js/formats/mp4.js',

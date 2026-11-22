@@ -391,8 +391,6 @@ export async function read(file, options = {}) {
   };
 }
 export async function write(file, payload, options = {}, report = () => {}) {
-  const { writeTags, readTags } = await import('../engines/exiftool.js');
-  const safeFile = withSafeName(file, options.extension);
   const tags = buildTagMap(payload, options.subtype);
   const engineTags = {};
   for (const [key, value] of Object.entries(tags)) {
@@ -401,6 +399,8 @@ export async function write(file, payload, options = {}, report = () => {}) {
   if (!Object.keys(engineTags).length) {
     throw new AppError('NO_CHANGES', 'Tidak ada metadata yang perlu ditulis.');
   }
+  const { writeTags, readTags } = await import('../engines/exiftool.js');
+  const safeFile = withSafeName(file, options.extension);
   report({ stage: 'Menulis metadata ke gambar…', pct: 35 });
   let bytes;
   try {
