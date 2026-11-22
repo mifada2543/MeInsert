@@ -128,9 +128,10 @@ is authoritative for each file. These are the known caveats:
 
 ### HEIC/HEIF
 
-- Metadata is written to **XMP on a best-effort basis**. The HEIF container and
-  its encoded pixels are not rewritten, so EXIF-only readers may not show the
-  fields. Unsupported tags are not guaranteed to survive.
+- Only **XMP tag writes are requested** (including `XMP-exif` GPS). ExifTool may
+  still rewrite container structures; pixel-byte preservation is **not proven**
+  for every HEIF variant. EXIF-only readers may not show these fields.
+  Unsupported tags are not guaranteed to survive.
 - The preview is a **placeholder**: browsers do not decode HEIC/HEIF natively.
   It identifies the file type; it is not a rendering of the photo.
 - The output is read back and verified like other image files, but the
@@ -139,9 +140,15 @@ is authoritative for each file. These are the known caveats:
 ### RAW images
 
 - Supported still-RAW subtypes: DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF.
-- **XMP-only, best-effort**: only the XMP packet is patched. Binary EXIF, maker
-  notes, and raw sensor data are never decoded or modified; EXIF-only readers
-  may not show the fields.
+- **XMP-only tag policy, best-effort**: MeInsert only requests `XMP-*` writes;
+  it rejects non-XMP custom/raw operations rather than claiming they succeeded.
+  The ExifTool engine may still repack container bytes. Preservation of RAW sensor
+  data, maker notes, and image offsets is **not independently proven across these
+  formats**, and EXIF-only readers may not show edited fields.
+- TIFF-based RAW whose exact subtype is not supported by a recognizable header
+  signature is inferred from the filename **with an explicit warning**; a plain
+  TIFF renamed `.nef` is not considered positively identified as Nikon RAW.
+  Verify the source format before writing.
 - The preview is a **placeholder** because there is no raw decoder in the
   browser. It does not represent the actual image.
 - **Chapters and offsets:** CinemaDNG inside MOV/MKV is not handled here. Those

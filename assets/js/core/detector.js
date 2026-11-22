@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { t } from '../i18n/index.js';
 import { fileExtension } from './tag-utils.js';
 import { readZipDirectoryFromBlob } from './zip-directory.js';
 const EXTENSIONS = {
@@ -47,6 +48,7 @@ const EXTENSIONS = {
   odp: { id: 'office', subtype: 'odp', label: 'ODP', mime: 'application/vnd.oasis.opendocument.presentation' },
 };
 const RAW_IMAGE_SUBTYPES = new Set(['heic', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf']);
+const TIFF_BASED_RAW = new Set(['dng', 'cr2', 'nef', 'arw', 'orf', 'rw2', 'raf']);
 function ascii(bytes, start, length) {
   return String.fromCharCode(...bytes.slice(start, start + length));
 }
@@ -61,7 +63,41 @@ function sniffMp4Brand(bytes) {
   return { id: 'mp4', subtype: 'mp4', label: 'MP4', mime: 'video/mp4' };
 }
 const MXF_MAGIC = [0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x01, 0x02, 0x04];
+function hasTiffMagic(bytes) {
+  return bytes.length >= 4 && ((ascii(bytes, 0, 4) === 'II*\x00')
+    || (ascii(bytes, 0, 4) === 'MM\x00*'));
+}
+function sniffTiffRaw(bytes) {
+  if (!hasTiffMagic(bytes)) return null;
+  const subtype = ascii(bytes, 8, 4) === 'CR\x02\x00' ? 'cr2' : null;
+  if (subtype) return { id: 'image', subtype, label: 'CR2', mime: 'image/x-cr2' };
+  if (bytes.length < 16) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const little = bytes[0] === 0x49;
+  const ifd = view.getUint32(4, little);
+  if (ifd < 8 || ifd + 2 > bytes.length) return null;
+  const count = view.getUint16(ifd, little);
+  if (count > 128 || ifd + 2 + count * 12 > bytes.length) return null;
+  for (let i = 0; i < count; i += 1) {
+    if (view.getUint16(ifd + 2 + i * 12, little) === 0xc612) {
+      return { id: 'image', subtype: 'dng', label: 'DNG', mime: 'image/x-dng' };
+    }
+  }
+  return null;
+}
 function sniffRaw(bytes) {
+  const tiffRaw = sniffTiffRaw(bytes);
+  if (tiffRaw) return tiffRaw;
+  if (bytes.length >= 15 && ascii(bytes, 0, 15) === 'FUJIFILMCCD-RAW') {
+    return { id: 'image', subtype: 'raf', label: 'RAF', mime: 'image/x-raf' };
+  }
+  if (bytes.length >= 4 && (ascii(bytes, 0, 4) === 'IIRO' || ascii(bytes, 0, 4) === 'IIRS')) {
+    return { id: 'image', subtype: 'orf', label: 'ORF', mime: 'image/x-orf' };
+  }
+  if (bytes.length >= 4 && ascii(bytes, 0, 4) === 'IIU\x00') {
+    return { id: 'image', subtype: 'rw2', label: 'RW2', mime: 'image/x-rw2' };
+  }
+
   if (bytes.length >= 3 && ascii(bytes, 0, 3) === 'R3D') {
     return { id: 'rawVideo', subtype: 'r3d', label: 'R3D', mime: 'video/x-r3d' };
   }
@@ -180,7 +216,9 @@ function sniff(bytes, zipInfo = null) {
   if (bytes.length >= 12 && ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 4) === 'WEBP') {
     return { id: 'image', subtype: 'webp', label: 'WebP', mime: 'image/webp' };
   }
-  if (bytes.length >= 4 && ((bytes[0] === 0x49 && bytes[1] === 0x49 && bytes[2] === 0x2a && bytes[3] === 0x00) || (bytes[0] === 0x4d && bytes[1] === 0x4d && bytes[2] === 0x00 && bytes[3] === 0x2a))) {
+  const raw = sniffRaw(bytes);
+  if (raw) return raw;
+  if (hasTiffMagic(bytes)) {
     return { id: 'image', subtype: 'tiff', label: 'TIFF', mime: 'image/tiff' };
   }
   if (bytes.length >= 5 && ascii(bytes, 0, 5) === '%PDF-') {
@@ -199,8 +237,6 @@ function sniff(bytes, zipInfo = null) {
   if (ebml) return ebml;
   const mp4 = sniffMp4Brand(bytes);
   if (mp4) return mp4;
-  const raw = sniffRaw(bytes);
-  if (raw) return raw;
   const ogg = sniffOgg(bytes);
   if (ogg) return ogg;
   const zip = sniffZip(bytes, zipInfo);
@@ -214,7 +250,7 @@ function extensionMatches(ext, byExt, byMagic) {
   if ((ext === 'ogg' || ext === 'oga') && byMagic.id === 'ogg') return true;
   if ((ext === 'mp4' || ext === 'm4v') && byMagic.id === 'mp4') return true;
   if (byExt.id === 'image' && RAW_IMAGE_SUBTYPES.has(byExt.subtype)
-      && (byMagic.subtype === 'tiff' || RAW_IMAGE_SUBTYPES.has(byMagic.subtype))) return true;
+      && RAW_IMAGE_SUBTYPES.has(byMagic.subtype)) return byExt.subtype === byMagic.subtype;
   return false;
 }
 const EXT_BY_SUBTYPE = {
@@ -276,9 +312,12 @@ export async function detectFile(file) {
   const byExt = EXTENSIONS[ext];
   if (byMagic) {
     const actualExt = EXT_BY_SUBTYPE[byMagic.subtype] || ext || 'bin';
-    if (byExt?.id === 'image' && RAW_IMAGE_SUBTYPES.has(byExt.subtype)
+    if (byExt?.id === 'image' && TIFF_BASED_RAW.has(byExt.subtype)
         && byMagic.id === 'image' && byMagic.subtype === 'tiff') {
-      return { ...byExt, ext };
+      return {
+        ...byExt, ext,
+        warning: t('ui.rawUncertain', { v0: ext }),
+      };
     }
     if (byExt && !extensionMatches(ext, byExt, byMagic)) {
       return {

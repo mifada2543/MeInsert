@@ -2,6 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 /* Kategori metadata sensitif untuk fitur "Bersihkan Metadata" */
+import { isXmpOnlyImageSubtype } from './tag-utils.js';
 export const CLEAN_CATEGORIES = ['location', 'device', 'identity', 'software', 'thumbnail', 'history'];
 export const CLEAN_PROFILE_CATEGORIES = {
   privacy: ['location', 'device', 'identity', 'software', 'thumbnail', 'history'],
@@ -239,6 +240,7 @@ function selectedSet(selectedCategories) {
 export function buildCleanPayload(snapshot, selectedCategories) {
   const selected = selectedSet(selectedCategories);
   const formatId = snapshot?.format?.id || '';
+  const xmpOnly = formatId === 'image' && isXmpOnlyImageSubtype(snapshot?.format?.subtype);
   const payload = { set: {}, remove: [], custom: [], customRemove: [], rawRemove: [], cover: null };
   const removedFields = new Set();
   const removedRaw = new Set();
@@ -254,6 +256,7 @@ export function buildCleanPayload(snapshot, selectedCategories) {
   }
   for (const row of snapshot?.raw || []) {
     if (!row?.tag || !row.value) continue;
+    if (xmpOnly && !/^XMP[-.]/i.test(row.tag)) continue;
     const canonical = normalizeTagText(row.tag);
     if (!canonical || removedRaw.has(canonical)) continue;
     const category = rowCategory(formatId, row);
@@ -264,6 +267,7 @@ export function buildCleanPayload(snapshot, selectedCategories) {
   }
   for (const row of snapshot?.custom || []) {
     if (!row?.key || !row.value) continue;
+    if (xmpOnly && !/^XMP[-.]/i.test(row.key)) continue;
     const canonical = row.canonicalKey || normalizeTagText(row.key);
     if (removedCustom.has(canonical)) continue;
     const category = customKeyCategory(formatId, row);

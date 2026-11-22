@@ -27,7 +27,7 @@ test('stream progress precedes cache completion and lazy cache is reused', async
   assert.equal(await first, 4);
   assert.equal(await second, 4);
   assert.equal(calls, 1);
-  assert.equal((await context.api.cacheFirst({ url })).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v1');
+  assert.equal((await context.api.cacheFirst({ url })).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v2');
   assert.equal(calls, 1);
   entries.set(url, new Response('legacy cached engine'));
   assert.ok(await context.api.cachedOptionalResponse(cache, url));
@@ -50,7 +50,7 @@ test('legacy pinned raw WASM is migrated to the gzip URL without a network reque
   await context.migrate();
   assert.equal(entries.has(url), false);
   assert.ok(gunzipSync(Buffer.from(await entries.get(`${url}.gz`).arrayBuffer())).equals(raw));
-  assert.equal(entries.get(`${url}.gz`).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v1');
+  assert.equal(entries.get(`${url}.gz`).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v2');
   await context.migrate();
   assert.equal(entries.size, 1);
   entries.clear();

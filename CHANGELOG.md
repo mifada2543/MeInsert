@@ -10,11 +10,25 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## Daftar isi
 
+- [Unreleased — v1.6 experiment reliability patch](#unreleased--v16-experiment-reliability-patch)
 - [1.6.0 — 2026-11-22](#160--2026-11-22)
 - [1.5.0 — 2026-11-21](#150--2026-11-21)
 - [1.4.1 — 2026-11-21](#141--2026-11-21)
 - [1.4.0 — 2026-11-21](#140--2026-11-21)
 - [1.3.0 — 2026-11-18](#130--2026-11-18)
+
+## [Unreleased] — v1.6 experiment reliability patch
+
+- GPS altitude now round-trips signed values via `GPSAltitudeRef` for EXIF and
+  XMP; invalid decimal coordinates are rejected before writing.
+- RAW/HEIC (also PNG/WebP) request XMP tags only, including GPS; non-XMP custom
+  tag writes/removals are rejected explicitly rather than silently applied.
+- Ambiguous TIFF-based RAW detection includes an explicit uncertainty warning;
+  DNGVersion/CR2 and select RAW signatures are recognized from content.
+- Added real ExifTool GPS round-trip regression tests and clarified remaining
+  limitations: RAW/HEIF container/pixel byte preservation is not proven.
+- Bumped shell cache to `meinsert-v70` and optional engine cache to
+  `meinsert-engine-v2` so existing PWA installs cannot retain stale `image.js`.
 
 ## [1.6.0] — 2026-11-22
 

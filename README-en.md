@@ -88,14 +88,19 @@ so other unsupported tags are not guaranteed to survive.
 
 ### Format HEIC, RAW, dan RAW video
 
-- **HEIC / HEIF** — metadata is written to XMP on a *best-effort* basis. The
-  preview uses a placeholder because browsers do not render the format natively.
+- **HEIC / HEIF** — only XMP tags are requested on a *best-effort* basis.
+  The engine may still rewrite container structures. The preview uses a placeholder because browsers do not render the format natively.
 - **RAW images** (DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF) — **XMP-only**
-  (*best-effort*) with a placeholder preview. Raw sensor data is never decoded
-  or modified.
+  (*best-effort*) with a placeholder preview. Only XMP tags are requested;
+  the engine may still repack RAW containers, so full sensor/maker-note byte
+  preservation is not guaranteed without real-format verification.
 - **RAW video** (BRAW, R3D, ARRIRAW) — **read-only**: metadata can be read, but
   the file cannot be saved; the save guard rejects writes. The preview is also a
   placeholder.
+
+Invalid GPS coordinates are rejected; negative altitude is stored with a
+*Below Sea Level* reference. TIFF-based RAW inferred from filename alone is
+marked with an explicit uncertainty warning.
 
 CinemaDNG inside MOV/MKV containers keeps using the `mp4`/`mkv` adapters, not the
 RAW adapter. Every flow still runs on your device and works offline once cached;

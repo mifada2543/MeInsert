@@ -4,5 +4,5 @@
 // The build marker of the page. It must equal CACHE_VERSION (the shell cache)
 // in sw.js; the manifest test enforces that, because the service worker uses
 // the same value to answer a version probe.
-export const CURRENT_VERSION = 'meinsert-v65';
-export const ENGINE_VERSION = 'meinsert-engine-v1';
+export const CURRENT_VERSION = 'meinsert-v70';
+export const ENGINE_VERSION = 'meinsert-engine-v2';

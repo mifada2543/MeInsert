@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { bindTranslation, t } from '../i18n/index.js';
-import { asArray, asString, validateCustomKey } from '../core/tag-utils.js';
+import { asArray, asString, isXmpOnlyImageSubtype, validateCustomKey } from '../core/tag-utils.js';
 import { canRedo, canUndo } from '../core/history.js';
 import { PDF_STANDARD_KEYS, cloneSidecar, cloneTrim } from './editor-state.js';
 import { setEditingNavigation, singleEditing } from '../ui/editing-navigation.js';
@@ -18,6 +18,8 @@ export function collectChanges(state, { validate = false } = {}) {
   const fields = typeof state.adapter.fieldsFor === 'function'
     ? state.adapter.fieldsFor(state.detection.subtype)
     : (state.adapter?.fields || []);
+  const xmpOnlyImage = validate && state.adapter?.meta?.id === 'image'
+    && isXmpOnlyImageSubtype(state.detection?.subtype);
   for (const field of fields) {
     const original = asString(state.originalValues[field.id]).trim();
     if (state.removedFields.has(field.id)) {
@@ -46,6 +48,9 @@ export function collectChanges(state, { validate = false } = {}) {
     if (validate) {
       const keyError = validateCustomKey(key);
       if (keyError) errors.push(`Tag "${key}": ${keyError}`);
+      if (xmpOnlyImage && !/^XMP[-.]/i.test(key)) {
+        errors.push(t('ui.unsupportedTagWrite', { v0: key }));
+      }
       if (state.adapter.meta.id === 'pdf' && PDF_STANDARD_KEYS.has(key)) {
         errors.push(`Key "${key}" adalah metadata standar PDF. Gunakan field yang tersedia.`);
       }
@@ -82,6 +87,11 @@ export function collectChanges(state, { validate = false } = {}) {
       };
   const coverCount = cover ? 1 : 0;
   const rawRemove = [...state.rawRemove];
+  if (xmpOnlyImage) {
+    for (const name of new Set([...customRemove, ...rawRemove].map((key) => asString(key).trim()).filter(Boolean))) {
+      if (!/^XMP[-.]/i.test(name)) errors.push(t('ui.unsupportedTagRemove', { v0: name }));
+    }
+  }
   const sidecar = cloneSidecar(state.sidecar);
   const sidecarCount = sidecar ? 1 : 0;
   const trim = cloneTrim(state.trim);

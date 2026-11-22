@@ -293,7 +293,7 @@ assembles a ZIP and JSON/CSV report instead of a single download.
 caches**:
 
 - **Shell cache** (`CACHE_VERSION`, e.g. `meinsert-v52`) holds the always-needed
-  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v1`) holds
+  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v2`) holds
   the optional format engines downloaded on demand. Separating them means a
   shell update never discards engines the user already paid to download, and
   clearing optional engines never removes shell assets. The two version markers

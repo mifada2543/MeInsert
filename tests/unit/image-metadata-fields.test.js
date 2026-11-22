@@ -104,8 +104,9 @@ test('buildTagMap writes GPS as degree/minute/second plus references', () => {
     set: { gpsLatitude: '6.3', gpsLongitude: '-106.9' },
     remove: [],
   }, 'heic');
-  assert.equal(clean['GPS:GPSLatitudeRef'], 'N');
-  assert.equal(clean['GPS:GPSLongitudeRef'], 'W');
+  assert.match(clean['XMP-exif:GPSLatitude'], /N$/);
+  assert.match(clean['XMP-exif:GPSLongitude'], /W$/);
+  assert.equal(Object.keys(clean).some((key) => key.startsWith('GPS:')), false);
 });
 test('buildTagMap writes IPTC/XMP fields and RAW writes stay XMP-only', () => {
   const tags = buildTagMap({

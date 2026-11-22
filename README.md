@@ -88,14 +88,20 @@ ditulis, sehingga tag lain yang tidak didukung tidak dijamin tetap utuh.
 
 ### Format HEIC, RAW, dan RAW video
 
-- **HEIC / HEIF** — metadata ditulis ke XMP secara *best-effort*. Pratinjau
+- **HEIC / HEIF** — hanya tag XMP diminta untuk ditulis secara *best-effort*.
+  Struktur kontainer masih bisa berubah saat penulisan. Pratinjau
   memakai placeholder karena browser tidak merender format ini secara native.
 - **Gambar RAW** (DNG, CR2, CR3, NEF, ARW, ORF, RW2, RAF) — **XMP-only**
-  (*best-effort*) dengan pratinjau placeholder. Data sensor mentah tidak
-  di-decode atau diubah.
+  (*best-effort*) dengan pratinjau placeholder. Hanya tag XMP yang diminta
+  untuk ditulis; engine dapat mengemas ulang kontainer RAW, sehingga preservasi
+  semua data sensor/maker notes belum dijamin tanpa uji format asli.
 - **Video RAW** (BRAW, R3D, ARRIRAW) — **read-only**: metadata dapat dibaca,
   tetapi berkas tidak bisa disimpan; guard save menolak penulisan. Pratinjau
   juga berupa placeholder.
+
+Koordinat GPS yang tidak valid ditolak. Altitude negatif disimpan memakai
+referensi *Below Sea Level*. Untuk RAW berbasis TIFF yang hanya dikenali dari
+ekstensi, aplikasi menampilkan peringatan bahwa identitas format belum pasti.
 
 CinemaDNG di dalam kontainer MOV/MKV tetap memakai adapter `mp4`/`mkv`, bukan
 adapter RAW. Semua alur tetap berjalan di perangkat Anda dan berfungsi offline

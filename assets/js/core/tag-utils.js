@@ -1,6 +1,12 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — AGPLv3 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+const XMP_ONLY_IMAGE_SUBTYPES = new Set([
+  'png', 'webp', 'heic', 'heif', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf',
+]);
+export function isXmpOnlyImageSubtype(subtype) {
+  return XMP_ONLY_IMAGE_SUBTYPES.has(String(subtype || '').toLowerCase());
+}
 export function asString(value) {
   if (value === undefined || value === null) return '';
   if (Array.isArray(value)) return value.map(asString).filter(Boolean).join(', ');

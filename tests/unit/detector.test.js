@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { detectFile } from '../../assets/js/core/detector.js';
 import { strToU8, zipSync } from '../../assets/vendor/fflate.mjs';
+import { t } from '../../assets/js/i18n/index.js';
 function bytes(head, size = 128) {
   const out = new Uint8Array(size);
   out.set(head);
@@ -98,7 +99,7 @@ test('mendeteksi DNG dari ekstensi dengan magic TIFF', async () => {
   assert.equal(detection.id, 'image');
   assert.equal(detection.subtype, 'dng');
   assert.equal(detection.ext, 'dng');
-  assert.equal(detection.warning, undefined);
+  assert.equal(detection.warning, t('ui.rawUncertain', { v0: 'dng' }));
 });
 test('mendeteksi CR3 dari brand ftyp crx', async () => {
   const detection = await detectFile(file('raw.cr3', CR3));
@@ -118,4 +119,32 @@ test('mendeteksi BRAW dari fourcc braw', async () => {
   assert.equal(detection.id, 'rawVideo');
   assert.equal(detection.subtype, 'braw');
   assert.equal(detection.ext, 'braw');
+});
+test('TIFF renamed to NEF remains tentative rather than silently verified', async () => {
+  const detection = await detectFile(file('fake.nef', TIFF));
+  assert.equal(detection.subtype, 'nef');
+  assert.equal(detection.warning, t('ui.rawUncertain', { v0: 'nef' }));
+});
+test('DNGVersion TIFF tag identifies DNG independently of file extension', async () => {
+  const data = bytes(TIFF);
+  const view = new DataView(data.buffer);
+  view.setUint32(4, 8, true); // IFD offset
+  view.setUint16(8, 1, true); // one IFD entry
+  view.setUint16(10, 0xc612, true); // DNGVersion tag
+  view.setUint16(12, 1, true); // BYTE
+  view.setUint32(14, 4, true);
+  data.set([1, 4, 0, 0], 18);
+  const detected = await detectFile(new File([data], 'capture.dng'));
+  assert.equal(detected.subtype, 'dng');
+  assert.equal(detected.warning, undefined);
+  const mislabeled = await detectFile(new File([data], 'capture.nef'));
+  assert.equal(mislabeled.subtype, 'dng');
+  assert.match(mislabeled.warning, /tidak cocok/);
+});
+test('CR2 signature is stronger than a TIFF container extension', async () => {
+  const data = bytes(TIFF);
+  data.set([0x43, 0x52, 0x02, 0x00], 8);
+  const detected = await detectFile(new File([data], 'capture.cr2'));
+  assert.equal(detected.subtype, 'cr2');
+  assert.equal(detected.warning, undefined);
 });
