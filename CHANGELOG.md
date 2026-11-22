@@ -20,7 +20,7 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 Rilis ini menambahkan pemotongan rentang audio/video, panel riwayat perubahan,
 dan penyempurnaan ikon serta kartu preferensi subtitle ke editor satu berkas.
 `package.json`, lock file, dan badge README ID/EN menunjukkan `v1.5.0`. Cache
-shell naik ke `meinsert-v61`; cache engine tetap `meinsert-engine-v1`.
+shell naik ke `meinsert-v62`; cache engine tetap `meinsert-engine-v1`.
 
 ### Fitur — potong audio/video
 
