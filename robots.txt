@@ -1,0 +1,3 @@
+User-agent: *
+Disallow:
+Sitemap: https://meinsert.my.id/sitemap.xml
