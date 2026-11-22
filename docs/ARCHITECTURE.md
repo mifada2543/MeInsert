@@ -147,8 +147,8 @@ portability, and a worker reuses a cached pack before fetching. The PWA engine
 cache (`meinsert-engine-v4`) also reuses the on-demand Brotli response. Because
 no host sets `Content-Encoding`, Cache Storage holds exactly the same
 3,638,320 compressed bytes everywhere: that is the per-transfer and per-cache
-cost of the engine. The whole image offline pack is 4,822,620 bytes, and every
-optional feature together is 5,568,488 bytes offline.
+cost of the engine. The whole image offline pack is 4.822.717 bytes, and every
+optional feature together is 5.568.585 bytes offline.
 
 To reproduce the assets, run `npm ci`, then `npm run vendor` with Node 24.22.3.
 The build checks the pinned upstream hash, rewrites the embedded Perl file

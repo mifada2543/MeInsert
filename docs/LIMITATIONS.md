@@ -135,6 +135,8 @@ is authoritative for each file. These are the known caveats:
 - Browsers without native Brotli decoding use the bundled ~91 KB JavaScript
   decoder. The compressed SHA-256 is checked before decoding, then the expanded
   WASM length and SHA-256 are checked afterwards.
+- The image offline pack is 4.822.717 bytes; all optional features together are
+  5.568.585 bytes offline. These estimates track the vendored assets on disk.
 - The bundled ExifTool keeps EXIF, XMP, IPTC, GPS coordinate tags, MakerNotes,
   and modules for supported still RAW, HEIF, and RAW video. It omits the optional
   reverse-geocoding database and processor. GPS coordinates and GPS tag editing

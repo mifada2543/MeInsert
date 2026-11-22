@@ -46,6 +46,11 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
   dan **5.846.892 byte di repositori** setelah aset gzip dihapus. Aset `.gz`
   baru dihapus setelah gate `check:assets` memastikan tidak ada lagi
   `*.wasm.gz` di direktori engine; sebelum itu pemeriksaan sengaja gagal.
+- Banner atribusi decoder Brotli dipertahankan saat vendoring: `scripts/vendor.mjs`
+  menulis watermark AGPL, lalu banner `Copyright 2013 Google Inc. Apache-2.0`,
+  di atas hasil build `assets/vendor/brotli-decode.mjs`.
+- Estimasi offline disesuaikan setelah decoder bertambah 97 byte: paket gambar
+  **4.822.717 byte** dan total semua fitur opsional **5.568.585 byte**.
 
 ## [1.6.0] — 2026-11-22
 

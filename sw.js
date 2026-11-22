@@ -9,6 +9,9 @@
 const CACHE_VERSION = 'meinsert-v72';
 const ENGINE_VERSION = 'meinsert-engine-v4';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
+const BROTLI_WASM_PATH = './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.br';
+const BROTLI_WASM_BYTES = 3638320;
+const BROTLI_WASM_SHA256 = 'f676f8dd0b535972b4b8643b24ebcfc8662e35c6a9e47688519c0d7cac24d78d';
 const INSTALL_FETCH_TIMEOUT_MS = 15_000;
 const DOCUMENT_URLS = ['./NOTICE.md', './NOTICE-en.md', './TERMS.md', './TERMS-en.md', './PRIVACY.md', './PRIVACY-en.md'];
 const SHELL_URLS = [
@@ -222,12 +225,32 @@ async function migratePreviousEngineCache() {
   const previous = 'meinsert-engine-v3';
   if (!(await caches.keys()).includes(previous)) return;
   const legacy = await caches.open(previous);
+  const legacyRequests = await legacy.keys();
+  if (!legacyRequests.length) return;
   const current = await caches.open(ENGINE_VERSION);
   const allowed = optionalPathSet();
-  await Promise.all((await legacy.keys()).map(async (request) => {
+  const scope = self.registration.scope;
+  const brotliHref = new URL(BROTLI_WASM_PATH, scope).href;
+  await Promise.all(legacyRequests.map(async (request) => {
     const url = new URL(request.url);
-    if (!isSameOrigin(url.href) || !allowed.has(url.pathname) || url.search
-        || url.pathname.includes('/exiftool-wasm/') || url.pathname.endsWith('/engines/exiftool.js')) return;
+    if (!isSameOrigin(url.href) || url.search) return;
+    if (url.href === brotliHref) {
+      try {
+        const cached = await legacy.match(request);
+        if (!cached?.ok || !globalThis.crypto?.subtle?.digest) return;
+        const bytes = await cached.arrayBuffer();
+        if (bytes.byteLength !== BROTLI_WASM_BYTES) return;
+        const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+        const hex = [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+        if (hex !== BROTLI_WASM_SHA256) return;
+        const headers = new Headers(cached.headers);
+        headers.set(ENGINE_HEADER, ENGINE_VERSION);
+        await current.put(brotliHref, new Response(bytes, { status: cached.status, headers }));
+      } catch {  }
+      return;
+    }
+    if (!allowed.has(url.pathname) || url.pathname.includes('/exiftool-wasm/')
+        || url.pathname.endsWith('/engines/exiftool.js')) return;
     try {
       const cached = await legacy.match(request);
       if (!cached?.ok) return;
@@ -237,14 +260,14 @@ async function migratePreviousEngineCache() {
     } catch {  }
   }));
   const required = [
-    './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.br',
+    BROTLI_WASM_PATH,
     './assets/vendor/exiftool-wasm/index.js',
     './assets/vendor/brotli-decode.mjs',
     './assets/js/engines/exiftool.js',
   ];
   const missing = [];
   for (const path of required) {
-    const href = new URL(path, self.registration.scope).href;
+    const href = new URL(path, scope).href;
     if (!(await cachedOptionalResponse(current, href))) missing.push(href);
   }
   if (missing.length) {
@@ -256,10 +279,11 @@ async function migratePreviousEngineCache() {
       clearTimeout(timer);
     }
   }
-  const wasm = new URL('./assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm', self.registration.scope).href;
+  const wasm = new URL('./assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm', scope).href;
   await current.delete(`${wasm}.gz`);
   await current.delete(wasm);
 }
+
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     await migrateLegacyCache();

@@ -14,6 +14,7 @@ const nm = join(root, 'node_modules');
 const vendor = join(root, 'assets', 'vendor');
 const licenses = join(vendor, 'licenses');
 const licenseHeader = (await readFile(fileURLToPath(import.meta.url), 'utf8')).split('\n').slice(0, 3).join('\n') + '\n';
+const decoderBanner = '/* Brotli decoder: Copyright 2013 Google Inc. Apache-2.0. See assets/THIRD_PARTY_LICENSES.md. */\n';
 const copies = [
   ['@colorhythm/exiftool-wasm/LICENSE', 'licenses/exiftool-wasm-LICENSE'],
   ['mediabunny/dist/bundles/mediabunny.min.mjs', 'mediabunny.mjs'],
@@ -47,7 +48,10 @@ await build({
   legalComments: 'none',
 });
 const decoderPath = join(vendor, 'brotli-decode.mjs');
-await writeFile(decoderPath, licenseHeader + await readFile(decoderPath, 'utf8'));
+const decoder = (await readFile(decoderPath, 'utf8'))
+  .replaceAll(licenseHeader, '')
+  .replaceAll(decoderBanner, '');
+await writeFile(decoderPath, licenseHeader + decoderBanner + decoder);
 
 if (!process.argv.includes('--reuse-engine')) {
   const wasmDir = join(nm, '@colorhythm', 'exiftool-wasm', 'dist', 'esm');

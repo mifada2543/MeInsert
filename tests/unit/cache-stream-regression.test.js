@@ -33,18 +33,20 @@ test('stream progress precedes cache completion and lazy cache is reused', async
   entries.set(url, new Response('legacy cached engine'));
   assert.ok(await context.api.cachedOptionalResponse(cache, url));
 });
-test('migrating the v3 engine cache to v4 refreshes Brotli assets and is idempotent', async () => {
+test('migrating the v3 engine cache reuses a valid Brotli payload', async () => {
   const scope = 'https://test.local/';
   const url = (path) => new URL(path, scope).href;
   const prefix = 'assets/vendor/exiftool-wasm/';
-  const gz = url(`${prefix}zeroperl-522d094a89cc.wasm.gz`);
-  const raw = url(`${prefix}zeroperl-522d094a89cc.wasm`);
-  const br = url(`${prefix}zeroperl-522d094a89cc.wasm.br`);
+  const br = url(`${prefix}${exiftoolBuild.name}.br`);
+  const gz = url(`${prefix}${exiftoolBuild.name}.gz`);
+  const raw = url(`${prefix}${exiftoolBuild.name}.wasm`);
   const wrapper = url(`${prefix}index.js`);
   const library = url('assets/vendor/mediabunny.mjs');
   const bridge = url('assets/js/engines/exiftool.js');
   const decoder = url('assets/vendor/brotli-decode.mjs');
+  const brotliBytes = await readFile(new URL(`../../assets/vendor/exiftool-wasm/${exiftoolBuild.name}.br`, import.meta.url));
   const legacy = new Map([
+    [br, new Response(brotliBytes)],
     [gz, new Response('old gzip engine')],
     [raw, new Response('old raw WASM')],
     [wrapper, new Response('old loader')],
@@ -60,7 +62,7 @@ test('migrating the v3 engine cache to v4 refreshes Brotli assets and is idempot
     delete: async (key) => entries.delete(typeof key === 'string' ? key : key.url),
   });
   const context = vm.createContext({
-    URL, Response, Headers, ReadableStream, AbortController, setTimeout, clearTimeout,
+    URL, Response, Headers, ReadableStream, AbortController, setTimeout, clearTimeout, crypto: globalThis.crypto,
     caches: {
       keys: async () => ['meinsert-engine-v3'],
       open: async (name) => cache(name === 'meinsert-engine-v3' ? legacy : current),
@@ -70,7 +72,9 @@ test('migrating the v3 engine cache to v4 refreshes Brotli assets and is idempot
   });
   vm.runInContext(source + '\nthis.migrate = migratePreviousEngineCache;', context);
   await context.migrate();
-  assert.deepEqual(requests.sort(), [br, wrapper, decoder, bridge].sort());
+  assert.deepEqual(requests.sort(), [wrapper, decoder, bridge].sort());
+  assert.ok(Buffer.from(await current.get(br).arrayBuffer()).equals(brotliBytes));
+  assert.equal(current.get(br).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
   assert.equal(await current.get(library).text(), 'reusable library');
   assert.equal(current.get(library).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
   assert.equal(current.has(gz), false);
@@ -79,18 +83,47 @@ test('migrating the v3 engine cache to v4 refreshes Brotli assets and is idempot
   await context.migrate();
   assert.deepEqual(requests, []);
 });
-test('upgrading a previously installed image engine refreshes the changed assets', async () => {
+
+test('an empty v3 engine cache stays empty without downloads', async () => {
+  const scope = 'https://test.local/';
+  const legacy = new Map();
+  const current = new Map();
+  const requests = [];
+  const cache = (entries) => ({
+    match: async (key) => entries.get(typeof key === 'string' ? key : key.url)?.clone(),
+    keys: async () => [...entries.keys()].map((href) => ({ url: href })),
+    put: async (key, response) => entries.set(typeof key === 'string' ? key : key.url,
+      new Response(await response.arrayBuffer(), { headers: response.headers })),
+    delete: async (key) => entries.delete(typeof key === 'string' ? key : key.url),
+  });
+  const context = vm.createContext({
+    URL, Response, Headers, ReadableStream, AbortController, setTimeout, clearTimeout, crypto: globalThis.crypto,
+    caches: {
+      keys: async () => ['meinsert-engine-v3'],
+      open: async (name) => cache(name === 'meinsert-engine-v3' ? legacy : current),
+    },
+    self: { registration: { scope }, location: { origin: 'https://test.local' }, addEventListener() {} },
+    fetch: async (href) => { requests.push(href); return new Response('built asset'); },
+  });
+  vm.runInContext(source + '\nthis.migrate = migratePreviousEngineCache;', context);
+  await context.migrate();
+  assert.deepEqual(requests, []);
+  assert.equal(current.size, 0);
+});
+
+test('a gzip-only v3 cache fetches the Brotli package while online', async () => {
   const scope = 'https://test.local/';
   const url = (path) => new URL(path, scope).href;
   const prefix = 'assets/vendor/exiftool-wasm/';
-  const oldWasm = url(`${prefix}zeroperl-twnm61dk.wasm.gz`);
-  const newWasm = url(`${prefix}${exiftoolBuild.name}.br`);
-  const library = url('assets/vendor/mediabunny.mjs');
+  const br = url(`${prefix}${exiftoolBuild.name}.br`);
+  const gz = url(`${prefix}${exiftoolBuild.name}.gz`);
+  const raw = url(`${prefix}${exiftoolBuild.name}.wasm`);
   const wrapper = url(`${prefix}index.js`);
+  const library = url('assets/vendor/mediabunny.mjs');
   const bridge = url('assets/js/engines/exiftool.js');
   const decoder = url('assets/vendor/brotli-decode.mjs');
   const legacy = new Map([
-    [oldWasm, new Response('old WASM')],
+    [gz, new Response('old gzip engine')],
     [wrapper, new Response('old loader')],
     [library, new Response('reusable library', { headers: { 'x-meinsert-engine-version': 'meinsert-engine-v3' } })],
   ]);
@@ -104,7 +137,7 @@ test('upgrading a previously installed image engine refreshes the changed assets
     delete: async (key) => entries.delete(typeof key === 'string' ? key : key.url),
   });
   const context = vm.createContext({
-    URL, Response, Headers, ReadableStream, AbortController, setTimeout, clearTimeout,
+    URL, Response, Headers, ReadableStream, AbortController, setTimeout, clearTimeout, crypto: globalThis.crypto,
     caches: {
       keys: async () => ['meinsert-engine-v3'],
       open: async (name) => cache(name === 'meinsert-engine-v3' ? legacy : current),
@@ -114,9 +147,9 @@ test('upgrading a previously installed image engine refreshes the changed assets
   });
   vm.runInContext(source + '\nthis.migrate = migratePreviousEngineCache;', context);
   await context.migrate();
-  assert.deepEqual(requests.sort(), [newWasm, wrapper, bridge, decoder].sort());
-  assert.equal(await current.get(library).text(), 'reusable library');
-  assert.equal(current.get(library).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
-  assert.equal(await current.get(wrapper).text(), 'built asset');
-  assert.equal(current.has(oldWasm), false);
+  assert.deepEqual(requests.sort(), [br, wrapper, decoder, bridge].sort());
+  assert.equal(current.has(br), true);
+  assert.equal(current.has(gz), false);
+  assert.equal(current.has(raw), false);
+  assert.equal(current.get(br).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
 });
