@@ -2,7 +2,7 @@
 
 [Indonesia](PRIVACY.md) · **English** · [Acceptable Use](TERMS-en.md) · [README](README-en.md)
 
-Last updated: **15 November 2026**.
+Last updated: **23 November 2026**.
 
 ## 1. Core promise: files stay on your device
 
@@ -11,9 +11,11 @@ contents, metadata read or edited, cover art, or processing outputs to a server.
 All such processing takes place locally in your browser.**
 
 MeInsert has no file-upload endpoint, user accounts, or server-side file storage.
-It includes no analytics, telemetry, or profiling. This policy covers official
-code, not forks, modified deployments, browser extensions, malware, operating
-systems, or other applications.
+The file-editing engine does not use telemetry to inspect file contents or
+metadata changes. **The official website uses Cloudflare Web Analytics for
+website traffic and performance statistics**, separately from local editing
+(see Section 3). This policy covers official code, not forks, modified
+deployments, browser extensions, malware, operating systems, or other applications.
 
 This statement concerns **the files and metadata you process**; it does not mean
 your browser never communicates with hosting infrastructure when opening the site.
@@ -47,6 +49,36 @@ for editing.** Do not place sensitive information in site URLs. Following
 external links, such as GitHub, opens services with their own privacy policies.
 Issues/emails you voluntarily submit leave your device and are subject to the
 receiving service's policies.
+
+
+### Website analytics on the official site
+
+The official `https://meinsert.my.id/` website uses **Cloudflare Web Analytics**
+to understand visit counts, viewed public pages, referral sources, and site
+performance. Depending on the provider's practices and policies, the service
+may process page URLs, referrer information, and technical browser, device,
+and network-request information. Page-view statistics are **not** a record of
+file contents or metadata-editing history; infrastructure providers may still
+process technical data and network logs.
+
+**Website analytics is not designed to receive selected file contents, metadata
+tags being read or changed, or exported output files.** The editor engine does
+not send that data to Cloudflare Web Analytics. No account is required to edit
+files on the official website, but visitors should understand that visits to
+public pages may be counted as traffic. Do not place sensitive information in
+URLs or query parameters.
+
+Cloudflare Web Analytics is distinct from Cloudflare's network caching and
+security services. Cloudflare's own processing and retention practices are
+governed by its [Privacy Policy](https://www.cloudflare.com/privacypolicy/).
+Third-party/self-hosted installations may use different services.
+
+### Search engine crawling and indexing
+
+Search engines such as Google may access and index MeInsert's **public pages**
+so users can discover the site in search results. Search crawling is separate
+from Cloudflare Web Analytics and **does not require access to locally processed
+files**. Analytics is not a requirement for search engine crawling or indexing.
 
 ## 4. Browser storage and local copies
 

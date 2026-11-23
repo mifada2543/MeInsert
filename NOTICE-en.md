@@ -124,9 +124,13 @@ jurisdiction. Editing a signed document can invalidate its signature. Do not
 rely on metadata editing to preserve cryptographic signature validity; keep the
 original signed file and verify signatures independently.
 
-MeInsert performs no analytics, no telemetry, and no profiling. The application
-requests no network resource other than the files it serves from its own origin
-(the app shell, fonts, libraries, and the optional ExifTool WebAssembly module).
+The MeInsert metadata-editing engine does not upload user files or metadata
+changes and does not track file contents. The official website uses
+**Cloudflare Web Analytics** for public-page traffic and performance statistics;
+an analytics script may be loaded from a Cloudflare domain. This service is
+separate from local file editing and may not be present on self-hosted copies.
+See the [Privacy Policy](PRIVACY-en.md) for technical-data processing, hosting
+logs, and search-engine crawling.
 
 ## Trademarks
 

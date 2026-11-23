@@ -26,10 +26,13 @@ verification, and ZIP assembly locally. The three HTML entry points are
 are the small entry modules; `app.js` dynamically imports `batch/batch-view.js`
 only on the batch page.
 
-**No upload. No analytics. No external requests.** Detection, decoding, writing,
-and verification never leave the browser. The service worker ignores any
-request whose origin differs from the app's own origin (`sw.js`), and the
-compatibility harness (`tests/compat/`) fails on any other browser request.
+**No file upload. No analytics for file processing. No external requests for
+editing.** Detection, decoding, writing, and verification never leave the
+browser. The official website uses Cloudflare Web Analytics for public-page
+traffic statistics only; it does not inspect files or metadata changes. The
+service worker ignores any request whose origin differs from the app's own
+origin (`sw.js`), and the compatibility harness (`tests/compat/`) fails on any
+other browser request during editing.
 
 ## Source map
 

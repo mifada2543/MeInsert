@@ -39,6 +39,11 @@ async function article(file, locale, type) {
   while (index < lines.length) {
     const line = lines[index++];
     if (!line.trim()) { closeList(); continue; }
+    if (line.startsWith('### ')) {
+      closeList();
+      parts.push(`<h3>${escape(line.slice(4))}</h3>`);
+      continue;
+    }
     if (line.startsWith('## ')) {
       closeList();
       if (sectionOpen) parts.push('</section>');
@@ -74,6 +79,8 @@ export async function buildPolicies({ check = false } = {}) {
   const header = home.match(/<header class="site-header">[\s\S]*?<\/header>/)?.[0];
   const footer = home.match(/<footer class="site-footer">[\s\S]*?<\/footer>/)?.[0];
   if (!header || !footer) throw new Error('Shared header/footer unavailable');
+  const csp = home.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/)?.[1];
+  if (!csp) throw new Error('Shared CSP unavailable');
   for (const [type, path, source, title] of [
     ['privacy', 'privacy.html', 'PRIVACY', 'Kebijakan Privasi'],
     ['terms', 'Terms.html', 'TERMS', 'Kebijakan Penggunaan'],
@@ -88,7 +95,7 @@ export async function buildPolicies({ check = false } = {}) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'self' blob:; child-src 'self' blob:">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <meta name="description" content="${title} MeInsert — pemrosesan metadata lokal, batas penggunaan, dan tanggung jawab pengguna.">
   <title>MeInsert | ${title}</title>
   <link rel="canonical" href="https://meinsert.my.id/${path}">

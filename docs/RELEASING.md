@@ -88,9 +88,9 @@ in [deployment.md](deployment.md).
 ### Policy note
 
 The production host injects a Cloudflare Analytics beacon that is not in this
-repository. The CSP blocks it intentionally so the no-analytics claim stays
-accurate. This is a behavior change the host owner must know about. Adding an
-exception would invalidate the privacy claim. See
+repository. The CSP allows only `https://static.cloudflareinsights.com` for that
+beacon; MeInsert adds no analytics script itself. The beacon is for public-page
+traffic statistics, not for reading files or metadata changes. See
 [security.md](security.md#important-note-for-the-host-owner).
 
 ### Related
@@ -168,9 +168,10 @@ lengkap ada di [deployment.md](deployment.md).
 ### Catatan kebijakan
 
 Host produksi menyuntikkan beacon Cloudflare Analytics yang tidak ada di
-repository ini. CSP memblokirnya secara sengaja agar klaim tanpa analitik tetap
-benar. Ini perubahan perilaku yang wajib diketahui owner. Menambah pengecualian
-akan membatalkan klaim privasi. Lihat
+repository ini. CSP hanya mengizinkan `https://static.cloudflareinsights.com`
+untuk beacon tersebut; MeInsert tidak menambahkan skrip analitik sendiri.
+Beacon itu dipakai untuk statistik trafik halaman publik, bukan untuk membaca
+berkas atau perubahan metadata. Lihat
 [security.md](security.md#catatan-penting-untuk-pemilik-host).
 
 ### Terkait

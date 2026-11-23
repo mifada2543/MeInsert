@@ -127,10 +127,13 @@ bertanda tangan dapat membatalkan tanda tangannya. Jangan mengandalkan editor
 metadata untuk mempertahankan validitas tanda tangan kriptografis; simpan berkas
 asli dan verifikasi tanda tangannya secara independen.
 
-MeInsert tidak melakukan analitik, telemetri, maupun profil pengguna. Aplikasi
-tidak meminta sumber daya jaringan apa pun selain berkas yang disajikan dari
-origin miliknya sendiri (app shell, font, pustaka, dan modul WebAssembly ExifTool
-opsional).
+Engine pengeditan metadata MeInsert tidak mengunggah file maupun perubahan
+metadata pengguna dan tidak melakukan pelacakan isi file. Pada situs resmi,
+**Cloudflare Web Analytics** digunakan untuk statistik trafik dan performa
+halaman publik; skrip analytics dapat dimuat dari domain Cloudflare. Layanan
+ini terpisah dari proses editor lokal dan mungkin tidak digunakan pada
+instalasi self-hosted. Lihat [Kebijakan Privasi](PRIVACY.md) untuk informasi
+mengenai pemrosesan data teknis, log hosting, dan mesin pencari.
 
 ## Merek dagang
 

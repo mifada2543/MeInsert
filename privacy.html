@@ -52,10 +52,10 @@
     <header class="policy-heading"><h1>Kebijakan Privasi</h1></header>
     <div class="policy-layout">
       <nav class="policy-toc" aria-label="Di halaman ini"><h2>Di halaman ini</h2><ol><li><a href="#privacy-id-1">1. Pernyataan utama: berkas tetap di perangkat</a></li><li><a href="#privacy-id-2">2. Alur pemrosesan data</a></li><li><a href="#privacy-id-3">3. Jaringan dan log hosting</a></li><li><a href="#privacy-id-4">4. Penyimpanan browser dan salinan lokal</a></li><li><a href="#privacy-id-5">5. Batas privasi dan keamanan</a></li><li><a href="#privacy-id-6">6. Larangan pemalsuan dan konsekuensi hukum</a></li><li><a href="#privacy-id-7">7. Kontak dan perubahan</a></li></ol></nav>
-      <div class="policy-prose"><p>Terakhir diperbarui: <strong>15 November 2026</strong>.</p>
+      <div class="policy-prose"><p>Terakhir diperbarui: <strong>23 November 2026</strong>.</p>
 <section class="policy-section" aria-labelledby="privacy-id-1"><h2 id="privacy-id-1">1. Pernyataan utama: berkas tetap di perangkat</h2>
 <p><strong>Isi berkas yang Anda pilih, metadata yang dibaca atau diedit, sampul, dan hasil pemrosesan tidak pernah dikirim atau diunggah ke server oleh aplikasi MeInsert resmi. Seluruh pemrosesan tersebut berlangsung secara lokal di browser.</strong></p>
-<p>MeInsert tidak memiliki endpoint upload berkas, akun pengguna, atau penyimpanan berkas server. Aplikasi tidak menyertakan analitik, telemetri, atau profiling. Kebijakan ini berlaku untuk kode resmi; tidak menjamin perilaku fork, situs yang dimodifikasi, ekstensi browser, malware, sistem operasi, atau aplikasi lain.</p>
+<p>MeInsert tidak memiliki endpoint upload berkas, akun pengguna, atau penyimpanan berkas server. Engine pengeditan file tidak menggunakan telemetri untuk membaca isi berkas maupun perubahan metadata. <strong>Situs resmi menggunakan Cloudflare Web Analytics untuk statistik kunjungan dan performa situs</strong>, terpisah dari proses pengeditan lokal (lihat Bagian 3). Kebijakan ini berlaku untuk kode resmi; tidak menjamin perilaku fork, situs yang dimodifikasi, ekstensi browser, malware, sistem operasi, atau aplikasi lain.</p>
 <p>Pernyataan ini mengenai <strong>berkas dan metadata yang Anda proses</strong>, bukan berarti browser sama sekali tidak berkomunikasi dengan hosting saat membuka situs.</p>
 </section>
 <section class="policy-section" aria-labelledby="privacy-id-2"><h2 id="privacy-id-2">2. Alur pemrosesan data</h2>
@@ -71,6 +71,12 @@
 <section class="policy-section" aria-labelledby="privacy-id-3"><h2 id="privacy-id-3">3. Jaringan dan log hosting</h2>
 <p>Untuk menyajikan situs, operator hosting/CDN dapat menerima informasi permintaan seperti alamat IP, waktu akses, URL aset, user-agent, dan header browser. Kebijakan logging dan masa simpan ditentukan operator hosting, bukan engine metadata lokal. Self-hosting juga dapat menghasilkan log Apache atau server Anda sendiri.</p>
 <p><strong>Permintaan aset aplikasi tersebut tidak berisi berkas atau metadata yang Anda pilih untuk diedit.</strong> Jangan menaruh informasi sensitif pada URL situs. Mengikuti tautan eksternal, misalnya GitHub, membuka layanan dengan kebijakan privasinya sendiri. Laporan masalah/email yang Anda kirim secara sukarela keluar dari perangkat dan tunduk pada layanan penerimanya.</p>
+<h3>Analitik website pada situs resmi</h3>
+<p>Situs resmi <code>https://meinsert.my.id/</code> menggunakan <strong>Cloudflare Web Analytics</strong> untuk memahami jumlah kunjungan, halaman publik yang dibuka, sumber kunjungan, dan performa situs. Layanan ini dapat memproses URL halaman, informasi referer, serta informasi teknis browser, perangkat, dan permintaan jaringan sesuai praktik dan kebijakan penyedianya. Statistik halaman yang dibuka <strong>bukan</strong> rekaman isi berkas atau riwayat edit metadata; informasi teknis dan log jaringan tetap dapat diproses oleh penyedia infrastruktur.</p>
+<p><strong>Analitik situs tidak dirancang untuk menerima isi berkas yang dipilih, tag metadata yang dibaca atau diubah, atau berkas hasil ekspor.</strong> Engine editor tidak mengirimkan data tersebut ke Cloudflare Web Analytics. Situs resmi tidak memerlukan akun untuk mengedit file; pengunjung tetap perlu memahami bahwa kunjungan halaman publik dapat tercatat sebagai trafik. Hindari memasukkan informasi sensitif pada URL atau parameter kueri.</p>
+<p>Cloudflare Web Analytics adalah layanan berbeda dari cache dan pengamanan jaringan Cloudflare. Detail pemrosesan dan penyimpanan data oleh Cloudflare tunduk pada <a href="https://www.cloudflare.com/privacypolicy/">kebijakan privasi Cloudflare</a>. Instalasi pihak lain/self-hosted mungkin tidak menggunakan layanan yang sama.</p>
+<h3>Crawling dan pengindeksan mesin pencari</h3>
+<p>Mesin pencari seperti Google dapat mengakses dan mengindeks <strong>halaman publik</strong> MeInsert agar situs dapat ditemukan melalui hasil pencarian. Crawling mesin pencari berbeda dari Cloudflare Web Analytics dan <strong>tidak membutuhkan akses ke berkas lokal yang Anda proses</strong>. Penggunaan analitik bukan syarat agar website dapat di-crawl atau diindeks.</p>
 </section>
 <section class="policy-section" aria-labelledby="privacy-id-4"><h2 id="privacy-id-4">4. Penyimpanan browser dan salinan lokal</h2>
 <ul>
@@ -100,10 +106,10 @@
     <header class="policy-heading"><h1>Privacy Policy</h1></header>
     <div class="policy-layout">
       <nav class="policy-toc" aria-label="On this page"><h2>On this page</h2><ol><li><a href="#privacy-en-1">1. Core promise: files stay on your device</a></li><li><a href="#privacy-en-2">2. Data-processing workflow</a></li><li><a href="#privacy-en-3">3. Network requests and hosting logs</a></li><li><a href="#privacy-en-4">4. Browser storage and local copies</a></li><li><a href="#privacy-en-5">5. Privacy and security limits</a></li><li><a href="#privacy-en-6">6. Prohibited forgery and legal consequences</a></li><li><a href="#privacy-en-7">7. Contact and updates</a></li></ol></nav>
-      <div class="policy-prose"><p>Last updated: <strong>15 November 2026</strong>.</p>
+      <div class="policy-prose"><p>Last updated: <strong>23 November 2026</strong>.</p>
 <section class="policy-section" aria-labelledby="privacy-en-1"><h2 id="privacy-en-1">1. Core promise: files stay on your device</h2>
 <p><strong>The official MeInsert application never sends or uploads selected file contents, metadata read or edited, cover art, or processing outputs to a server. All such processing takes place locally in your browser.</strong></p>
-<p>MeInsert has no file-upload endpoint, user accounts, or server-side file storage. It includes no analytics, telemetry, or profiling. This policy covers official code, not forks, modified deployments, browser extensions, malware, operating systems, or other applications.</p>
+<p>MeInsert has no file-upload endpoint, user accounts, or server-side file storage. The file-editing engine does not use telemetry to inspect file contents or metadata changes. <strong>The official website uses Cloudflare Web Analytics for website traffic and performance statistics</strong>, separately from local editing (see Section 3). This policy covers official code, not forks, modified deployments, browser extensions, malware, operating systems, or other applications.</p>
 <p>This statement concerns <strong>the files and metadata you process</strong>; it does not mean your browser never communicates with hosting infrastructure when opening the site.</p>
 </section>
 <section class="policy-section" aria-labelledby="privacy-en-2"><h2 id="privacy-en-2">2. Data-processing workflow</h2>
@@ -119,6 +125,12 @@
 <section class="policy-section" aria-labelledby="privacy-en-3"><h2 id="privacy-en-3">3. Network requests and hosting logs</h2>
 <p>To serve the site, hosting/CDN operators may receive request details such as IP addresses, access times, asset URLs, user-agent strings, and browser headers. Logging and retention depend on the hosting operator, not the local metadata engine. Self-hosting may also generate Apache or other server access logs.</p>
 <p><strong>These application-asset requests do not contain files or metadata you select for editing.</strong> Do not place sensitive information in site URLs. Following external links, such as GitHub, opens services with their own privacy policies. Issues/emails you voluntarily submit leave your device and are subject to the receiving service&#39;s policies.</p>
+<h3>Website analytics on the official site</h3>
+<p>The official <code>https://meinsert.my.id/</code> website uses <strong>Cloudflare Web Analytics</strong> to understand visit counts, viewed public pages, referral sources, and site performance. Depending on the provider&#39;s practices and policies, the service may process page URLs, referrer information, and technical browser, device, and network-request information. Page-view statistics are <strong>not</strong> a record of file contents or metadata-editing history; infrastructure providers may still process technical data and network logs.</p>
+<p><strong>Website analytics is not designed to receive selected file contents, metadata tags being read or changed, or exported output files.</strong> The editor engine does not send that data to Cloudflare Web Analytics. No account is required to edit files on the official website, but visitors should understand that visits to public pages may be counted as traffic. Do not place sensitive information in URLs or query parameters.</p>
+<p>Cloudflare Web Analytics is distinct from Cloudflare&#39;s network caching and security services. Cloudflare&#39;s own processing and retention practices are governed by its <a href="https://www.cloudflare.com/privacypolicy/">Privacy Policy</a>. Third-party/self-hosted installations may use different services.</p>
+<h3>Search engine crawling and indexing</h3>
+<p>Search engines such as Google may access and index MeInsert&#39;s <strong>public pages</strong> so users can discover the site in search results. Search crawling is separate from Cloudflare Web Analytics and <strong>does not require access to locally processed files</strong>. Analytics is not a requirement for search engine crawling or indexing.</p>
 </section>
 <section class="policy-section" aria-labelledby="privacy-en-4"><h2 id="privacy-en-4">4. Browser storage and local copies</h2>
 <ul>

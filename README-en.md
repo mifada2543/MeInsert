@@ -360,7 +360,7 @@ MeInsert only provides a *tool* for reading and writing standard tags. You are r
 | Privacy Policy | [ID/EN page](privacy.html) | [Indonesian](PRIVACY.md) · [English](PRIVACY-en.md) |
 | Security | [SECURITY.md](SECURITY.md) | [security.txt](.well-known/security.txt) |
 
-**The official application does not send or upload file contents, edited metadata, cover art, or processing outputs to a server.** See [docs/security.md](docs/security.md) for how to verify this claim, including a note about the analytics beacon injected by the production host.
+**The official application engine does not send or upload file contents, edited metadata, cover art, or processing outputs to a server.** The official site uses **Cloudflare Web Analytics** for public-page traffic and site-performance statistics, not to inspect files or metadata changes. Search engine crawling does not require analytics. See the [Privacy Policy](PRIVACY-en.md) and [docs/security.md](docs/security.md) for details and local-processing verification steps.
 
 **Forgery for deception or unlawful purposes is prohibited.** Established violations may result in penalties under applicable law and lawful proceedings; MeInsert does not automatically impose punishment. The use policy does not add restrictions to the MeInsert Source-Available License v1.0.
 

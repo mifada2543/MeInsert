@@ -2,7 +2,7 @@
 
 **Indonesia** · [English](PRIVACY-en.md) · [Kebijakan Penggunaan](TERMS.md) · [README](README.md)
 
-Terakhir diperbarui: **15 November 2026**.
+Terakhir diperbarui: **23 November 2026**.
 
 ## 1. Pernyataan utama: berkas tetap di perangkat
 
@@ -11,9 +11,12 @@ hasil pemrosesan tidak pernah dikirim atau diunggah ke server oleh aplikasi
 MeInsert resmi. Seluruh pemrosesan tersebut berlangsung secara lokal di browser.**
 
 MeInsert tidak memiliki endpoint upload berkas, akun pengguna, atau penyimpanan
-berkas server. Aplikasi tidak menyertakan analitik, telemetri, atau profiling.
-Kebijakan ini berlaku untuk kode resmi; tidak menjamin perilaku fork, situs yang
-dimodifikasi, ekstensi browser, malware, sistem operasi, atau aplikasi lain.
+berkas server. Engine pengeditan file tidak menggunakan telemetri untuk membaca
+isi berkas maupun perubahan metadata. **Situs resmi menggunakan Cloudflare Web
+Analytics untuk statistik kunjungan dan performa situs**, terpisah dari proses
+pengeditan lokal (lihat Bagian 3). Kebijakan ini berlaku untuk kode resmi;
+tidak menjamin perilaku fork, situs yang dimodifikasi, ekstensi browser, malware,
+sistem operasi, atau aplikasi lain.
 
 Pernyataan ini mengenai **berkas dan metadata yang Anda proses**, bukan berarti
 browser sama sekali tidak berkomunikasi dengan hosting saat membuka situs.
@@ -47,6 +50,37 @@ Anda pilih untuk diedit.** Jangan menaruh informasi sensitif pada URL situs.
 Mengikuti tautan eksternal, misalnya GitHub, membuka layanan dengan kebijakan
 privasinya sendiri. Laporan masalah/email yang Anda kirim secara sukarela keluar
 dari perangkat dan tunduk pada layanan penerimanya.
+
+
+### Analitik website pada situs resmi
+
+Situs resmi `https://meinsert.my.id/` menggunakan **Cloudflare Web Analytics**
+untuk memahami jumlah kunjungan, halaman publik yang dibuka, sumber kunjungan,
+dan performa situs. Layanan ini dapat memproses URL halaman, informasi referer,
+serta informasi teknis browser, perangkat, dan permintaan jaringan sesuai
+praktik dan kebijakan penyedianya. Statistik halaman yang dibuka **bukan**
+rekaman isi berkas atau riwayat edit metadata; informasi teknis dan log jaringan
+tetap dapat diproses oleh penyedia infrastruktur.
+
+**Analitik situs tidak dirancang untuk menerima isi berkas yang dipilih, tag
+metadata yang dibaca atau diubah, atau berkas hasil ekspor.** Engine editor
+tidak mengirimkan data tersebut ke Cloudflare Web Analytics. Situs resmi tidak
+memerlukan akun untuk mengedit file; pengunjung tetap perlu memahami bahwa
+kunjungan halaman publik dapat tercatat sebagai trafik. Hindari memasukkan
+informasi sensitif pada URL atau parameter kueri.
+
+Cloudflare Web Analytics adalah layanan berbeda dari cache dan pengamanan
+jaringan Cloudflare. Detail pemrosesan dan penyimpanan data oleh Cloudflare
+tunduk pada [kebijakan privasi Cloudflare](https://www.cloudflare.com/privacypolicy/).
+Instalasi pihak lain/self-hosted mungkin tidak menggunakan layanan yang sama.
+
+### Crawling dan pengindeksan mesin pencari
+
+Mesin pencari seperti Google dapat mengakses dan mengindeks **halaman publik**
+MeInsert agar situs dapat ditemukan melalui hasil pencarian. Crawling mesin
+pencari berbeda dari Cloudflare Web Analytics dan **tidak membutuhkan akses
+ke berkas lokal yang Anda proses**. Penggunaan analitik bukan syarat agar
+website dapat di-crawl atau diindeks.
 
 ## 4. Penyimpanan browser dan salinan lokal
 

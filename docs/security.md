@@ -30,11 +30,13 @@ Open DevTools (F12) → **Network** tab, then run a real flow:
 4. Click **Save**, review the changes, and confirm.
 5. Download the result.
 
-Throughout that flow, the Network panel must show only requests to the
+Throughout that flow, file operations must produce only requests to the
 **same origin** as the page (for example `https://meinsert.my.id/...` in
 production or `http://localhost/...` on XAMPP), plus `blob:` and `data:` URLs
-for previews and downloads. There must be no request to any analytics domain,
-CDN, or upload endpoint.
+for previews and downloads. No file content, edited metadata, cover, or result
+may be sent to an analytics domain, CDN, or upload endpoint. On the production
+site, the host-injected Cloudflare beacon may appear in the Network panel; it
+is page-traffic telemetry, not part of the editing flow.
 
 Timed-text editing follows the same rule: audio/video previews come from
 `URL.createObjectURL(file)` (`blob:`), and line drafts and appearance
@@ -130,13 +132,15 @@ never as `PASS`.
 
 > [!WARNING]
 > **The production host injects a Cloudflare Analytics beacon that is not in this
-> repository.** The CSP blocks it. This is intentional: blocking it makes the
-> "no analytics" claim accurate.
+> repository.** The CSP allows only `https://static.cloudflareinsights.com` for
+> that beacon; no analytics script is added by MeInsert itself. The beacon is
+> for public-page traffic and performance statistics, not for reading files or
+> metadata changes.
 
-It is nonetheless a **behavior change**: the host owner must know that analytics
-data from the host will no longer be collected on MeInsert pages. Adding an
-exception for that beacon would invalidate the privacy claim and must be
-removed from this list.
+The file-editing path remains local-only: no selected file, edited metadata,
+cover, or processing output is sent to analytics. See
+[PRIVACY.md](../PRIVACY.md) for the distinction between visit analytics and
+local processing.
 
 The static files served by the host never receive user files; see
 [SECURITY.md](../SECURITY.md) for private vulnerability reporting.
@@ -159,11 +163,13 @@ Buka DevTools (F12) → tab **Network**, lalu jalankan alur nyata:
 4. Klik **Simpan / Save**, tinjau perubahan, lalu konfirmasi.
 5. Unduh hasilnya.
 
-Sepanjang alur itu, panel Network hanya boleh menampilkan permintaan ke
+Sepanjang alur itu, operasi berkas hanya boleh menghasilkan permintaan ke
 **origin yang sama** dengan halaman (mis. `https://meinsert.my.id/...` di
 produksi, atau `http://localhost/...` di XAMPP), plus URL `blob:` dan `data:`
-untuk pratinjau dan unduhan. Tidak boleh ada permintaan ke domain analitik,
-CDN, atau endpoint upload mana pun.
+untuk pratinjau dan unduhan. Tidak boleh ada isi berkas, metadata yang diedit,
+sampul, atau hasil yang dikirim ke domain analitik, CDN, atau endpoint upload
+mana pun. Di situs produksi, beacon Cloudflare dari host boleh muncul di panel
+Network; itu telemetri kunjungan halaman, bukan bagian dari alur pengeditan.
 
 Penyuntingan teks berirama mengikuti aturan yang sama: pratinjau audio/video
 berasal dari `URL.createObjectURL(file)` (`blob:`), dan draf baris serta
@@ -265,13 +271,15 @@ dijalankan tanpa merusak isolasi dicetak sebagai `SKIP:` dengan alasan — bukan
 
 > [!WARNING]
 > **Host produksi menyuntikkan beacon Cloudflare Analytics yang TIDAK ada di
-> repositori ini.** CSP memblokirnya. Ini disengaja: tanpa beacon itu, klaim
-> "tanpa analitik" menjadi benar secara teknis.
+> repositori ini.** CSP hanya mengizinkan `https://static.cloudflareinsights.com`
+> untuk beacon tersebut; MeInsert sendiri tidak menambahkan skrip analitik.
+> Beacon itu dipakai untuk statistik trafik dan performa halaman publik, bukan
+> untuk membaca berkas atau perubahan metadata.
 
-Namun ini adalah **perubahan perilaku** — pemilik host harus mengetahui bahwa
-data analitik dari host tidak lagi terkumpul di halaman MeInsert. Jika kami
-menambahkan pengecualian untuk beacon tersebut, klaim privasi tidak lagi dapat
-dipertahankan dan pengecualian itu harus dihapus dari daftar ini.
+Alur pengeditan berkas tetap lokal: tidak ada berkas yang dipilih, metadata yang
+diedit, sampul, atau hasil pemrosesan yang dikirim ke analitik. Lihat
+[PRIVACY.md](../PRIVACY.md) untuk perbedaan antara analitik kunjungan dan
+pemrosesan lokal.
 
 Berkas statis yang disajikan host tidak pernah menerima berkas pengguna; lihat
 [SECURITY.md](../SECURITY.md) untuk pelaporan kerentanan secara privat.

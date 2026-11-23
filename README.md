@@ -361,7 +361,7 @@ MeInsert hanya menyediakan *alat* untuk membaca dan menulis tag standar. Anda be
 | Kebijakan Privasi | [Halaman ID/EN](privacy.html) | [Indonesia](PRIVACY.md) · [English](PRIVACY-en.md) |
 | Keamanan | [SECURITY.md](SECURITY.md) | [security.txt](.well-known/security.txt) |
 
-**Isi berkas, metadata yang diedit, sampul, dan hasil pemrosesan tidak dikirim atau diunggah ke server oleh aplikasi resmi.** Baca [docs/security.md](docs/security.md) untuk cara memverifikasi klaim tersebut, termasuk catatan tentang beacon analitik yang disuntikkan host produksi.
+**Isi berkas, metadata yang diedit, sampul, dan hasil pemrosesan tidak dikirim atau diunggah ke server oleh engine aplikasi resmi.** Situs resmi menggunakan **Cloudflare Web Analytics** untuk statistik kunjungan halaman publik dan performa situs, bukan untuk membaca berkas atau perubahan metadata. Crawling mesin pencari tidak memerlukan analytics. Baca [Kebijakan Privasi](PRIVACY.md) dan [docs/security.md](docs/security.md) untuk rincian dan cara memverifikasi klaim pemrosesan lokal.
 
 **Pemalsuan untuk menipu atau melakukan pelanggaran hukum dilarang.** Pelanggaran yang terbukti dapat dikenai sanksi sesuai hukum dan proses pihak berwenang; MeInsert tidak menjatuhkan hukuman otomatis. Kebijakan penggunaan tidak menambahkan pembatasan pada Lisensi MeInsert Source-Available v1.0.
 
