@@ -7,3 +7,5 @@ exclude:
   - package-lock.json
   - .agents
   - .freebuff
+include:
+  - .well-known

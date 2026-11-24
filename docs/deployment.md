@@ -33,10 +33,15 @@ build step at deploy time. Header rules, however, differ per host.
   custom domain. Do not change it when deploying elsewhere.
 
 > [!NOTE]
-> **No DNS or hosting changes are part of this work.** No new domain, no host
-> migration, and no required Cloudflare configuration change comes from the
-> security work described here (apart from the optional `/sw.js` cache action
-> below).
+> **No DNS or host migration is part of this work.** However, GitHub Pages
+> ignores `_headers`, so production (GitHub Pages behind Cloudflare) does not
+> receive `X-Frame-Options`, `Referrer-Policy`, `X-Content-Type-Options`, or
+> `Strict-Transport-Security`. Set these as **Cloudflare Transform Rules** on
+> `meinsert.my.id/*` (response headers), or move to a host that reads `_headers`.
+> A client-side frame-busting fallback was added to `assets/js/theme-init.js`,
+> but it is not a replacement for real headers. Purge the Cloudflare cache after
+> deploying so `/.well-known/security.txt` — now included via `_config.yml` —
+> becomes reachable.
 
 ### Service worker caching on Cloudflare
 
@@ -129,10 +134,16 @@ lihat tabel di atas.
   domain. Jangan mengubahnya saat deploy ke host lain.
 
 > [!NOTE]
-> **Tidak ada perubahan DNS atau hosting yang menjadi bagian dari pekerjaan
-> ini.** Tidak ada nama domain baru, tidak ada pemindahan host, tidak ada
-> perubahan konfigurasi Cloudflare yang disyaratkan oleh perubahan keamanan ini
-> (kecuali tindakan opsional untuk cache `/sw.js` di bawah).
+> **Tidak ada perubahan DNS atau pemindahan host dalam pekerjaan ini.** Namun
+> GitHub Pages mengabaikan `_headers`, sehingga produksi (GitHub Pages di balik
+> Cloudflare) tidak menerima `X-Frame-Options`, `Referrer-Policy`,
+> `X-Content-Type-Options`, atau `Strict-Transport-Security`. Pasang header
+> tersebut sebagai **Cloudflare Transform Rules** pada `meinsert.my.id/*`, atau
+> pindah ke host yang membaca `_headers`. Fallback frame-busting sisi klien
+> ditambahkan di `assets/js/theme-init.js`, tetapi itu bukan pengganti header
+> asli. Lakukan purge cache Cloudflare setelah deploy agar
+> `/.well-known/security.txt` — kini disertakan lewat `_config.yml` — bisa
+> diakses.
 
 ### Cache service worker di Cloudflare
 
