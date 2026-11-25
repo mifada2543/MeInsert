@@ -78,7 +78,7 @@ export const OFFLINE_FEATURES = [
   {
     id: 'image',
     labelKey: 'ui.offlineFeatureImage',
-    bytes: 1_184_621 + exiftoolBuild.brotliBytes,
+    bytes: 1_185_140 + exiftoolBuild.brotliBytes,
     urls: [
       './assets/vendor/exiftool-wasm/index.js',
       './assets/vendor/brotli-decode.mjs',

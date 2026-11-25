@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { mediaKind } from '../core/media-kind.js';
 const GIB = 1024 ** 3;
 export const BATCH_LIMITS = {
   video: { label: 'Video', maxFiles: 10, maxDuration: 60 * 60, maxBytes: 2 * GIB },
@@ -11,11 +12,7 @@ export const BATCH_LIMITS = {
 };
 export function categoryForDetection(detection) {
   if (!detection) return 'light';
-  if (detection.id === 'mp4' && detection.subtype === 'm4a') return 'audio';
-  if (detection.id === 'mp3' || detection.id === 'flac' || detection.id === 'ogg') return 'audio';
-  if (detection.id === 'mkv' || detection.id === 'mp4') return 'video';
-  if (detection.id === 'office') return 'light';
-  return 'light';
+  return mediaKind(detection);
 }
 export function categoryLabel(category) {
   return BATCH_LIMITS[category]?.label || 'Lainnya';

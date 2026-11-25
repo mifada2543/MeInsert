@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { mediaKind } from '../core/media-kind.js';
 export function isSelectedItem(item) {
   return Boolean(item?.included) && !item?.excluded;
 }
@@ -39,8 +40,9 @@ export function fileIconName(item) {
   const id = item?.detection?.id;
   if (id === 'image') return 'image';
   if (id === 'pdf') return 'pdf';
-  if (id === 'mp3' || id === 'flac' || id === 'ogg' || (id === 'mp4' && item?.detection?.subtype === 'm4a')) return 'audio';
-  if (id === 'mkv' || id === 'mp4') return 'video';
+  const kind = mediaKind(item?.detection);
+  if (kind === 'audio') return 'audio';
+  if (kind === 'video') return 'video';
   return 'file';
 }
 export function durationOf(item) {

@@ -49,6 +49,7 @@ const SHELL_URLS = [
   './assets/js/core/integrity-rules.js',
   './assets/js/core/integrity.js',
   './assets/js/core/media-cut.js',
+  './assets/js/core/media-kind.js',
   './assets/js/core/mp3-cut.js',
   './assets/js/core/id3-passthrough.js',
   './assets/js/core/media-proof.js',

@@ -70,7 +70,7 @@ export const meta = {
   label: 'MP4 / M4A',
   description: 'Video MP4, M4V, MOV, dan audio M4A',
   extensions: ['mp4', 'm4v', 'm4a', 'mov'],
-  mime: 'video/mp4',
+  mime: 'application/octet-stream',
   cover: true,
 };
 export const sections = [
@@ -186,6 +186,9 @@ const WRITE_MAP = {
 function safeName(file, extension) {
   return new File([file], `input.${extension || 'mp4'}`, { type: file.type || meta.mime });
 }
+function mimeForExtension(extension) {
+  return String(extension || '').toLowerCase() === 'm4a' ? 'audio/mp4' : 'video/mp4';
+}
 export function mapTags(tags) {
   const out = {};
   for (const [id, keys] of Object.entries(READ_MAP)) {
@@ -194,13 +197,19 @@ export function mapTags(tags) {
   }
   return out;
 }
-export function describeFile(tags) {
+function mp4Kind(tags, options = {}) {
+  if (options.subtype === 'm4a') return 'audio';
+  const fileType = asString(tags?.['File:FileType']).toLowerCase();
+  if (fileType === 'm4a' || fileType === 'm4b' || fileType === 'm4p') return 'audio';
+  return 'video';
+}
+export function describeFile(tags, options = {}) {
   return {
     format: asString(tags['File:FileType']),
     duration: tags['QuickTime:Duration'] || tags['Composite:Duration'] || '',
     width: tags['QuickTime:ImageWidth'] || '',
     height: tags['QuickTime:ImageHeight'] || '',
-    kind: 'video',
+    kind: mp4Kind(tags, options),
     hasCover: Boolean(tags['ItemList:CoverArt'] || tags['CoverArt']),
   };
 }
@@ -261,7 +270,7 @@ export async function read(file, options = {}) {
       coverBytes = null;
     }
   }
-  const info = describeFile(tags);
+  const info = describeFile(tags, options);
   if (duration !== '') info.duration = duration;
   return {
     fields: mapTags(tags),
@@ -425,11 +434,11 @@ export async function write(file, payload, options = {}, report = () => {}) {
   }
   if (needsSidecarPass) {
     report({ stage: 'Menyematkan lirik/subtitle…', pct: 55 });
-    const baseFile = new File([bytes], `input.${options.extension || 'mp4'}`, { type: sourceFile.type || 'video/mp4' });
+    const baseFile = new File([bytes], `input.${options.extension || 'mp4'}`, { type: sourceFile.type || mimeForExtension(options.extension) });
     bytes = await embedSidecar(baseFile, payload, report);
   }
   report({ stage: 'Memverifikasi hasil…', pct: 78 });
-  const mime = options.mime || file.type || 'video/mp4';
+  const mime = options.mime || file.type || mimeForExtension(options.extension);
   const blob = new Blob([bytes], { type: mime });
   const output = new File([bytes], `output.${options.extension || 'mp4'}`, { type: mime });
   const rangeProof = trim ? await mediaRangeProof(output, 0, expectedCutDuration(trim)) : null;
@@ -465,13 +474,13 @@ export async function write(file, payload, options = {}, report = () => {}) {
       finalTags = {};
     }
     fields = mediabunnyFields(finalTags);
-    infoAfter = { kind: 'video' };
+    infoAfter = { kind: mp4Kind(finalTags, options) };
     ({ cover: coverAfter, coverBytes: coverBytesAfter } = coverFromTags(finalTags));
   } else {
     const { readTags } = await import('../engines/exiftool.js');
     const tagsAfter = await readTags(output);
     fields = mapTags(tagsAfter);
-    infoAfter = describeFile(tagsAfter);
+    infoAfter = describeFile(tagsAfter, options);
     raw = collectRaw(tagsAfter);
     if (infoAfter.hasCover) {
       try {

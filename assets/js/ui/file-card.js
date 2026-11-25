@@ -8,6 +8,7 @@ import { coverAcceptFor } from '../core/image-utils.js';
 import { openLightbox } from './lightbox.js';
 import { captureMediaSession, canReuseMedia, restoreMediaSession } from './media-session.js';
 import { buildOfficePreview } from './office-preview.js';
+import { mediaKind } from '../core/media-kind.js';
 const mediaFrames = new WeakMap();
 const mediaRatioBound = new WeakSet();
 const NO_BROWSER_PREVIEW = new Set(['heic', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf', 'braw', 'r3d', 'arriraw']);
@@ -31,14 +32,14 @@ export function previewKind(detection) {
   if (detection.id === 'image') return 'image';
   if (detection.id === 'pdf') return 'pdf';
   if (detection.id === 'office') return 'office';
-  if (detection.id === 'mp4' && detection.subtype !== 'm4a') return 'video';
-  if (detection.id === 'mkv') return 'video';
-  if (detection.id === 'mp3' || detection.id === 'flac' || detection.id === 'ogg' || detection.subtype === 'm4a') return 'audio';
+  const kind = mediaKind(detection);
+  if (kind === 'audio') return 'audio';
+  if (kind === 'video') return 'video';
   return 'file';
 }
 function statRows(file, detection, readResult) {
   const rows = [
-    ['Format', detection?.label || 'Tidak dikenali'],
+    ['Format', [detection?.label, ...(detection?.codecs || [])].filter(Boolean).join(' · ') || 'Tidak dikenali'],
     ['Ukuran', formatBytes(file.size)],
   ];
   const info = readResult?.info || {};

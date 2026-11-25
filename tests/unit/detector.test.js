@@ -14,6 +14,32 @@ function bytes(head, size = 128) {
 function file(name, head) {
   return new File([bytes(head)], name);
 }
+function asciiBytes(text) {
+  return [...new TextEncoder().encode(text)];
+}
+function u32(value) {
+  return [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
+}
+function box(type, payload = []) {
+  return [...u32(8 + payload.length), ...asciiBytes(type), ...payload];
+}
+function box64(type, payload = []) {
+  return [...u32(1), ...asciiBytes(type), 0, 0, 0, 0, ...u32(16 + payload.length), ...payload];
+}
+function ftyp(brand) {
+  return box('ftyp', [...asciiBytes(brand), 0, 0, 0, 0, ...asciiBytes(brand)]);
+}
+function trakFor(handler, codec) {
+  const hdlr = box('hdlr', [0, 0, 0, 0, 0, 0, 0, 0, ...asciiBytes(handler)]);
+  const stsd = box('stsd', [0, 0, 0, 0, 0, 0, 0, 1, ...u32(16), ...asciiBytes(codec)]);
+  const stbl = box('stbl', stsd);
+  const minf = box('minf', stbl);
+  const mdia = box('mdia', [...hdlr, ...minf]);
+  return box('trak', mdia);
+}
+function moovFor(handler, codec) {
+  return box('moov', trakFor(handler, codec));
+}
 const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const JPEG = [0xff, 0xd8, 0xff, 0xe0];
 const PDF = [...new TextEncoder().encode('%PDF-1.7')];
@@ -147,4 +173,81 @@ test('CR2 signature is stronger than a TIFF container extension', async () => {
   const detected = await detectFile(new File([data], 'capture.cr2'));
   assert.equal(detected.subtype, 'cr2');
   assert.equal(detected.warning, undefined);
+});
+test('M4A brand with a .m4a extension is audio without a track scan', async () => {
+  const detection = await detectFile(file('song.m4a', ftyp('M4A ')));
+  assert.equal(detection.kind, 'audio');
+  assert.equal(detection.subtype, 'm4a');
+  assert.equal(detection.mime, 'audio/mp4');
+  assert.equal(detection.warning, undefined);
+});
+test('isom brand with a soun track and .m4a extension is audio', async () => {
+  const head = [...ftyp('isom'), ...moovFor('soun', 'mp4a')];
+  assert.ok(head.length <= 128);
+  const detection = await detectFile(file('song.m4a', head));
+  assert.equal(detection.kind, 'audio');
+  assert.equal(detection.subtype, 'm4a');
+  assert.equal(detection.mime, 'audio/mp4');
+  assert.deepEqual(detection.codecs, ['AAC']);
+  assert.equal(detection.warning, undefined);
+});
+test('isom brand with a vide track and .m4a extension warns about the mismatch', async () => {
+  const detection = await detectFile(file('song.m4a', [...ftyp('isom'), ...moovFor('vide', 'avc1')]));
+  assert.equal(detection.kind, 'video');
+  assert.equal(detection.subtype, 'mp4');
+  assert.equal(detection.mime, 'video/mp4');
+  assert.deepEqual(detection.codecs, ['H.264']);
+  assert.match(detection.warning, /Ekstensi \.m4a tidak cocok/);
+  assert.match(detection.warning, /MP4/);
+});
+test('mp42 brand with a vide track and .mp4 extension stays video without warning', async () => {
+  const detection = await detectFile(file('clip.mp4', [...ftyp('mp42'), ...moovFor('vide', 'avc1')]));
+  assert.equal(detection.kind, 'video');
+  assert.equal(detection.subtype, 'mp4');
+  assert.equal(detection.warning, undefined);
+});
+test('M4A\\x00 brand with a soun track and .m4a extension is audio', async () => {
+  const detection = await detectFile(file('song.m4a', [...ftyp('M4A\u0000'), ...moovFor('soun', 'alac')]));
+  assert.equal(detection.kind, 'audio');
+  assert.equal(detection.subtype, 'm4a');
+  assert.equal(detection.brandKind, 'audio');
+  assert.equal(detection.codecs, undefined);
+  assert.equal(detection.warning, undefined);
+});
+test('moov near the end of a large non-fast-start file is still detected', async () => {
+  const padding = new Uint8Array(2 * 1024 * 1024 + 32);
+  const detection = await detectFile(new File([
+    new Uint8Array(ftyp('isom')),
+    padding,
+    new Uint8Array(moovFor('soun', 'alac')),
+  ], 'song.m4a'));
+  assert.equal(detection.kind, 'audio');
+  assert.equal(detection.subtype, 'm4a');
+  assert.equal(detection.mime, 'audio/mp4');
+  assert.deepEqual(detection.codecs, ['ALAC']);
+  assert.equal(detection.warning, undefined);
+});
+test('missing moov falls back to the ftyp brand hint', async () => {
+  const detection = await detectFile(file('clip.mp4', ftyp('isom')));
+  assert.equal(detection.kind, 'video');
+  assert.equal(detection.subtype, 'mp4');
+  assert.equal(detection.mime, 'video/mp4');
+  assert.equal(detection.codecs, undefined);
+  assert.equal(detection.warning, undefined);
+});
+test('qt brand keeps the MOV video convention without scanning tracks', async () => {
+  const detection = await detectFile(file('clip.mov', [...ftyp('qt  '), ...moovFor('soun', 'mp4a')]));
+  assert.equal(detection.kind, 'video');
+  assert.equal(detection.subtype, 'mov');
+  assert.equal(detection.mime, 'video/quicktime');
+  assert.equal(detection.codecs, undefined);
+  assert.equal(detection.warning, undefined);
+});
+test('64-bit largesize moov boxes are walked correctly', async () => {
+  const head = [...ftyp('isom'), ...box64('moov', trakFor('soun', 'mp4a'))];
+  assert.ok(head.length <= 128);
+  const detection = await detectFile(file('song.m4a', head));
+  assert.equal(detection.kind, 'audio');
+  assert.equal(detection.subtype, 'm4a');
+  assert.deepEqual(detection.codecs, ['AAC']);
 });

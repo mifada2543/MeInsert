@@ -52,15 +52,117 @@ const TIFF_BASED_RAW = new Set(['dng', 'cr2', 'nef', 'arw', 'orf', 'rw2', 'raf']
 function ascii(bytes, start, length) {
   return String.fromCharCode(...bytes.slice(start, start + length));
 }
+function uint32BE(bytes, offset) {
+  if (offset + 4 > bytes.length) return 0;
+  return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+}
+function nextBox(bytes, offset, limit) {
+  if (offset + 8 > limit || limit > bytes.length) return null;
+  const type = ascii(bytes, offset + 4, 4);
+  const size32 = uint32BE(bytes, offset);
+  let size = size32;
+  let header = 8;
+  if (size32 === 1) {
+    if (offset + 16 > limit) return null;
+    size = uint32BE(bytes, offset + 8) * 0x100000000 + uint32BE(bytes, offset + 12);
+    header = 16;
+  } else if (size32 === 0) {
+    size = limit - offset;
+  }
+  if (!(size >= header) || offset + size > limit) return null;
+  return { type, start: offset, header, end: offset + size };
+}
+function findMoov(bytes) {
+  let offset = 0;
+  while (offset + 8 <= bytes.length) {
+    const box = nextBox(bytes, offset, bytes.length);
+    if (!box) return null;
+    if (box.type === 'moov') return box;
+    offset = box.end;
+  }
+  return null;
+}
+function findMoovInTail(bytes) {
+  for (let offset = bytes.length - 8; offset >= 0; offset -= 1) {
+    if (bytes[offset + 4] !== 0x6d || bytes[offset + 5] !== 0x6f
+        || bytes[offset + 6] !== 0x6f || bytes[offset + 7] !== 0x76) continue;
+    const size = uint32BE(bytes, offset);
+    if (size < 8 || offset + size > bytes.length) continue;
+    return { type: 'moov', start: offset, header: 8, end: offset + size };
+  }
+  return null;
+}
+function childrenOf(bytes, box) {
+  const children = [];
+  let offset = box.start + box.header;
+  while (offset + 8 <= box.end && offset + 8 <= bytes.length) {
+    const child = nextBox(bytes, offset, box.end);
+    if (!child) break;
+    children.push(child);
+    offset = child.end;
+  }
+  return children;
+}
+function findChild(bytes, box, type) {
+  let offset = box.start + box.header;
+  while (offset + 8 <= box.end && offset + 8 <= bytes.length) {
+    const child = nextBox(bytes, offset, box.end);
+    if (!child) return null;
+    if (child.type === type) return child;
+    offset = child.end;
+  }
+  return null;
+}
+const CODEC_LABELS = {
+  mp4a: 'AAC',
+  alac: 'ALAC',
+  'ac-3': 'AC-3',
+  'ec-3': 'E-AC-3',
+  avc1: 'H.264',
+  avc3: 'H.264',
+  hvc1: 'HEVC',
+  hev1: 'HEVC',
+  av01: 'AV1',
+  Opus: 'Opus',
+  vp09: 'VP9',
+};
+function sniffMp4Tracks(bytes, moov) {
+  let video = false;
+  let audio = false;
+  const codecs = [];
+  for (const trak of childrenOf(bytes, moov)) {
+    if (trak.type !== 'trak') continue;
+    const mdia = findChild(bytes, trak, 'mdia');
+    if (!mdia) continue;
+    const hdlr = findChild(bytes, mdia, 'hdlr');
+    if (hdlr && hdlr.end >= hdlr.start + hdlr.header + 12) {
+      const handler = ascii(bytes, hdlr.start + hdlr.header + 8, 4);
+      if (handler === 'vide') video = true;
+      else if (handler === 'soun') audio = true;
+    }
+    const minf = findChild(bytes, mdia, 'minf');
+    const stbl = minf ? findChild(bytes, minf, 'stbl') : null;
+    const stsd = stbl ? findChild(bytes, stbl, 'stsd') : null;
+    if (stsd && stsd.end >= stsd.start + stsd.header + 16) {
+      const fourCC = ascii(bytes, stsd.start + stsd.header + 12, 4);
+      if (/^[a-z0-9]{4}$/i.test(fourCC)) {
+        const label = CODEC_LABELS[fourCC] || fourCC;
+        if (!codecs.includes(label)) codecs.push(label);
+      }
+    }
+  }
+  if (!video && !audio && !codecs.length) return null;
+  return { video, audio, codecs };
+}
 function sniffMp4Brand(bytes) {
   if (bytes.length < 12) return null;
   if (ascii(bytes, 4, 4) !== 'ftyp') return null;
   const brand = ascii(bytes, 8, 4);
   if (/^(heic|heix|hevc|mif1|msf1)$/.test(brand)) return { id: 'image', subtype: 'heic', label: 'HEIC', mime: 'image/heic' };
   if (brand === 'crx ') return { id: 'image', subtype: 'cr3', label: 'CR3', mime: 'image/x-cr3' };
-  if (/^(M4A|M4B|M4P)/.test(brand)) return { id: 'mp4', subtype: 'm4a', label: 'M4A', mime: 'audio/mp4' };
-  if (brand === 'qt  ') return { id: 'mp4', subtype: 'mov', label: 'MOV', mime: 'video/quicktime' };
-  return { id: 'mp4', subtype: 'mp4', label: 'MP4', mime: 'video/mp4' };
+  if (/^(M4A|M4B|M4P)/.test(brand)) return { id: 'mp4', subtype: 'm4a', label: 'M4A', mime: 'audio/mp4', kind: 'audio', brandKind: 'audio', brand };
+  if (brand === 'qt  ') return { id: 'mp4', subtype: 'mov', label: 'MOV', mime: 'video/quicktime', kind: 'video', brandKind: 'mov', brand };
+  return { id: 'mp4', subtype: 'mp4', label: 'MP4', mime: 'video/mp4', kind: 'video', brandKind: 'generic', brand };
 }
 const MXF_MAGIC = [0x06, 0x0e, 0x2b, 0x34, 0x02, 0x05, 0x01, 0x01, 0x0d, 0x01, 0x02, 0x01, 0x01, 0x02, 0x04];
 function hasTiffMagic(bytes) {
@@ -290,6 +392,34 @@ const EXT_BY_SUBTYPE = {
   ods: 'ods',
   odp: 'odp',
 };
+const TRACK_CACHE = new WeakMap();
+async function readMp4Tracks(file, head) {
+  if (TRACK_CACHE.has(file)) return TRACK_CACHE.get(file);
+  const MP4_TAIL_BYTES = 2 * 1024 * 1024;
+  let tracks = null;
+  const direct = findMoov(head);
+  if (direct) {
+    tracks = sniffMp4Tracks(head, direct);
+  } else {
+    const bytes = file.size <= MP4_TAIL_BYTES
+      ? new Uint8Array(await file.arrayBuffer())
+      : new Uint8Array(await file.slice(file.size - MP4_TAIL_BYTES, file.size).arrayBuffer());
+    const moov = findMoov(bytes) || findMoovInTail(bytes);
+    if (moov) tracks = sniffMp4Tracks(bytes, moov);
+  }
+  TRACK_CACHE.set(file, tracks);
+  return tracks;
+}
+function needsTrackScan(detection, ext) {
+  if (detection.brandKind === 'audio' && (ext === 'm4a' || !ext)) return false;
+  return true;
+}
+function mp4FromTracks(hint, tracks) {
+  const base = { ...hint };
+  if (tracks.video) return { ...base, subtype: 'mp4', label: 'MP4', mime: 'video/mp4', kind: 'video', codecs: tracks.codecs };
+  if (tracks.audio) return { ...base, subtype: 'm4a', label: 'M4A', mime: 'audio/mp4', kind: 'audio', codecs: tracks.codecs };
+  return { ...base, subtype: 'mp4', label: 'MP4', mime: 'application/mp4', kind: 'light', codecs: tracks.codecs };
+}
 export async function detectFile(file) {
   let head = new Uint8Array(await file.slice(0, 128).arrayBuffer());
   const ext = fileExtension(file.name);
@@ -308,7 +438,11 @@ export async function detectFile(file) {
     const wider = new Uint8Array(await file.slice(0, ZIP_SNIFF_BYTES).arrayBuffer());
     if (wider.length > head.length) head = wider;
   }
-  const byMagic = sniff(head, zipInfo);
+  let byMagic = sniff(head, zipInfo);
+  if (byMagic?.id === 'mp4' && byMagic.brandKind !== 'mov' && needsTrackScan(byMagic, ext)) {
+    const tracks = await readMp4Tracks(file, head);
+    if (tracks) byMagic = mp4FromTracks(byMagic, tracks);
+  }
   const byExt = EXTENSIONS[ext];
   if (byMagic) {
     const actualExt = EXT_BY_SUBTYPE[byMagic.subtype] || ext || 'bin';

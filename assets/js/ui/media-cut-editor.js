@@ -10,11 +10,12 @@ import { beginChange, endChange } from '../core/history.js';
 import { setTrim } from '../editor/editor-state.js';
 import { syncActionBar } from '../editor/editor-changes.js';
 import { CUT_MODES, expectedCutDuration, normalizeTrim } from '../core/media-cut.js';
+import { mediaKind } from '../core/media-kind.js';
 import { ensureFeatureOffline } from './offline-settings.js';
 const EXIT_MS = 160;
 const EXIT_SAFETY_MS = EXIT_MS + 100;
-const AUDIO_EXTS = new Set(['mp3', 'flac', 'ogg', 'oga', 'opus']);
-const VIDEO_EXTS = new Set(['mp4', 'm4a', 'mov', 'mkv', 'webm']);
+const AUDIO_EXTS = new Set(['mp3', 'flac', 'ogg', 'oga', 'opus', 'm4a']);
+const VIDEO_EXTS = new Set(['mp4', 'mov', 'mkv', 'webm']);
 const SUPPORTED_EXTS = new Set([...AUDIO_EXTS, ...VIDEO_EXTS]);
 let dialog = null;
 let refs = null;
@@ -27,10 +28,12 @@ let closeAnimationEnd = null;
 function extensionOf(file) {
   return String(file?.name || '').toLowerCase().split('.').pop();
 }
-function supportsFile(file) {
+function supportsFile(file, detection) {
+  if (detection && mediaKind(detection) !== 'light') return true;
   return SUPPORTED_EXTS.has(extensionOf(file));
 }
-function cutModeForFile(file) {
+function cutModeForFile(file, detection) {
+  if (detection) return mediaKind(detection) === 'audio' ? 'audio' : 'video';
   return VIDEO_EXTS.has(extensionOf(file)) ? 'video' : 'audio';
 }
 function reduceMotion() {
@@ -358,14 +361,14 @@ function buildDialog() {
   };
   return dialog;
 }
-export function openCutEditor({ file, trim, onApply } = {}) {
+export function openCutEditor({ file, trim, onApply, detection } = {}) {
   if (typeof document === 'undefined') return;
   cancelClose();
   const instance = buildDialog();
   if (!instance.isConnected) document.body.append(instance);
   if (state?.mediaUrl) URL.revokeObjectURL(state.mediaUrl);
   lastFocused = document.activeElement;
-  const mode = cutModeForFile(file);
+  const mode = cutModeForFile(file, detection);
   const trimmed = trim && typeof trim === 'object' ? trim : null;
   state = {
     file: file || null,
@@ -404,7 +407,7 @@ export function mountCutButton({ container, ctx } = {}) {
   if (existing) return existing;
   const buttonIcon = el('span', { className: 'cut-btn__icon' }, icon('scissors'));
   const buttonLabel = el('span', { className: 'cut-btn__label' });
-  bindText(buttonLabel, () => t(cutModeForFile(ctx.state?.file) === 'video' ? 'ui.cutOpenVideo' : 'ui.cutOpenAudio'));
+  bindText(buttonLabel, () => t(cutModeForFile(ctx.state?.file, ctx.state?.detection) === 'video' ? 'ui.cutOpenVideo' : 'ui.cutOpenAudio'));
   const button = el('button', {
     type: 'button',
     id: 'cutBtn',
@@ -412,11 +415,11 @@ export function mountCutButton({ container, ctx } = {}) {
     title: translated(() => t('ui.cutOpen')),
     'aria-label': translated(() => t('ui.cutOpen')),
   }, buttonIcon, buttonLabel);
-  button.hidden = !supportsFile(ctx.state?.file);
+  button.hidden = !supportsFile(ctx.state?.file, ctx.state?.detection);
   window.addEventListener('meinsert:fileReady', () => {
-    button.hidden = !supportsFile(ctx.state?.file);
+    button.hidden = !supportsFile(ctx.state?.file, ctx.state?.detection);
     if (button.hidden) return;
-    const mode = cutModeForFile(ctx.state?.file);
+    const mode = cutModeForFile(ctx.state?.file, ctx.state?.detection);
     buttonLabel.textContent = t(mode === 'video' ? 'ui.cutOpenVideo' : 'ui.cutOpenAudio');
     button.title = buttonLabel.textContent;
     button.setAttribute('aria-label', buttonLabel.textContent);
@@ -424,15 +427,16 @@ export function mountCutButton({ container, ctx } = {}) {
   button.addEventListener('click', async () => {
     const editorState = ctx.state;
     const file = editorState?.file;
-    if (!file || editorState.status !== 'ready' || !supportsFile(file)) {
+    if (!file || editorState.status !== 'ready' || !supportsFile(file, editorState?.detection)) {
       showToast(t('ui.cutUnsupported'), 'info', 4200);
       return;
     }
-    const feature = cutModeForFile(file) === 'audio' ? 'audio' : 'image';
+    const feature = cutModeForFile(file, editorState?.detection) === 'audio' ? 'audio' : 'image';
     if (!(await ensureFeatureOffline(feature))) return;
     openCutEditor({
       file,
       trim: editorState.trim,
+      detection: editorState?.detection,
       onApply: (next) => {
         beginChange(editorState.history, 'trim', t('ui.changeHistoryCut', { v0: formatTime(next.start), v1: formatTime(next.end) }));
         setTrim(editorState, next);
