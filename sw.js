@@ -6,8 +6,8 @@
 
 
 
-const CACHE_VERSION = 'meinsert-v72';
-const ENGINE_VERSION = 'meinsert-engine-v4';
+const CACHE_VERSION = 'meinsert-v75';
+const ENGINE_VERSION = 'meinsert-engine-v5';
 const LEGACY_SHELL_VERSION = 'meinsert-v51';
 const BROTLI_WASM_PATH = './assets/vendor/exiftool-wasm/zeroperl-522d094a89cc.wasm.br';
 const BROTLI_WASM_BYTES = 3638320;
@@ -64,6 +64,15 @@ const SHELL_URLS = [
   './assets/js/core/privacy-categories.js',
   './assets/js/core/pwa.js',
   './assets/js/core/build.js',
+  './assets/js/core/metadata-presets.js',
+  './assets/js/core/gps-fuzz.js',
+  './assets/js/core/snapshot-diff.js',
+  './assets/js/batch/batch-transform.js',
+  './assets/js/ui/batch-tools.js',
+  './assets/js/ui/presets.js',
+  './assets/js/ui/raw-diff.js',
+  './assets/js/ui/gps-fuzz.js',
+  './assets/js/workers/batch-regex.worker.js',
   './assets/js/core/reload-guard.js',
   './assets/js/core/registry.js',
   './assets/js/core/tag-utils.js',
@@ -99,6 +108,9 @@ const SHELL_URLS = [
   './assets/js/ui/theme.js',
   './assets/js/ui/toast.js',
   './assets/js/formats/office.js',
+  './assets/js/formats/epub.js',
+  './assets/js/formats/svg.js',
+  './assets/js/workers/document.worker.js',
   './assets/js/formats/raw-video.js',
   './assets/js/workers/exiftool.worker.js',
   './assets/js/workers/media.worker.js',
@@ -159,6 +171,9 @@ const KNOWN_OPTIONAL_URLS = Object.freeze([
   './assets/js/core/zip-directory.js',
   './assets/js/workers/office.worker.js',
   './assets/js/formats/office.js',
+  './assets/js/formats/epub.js',
+  './assets/js/formats/svg.js',
+  './assets/js/workers/document.worker.js',
   './assets/js/core/office-xml.js',
   './assets/js/core/office-package.js',
 ]);
@@ -223,8 +238,10 @@ self.addEventListener('install', (event) => {
   })());
 });
 async function migratePreviousEngineCache() {
-  const previous = 'meinsert-engine-v3';
-  if (!(await caches.keys()).includes(previous)) return;
+  const keys = await caches.keys();
+  const previous = ['meinsert-engine-v4', 'meinsert-engine-v3'].find((key) => keys.includes(key));
+  if (!previous) return;
+  const legacyV3 = previous === 'meinsert-engine-v3';
   const legacy = await caches.open(previous);
   const legacyRequests = await legacy.keys();
   if (!legacyRequests.length) return;
@@ -232,6 +249,9 @@ async function migratePreviousEngineCache() {
   const allowed = optionalPathSet();
   const scope = self.registration.scope;
   const brotliHref = new URL(BROTLI_WASM_PATH, scope).href;
+  const changedDocuments = new Set(['./assets/js/formats/epub.js', './assets/js/formats/svg.js']
+    .map((path) => new URL(path, scope).href));
+  const refresh = [];
   await Promise.all(legacyRequests.map(async (request) => {
     const url = new URL(request.url);
     if (!isSameOrigin(url.href) || url.search) return;
@@ -250,8 +270,13 @@ async function migratePreviousEngineCache() {
       } catch {  }
       return;
     }
-    if (!allowed.has(url.pathname) || url.pathname.includes('/exiftool-wasm/')
-        || url.pathname.endsWith('/engines/exiftool.js')) return;
+    if (!allowed.has(url.pathname)) return;
+    if (changedDocuments.has(url.href)) {
+      if (!(await cachedOptionalResponse(current, url.href))) refresh.push(url.href);
+      return;
+    }
+    if (legacyV3 && (url.pathname.includes('/exiftool-wasm/')
+        || url.pathname.endsWith('/engines/exiftool.js'))) return;
     try {
       const cached = await legacy.match(request);
       if (!cached?.ok) return;
@@ -266,8 +291,8 @@ async function migratePreviousEngineCache() {
     './assets/vendor/brotli-decode.mjs',
     './assets/js/engines/exiftool.js',
   ];
-  const missing = [];
-  for (const path of required) {
+  const missing = [...new Set(refresh)];
+  for (const path of legacyV3 ? required : []) {
     const href = new URL(path, scope).href;
     if (!(await cachedOptionalResponse(current, href))) missing.push(href);
   }

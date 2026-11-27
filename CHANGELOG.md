@@ -10,14 +10,34 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 ## Daftar isi
 
-- [Unreleased — v1.6 experiment reliability patch](#unreleased--v16-experiment-reliability-patch)
+- [2.0.0 — 2026-11-27](#200--2026-11-27)
+- [Perbaikan sejak 1.6.0](#perbaikan-sejak-160)
 - [1.6.0 — 2026-11-22](#160--2026-11-22)
 - [1.5.0 — 2026-11-21](#150--2026-11-21)
 - [1.4.1 — 2026-11-21](#141--2026-11-21)
 - [1.4.0 — 2026-11-21](#140--2026-11-21)
 - [1.3.0 — 2026-11-18](#130--2026-11-18)
 
-## [Unreleased] — v1.6 experiment reliability patch
+## [2.0.0] — 2026-11-27
+
+- Preset metadata lokal untuk Single dan Batch, dengan impor/ekspor JSON,
+  pemetaan field yang didukung dan undo/redo.
+- Batch cari/ganti literal atau regex dengan worker terisolasi dan batas
+  waktu, serta penomoran trek untuk format yang menyediakan field terkait.
+- Proses langsung ke ZIP di browser yang menyediakan picker penyimpanan.
+  Setiap file diverifikasi sebelum ditulis. Mode hemat memori per file juga
+  menahan hasil yang gagal atau belum bisa diverifikasi.
+- Estimasi batch memakai file yang mempunyai perubahan nyata.
+- Raw diff aktual setelah baca ulang, termasuk tag berulang dan ekspor JSON.
+- Metadata dasar EPUB dan SVG melalui worker lokal. Pembersihan memakai
+  field yang dapat dihapus per file. SVG tidak dirender.
+- AVIF still-image melalui jalur XMP dengan status best effort.
+- Pengaburan GPS JPEG opsional dengan radius 1, 5, atau 10 km.
+- Manifest SHA-384 memeriksa aset rilis saat build. Cache shell PWA naik
+  ke `meinsert-v75`. Migrasi engine v5 memakai ulang WASM Brotli yang valid
+  dan memuat ulang adapter EPUB/SVG yang sebelumnya tersimpan.
+
+## Perbaikan sejak 1.6.0
 
 - GPS altitude now round-trips signed values via `GPSAltitudeRef` for EXIF and
   XMP; invalid decimal coordinates are rejected before writing.

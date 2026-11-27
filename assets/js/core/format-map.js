@@ -93,6 +93,8 @@ const FORMAT_FIELDS = {
     copyright: 'copyright',
     software: 'software',
   },
+  epub: { title: 'title', artist: 'creator', comment: 'description', copyright: 'rights' },
+  svg: { title: 'title', artist: 'creator', comment: 'description', copyright: 'rights' },
   office: {
     title: 'title',
     artist: 'creator',

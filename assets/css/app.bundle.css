@@ -2854,6 +2854,44 @@ body[data-page="single"] {
 @media (prefers-reduced-motion: reduce) {
   .confirm-card { animation: none; }
 }
+.metadata-tools-dialog {
+  width: min(42rem, calc(100% - 2rem));
+  max-height: 85dvh;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: inherit;
+}
+.metadata-tools-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+.metadata-tools-dialog label {
+  display: grid;
+  gap: .35rem;
+  min-width: 0;
+}
+.metadata-tools-dialog :is(input, select) {
+  max-width: 100%;
+}
+.metadata-tools-dialog .result-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.raw-diff-table {
+  overflow-x: auto;
+}
+.raw-diff-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.raw-diff-table :is(th, td) {
+  padding: .35rem .5rem;
+  text-align: start;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--line);
+}
 
 /* MeInsert · components/review.css — dialog pemeriksaan perubahan sebelum write. */
 .review-backdrop {

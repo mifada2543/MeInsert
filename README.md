@@ -14,7 +14,7 @@ Tanpa server. Tanpa upload. Tanpa akun.
 [Demo langsung](https://meinsert.my.id/) · [Editor satu file](https://meinsert.my.id/single.html) · [Mode batch](https://meinsert.my.id/batch.html) · [Dokumentasi](#dokumentasi-lanjutan)
 
 [![CI](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml/badge.svg)](https://github.com/mifada2543/meinsert/actions/workflows/ci.yml)
-[![Versi](https://img.shields.io/badge/version-v1.6.0-blue?style=flat-square)](./package.json)
+[![Versi](https://img.shields.io/badge/version-v2.0.0-blue?style=flat-square)](./package.json)
 [![Lisensi](https://img.shields.io/badge/Lisensi-Source_Available-orange?style=flat-square)](./LICENSE)
 [![Client-side](https://img.shields.io/badge/100%25-client--side-lightgrey?style=flat-square)](#cara-memverifikasi-klaim-lokal)
 [![PWA](https://img.shields.io/badge/PWA-offline--ready-7B3FF2?style=flat-square)](https://meinsert.my.id/)
@@ -24,6 +24,10 @@ Tanpa server. Tanpa upload. Tanpa akun.
 </div>
 
 ## Mulai cepat
+
+**Baru di v2.0** · preset metadata lokal, cari/ganti dan penomoran trek di Batch,
+proses langsung ke ZIP pada browser yang mendukung, raw diff setelah verifikasi,
+serta metadata EPUB dan SVG. Lihat [catatan batas fitur](docs/LIMITATIONS.md#meinsert-20).
 
 Semua mode berjalan di browser Anda, tanpa akun.
 

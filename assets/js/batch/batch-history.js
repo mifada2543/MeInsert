@@ -19,12 +19,16 @@ export function snapshotGroupState(group) {
   return {
     values: { ...(group.values || {}) },
     remove: [...(group.remove || [])],
+    ...(group.itemPatches ? { itemPatches: structuredClone(group.itemPatches) } : {}),
+    ...(group.itemRawRemovals ? { itemRawRemovals: structuredClone(group.itemRawRemovals) } : {}),
   };
 }
 export function restoreGroupState(group, snapshot) {
   if (!group || !snapshot) return false;
   group.values = { ...(snapshot.values || {}) };
   group.remove = new Set(snapshot.remove || []);
+  group.itemPatches = snapshot.itemPatches ? structuredClone(snapshot.itemPatches) : undefined;
+  group.itemRawRemovals = snapshot.itemRawRemovals ? structuredClone(snapshot.itemRawRemovals) : undefined;
   return true;
 }
 /**

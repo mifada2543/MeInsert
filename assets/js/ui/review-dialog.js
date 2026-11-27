@@ -162,7 +162,7 @@ function xmpSection(plan) {
     ),
   );
 }
-export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
+export function openReviewDialog({ plans = [], mode = 'single', canStreamBatch = false } = {}) {
   if (typeof document === 'undefined') return Promise.resolve(false);
   closeReviewDialog(false);
   if (!plans.length) return Promise.resolve(false);
@@ -194,6 +194,7 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
   );
   const mismatches = plans.filter((plan) => plan?.extensionMismatch?.found);
   let lowMemoryInput = null;
+  let directZipInput = null;
   let memoryOverrideInput = null;
   let extKeepInput = null;
   const memoryBlocked = plans.some((plan) => plan?.memory?.level === 'block');
@@ -210,6 +211,19 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
       ),
     );
   }
+  if (mode === 'batch' && canStreamBatch) {
+    directZipInput = el('input', { type: 'checkbox', id: 'reviewDirectZip' });
+    body.append(el('label', { className: 'review-low-memory', for: 'reviewDirectZip' },
+      directZipInput, el('span', {},
+        el('strong', {}, translated(() => t('batchZip.direct'))),
+        el('span', {}, translated(() => t('batchZip.directHint'))))));
+    directZipInput.addEventListener('change', () => {
+      if (directZipInput.checked) lowMemoryInput.checked = false;
+    });
+    lowMemoryInput.addEventListener('change', () => {
+      if (lowMemoryInput.checked) directZipInput.checked = false;
+    });
+  }
   if (memoryBlocked && mode !== 'batch') {
     memoryOverrideInput = el('input', { type: 'checkbox', id: 'reviewMemoryOverride' });
     body.append(
@@ -224,12 +238,13 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
   }
   const updateMemoryGate = () => {
     const decision = canProceedWithMemory(plans[0]?.memory, {
-      lowMemory: Boolean(lowMemoryInput?.checked),
+      lowMemory: Boolean(lowMemoryInput?.checked || directZipInput?.checked),
       memoryOverride: Boolean(memoryOverrideInput?.checked),
     });
     confirmButton.disabled = !decision.allowed;
   };
   lowMemoryInput?.addEventListener('change', updateMemoryGate);
+  directZipInput?.addEventListener('change', updateMemoryGate);
   memoryOverrideInput?.addEventListener('change', updateMemoryGate);
   updateMemoryGate();
   if (mismatches.length) {
@@ -337,6 +352,7 @@ export function openReviewDialog({ plans = [], mode = 'single' } = {}) {
   card.querySelector('.review-close').addEventListener('click', () => finish({ confirmed: false, lowMemory: false, keepOriginalExt: null }));
   confirmButton.addEventListener('click', () => finish({
     confirmed: true,
+    directZip: Boolean(directZipInput?.checked),
     lowMemory: Boolean(lowMemoryInput?.checked),
     memoryOverride: Boolean(memoryOverrideInput?.checked),
     keepOriginalExt: extKeepInput ? Boolean(extKeepInput.checked) : null,

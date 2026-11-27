@@ -8,7 +8,7 @@ export function singleEditing(state, dirtyCount) {
 export function batchDraftKey(controller) {
   return JSON.stringify([controller.crossEnabled, controller.cross?.values,
     [...(controller.cross?.remove || [])].sort(),
-    controller.groups.map((group) => [group.key, group.values, [...group.remove].sort()]),
+    controller.groups.map((group) => [group.key, group.values, [...group.remove].sort(), group.itemPatches, group.itemRawRemovals]),
     controller.items.map((item) => [item.id, [...(item.removeRaw || [])].sort()])]);
 }
 export function setEditingNavigation(editing) {

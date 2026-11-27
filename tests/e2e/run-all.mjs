@@ -33,6 +33,7 @@ const allSuites = [
   'cut-media',
   'change-history',
   'gps-tab',
+  'v2-roadmap',
 ];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function option(name) {

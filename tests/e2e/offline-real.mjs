@@ -508,7 +508,7 @@ try {
     await page.waitForFunction(() => /tag terbaca/.test(document.querySelector('#readStatus')?.textContent || ''), null, { timeout: 120_000 });
     assertSameOriginOnly(requests, baseOrigin, 'offline reopen after migration');
     assert.deepEqual([...requestedPaths(requests)].filter(isWasm), [pathOf(brotliHref)], 'offline reopen reused the cached Brotli payload');
-    console.log('PASS: (k) gzip-only v3 cache upgraded to Brotli v4; offline reopen read tags');
+    console.log('PASS: (k) gzip-only v3 cache upgraded to the current Brotli cache; offline reopen read tags');
     await context.setOffline(false);
   }
   assert.deepEqual(errors, [], `unexpected page errors: ${errors.join('; ')}`);

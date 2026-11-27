@@ -11,6 +11,7 @@ import { formatDuration } from './batch-limits.js';
 import { durationOf } from './batch-item.js';
 export class BatchPreview {
   previewKindOf(item) {
+    if (item?.detection?.id === 'svg') return 'file';
     const kind = previewKind(item?.detection);
     if (kind !== 'file') return kind;
     const type = item?.file?.type || '';

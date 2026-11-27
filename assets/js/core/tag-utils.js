@@ -2,7 +2,7 @@
 /* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 const XMP_ONLY_IMAGE_SUBTYPES = new Set([
-  'png', 'webp', 'heic', 'heif', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf',
+  'png', 'webp', 'avif', 'heic', 'heif', 'dng', 'cr2', 'cr3', 'nef', 'arw', 'orf', 'rw2', 'raf',
 ]);
 export function isXmpOnlyImageSubtype(subtype) {
   return XMP_ONLY_IMAGE_SUBTYPES.has(String(subtype || '').toLowerCase());

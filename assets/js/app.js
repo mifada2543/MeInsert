@@ -2,13 +2,13 @@
 /* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
 import { MetadataClient } from './core/worker-client.js';
-import { initLanguage } from './i18n/index.js';
+import { initLanguage, t } from './i18n/index.js';
 import { registerServiceWorker } from './core/pwa.js';
 import { initTheme } from './ui/theme.js';
 import { qs } from './ui/dom.js';
 import { createEditorState } from './editor/editor-state.js';
 import { createShell, setIcons, createPreviewDock } from './editor/editor-shell.js';
-import { syncActionBar } from './editor/editor-changes.js';
+import { collectChanges, syncActionBar } from './editor/editor-changes.js';
 import {
   createHandlers,
   redoChange,
@@ -31,6 +31,9 @@ import './ui/offline-settings.js';
 import { mountTimedTextButton } from './ui/timed-text-editor.js';
 import { mountCutButton } from './ui/media-cut-editor.js';
 import { mountChangeHistory } from './ui/change-history.js';
+import { openPresets, toolButton } from './ui/presets.js';
+import { presetPatch } from './core/metadata-presets.js';
+import { asString } from './core/tag-utils.js';
 initLanguage();
 registerServiceWorker();
 const client = new MetadataClient();
@@ -163,6 +166,28 @@ function boot() {
     mountChangeHistory({ ctx, els });
     setupCleanMetadata();
     initActionBar();
+    const presetButton = toolButton('presets.title', () => {
+      if (state.status !== 'ready' || state.processing || state.adapter?.meta?.readOnly) return;
+      openPresets({
+        getValues: () => collectChanges(state).payload.set,
+        apply(preset) {
+          const patch = presetPatch(preset, state.adapter, state.detection);
+          if (!Object.keys(patch).length) return false;
+          endChange(state.history);
+          beginChange(state.history, null, t('presets.title'));
+          for (const [id, value] of Object.entries(patch)) {
+            state.values[id] = asString(value);
+            state.removedFields.delete(id);
+          }
+          endChange(state.history);
+          renderWorkspace(ctx);
+          syncActionBar(els, state);
+          return true;
+        },
+      });
+    });
+    presetButton.id = 'metadataPresetsBtn';
+    qs('#actionOptions')?.append(presetButton);
     dock.attach();
     renderTabs(ctx);
     syncActionBar(els, state);

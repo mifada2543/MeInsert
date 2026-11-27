@@ -6,6 +6,9 @@ import { showToast } from '../ui/toast.js';
 import { renderFileCard, setCardMinimized, previewKind } from '../ui/file-card.js';
 import { renderForm, renderCoverBlock } from '../ui/form-view.js';
 import { renderRaw } from '../ui/raw-view.js';
+import { canFuzzGps, gpsFuzzPatch } from '../core/gps-fuzz.js';
+import { openGpsFuzz } from '../ui/gps-fuzz.js';
+import { toolButton } from '../ui/presets.js';
 import { renderResultCard } from '../ui/result-view.js';
 import { fieldsBySection } from '../core/registry.js';
 import { coverFormatsLabelFor, isSupportedCover, mimeOf } from '../core/image-utils.js';
@@ -14,7 +17,7 @@ import { syncActionBar } from './editor-changes.js';
 import { normalizeRawTag } from '../core/metadata-snapshot.js';
 import { isCommittedResult } from '../core/write-guard.js';
 import { cloneRows } from './editor-state.js';
-import { beginChange, redo, undo } from '../core/history.js';
+import { beginChange, endChange, redo, undo } from '../core/history.js';
 import { t } from '../i18n/index.js';
 function fieldLabel(state, id) {
   const field = state.adapter?.fields?.find((item) => item.id === id);
@@ -197,6 +200,24 @@ export function renderWorkspace(ctx) {
       coverInCard: false,
       extras: false,
     });
+    if (canFuzzGps(state.detection, state.readResult)) {
+      els.panel.append(toolButton('gpsFuzz.title', () => openGpsFuzz((radius) => {
+        if (state.processing) return false;
+        const patch = gpsFuzzPatch(state.readResult, radius);
+        endChange(state.history);
+        beginChange(state.history, null, t('gpsFuzz.title'));
+        for (const [id, value] of Object.entries(patch.fields)) {
+          state.values[id] = value ?? '';
+          if (value === null) state.removedFields.add(id);
+          else state.removedFields.delete(id);
+        }
+        for (const tag of patch.rawRemove) state.rawRemove.add(tag);
+        endChange(state.history);
+        renderWorkspace(ctx);
+        syncActionBar(els, state);
+        return true;
+      })));
+    }
     setEditorBadge(els, `${state.detection.label} · GPS`, true);
     return;
   }

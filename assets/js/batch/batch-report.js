@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { needsIntegrityReview, zipEligible } from './batch-item.js';
 import { categoryLabel } from './batch-limits.js';
 function csvEscape(value) {
   const text = String(value ?? '');
@@ -24,7 +25,7 @@ function cleaningOf(item) {
     removedTagCount: Number(clean.removedTagCount) || 0,
   };
 }
-export function makeReport(items) {
+export function makeReport(items, { zipItems } = {}) {
   const safeItems = items || [];
   const summary = {
     generatedAt: new Date().toISOString(),
@@ -35,7 +36,7 @@ export function makeReport(items) {
       ready: safeItems.filter((item) => item.status === 'ready' || item.status === 'done').length,
       done: safeItems.filter((item) => item.status === 'done').length,
       failed: safeItems.filter((item) => item.status === 'error').length,
-      flagged: safeItems.filter((item) => item.status === 'done' && item.integrity?.status === 'failed').length,
+      flagged: safeItems.filter(needsIntegrityReview).length,
       skipped: safeItems.filter((item) => item.excluded || item.status === 'skipped').length,
       bytes: safeItems.reduce((sum, item) => sum + (Number(item.file?.size) || 0), 0),
     },
@@ -68,7 +69,7 @@ export function makeReport(items) {
           before: finding.before,
           after: finding.after,
         })),
-        includedInZip: Boolean(item.outputFile) && (item.integrity.status !== 'failed' || Boolean(item.includeFailedInZip)),
+        includedInZip: zipItems ? zipItems.has(item) : Boolean(item.savedInDirectZip) || zipEligible(item),
       } : null,
       warnings: item.warnings || [],
       error: item.error?.message || item.error || '',
@@ -79,8 +80,8 @@ export function makeReport(items) {
   });
   return { ...summary, files };
 }
-export function makeJsonReport(items) {
-  return JSON.stringify(makeReport(items), null, 2);
+export function makeJsonReport(items, options) {
+  return JSON.stringify(makeReport(items, options), null, 2);
 }
 export function makeCsvReport(items) {
   const rows = [

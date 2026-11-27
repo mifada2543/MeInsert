@@ -189,7 +189,17 @@ function applyPlan(controller, plan, snapshots) {
     if (!entry) continue;
     const { item, group } = entry;
     let changed = false;
-    if (group && entry.remove.length) {
+    if (group && entry.remove.length && item.adapter?.meta?.customTags === false) {
+      const patch = group.itemPatches?.[item.id] || {};
+      const additions = entry.remove.filter((id) => patch[id] !== null);
+      if (additions.length) {
+        controller.groupHistoryController.begin(group.key, `group:${group.key}:clean`);
+        group.itemPatches ||= {};
+        group.itemPatches[item.id] = { ...patch, ...Object.fromEntries(additions.map((id) => [id, null])) };
+        controller.groupHistoryController.end(group.key);
+        changed = true;
+      }
+    } else if (group && entry.remove.length) {
       const additions = entry.remove.filter((id) => !group.remove.has(id));
       if (additions.length) {
         controller.groupHistoryController.begin(group.key, `group:${group.key}:clean`);

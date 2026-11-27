@@ -4,6 +4,8 @@
 import { detectFile } from '../core/detector.js';
 import { adapterForDetection } from '../core/registry.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
+import { rawSnapshotDiff } from '../core/snapshot-diff.js';
+import { hasVerifiedBatchOutput, needsIntegrityReview } from './batch-item.js';
 import { verifyIntegrity } from '../core/integrity.js';
 import { applyDurationLimits, categoryForDetection, validateSelection } from './batch-limits.js';
 function mergeWarnings(...groups) {
@@ -97,10 +99,9 @@ export class BatchProcessor {
     }
     await this.client.disposeAll();
   }
-  async applyPlans(plans, skipped = [], onUpdate, { lowMemory = false, onOutput = null, maxFailures = 0 } = {}) {
+  async applyPlans(plans, skipped = [], onUpdate, { lowMemory = false, markPerFile = true, onOutput = null, maxFailures = 0 } = {}) {
     this.cancelRequested = false;
     let failures = 0;
-    this.cancelRequested = false;
     const entries = (plans || []).filter((plan) => plan?.item && plan?.payload);
     const skippedItems = [...new Set(skipped || [])].filter((item) => !entries.some((plan) => plan.item === item));
     const selection = validateSelection([...entries.map((plan) => plan.item), ...skippedItems]);
@@ -113,6 +114,7 @@ export class BatchProcessor {
       item.skipReason = 'Tidak ada perubahan nyata pada file ini.';
       item.operations = { set: 0, remove: 0, rawRemove: 0, custom: 0 };
       item.integrity = null;
+      item.rawDiff = null;
       onUpdate?.(item);
     }
     let stoppedReason = '';
@@ -128,11 +130,15 @@ export class BatchProcessor {
       }
       const outputName = plan.outputName || item.outputName || item.file.name;
       item.status = 'processing';
+      item.downloadedPerFile = false;
+      item.includeFailedInZip = false;
+      item.savedInDirectZip = false;
       item.progress = 2;
       item.stage = 'Menyiapkan output…';
       item.outputName = outputName;
       item.error = null;
       item.integrity = null;
+      item.rawDiff = null;
       onUpdate?.(item);
       try {
         const result = await this.writeItem(item, plan.payload, outputName, (progress) => {
@@ -156,17 +162,21 @@ export class BatchProcessor {
         const blob = result.blob;
         item.warnings = warnings;
         item.integrity = integrity;
+        item.rawDiff = rawSnapshotDiff(item.readResult?.raw || [], result.raw);
         item.operations = this.operationCounts(plan);
         item.status = 'done';
         item.progress = 100;
-        item.stage = integrity.status === 'failed'
+        item.stage = needsIntegrityReview(item)
           ? 'Selesai · perlu diperiksa'
           : integrity.status === 'warning' ? 'Selesai · ada catatan' : 'Selesai';
         item.baselineSnapshot = null;
         if (lowMemory && onOutput) {
           try {
-            onOutput(item, blob);
-            item.downloadedPerFile = true;
+            item.downloadedPerFile = false;
+            if (hasVerifiedBatchOutput(integrity)) {
+              await onOutput(item, blob);
+              item.downloadedPerFile = markPerFile;
+            }
           } catch {
             item.downloadedPerFile = false;
           }

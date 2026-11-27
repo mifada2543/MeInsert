@@ -168,6 +168,10 @@ function addFinding(bucket, finding) {
   entry.tags.push({ tag: finding.tag, label: finding.label || finding.tag, value: finding.value });
   bucket.sensitive.push({ tag: finding.tag, category: finding.category, value: finding.value });
 }
+function canCleanField(snapshot, id) {
+  return !snapshot?.removableFields || snapshot.removableFields.includes(id);
+}
+
 export function summarizeCleaning(snapshot) {
   const formatId = snapshot?.format?.id || '';
   const bucket = { categories: emptyCategories(), sensitive: [], total: 0, kept: [] };
@@ -194,11 +198,14 @@ export function summarizeCleaning(snapshot) {
     }
     if (!field.normalized) continue;
     const category = fieldCategory(formatId, field);
-    if (category) {
-      addFinding(bucket, { tag: field.id, label: field.label, value: field.value, category });
+    if (!category) continue;
+    if (!canCleanField(snapshot, field.id)) {
+      keep(field.id, 'ui.cleanReasonDocumentField');
+      continue;
     }
+    addFinding(bucket, { tag: field.id, label: field.label, value: field.value, category });
   }
-  for (const row of snapshot?.raw || []) {
+  for (const row of snapshot?.format?.customTags === false ? [] : snapshot?.raw || []) {
     if (!row?.tag) continue;
     const norm = normalizeTagText(row.tag);
     if (norm && isPreserved(norm, formatId)) {
@@ -210,7 +217,7 @@ export function summarizeCleaning(snapshot) {
     const category = rowCategory(formatId, row);
     if (category) addFinding(bucket, { tag: row.tag, label: row.label, value: row.value, category });
   }
-  for (const row of snapshot?.custom || []) {
+  for (const row of snapshot?.format?.customTags === false ? [] : snapshot?.custom || []) {
     if (!row?.key || !row.value) continue;
     const canonical = row.canonicalKey || normalizeTagText(row.key);
     if (seenCustom.has(canonical)) continue;
@@ -247,14 +254,14 @@ export function buildCleanPayload(snapshot, selectedCategories) {
   const removedCustom = new Set();
   let count = 0;
   for (const field of Object.values(snapshot?.fields || {})) {
-    if (!field?.id || !field.normalized || removedFields.has(field.id)) continue;
+    if (!field?.id || !field.normalized || removedFields.has(field.id) || !canCleanField(snapshot, field.id)) continue;
     const category = fieldCategory(formatId, field);
     if (!category || !selected.has(category)) continue;
     removedFields.add(field.id);
     payload.remove.push(field.id);
     count += 1;
   }
-  for (const row of snapshot?.raw || []) {
+  for (const row of snapshot?.format?.customTags === false ? [] : snapshot?.raw || []) {
     if (!row?.tag || !row.value) continue;
     if (xmpOnly && !/^XMP[-.]/i.test(row.tag)) continue;
     const canonical = normalizeTagText(row.tag);
@@ -265,7 +272,7 @@ export function buildCleanPayload(snapshot, selectedCategories) {
     payload.rawRemove.push(row.tag);
     count += 1;
   }
-  for (const row of snapshot?.custom || []) {
+  for (const row of snapshot?.format?.customTags === false ? [] : snapshot?.custom || []) {
     if (!row?.key || !row.value) continue;
     if (xmpOnly && !/^XMP[-.]/i.test(row.key)) continue;
     const canonical = row.canonicalKey || normalizeTagText(row.key);

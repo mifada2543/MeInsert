@@ -1,6 +1,6 @@
 {
   "name": "meinsert",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "description": "Insert and edit file metadata locally in your browser.",
@@ -11,7 +11,9 @@
     "check:css": "node scripts/build-css.mjs --check",
     "build:policies": "node scripts/build-policies.mjs",
     "check:policies": "node scripts/build-policies.mjs --check",
-    "check:assets": "node scripts/check-assets.mjs",
+    "check:assets": "node scripts/check-assets.mjs && npm run check:sri",
+    "build:sri": "node scripts/build-sri.mjs",
+    "check:sri": "node scripts/build-sri.mjs --check",
     "lint": "eslint assets/js sw.js scripts tests",
     "serve": "python3 -m http.server 8000",
     "pretest": "npm run vendor -- --reuse-engine",

@@ -205,6 +205,8 @@ export class BatchGroupsView {
             this.groupHistoryController.begin(group.key, groupResetChangeKey(group.key));
             for (const field of group.fields) group.values[field.id] = '';
             group.remove.clear();
+            group.itemPatches = undefined;
+            group.itemRawRemovals = undefined;
             this.groupHistoryController.end(group.key);
             const replacement = this.renderGroupForm(group);
             form.replaceWith(replacement);
@@ -218,6 +220,12 @@ export class BatchGroupsView {
     for (const field of group.fields) grid.append(this.renderBatchField(group, field));
     form.append(grid);
     return form;
+  }
+  clearItemFieldPatches(group, id) {
+    for (const [itemId, patch] of Object.entries(group.itemPatches || {})) {
+      delete patch[id];
+      if (Object.keys(patch).length === 0) delete group.itemPatches[itemId];
+    }
   }
   renderBatchField(group, field) {
     const hasHistory = group !== this.cross;
@@ -247,6 +255,7 @@ export class BatchGroupsView {
         blur: () => { if (hasHistory) this.groupHistoryController.end(group.key); },
         input: (event) => {
           if (hasHistory) this.groupHistoryController.begin(group.key, groupFieldChangeKey(group.key, field.id));
+          if (hasHistory) this.clearItemFieldPatches(group, field.id);
           group.values[field.id] = event.target.value;
           this.updateGroupHistoryButtons(group);
           this.syncApply();
@@ -274,6 +283,7 @@ export class BatchGroupsView {
       if (hasHistory) {
         this.groupHistoryController.end(group.key);
         this.groupHistoryController.begin(group.key, groupRemoveChangeKey(group.key, field.id));
+        this.clearItemFieldPatches(group, field.id);
       }
       if (group.remove.has(field.id)) group.remove.delete(field.id);
       else group.remove.add(field.id);

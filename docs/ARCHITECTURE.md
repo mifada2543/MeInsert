@@ -147,7 +147,7 @@ gzip fallback. The request, decompression and metadata work stay local.
 
 The explicit image offline pack caches the same raw `.br` payload for
 portability, and a worker reuses a cached pack before fetching. The PWA engine
-cache (`meinsert-engine-v4`) also reuses the on-demand Brotli response. Because
+cache (`meinsert-engine-v5`) also reuses the on-demand Brotli response. Because
 no host sets `Content-Encoding`, Cache Storage holds exactly the same
 3,638,320 compressed bytes everywhere: that is the per-transfer and per-cache
 cost of the engine. The whole image offline pack is 4.822.717 bytes, and every
@@ -312,8 +312,8 @@ assembles a ZIP and JSON/CSV report instead of a single download.
 `sw.js` treats the app as a precached, offline-first PWA with **two independent
 caches**:
 
-- **Shell cache** (`CACHE_VERSION`, e.g. `meinsert-v72`) holds the always-needed
-  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v4`) holds
+- **Shell cache** (`CACHE_VERSION`, e.g. `meinsert-v75`) holds the always-needed
+  app shell. **Engine cache** (`ENGINE_VERSION`, e.g. `meinsert-engine-v5`) holds
   the optional format engines downloaded on demand. Separating them means a
   shell update never discards engines the user already paid to download, and
   clearing optional engines never removes shell assets. The two version markers

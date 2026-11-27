@@ -12,33 +12,22 @@ import { canProceedWithMemory, estimateForBatch } from '../core/memory-estimate.
 import { asArray, asString, fileExtension, sameValue } from '../core/tag-utils.js';
 import { validateSelection } from './batch-limits.js';
 import { makeCsvReport, makeJsonReport } from './batch-report.js';
-import { saveZipStreaming, uniqueOutputName } from './batch-zip.js';
-import { zipEligible } from './batch-item.js';
+import { canSaveZipToDisk, openDirectZip, openZipTarget, saveZipStreaming, uniqueOutputName } from './batch-zip.js';
+import { hasVerifiedBatchOutput, needsIntegrityReview, zipEligible } from './batch-item.js';
 import { batchDraftKey, setEditingNavigation } from '../ui/editing-navigation.js';
 import { setReloadUnsafe } from '../core/reload-guard.js';
 export class BatchSaveFlow {
   operationCountFor(item) {
-    const group = this.groupMap.get(item.groupKey);
     const before = item.readResult?.fields || {};
+    const { set, remove, rawRemove } = this.collectGroupPayload(item).payload;
     const changed = new Set();
-    if (group) {
-      for (const field of group.fields) {
-        if (group.remove.has(field.id)) {
-          if (asString(before[field.id]).trim()) changed.add(`remove:${field.id}`);
-          continue;
-        }
-        const value = group.values[field.id];
-        if (asString(value).trim() && !sameValue(value, before[field.id])) changed.add(`field:${field.id}`);
-      }
-    }
-    const cross = this.crossPatchFor(item);
-    for (const [id, value] of Object.entries(cross.set || {})) {
+    for (const [id, value] of Object.entries(set)) {
       if (!sameValue(value, before[id])) changed.add(`field:${id}`);
     }
-    for (const id of cross.remove || []) {
+    for (const id of remove) {
       if (asString(before[id]).trim()) changed.add(`remove:${id}`);
     }
-    for (const key of item.removeRaw || []) {
+    for (const key of rawRemove) {
       const tag = asString(key).trim().toLowerCase();
       const exists = (item.readResult?.raw || []).some((row) => asString(row.tag).trim().toLowerCase() === tag);
       if (exists) changed.add(`raw:${tag}`);
@@ -78,7 +67,7 @@ export class BatchSaveFlow {
       : this.apply();
   }
   collectGroupPayload(item) {
-    const group = this.groups.find((entry) => entry.key === item.groupKey);
+    const group = this.groupMap.get(item.groupKey);
     const set = {};
     const remove = [...(group?.remove || [])];
     if (group) {
@@ -92,16 +81,26 @@ export class BatchSaveFlow {
     const cross = this.crossPatchFor(item);
     for (const [id, value] of Object.entries(cross.set)) set[id] = value;
     for (const id of cross.remove) remove.push(id);
-    const rawRemove = [...item.removeRaw];
+    const individual = group?.itemPatches?.[item.id] || {};
+    const removals = new Set(remove.filter((id) => !Object.hasOwn(individual, id)));
+    for (const [id, value] of Object.entries(individual)) {
+      if (value === null) {
+        delete set[id];
+        removals.add(id);
+      } else {
+        set[id] = value;
+      }
+    }
+    const rawRemove = [...new Set([...(item.removeRaw || []), ...(group?.itemRawRemovals?.[item.id] || [])])];
     const operations = {
       set: Object.keys(set).length,
-      remove: new Set(remove).size,
+      remove: removals.size,
       rawRemove: rawRemove.length,
     };
     return {
       payload: {
         set,
-        remove: [...new Set(remove)],
+        remove: [...removals],
         custom: [],
         customRemove: [],
         rawRemove,
@@ -124,7 +123,7 @@ export class BatchSaveFlow {
     setReloadUnsafe('batch-busy', this.applying || this.scanning || this.hasUnsavedChanges());
     bindTranslation(this.els.batchSelectedCount, 'textContent', () => (t('ui.filesSelected', { v0: selected.length })));
     bindTranslation(this.els.batchOperationCount, 'textContent', () => (t('ui.operations', { v0: operationCount })));
-    this.els.batchApplyBtn.disabled = this.applying ? false : selected.length === 0 || !validation.ok;
+    this.els.batchApplyBtn.disabled = this.committingZip || (!this.applying && (selected.length === 0 || !validation.ok));
     const label = this.applying ? 'Batalkan' : `Terapkan ke ${selected.length} file`;
     this.els.batchApplyBtn.querySelector('.icon')?.replaceChildren(icon(this.applying ? 'x' : 'check'));
     bindTranslation(this.els.batchApplyBtn.querySelector('[data-i18n]') || this.els.batchApplyBtn.lastChild, 'textContent', () => (label));
@@ -135,7 +134,7 @@ export class BatchSaveFlow {
       this.els.batchRetryBtn.disabled = this.applying;
       bindTranslation(this.els.batchRetryBtn, 'textContent', () => (t('ui.retryFailedFiles2', { v0: failedCount })));
     }
-    this.els.batchZipBtn.disabled = !this.items.some(zipEligible);
+    this.els.batchZipBtn.disabled = this.applying || !this.items.some(zipEligible);
     this.batchCleanAction?.sync?.();
     const noItems = this.items.length === 0;
     this.els.batchReportJsonBtn.disabled = noItems;
@@ -150,6 +149,7 @@ export class BatchSaveFlow {
     this.setAddEnabled(!applying);
   }
   handleApplyClick() {
+    if (this.committingZip) return;
     if (this.applying) {
       this.processor.cancel();
       this.setStatus('Membatalkan…');
@@ -204,9 +204,7 @@ export class BatchSaveFlow {
       showToast(validation.messages[0], 'error', 7500);
       return;
     }
-    this._batchMemory = estimateForBatch(selected.map((item) => ({ file: item.file })), {
-      observedPeakMb: this.client?.memoryStats?.().peakMb || 0,
-    });
+    this._batchMemory = null;
     const usedNames = new Set();
     const plans = [];
     const skipped = [];
@@ -220,13 +218,18 @@ export class BatchSaveFlow {
       showToast('Tidak ada perubahan nyata pada file terpilih.', 'info', 4500);
       return;
     }
-    const reviewResult = await openReviewDialog({ plans, mode: 'batch' });
+    this._batchMemory = estimateForBatch(plans.map(({ item }) => item), {
+      observedPeakMb: this.client?.memoryStats?.().peakMb || 0,
+    });
+    for (const [index, plan] of plans.entries()) plans[index] = this.planForItem(plan.item, plan.outputName);
+    const reviewResult = await openReviewDialog({ plans, mode: 'batch', canStreamBatch: canSaveZipToDisk() });
     const confirmed = typeof reviewResult === 'object' && reviewResult !== null ? Boolean(reviewResult.confirmed) : Boolean(reviewResult);
     if (!confirmed) {
       this.setStatus('Perubahan belum diterapkan.');
       return;
     }
-    const lowMemory = typeof reviewResult === 'object' ? Boolean(reviewResult.lowMemory) : false;
+    const directZip = Boolean(reviewResult?.directZip);
+    const lowMemory = directZip || Boolean(reviewResult?.lowMemory);
     const memoryDecision = canProceedWithMemory(this._batchMemory, { lowMemory });
     if (!memoryDecision.allowed) {
       this.setStatus('Pemrosesan diblokir oleh batas memori.', true);
@@ -249,6 +252,19 @@ export class BatchSaveFlow {
         if (plan.item) plan.item.outputName = candidate;
       }
     }
+    let zip = null;
+    const zipItems = new Set();
+    let zipError;
+    if (directZip) {
+      try {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        zip = await openDirectZip(await openZipTarget(`meinsert-batch-${stamp}.zip`));
+      } catch (error) {
+        this.setStatus(error?.code === 'SAVE_CANCELLED' ? t('batchZip.cancelled') : t('batchZip.failed'),
+          error?.code !== 'SAVE_CANCELLED');
+        return;
+      }
+    }
     this._lowMemory = lowMemory;
     this.applying = true;
     this.els.batchApplyBtn.classList.add('is-processing');
@@ -267,23 +283,53 @@ export class BatchSaveFlow {
         {
           lowMemory,
           maxFailures,
-          onOutput: lowMemory
-            ? (item, blob) => {
+          markPerFile: !zip,
+          onOutput: zip
+            ? async (item, blob) => {
+                try {
+                  await zip.add(item, blob);
+                  zipItems.add(item);
+                } catch (error) {
+                  zipError = error;
+                  this.processor.cancel();
+                  throw error;
+                }
+              }
+            : lowMemory ? (item, blob) => {
                 downloadBlob(blob, item.outputName || item.file.name);
                 item.downloadedPerFile = true;
               }
             : null,
         },
       );
+      if (zip) {
+        if (zipError) throw zipError;
+        if (!result.ok || this.processor.cancelRequested || !zipItems.size) {
+          await zip.abort();
+          zipItems.clear();
+          this.setStatus(this.processor.cancelRequested ? t('batchZip.cancelled') : t('batchZip.noOutput'));
+          return;
+        }
+        this.committingZip = true;
+        this.els.batchApplyBtn.disabled = true;
+        await zip.finish(makeJsonReport(this.items, { zipItems }));
+        for (const item of zipItems) item.savedInDirectZip = true;
+      }
     } catch (error) {
+      if (zip) {
+        await zip.abort(error);
+        zipItems.clear();
+      }
       this.setStatus(error?.message || 'Batch gagal diproses.', true);
       showToast(error?.message || 'Batch gagal diproses.', 'error', 8000);
       result = { ok: false, messages: [error?.message || 'Batch gagal diproses.'] };
     } finally {
       this.applying = false;
+      this.committingZip = false;
       this.els.batchApplyBtn.classList.remove('is-processing');
       this.setApplyingUI(false);
       this.showProgress(false);
+      this.syncApply();
     }
     if (!result.ok) {
       this.renderLimits();
@@ -293,8 +339,8 @@ export class BatchSaveFlow {
       return;
     }
     const savedItems = new Set((result.processed || []).filter((item) =>
-      item.status === 'done' && item.integrity?.status !== 'failed'
-      && (item.outputFile || item.downloadedPerFile)));
+      item.status === 'done' && hasVerifiedBatchOutput(item.integrity)
+      && (item.outputFile || item.downloadedPerFile || zipItems.has(item))));
     for (const group of this.groups) {
       if (group.items.length && group.items.every((item) => savedItems.has(item))) {
         this.groupHistoryController.clear(group.key);
@@ -302,10 +348,13 @@ export class BatchSaveFlow {
     }
     const done = this.items.filter((item) => item.status === 'done').length;
     const failed = this.items.filter((item) => item.status === 'error').length;
-    const flagged = this.items.filter((item) => item.integrity?.status === 'failed').length;
+    const flagged = this.items.filter(needsIntegrityReview).length;
     const warned = this.items.filter((item) => item.integrity?.status === 'warning').length;
     this.setStatus(`${done} selesai · ${failed} gagal${flagged ? ` · ${flagged} perlu diperiksa` : warned ? ` · ${warned} bercatatan` : ''}`, failed > 0 || flagged > 0);
-    if (flagged) {
+    if (zipItems.size) {
+      this.setStatus(t('batchZip.saved', { v0: zipItems.size }));
+      if (failed || flagged) showToast(t('batchZip.excluded'), 'info', 6000);
+    } else if (flagged) {
       showToast(`${flagged} file perlu diperiksa integritasnya. Buka detail file sebelum mengunduh ZIP.`, 'error', 9000);
     } else if (failed) {
       showToast(`${failed} file gagal; ${done} file berhasil diproses.`, 'error', 7000);
@@ -328,6 +377,7 @@ export class BatchSaveFlow {
     downloadBlob(new Blob([makeJsonReport(this.items)], { type: 'application/json' }), `meinsert-laporan-${stamp}.json`);
   }
   async downloadZip() {
+    if (this.applying) return;
     const doneItems = this.items.filter(zipEligible);
     if (!doneItems.length) {
       const perFile = this.items.filter((item) => item.downloadedPerFile).length;
@@ -335,7 +385,7 @@ export class BatchSaveFlow {
         showToast('Semua hasil sudah diunduh per file (modus hemat memori).', 'info', 6000);
         return;
       }
-      const flagged = this.items.filter((item) => item.outputFile && item.integrity?.status === 'failed').length;
+      const flagged = this.items.filter((item) => item.outputFile && needsIntegrityReview(item)).length;
       if (flagged) {
         showToast(`${flagged} file perlu diperiksa dan tidak disertakan. Pilih "Sertakan di ZIP" pada detail file bila tetap ingin mengunduhnya.`, 'error', 9000);
       }
@@ -348,7 +398,7 @@ export class BatchSaveFlow {
     try {
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const result = await saveZipStreaming(doneItems, {
-        reportJson: makeJsonReport(this.items),
+        reportJson: makeJsonReport(this.items, { zipItems: new Set(doneItems) }),
         suggestedName: `meinsert-batch-${stamp}.zip`,
         onProgress: ({ stage, pct }) => this.setProgress(pct, stage),
       });

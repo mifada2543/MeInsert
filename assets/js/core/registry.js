@@ -9,6 +9,8 @@ const ADAPTER_LOADERS = {
   ogg: () => import('../formats/ogg.js'),
   mkv: () => import('../formats/mkv.js'),
   mp4: () => import('../formats/mp4.js'),
+  epub: () => import('../formats/epub.js'),
+  svg: () => import('../formats/svg.js'),
   office: () => import('../formats/office.js'),
   rawVideo: () => import('../formats/raw-video.js'),
 };

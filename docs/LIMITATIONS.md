@@ -322,8 +322,8 @@ is authoritative for each file. These are the known caveats:
   (Chrome/Edge), with an in-memory fallback elsewhere. Limits: 10 videos
   (≤1 hour each, ≤2 GB total), 20 audio files (≤30 minutes each, ≤1 GB total),
   or 50 images/PDFs (≤1 GB total). Files with unreadable durations are locked.
-- Files whose integrity status is `failed` are excluded from ZIP output by
-  default; include them explicitly from the file details if needed.
+- Batch results with integrity status `failed` or `unverified` require review.
+  In the regular ZIP workflow, inclusion requires an explicit choice in file details.
 - Common fields map across format groups; fields a target format does not
   expose are skipped. Custom tags remain per format group.
 
@@ -345,3 +345,36 @@ integrity engine — no engine or worker mocks. Notable, verified behaviors:
   with grid-aligned timestamps; otherwise handled by safe rejection.
 - The matrix is explicitly **not proof** for all files/codecs/chapters/foreign
   tags/field combinations, and there is no expected-failure allowlist.
+
+
+
+## MeInsert 2.0
+
+- **Direct batch ZIP** requires the browser Save File Picker. It saves verified
+  outputs one at a time and excludes failed or unverified results. Cancelling a
+  batch before finalization aborts its archive. Editing still needs memory for
+  the active file and does not raise the existing file-size limits.
+- **Presets** live in local browser storage. Single saves edited, nonempty
+  structured fields. Batch saves the effective draft of the first selected
+  eligible file. Import/export JSON is manual, and may contain sensitive values.
+- **Regex** runs inside a disposable worker with a time limit. Output is staged
+  as a draft and appears in the ordinary batch review before any file is written.
+  Track padding applies to text fields such as ID3; Vorbis fields remain numeric.
+- **Raw tag diff** covers the tags reported by the adapter after read-back,
+  including repeated values. The JSON export can contain sensitive tag values.
+- **SVG** supports UTF-8 title, description and simple RDF Dublin Core creator
+  and rights fields. Vector markup is not rendered or executed in MeInsert.
+  Existing scripts and external references are retained in the output, so it
+  should be treated with the same care as the original outside MeInsert.
+- **EPUB** supports a single rendition with a valid first, stored OCF
+  `mimetype` entry. Only the OPF metadata is edited. Signed and multi-rendition
+  books are read-only. Required or referenced metadata cannot be removed.
+- **AVIF** supports still-image XMP metadata with best-effort container
+  preservation. AVIF sequences are unsupported.
+- **GPS approximation** currently targets JPEG with readable coordinates. A
+  point can cross administrative borders. Other metadata and image contents
+  can still reveal location. Use GPS removal when no coordinate is wanted.
+- **Release work remaining** includes verified MP4/MOV/MKV streaming I/O
+  end to end above 4 GiB, tuning a parallel worker pool against real-device
+  measurements, production JS bundling, format-wide RAW/HEIC media
+  preservation, and Tauri packages on their target platforms.

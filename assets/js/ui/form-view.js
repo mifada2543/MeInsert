@@ -308,7 +308,7 @@ export function renderForm(container, { adapter, sections, state, handlers, cove
     );
     container.append(block);
   }
-  if (extras) {
+  if (extras && adapter.meta?.customTags !== false) {
     if (adapter.meta?.cover && handlers.onCoverChooseFile && !coverInCard) {
       container.append(renderCoverBlock(adapter, state, handlers));
     }

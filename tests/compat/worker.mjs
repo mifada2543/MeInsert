@@ -143,7 +143,7 @@ try {
     await page.locator('#saveBtn').click();
     await page.locator('.review-btn-confirm').click();
     await page.locator('.result-card').waitFor({ timeout: 90000 });
-    const downloadButton = page.locator('.result-card button').first();
+    const downloadButton = page.locator('.result-download');
     const downloadPromise = page.waitForEvent('download');
     await downloadButton.click();
     const download = await downloadPromise;

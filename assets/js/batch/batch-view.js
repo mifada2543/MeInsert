@@ -9,7 +9,7 @@ import { icon } from '../ui/icons.js';
 import { showToast } from '../ui/toast.js';
 import { confirmNavigation } from '../ui/confirm.js';
 import { STANDARD_FIELDS } from '../core/format-map.js';
-import { isSelectedItem } from './batch-item.js';
+import { isSelectedItem, needsIntegrityReview } from './batch-item.js';
 import { BatchGroupsView } from './batch-groups-view.js';
 import { createGroupHistoryController } from './batch-history.js';
 import { BatchSaveFlow } from './batch-save-flow.js';
@@ -17,6 +17,7 @@ import { BatchDetailView } from './batch-detail-view.js';
 import { BatchPreview } from './batch-preview.js';
 import { bindFolderDropCopy, collectDroppedFiles } from './batch-folder-drop.js';
 import { mountBatchCleanAction } from '../ui/batch-clean.js';
+import { mountBatchTools } from '../ui/batch-tools.js';
 import { initBatchActionBar } from '../ui/batch-action-bar.js';
 export class BatchController {
   constructor(client) {
@@ -94,6 +95,7 @@ export class BatchController {
     this.bind();
     this.setMode('single');
     initBatchActionBar();
+    mountBatchTools(this, qs('#batchOptions'));
   }
   bind() {
     const { els } = this;
@@ -319,7 +321,7 @@ export class BatchController {
     const totalBytes = this.items.reduce((sum, item) => sum + (Number(item.file?.size) || 0), 0);
     const ready = this.items.filter((item) => item.status === 'ready' || item.status === 'done').length;
     const failed = this.items.filter((item) => item.status === 'error').length;
-    const flagged = this.items.filter((item) => item.status === 'done' && item.integrity?.status === 'failed').length;
+    const flagged = this.items.filter(needsIntegrityReview).length;
     const skipped = this.items.filter((item) => item.status === 'skipped' || item.excluded).length;
     const stats = [
       [this.items.length, 'file'],
@@ -386,6 +388,7 @@ export class BatchController {
     this.els.batchDetail.hidden = true;
   }
   async resetBatch({ confirmIfBusy = false } = {}) {
+    if (this.committingZip) return;
     this.batchCleanAction?.close?.();
     if (this.updateFrame) cancelAnimationFrame(this.updateFrame);
     this.updateFrame = 0;

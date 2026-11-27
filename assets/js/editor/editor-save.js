@@ -4,6 +4,7 @@
 import { el, qs } from '../ui/dom.js';
 import { showToast } from '../ui/toast.js';
 import { openReviewDialog } from '../ui/review-dialog.js';
+import { rawSnapshotDiff } from '../core/snapshot-diff.js';
 import { createSnapshot } from '../core/metadata-snapshot.js';
 import { buildChangePlan } from '../core/change-plan.js';
 import { clearHistory } from '../core/history.js';
@@ -80,11 +81,13 @@ export function applyOutput(ctx, result) {
   }
   state.originalSidecar = cloneSidecar(state.sidecar);
   const warnings = [...new Set([state.detection?.warning, ...(result.warnings || [])].filter(Boolean))];
+  const documentFields = Array.isArray(result.removableFields);
   state.readResult = {
     ...(state.readResult || {}),
+    ...(documentFields ? { removableFields: result.removableFields } : {}),
     fields: result.fields || state.values,
     custom: Array.isArray(result.custom) ? result.custom : state.readResult?.custom,
-    raw: result.raw?.length ? result.raw : state.readResult?.raw || [],
+    raw: (documentFields || result.raw?.length) ? (result.raw || []) : state.readResult?.raw || [],
     info: { ...(state.readResult?.info || {}), ...(result.info || {}) },
     warnings,
   };
@@ -238,6 +241,7 @@ export async function saveMetadata(ctx) {
       readResult: result,
     });
     result.integrity = verifyIntegrity(plan, afterSnapshot);
+    result.rawDiff = rawSnapshotDiff(state.readResult?.raw || [], result.raw);
     recordWriteResult(ctx, result, afterSnapshot);
     state.processing = false;
     state.status = 'ready';

@@ -1,6 +1,7 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { ENGINE_VERSION } from '../../assets/js/core/build.js';
 import { exiftoolBuild } from '../../assets/js/core/image-engine-build.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,7 +29,7 @@ test('stream progress precedes cache completion and lazy cache is reused', async
   assert.equal(await first, 4);
   assert.equal(await second, 4);
   assert.equal(calls, 1);
-  assert.equal((await context.api.cacheFirst({ url })).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
+  assert.equal((await context.api.cacheFirst({ url })).headers.get('x-meinsert-engine-version'), ENGINE_VERSION);
   assert.equal(calls, 1);
   entries.set(url, new Response('legacy cached engine'));
   assert.ok(await context.api.cachedOptionalResponse(cache, url));
@@ -74,9 +75,9 @@ test('migrating the v3 engine cache reuses a valid Brotli payload', async () => 
   await context.migrate();
   assert.deepEqual(requests.sort(), [wrapper, decoder, bridge].sort());
   assert.ok(Buffer.from(await current.get(br).arrayBuffer()).equals(brotliBytes));
-  assert.equal(current.get(br).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
+  assert.equal(current.get(br).headers.get('x-meinsert-engine-version'), ENGINE_VERSION);
   assert.equal(await current.get(library).text(), 'reusable library');
-  assert.equal(current.get(library).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
+  assert.equal(current.get(library).headers.get('x-meinsert-engine-version'), ENGINE_VERSION);
   assert.equal(current.has(gz), false);
   assert.equal(current.has(raw), false);
   requests.length = 0;
@@ -151,5 +152,60 @@ test('a gzip-only v3 cache fetches the Brotli package while online', async () =>
   assert.equal(current.has(br), true);
   assert.equal(current.has(gz), false);
   assert.equal(current.has(raw), false);
-  assert.equal(current.get(br).headers.get('x-meinsert-engine-version'), 'meinsert-engine-v4');
+  assert.equal(current.get(br).headers.get('x-meinsert-engine-version'), ENGINE_VERSION);
 });
+test('migrating the v4 cache reloads only changed document adapters and preserves Brotli', async () => {
+  const scope = 'https://test.local/';
+  const url = (path) => new URL(path, scope).href;
+  const prefix = 'assets/vendor/exiftool-wasm/';
+  const br = url(`${prefix}${exiftoolBuild.name}.br`);
+  const gz = url(`${prefix}${exiftoolBuild.name}.gz`);
+  const raw = url(`${prefix}${exiftoolBuild.name}.wasm`);
+  const wrapper = url(`${prefix}index.js`);
+  const library = url('assets/vendor/mediabunny.mjs');
+  const bridge = url('assets/js/engines/exiftool.js');
+  const document = url('assets/js/formats/epub.js');
+  const brotliBytes = await readFile(new URL(`../../assets/vendor/exiftool-wasm/${exiftoolBuild.name}.br`, import.meta.url));
+  const legacy = new Map([
+    [br, new Response(brotliBytes)],
+    [gz, new Response('old gzip engine')],
+    [raw, new Response('old raw WASM')],
+    [wrapper, new Response('unchanged loader')],
+    [document, new Response('old document adapter')],
+    [library, new Response('reusable library', { headers: { 'x-meinsert-engine-version': 'meinsert-engine-v4' } })],
+  ]);
+  const current = new Map();
+  const requests = [];
+  const cache = (entries) => ({
+    match: async (key) => entries.get(typeof key === 'string' ? key : key.url)?.clone(),
+    keys: async () => [...entries.keys()].map((href) => ({ url: href })),
+    put: async (key, response) => entries.set(typeof key === 'string' ? key : key.url,
+      new Response(await response.arrayBuffer(), { headers: response.headers })),
+    delete: async (key) => entries.delete(typeof key === 'string' ? key : key.url),
+  });
+  const context = vm.createContext({
+    URL, Response, Headers, ReadableStream, AbortController, setTimeout, clearTimeout, crypto: globalThis.crypto,
+    caches: {
+      keys: async () => ['meinsert-engine-v4'],
+      open: async (name) => cache(name === 'meinsert-engine-v4' ? legacy : current),
+    },
+    self: { registration: { scope }, location: { origin: 'https://test.local' }, addEventListener() {} },
+    fetch: async (href) => { requests.push(href); return new Response('built asset'); },
+  });
+  vm.runInContext(source + '\nthis.migrate = migratePreviousEngineCache;', context);
+  await context.migrate();
+  assert.deepEqual(requests, [document]);
+  assert.equal(await current.get(wrapper).text(), 'unchanged loader');
+  assert.equal(await current.get(document).clone().text(), 'built asset');
+  assert.equal(current.has(bridge), false);
+  assert.ok(Buffer.from(await current.get(br).arrayBuffer()).equals(brotliBytes));
+  assert.equal(current.get(br).headers.get('x-meinsert-engine-version'), ENGINE_VERSION);
+  assert.equal(await current.get(library).text(), 'reusable library');
+  assert.equal(current.get(library).headers.get('x-meinsert-engine-version'), ENGINE_VERSION);
+  assert.equal(current.has(gz), false);
+  assert.equal(current.has(raw), false);
+  requests.length = 0;
+  await context.migrate();
+  assert.deepEqual(requests, []);
+});
+

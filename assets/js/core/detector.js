@@ -5,6 +5,8 @@ import { t } from '../i18n/index.js';
 import { fileExtension } from './tag-utils.js';
 import { readZipDirectoryFromBlob } from './zip-directory.js';
 const EXTENSIONS = {
+  epub: { id: 'epub', subtype: 'epub', label: 'EPUB', mime: 'application/epub+zip' },
+  svg: { id: 'svg', subtype: 'svg', label: 'SVG', mime: 'image/svg+xml' },
   jpg: { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' },
   jpeg: { id: 'image', subtype: 'jpeg', label: 'JPEG', mime: 'image/jpeg' },
   png: { id: 'image', subtype: 'png', label: 'PNG', mime: 'image/png' },
@@ -23,6 +25,7 @@ const EXTENSIONS = {
   m4v: { id: 'mp4', subtype: 'mp4', label: 'M4V', mime: 'video/mp4' },
   m4a: { id: 'mp4', subtype: 'm4a', label: 'M4A', mime: 'audio/mp4' },
   mov: { id: 'mp4', subtype: 'mov', label: 'MOV', mime: 'video/quicktime' },
+  avif: { id: 'image', subtype: 'avif', label: 'AVIF', mime: 'image/avif' },
   heic: { id: 'image', subtype: 'heic', label: 'HEIC', mime: 'image/heic' },
   heif: { id: 'image', subtype: 'heic', label: 'HEIC', mime: 'image/heic' },
   dng: { id: 'image', subtype: 'dng', label: 'DNG', mime: 'image/x-dng' },
@@ -158,6 +161,11 @@ function sniffMp4Brand(bytes) {
   if (bytes.length < 12) return null;
   if (ascii(bytes, 4, 4) !== 'ftyp') return null;
   const brand = ascii(bytes, 8, 4);
+  const end = Math.min(bytes.length, uint32BE(bytes, 0));
+  const compatible = new Set([brand]);
+  for (let offset = 16; offset + 4 <= end; offset += 4) compatible.add(ascii(bytes, offset, 4));
+  if (compatible.has('avis')) return null;
+  if (compatible.has('avif')) return EXTENSIONS.avif;
   if (/^(heic|heix|hevc|mif1|msf1)$/.test(brand)) return { id: 'image', subtype: 'heic', label: 'HEIC', mime: 'image/heic' };
   if (brand === 'crx ') return { id: 'image', subtype: 'cr3', label: 'CR3', mime: 'image/x-cr3' };
   if (/^(M4A|M4B|M4P)/.test(brand)) return { id: 'mp4', subtype: 'm4a', label: 'M4A', mime: 'audio/mp4', kind: 'audio', brandKind: 'audio', brand };
@@ -281,6 +289,9 @@ function sniffZip(head, zipInfo = null) {
     ({ names, mimetype } = found);
   }
   const has = (name) => names.includes(name);
+  if (mimetype === 'application/epub+zip' && has('META-INF/container.xml')) {
+    return { id: 'epub', subtype: 'epub', label: 'EPUB', mime: 'application/epub+zip' };
+  }
   if (has('mimetype')) {
     const odf = {
       'application/vnd.oasis.opendocument.text': { id: 'office', subtype: 'odt', label: 'ODT', mime: 'application/vnd.oasis.opendocument.text' },
@@ -356,6 +367,8 @@ function extensionMatches(ext, byExt, byMagic) {
   return false;
 }
 const EXT_BY_SUBTYPE = {
+  epub: 'epub',
+  svg: 'svg',
   jpeg: 'jpg',
   png: 'png',
   webp: 'webp',
@@ -370,6 +383,7 @@ const EXT_BY_SUBTYPE = {
   mp4: 'mp4',
   m4a: 'm4a',
   mov: 'mov',
+  avif: 'avif',
   heic: 'heic',
   dng: 'dng',
   cr2: 'cr2',
@@ -439,6 +453,13 @@ export async function detectFile(file) {
     if (wider.length > head.length) head = wider;
   }
   let byMagic = sniff(head, zipInfo);
+  if (!byMagic && /^\s*</.test(new TextDecoder().decode(head))) {
+    const xml = new TextDecoder().decode(await file.slice(0, 8192).arrayBuffer());
+    const svgRoot = xml.replace(/^\s*(?:(?:<\?[^]*?\?>|<!--[^]*?-->)\s*)*/, '');
+    if (/^<(?:[A-Za-z_][\w.-]*:)?svg(?=[\s/>])[^>]*\sxmlns(?::[\w.-]+)?\s*=\s*(['"])http:\/\/www\.w3\.org\/2000\/svg\1/s.test(svgRoot)) {
+      byMagic = { id: 'svg', subtype: 'svg', label: 'SVG', mime: 'image/svg+xml' };
+    }
+  }
   if (byMagic?.id === 'mp4' && byMagic.brandKind !== 'mov' && needsTrackScan(byMagic, ext)) {
     const tracks = await readMp4Tracks(file, head);
     if (tracks) byMagic = mp4FromTracks(byMagic, tracks);
@@ -469,7 +490,7 @@ export async function detectFile(file) {
     }
     return { ...byMagic, ext: actualExt };
   }
-  if (byExt && !(candidateZip && !zipInfo)) {
+  if (byExt && !['epub', 'svg', 'avif'].includes(byExt.subtype) && !(candidateZip && !zipInfo)) {
     return { ...byExt, ext, warning: 'Jenis file dikenali dari ekstensi; isi file tidak dikenali.' };
   }
   return null;

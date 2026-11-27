@@ -8,8 +8,14 @@ export function isSelectedItem(item) {
 export function groupKey(item) {
   return `${item.detection?.id || 'unknown'}:${item.detection?.subtype || 'unknown'}`;
 }
+export function hasVerifiedBatchOutput(integrity) {
+  return integrity?.status === 'ok' || integrity?.status === 'warning';
+}
+export function needsIntegrityReview(item) {
+  return item?.status === 'done' && !hasVerifiedBatchOutput(item.integrity);
+}
 export function statusLabel(item) {
-  if (item?.status === 'done' && item.integrity?.status === 'failed') return 'Perlu diperiksa';
+  if (needsIntegrityReview(item)) return 'Perlu diperiksa';
   if (item?.status === 'done' && item.integrity?.status === 'warning') return 'Selesai · catatan';
   if (item?.status === 'ready' && item.warnings?.length) return 'Siap · catatan';
   switch (item?.status) {
@@ -26,7 +32,7 @@ export function statusLabel(item) {
 }
 export function statusClass(item) {
   const status = item?.status || 'queued';
-  if (status === 'done' && item.integrity?.status === 'failed') return 'is-error';
+  if (needsIntegrityReview(item)) return 'is-error';
   if (status === 'done' && item.integrity?.status === 'warning') return 'is-skipped';
   if (status === 'skipped' || status === 'cancelled') return 'is-skipped';
   if (status === 'error') return 'is-error';
@@ -34,7 +40,7 @@ export function statusClass(item) {
   return 'is-busy';
 }
 export function zipEligible(item) {
-  return Boolean(item?.outputFile) && (item.integrity?.status !== 'failed' || Boolean(item.includeFailedInZip));
+  return Boolean(item?.outputFile) && (hasVerifiedBatchOutput(item.integrity) || (needsIntegrityReview(item) && Boolean(item.includeFailedInZip)));
 }
 export function fileIconName(item) {
   const id = item?.detection?.id;

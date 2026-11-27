@@ -1,11 +1,12 @@
 /* MeInsert — Edit metadata file tanpa upload, 100% di browser. */
 /* Copyright (C) 2026 mifada2543 — MeInsert Source-Available License v1.0 (see LICENSE) — Source: https://github.com/mifada2543/meinsert */
 /* reference build: MeInsert TWVJbnNlcnQ6bWlmYWRhMjU0MzoyMDI2 */
+import { renderRawDiff } from '../ui/raw-diff.js';
 import { bindTranslation, t, translated } from '../i18n/index.js';
 import { el, clear, formatBytes } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { formatDuration } from './batch-limits.js';
-import { durationOf, fileIconName, isSelectedItem, statusClass, statusLabel, tagCountOf, zipEligible } from './batch-item.js';
+import { durationOf, fileIconName, isSelectedItem, statusClass, statusLabel, tagCountOf, zipEligible, needsIntegrityReview } from './batch-item.js';
 const MP3_DELETABLE_FRAMES = new Set([
   'TIT2', 'TPE1', 'TALB', 'TPE2', 'TYER', 'TDRC', 'TCON', 'TRCK', 'TPOS',
   'TCOM', 'COMM', 'USLT', 'TCOP', 'TSSE',
@@ -126,6 +127,7 @@ export class BatchDetailView {
       ));
     }
     if (item.integrity) panel.append(this.renderIntegrityReport(item));
+    if (item.rawDiff) panel.append(renderRawDiff(item.rawDiff));
     if (item.outputFile) {
       panel.append(el('div', { className: 'batch-output-note' },
         icon('check'),
@@ -139,9 +141,9 @@ export class BatchDetailView {
   renderIntegrityReport(item) {
     const integrity = item.integrity;
     const counts = integrity.summary || {};
-    const block = el('div', { className: `batch-integrity is-${integrity.status}` });
+    const block = el('div', { className: `batch-integrity is-${needsIntegrityReview(item) ? 'failed' : integrity.status}` });
     block.append(el('h3', {
-      textContent: translated(() => (integrity.status === 'failed'
+      textContent: translated(() => (needsIntegrityReview(item)
         ? t('ui.metadataIntegrityNeedsReview')
         : integrity.status === 'warning' ? t('ui.metadataSavedWithNotes') : t('ui.metadataIntegrityVerified'))),
     }));
@@ -168,7 +170,7 @@ export class BatchDetailView {
       }
       block.append(list);
     }
-    if (integrity.status === 'failed' && item.outputFile) {
+    if (needsIntegrityReview(item) && item.outputFile) {
       const checkbox = el('input', { type: 'checkbox', id: `zip-failed-${item.id}` });
       checkbox.checked = Boolean(item.includeFailedInZip);
       checkbox.addEventListener('change', () => {
@@ -184,6 +186,7 @@ export class BatchDetailView {
     return block;
   }
   rawDeletability(item, row) {
+    if (item.adapter?.meta?.customTags === false) return { ok: false, reason: t('documents.fieldsOnly') };
     const tag = row.tag || '';
     const locked = RAW_LOCKED.find((entry) => entry.pattern.test(tag));
     if (locked) return { ok: false, reason: locked.reason };

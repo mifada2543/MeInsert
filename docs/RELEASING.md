@@ -178,3 +178,13 @@ berkas atau perubahan metadata. Lihat
 
 [Peta dokumentasi](README.md) · [Pengujian](TESTING.md) ·
 [Deployment](deployment.md) · [Catatan perubahan](../CHANGELOG.md)
+
+
+### Integrity manifest (2.0)
+
+Run `npm run build:sri` after changing a page entry module, the shell stylesheet,
+the service worker, or pinned vendor assets. Review the changed SHA-384
+values in `scripts/asset-integrity.json`. `npm run check:assets` verifies the
+manifest and separately checks the pinned Brotli and decompressed WASM hashes.
+The manifest is checked during release validation. It does not alter how an
+existing service worker serves a page while a shell update is pending.
