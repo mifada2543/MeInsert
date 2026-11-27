@@ -120,9 +120,10 @@ is authoritative for each file. These are the known caveats:
   batches, explicit risk acknowledgement for a single file). Worker payloads
   are transferred rather than duplicated.
 - **Offline** — cutting needs the optional engine assets. Offline use is
-  blocked with a toast unless the `audio` package (for audio) or `image`
-  package (for video) has already been downloaded in Settings → Storage &
-  Offline.
+  blocked with a toast until the right package has been downloaded in Settings
+  → Storage & Offline. MP3/FLAC/OGG/MKV use the `audio` package, while the MP4
+  family (MP4/M4V/M4A/MOV) uses the `image` package because the MP4/ExifTool
+  engine is bundled there — even when the file is classified as audio.
 
 ## Format-specific caveats
 
@@ -303,6 +304,21 @@ is authoritative for each file. These are the known caveats:
   dimensions/depth/colors, back covers) is what has been verified; it is not
   exhaustive for all encoders.
 
+### MP4 / M4A / MOV detection
+
+- Audio vs video is decided from the container track boxes (`hdlr`: `soun` vs
+  `vide`), not from the extension or the `ftyp` brand alone; a `.m4a` containing
+  a video track is reported as video with an extension-mismatch warning.
+- Detection reads the first 128 bytes for the brand, and only when `moov` is not
+  there reads at most 2 MiB from the end of the file. If `moov` is outside those
+  windows, detection falls back to the brand/extension hint, so unusual layouts
+  may still be classified by brand.
+- The `qt  ` (MOV) brand keeps the historical `video/quicktime` convention and
+  is not track-scanned, so an audio-only MOV is still presented as video.
+- Codec labels shown in the file card come from the first `stsd` sample entry:
+  AAC, ALAC, H.264, HEVC, AV1, Opus, VP9, AC-3/E-AC-3, with the raw fourcc used
+  for anything else.
+
 ### MP4 / M4A / MOV cover
 
 - The `covr` atom accepts JPEG/PNG/WebP only; GIF and BMP covers are rejected by
@@ -322,6 +338,9 @@ is authoritative for each file. These are the known caveats:
   (Chrome/Edge), with an in-memory fallback elsewhere. Limits: 10 videos
   (≤1 hour each, ≤2 GB total), 20 audio files (≤30 minutes each, ≤1 GB total),
   or 50 images/PDFs (≤1 GB total). Files with unreadable durations are locked.
+- `.m4a` files classified as audio count toward the 20-file/30-minute audio
+  limits; a `.m4a` that actually contains a video track counts toward the
+  10-file/60-minute video limits.
 - Batch results with integrity status `failed` or `unverified` require review.
   In the regular ZIP workflow, inclusion requires an explicit choice in file details.
 - Common fields map across format groups; fields a target format does not

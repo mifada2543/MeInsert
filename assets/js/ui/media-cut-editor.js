@@ -11,6 +11,7 @@ import { setTrim } from '../editor/editor-state.js';
 import { syncActionBar } from '../editor/editor-changes.js';
 import { CUT_MODES, expectedCutDuration, normalizeTrim } from '../core/media-cut.js';
 import { mediaKind } from '../core/media-kind.js';
+import { FORMAT_CAPABILITIES } from '../core/format-capabilities.js';
 import { ensureFeatureOffline } from './offline-settings.js';
 const EXIT_MS = 160;
 const EXIT_SAFETY_MS = EXIT_MS + 100;
@@ -35,6 +36,11 @@ function supportsFile(file, detection) {
 function cutModeForFile(file, detection) {
   if (detection) return mediaKind(detection) === 'audio' ? 'audio' : 'video';
   return VIDEO_EXTS.has(extensionOf(file)) ? 'video' : 'audio';
+}
+function offlineFeatureFor(file, detection) {
+  const entry = FORMAT_CAPABILITIES.find((item) => item.id === detection?.id);
+  if (entry) return entry.offlineFeature;
+  return cutModeForFile(file, detection) === 'audio' ? 'audio' : 'image';
 }
 function reduceMotion() {
   try { return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches); } catch { return false; }
@@ -431,7 +437,7 @@ export function mountCutButton({ container, ctx } = {}) {
       showToast(t('ui.cutUnsupported'), 'info', 4200);
       return;
     }
-    const feature = cutModeForFile(file, editorState?.detection) === 'audio' ? 'audio' : 'image';
+    const feature = offlineFeatureFor(file, editorState?.detection);
     if (!(await ensureFeatureOffline(feature))) return;
     openCutEditor({
       file,

@@ -37,9 +37,17 @@ export function previewKind(detection) {
   if (kind === 'video') return 'video';
   return 'file';
 }
+function formatLabel(detection) {
+  if (detection?.id === 'mp4') {
+    const label = mediaKind(detection) === 'audio' ? t('ui.mp4AudioLabel') : t('ui.mp4VideoLabel');
+    const codecs = detection.codecs || [];
+    return codecs.length ? `${label} · ${t('ui.containerCodec', { v0: codecs.join(', ') })}` : label;
+  }
+  return detection?.label || 'Tidak dikenali';
+}
 function statRows(file, detection, readResult) {
   const rows = [
-    ['Format', [detection?.label, ...(detection?.codecs || [])].filter(Boolean).join(' · ') || 'Tidak dikenali'],
+    ['Format', formatLabel(detection)],
     ['Ukuran', formatBytes(file.size)],
   ];
   const info = readResult?.info || {};

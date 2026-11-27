@@ -36,6 +36,16 @@ mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 - Manifest SHA-384 memeriksa aset rilis saat build. Cache shell PWA naik
   ke `meinsert-v75`. Migrasi engine v5 memakai ulang WASM Brotli yang valid
   dan memuat ulang adapter EPUB/SVG yang sebelumnya tersimpan.
+- Deteksi MP4/M4A/MOV kini menentukan audio vs video dari track kontainer
+  (`hdlr` `soun`/`vide`) dan membaca label codec dari `stsd`, bukan dari
+  ekstensi atau brand `ftyp` saja. Berkas `.m4a` ber-brand generik tidak lagi
+  terbaca sebagai video; berkas `.m4a` yang memuat track video diberi
+  peringatan ketidaksesuaian. Pembacaan dibatasi 128 byte kepala dan maksimal
+  2 MiB ekor dengan cache per berkas.
+- Klasifikasi media disatukan di `core/media-kind.js` untuk ikon, batas batch,
+  pratinjau, dan mode potong. Potong MP4/M4A kini memeriksa paket offline
+  `image` sesuai lokasi engine, kartu berkas menampilkan `MP4 (audio)` /
+  `MP4 (video)` serta codec, dan kaveatnya tercantum di `docs/LIMITATIONS.md`.
 
 ## Perbaikan sejak 1.6.0
 

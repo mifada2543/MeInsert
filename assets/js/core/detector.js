@@ -407,9 +407,9 @@ const EXT_BY_SUBTYPE = {
   odp: 'odp',
 };
 const TRACK_CACHE = new WeakMap();
+const MP4_TAIL_BYTES = 2 * 1024 * 1024;
 async function readMp4Tracks(file, head) {
   if (TRACK_CACHE.has(file)) return TRACK_CACHE.get(file);
-  const MP4_TAIL_BYTES = 2 * 1024 * 1024;
   let tracks = null;
   const direct = findMoov(head);
   if (direct) {
@@ -423,10 +423,6 @@ async function readMp4Tracks(file, head) {
   }
   TRACK_CACHE.set(file, tracks);
   return tracks;
-}
-function needsTrackScan(detection, ext) {
-  if (detection.brandKind === 'audio' && (ext === 'm4a' || !ext)) return false;
-  return true;
 }
 function mp4FromTracks(hint, tracks) {
   const base = { ...hint };
@@ -460,7 +456,7 @@ export async function detectFile(file) {
       byMagic = { id: 'svg', subtype: 'svg', label: 'SVG', mime: 'image/svg+xml' };
     }
   }
-  if (byMagic?.id === 'mp4' && byMagic.brandKind !== 'mov' && needsTrackScan(byMagic, ext)) {
+  if (byMagic?.id === 'mp4' && byMagic.brandKind !== 'mov') {
     const tracks = await readMp4Tracks(file, head);
     if (tracks) byMagic = mp4FromTracks(byMagic, tracks);
   }
